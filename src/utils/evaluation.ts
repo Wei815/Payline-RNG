@@ -1,0 +1,193 @@
+import type { PaytableRule, GameType } from '../types';
+
+export interface WinResult {
+  symbolId: string;
+  matchCount: number;
+  ways: number;
+  payout: number;
+  totalWin: number;
+  lineIndex?: number; // 記錄 linegame 中獎的贏分線索引
+}
+
+// 內建的 20 條中獎線，對應 3x5 盤面
+export const defaultPaylines = [
+  [1, 1, 1, 1, 1], // 中間水平
+  [0, 0, 0, 0, 0], // 上方水平
+  [2, 2, 2, 2, 2], // 下方水平
+  [0, 1, 2, 1, 0], // V 字
+  [2, 1, 0, 1, 2], // 倒 V 字
+  [0, 0, 1, 2, 2],
+  [2, 2, 1, 0, 0],
+  [1, 0, 1, 2, 1],
+  [1, 2, 1, 0, 1],
+  [0, 1, 1, 1, 0],
+  [2, 1, 1, 1, 2],
+  [0, 1, 0, 1, 0],
+  [2, 1, 2, 1, 2],
+  [1, 1, 0, 1, 1],
+  [1, 1, 2, 1, 1],
+  [0, 0, 2, 0, 0],
+  [2, 2, 0, 2, 2],
+  [0, 2, 0, 2, 0],
+  [1, 0, 0, 0, 1],
+  [1, 2, 2, 2, 1]
+];
+
+export function evaluateGrid(
+  grid: string[][],
+  paytable: PaytableRule[],
+  gameType: GameType = 'waygame',
+  paylines: number[][] = defaultPaylines,
+  includeZeroPayout = false
+): WinResult[] {
+  const results: WinResult[] = [];
+  
+  if (!grid || grid.length === 0 || !paytable || paytable.length === 0) {
+    return results;
+  }
+
+  const wildSymbols = new Set(paytable.filter(p => p.isWild).map(p => p.symbolId));
+  wildSymbols.add('WILD');
+  wildSymbols.add('W');
+  wildSymbols.add('WX');
+
+  for (const rule of paytable) {
+    const sym = rule.symbolId;
+    
+    // Scatter 計算
+    if (rule.isScatter) {
+      let scatterCount = 0;
+      for (const col of grid) {
+        for (const cell of col) {
+          if (cell === sym) scatterCount++;
+        }
+      }
+      if (scatterCount >= 2) {
+        const lookupMatch = Math.min(scatterCount, 5); 
+        const payout = rule.payouts[`match${lookupMatch}` as keyof typeof rule.payouts] || 0;
+        if (payout > 0 || scatterCount >= 3) {
+          results.push({ symbolId: sym, matchCount: scatterCount, ways: 1, payout, totalWin: payout });
+        }
+      }
+      continue;
+    }
+
+    if (gameType === 'payanywhere') {
+      // Pay Anywhere 模式：統計盤面總數
+      let count = 0;
+      for (const col of grid) {
+        for (const cell of col) {
+          if (cell === sym || (!rule.isWild && wildSymbols.has(cell))) {
+            count++;
+          }
+        }
+      }
+
+      // 映射規則：
+      // match2 -> <8 個
+      // match3 -> 8-9 個
+      // match4 -> 10-11 個
+      // match5 -> >=12 個
+      if (count >= 2) {
+        let lookupKey: 'match2' | 'match3' | 'match4' | 'match5' | null = null;
+        if (count < 8) {
+          lookupKey = 'match2';
+        } else if (count >= 8 && count <= 9) {
+          lookupKey = 'match3';
+        } else if (count >= 10 && count <= 11) {
+          lookupKey = 'match4';
+        } else if (count >= 12) {
+          lookupKey = 'match5';
+        }
+
+        if (lookupKey) {
+          const payout = rule.payouts[lookupKey] || 0;
+          if (payout > 0) {
+            results.push({
+              symbolId: sym,
+              matchCount: count,
+              ways: 1,
+              payout,
+              totalWin: payout
+            });
+          }
+        }
+      }
+    } 
+    else if (gameType === 'linegame') {
+      // Line Game 模式：沿中獎線檢查連線
+      paylines.forEach((line, lineIdx) => {
+        let matchCount = 0;
+        for (let colIdx = 0; colIdx < grid.length; colIdx++) {
+          const targetRow = line[colIdx];
+          if (targetRow === undefined || targetRow >= grid[colIdx].length) {
+            break;
+          }
+          const cell = grid[colIdx][targetRow];
+          if (cell === sym || (!rule.isWild && wildSymbols.has(cell))) {
+            matchCount++;
+          } else {
+            break;
+          }
+        }
+
+        if (matchCount >= 2) {
+          const lookupMatch = Math.min(matchCount, 5);
+          const payout = rule.payouts[`match${lookupMatch}` as keyof typeof rule.payouts] || 0;
+          if (payout > 0) {
+            results.push({
+              symbolId: sym,
+              matchCount: matchCount,
+              ways: 1,
+              payout,
+              totalWin: payout,
+              lineIndex: lineIdx
+            });
+          }
+        }
+      });
+    } 
+    else {
+      // waygame 或是 megaway 模式
+      let currentWays = 1;
+      let currentMatch = 0;
+
+      for (let colIndex = 0; colIndex < grid.length; colIndex++) {
+        const col = grid[colIndex];
+        let countInCol = 0;
+        for (const cell of col) {
+          if (cell === sym || (!rule.isWild && wildSymbols.has(cell))) {
+            countInCol++;
+          }
+        }
+
+        if (countInCol > 0) {
+          currentMatch++;
+          if (gameType === 'megaway') {
+            currentWays *= 1; // 符號大小不限一格，計分僅算一格
+          } else {
+            currentWays *= countInCol;
+          }
+        } else {
+          break;
+        }
+      }
+
+      if (currentMatch >= 2) {
+        const lookupMatch = Math.min(currentMatch, 5); 
+        const payout = rule.payouts[`match${lookupMatch}` as keyof typeof rule.payouts] || 0;
+        if (payout > 0 || currentMatch >= 3 || includeZeroPayout) {
+          results.push({
+            symbolId: sym,
+            matchCount: currentMatch,
+            ways: currentWays,
+            payout,
+            totalWin: payout * currentWays
+          });
+        }
+      }
+    }
+  }
+
+  return results;
+}
