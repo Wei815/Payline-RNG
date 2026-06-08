@@ -73,26 +73,23 @@ export function evaluateGrid(
     }
 
     if (gameType === 'payanywhere') {
-      // Pay Anywhere 模式：統計盤面總數
+      // Pay Anywhere 模式：統計盤面總數，排除 Wild 符號
       let count = 0;
       for (const col of grid) {
         for (const cell of col) {
-          if (cell === sym || (!rule.isWild && wildSymbols.has(cell))) {
+          if (cell === sym) {
             count++;
           }
         }
       }
 
-      // 映射規則：
-      // match2 -> <8 個
+      // 映射規則：至少 8 顆才算中獎
       // match3 -> 8-9 個
       // match4 -> 10-11 個
       // match5 -> >=12 個
-      if (count >= 2) {
-        let lookupKey: 'match2' | 'match3' | 'match4' | 'match5' | null = null;
-        if (count < 8) {
-          lookupKey = 'match2';
-        } else if (count >= 8 && count <= 9) {
+      if (count >= 8) {
+        let lookupKey: 'match3' | 'match4' | 'match5' | null = null;
+        if (count >= 8 && count <= 9) {
           lookupKey = 'match3';
         } else if (count >= 10 && count <= 11) {
           lookupKey = 'match4';
@@ -163,11 +160,7 @@ export function evaluateGrid(
 
         if (countInCol > 0) {
           currentMatch++;
-          if (gameType === 'megaway') {
-            currentWays *= 1; // 符號大小不限一格，計分僅算一格
-          } else {
-            currentWays *= countInCol;
-          }
+          currentWays *= countInCol;
         } else {
           break;
         }

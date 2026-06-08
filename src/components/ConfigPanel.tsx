@@ -2,21 +2,24 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Play, Database, Table, Edit3, X } from 'lucide-react';
 import type { ReelStrips, PaytableRule, GameType } from '../types';
 import { defaultPaytable, defaultExcelStripsString } from '../mocks/defaultData';
+import { defaultPaylines } from '../utils/evaluation';
 
 interface ConfigPanelProps {
   isRunning: boolean;
   reelCount: number;
   onReelCountChange: (count: number) => void;
   rowCounts: number[];
-  onTestSpin: (strips: ReelStrips, paytable: PaytableRule[], totalSpins?: number, rowCounts?: number[]) => void;
+  onTestSpin: (strips: ReelStrips, paytable: PaytableRule[], totalSpins?: number, rowCounts?: number[], paylines?: number[][]) => void;
   onConfigSync: (strips: ReelStrips, paytable: PaytableRule[]) => void;
   coin: number;
   onCoinChange: (coin: number) => void;
   gameType: GameType;
   onGameTypeChange: (type: GameType) => void;
+  customPaylines: number[][];
+  onPaylinesChange: (paylines: number[][]) => void;
 }
 
-export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, onReelCountChange, rowCounts, onTestSpin, onConfigSync, coin, onCoinChange, gameType, onGameTypeChange }) => {
+export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, onReelCountChange, rowCounts, onTestSpin, onConfigSync, coin, onCoinChange, gameType, onGameTypeChange, customPaylines, onPaylinesChange }) => {
   const [gridData, setGridData] = useState<string[][]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [highlightSymbol, setHighlightSymbol] = useState<string>('');
@@ -152,7 +155,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
       const finalPaytable = uniqueSymbols.map(sym => paytableMap[sym]).filter(Boolean);
       onConfigSync(parsedStrips, finalPaytable);
     } catch (e) {}
-  }, [gridData, paytableMap, uniqueSymbols, reelCount]);
+  }, [gridData, paytableMap, uniqueSymbols, reelCount, onConfigSync]);
 
   const handleLoadDefaults = () => {
     handlePasteText(defaultExcelStripsString, reelCount);
@@ -160,6 +163,9 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
     const init: Record<string, PaytableRule> = {};
     defaultPaytable.forEach(rule => init[rule.symbolId] = rule);
     setPaytableMap(init);
+
+    // Load default paylines
+    onPaylinesChange(defaultPaylines);
     
     setError(null);
   };
@@ -198,6 +204,48 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
     const text = e.clipboardData.getData('Text');
     handlePasteText(text, reelCount);
     
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  };
+
+  const onPastePaylines = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('Text');
+    
+    const lines = text.trim().split(/\r?\n/);
+    const newLines: number[][] = [];
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const cols = line.split('\t').map(s => s.trim()).filter(s => s !== '');
+      
+      // 跳過標頭 (No., Line, R1...)
+      if (cols[0] && (cols[0].toLowerCase().includes('no') || cols[0].toLowerCase().includes('line'))) continue;
+      if (cols[0] && cols[0].toLowerCase().startsWith('r1')) continue;
+
+      const finalCols = cols.length < reelCount ? line.trim().split(/\s+/).map(s => s.trim()) : cols;
+
+      if (finalCols.length >= reelCount + 1) {
+        const rowVals = finalCols.slice(1, reelCount + 1).map(Number);
+        if (rowVals.every(n => !isNaN(n))) {
+          newLines.push(rowVals);
+        }
+      } else if (finalCols.length >= reelCount) {
+        const rowVals = finalCols.slice(0, reelCount).map(Number);
+        if (rowVals.every(n => !isNaN(n))) {
+          newLines.push(rowVals);
+        }
+      }
+    }
+
+    if (newLines.length > 0) {
+      onPaylinesChange(newLines);
+      setError(null);
+    } else {
+      setError(`無法解析線路規則。請確保貼上的內容包含 ${reelCount} 個滾輪欄位。`);
+    }
+
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
@@ -244,7 +292,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
 
       const finalPaytable = uniqueSymbols.map(sym => paytableMap[sym]).filter(Boolean);
 
-      onTestSpin(parsedStrips, finalPaytable, 50, rowCounts);
+      onTestSpin(parsedStrips, finalPaytable, 50, rowCounts, customPaylines);
     } catch (e: any) {
       setError('執行錯誤：' + e.message);
     }
@@ -350,7 +398,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
 
       <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
         
-        <div className="flex flex-col gap-2 flex-1 min-h-[300px]">
+        <div className={`flex flex-col gap-2 ${gameType === 'linegame' ? 'h-[220px] shrink-0' : 'flex-1 min-h-[300px]'}`}>
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <label className="text-sm text-dashboard-text-secondary font-medium">Reel Strips 表格</label>
@@ -463,6 +511,59 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
             )}
           </div>
         </div>
+
+        {gameType === 'linegame' && (
+          <div className="flex flex-col gap-2 h-[220px] shrink-0">
+            <div className="flex justify-between items-center">
+              <label className="text-sm text-dashboard-text-secondary font-medium">線路規則 表格 (Line Rules)</label>
+              <span className="text-xs text-dashboard-text-secondary font-mono">已載入 {customPaylines.length} 條線</span>
+            </div>
+            <div 
+              className="flex-1 border border-gray-700 rounded-lg overflow-hidden flex flex-col bg-[#0a192f] focus-within:ring-1 focus-within:ring-dashboard-accent focus-within:border-dashboard-accent transition-all relative"
+              tabIndex={0}
+              onPaste={isRunning ? undefined : onPastePaylines}
+            >
+              <div className="flex bg-[#0f1d35] text-xs font-bold text-dashboard-text-secondary border-b border-gray-700 select-none">
+                <div className="w-12 py-2 text-center border-r border-gray-700">No.</div>
+                {Array.from({ length: reelCount }).map((_, i) => (
+                  <div key={i} className="flex-1 py-2 text-center border-r border-gray-700/50 last:border-r-0">
+                    R{i + 1}
+                  </div>
+                ))}
+              </div>
+              
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <table className="w-full text-center text-xs font-mono">
+                  <tbody className="divide-y divide-gray-800/50">
+                    {customPaylines.map((row, rowIndex) => (
+                      <tr key={rowIndex} className="hover:bg-[#112240] transition-colors">
+                        <td className="w-12 py-1.5 bg-[#112240] text-gray-500 border-r border-gray-700 select-none">
+                          {rowIndex + 1}
+                        </td>
+                        {row.map((cell, colIndex) => (
+                          <td 
+                            key={colIndex} 
+                            className="py-1.5 px-1 border-r border-gray-700/50 last:border-r-0 text-dashboard-text-primary"
+                          >
+                            {cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {customPaylines.length === 0 && !isRunning && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/60 backdrop-blur-[2px] z-10">
+                  <div className="bg-[#112240] border border-dashboard-accent text-dashboard-accent px-5 py-3 rounded-lg shadow-2xl flex items-center gap-3 font-medium text-sm">
+                    <Table size={18} /> 點擊此處並按 Ctrl+V 貼上線規則
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
         
         <div className="flex flex-col gap-2 mt-2">
           <label className="text-sm text-dashboard-text-secondary font-medium">Paytable Rules</label>

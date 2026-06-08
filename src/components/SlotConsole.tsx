@@ -16,6 +16,7 @@ interface SlotConsoleProps {
   currentPaytable: PaytableRule[];
   coin: number;
   gameType: GameType;
+  customPaylines?: number[][];
 }
 
 // 輔助函數：解析貼上的 RNG 字串並轉換成數值陣列
@@ -44,73 +45,9 @@ function parsePasteRng(text: string, count: number): string[] | null {
 }
 
 // 輔助函數：取得當前盤面參與連線的所有格子座標
-function getWinningPositions(
-  grid: string[][],
-  wins: WinResult[],
-  currentPaytable: PaytableRule[],
-  gameType: GameType,
-  topTracker?: string[]
-): Set<string> {
-  const winningCoords = new Set<string>();
-
-  if (!wins || wins.length === 0) return winningCoords;
-
-  const wildSymbols = new Set(
-    currentPaytable.filter(p => p.isWild).map(p => p.symbolId)
-  );
-  wildSymbols.add('WILD'); wildSymbols.add('W'); wildSymbols.add('WX');
-
-  for (const win of wins) {
-    const isScatter = currentPaytable.some(p => p.symbolId === win.symbolId && p.isScatter);
-    const isPayAnywhere = gameType === 'payanywhere';
-
-    if (isScatter || isPayAnywhere) {
-      for (let col = 0; col < grid.length; col++) {
-        for (let row = 0; row < grid[col].length; row++) {
-          const cell = grid[col][row];
-          if (cell === win.symbolId || wildSymbols.has(cell)) {
-            winningCoords.add(`${col}-${row}`);
-          }
-        }
-      }
-      if (gameType === 'megaway' && topTracker) {
-        topTracker.forEach((cell, idx) => {
-          if (cell === win.symbolId || wildSymbols.has(cell)) {
-            winningCoords.add(`top-${idx}`);
-          }
-        });
-      }
-    } else if (gameType === 'linegame') {
-      if (win.lineIndex !== undefined) {
-        const line = defaultPaylines[win.lineIndex];
-        if (line) {
-          for (let col = 0; col < win.matchCount; col++) {
-            const row = line[col];
-            if (row !== undefined && row < grid[col].length) {
-              winningCoords.add(`${col}-${row}`);
-            }
-          }
-        }
-      }
-    } else {
-      for (let col = 0; col < win.matchCount; col++) {
-        for (let row = 0; row < grid[col].length; row++) {
-          const cell = grid[col][row];
-          if (cell === win.symbolId || wildSymbols.has(cell)) {
-            winningCoords.add(`${col}-${row}`);
-          }
-        }
-        if (gameType === 'megaway' && col >= 1 && col <= 4 && topTracker) {
-          const cell = topTracker[col - 1];
-          if (cell === win.symbolId || wildSymbols.has(cell)) {
-            winningCoords.add(`top-${col - 1}`);
-          }
-        }
-      }
-    }
-  }
-
-  return winningCoords;
+interface SVGPathResult {
+  path: string;
+  symbolId: string;
 }
 
 // 輔助函數：計算連線的 SVG Path
@@ -121,12 +58,13 @@ function calculateSVGPaths(
   container: HTMLDivElement | null,
   isOtherTab: boolean,
   gameType: GameType,
-  topTracker?: string[]
-): string[] {
+  topTracker?: string[],
+  customPaylines?: number[][]
+): SVGPathResult[] {
   if (!container || !wins || wins.length === 0) return [];
   if (gameType === 'payanywhere') return [];
 
-  const paths: string[] = [];
+  const paths: SVGPathResult[] = [];
   const containerRect = container.getBoundingClientRect();
 
   const wildSymbols = new Set(
@@ -140,7 +78,7 @@ function calculateSVGPaths(
 
     if (gameType === 'linegame') {
       if (win.lineIndex === undefined) continue;
-      const line = defaultPaylines[win.lineIndex];
+      const line = customPaylines && customPaylines.length > 0 ? customPaylines[win.lineIndex] : defaultPaylines[win.lineIndex];
       if (!line) continue;
 
       const points: string[] = [];
@@ -165,7 +103,7 @@ function calculateSVGPaths(
       }
 
       if (success && points.length > 1) {
-        paths.push(`M ${points.join(' L ')}`);
+        paths.push({ path: `M ${points.join(' L ')}`, symbolId: win.symbolId });
       }
       continue;
     }
@@ -227,12 +165,83 @@ function calculateSVGPaths(
       }
 
       if (success && points.length > 1) {
-        paths.push(`M ${points.join(' L ')}`);
+        paths.push({ path: `M ${points.join(' L ')}`, symbolId: win.symbolId });
       }
     }
   }
 
   return paths;
+}
+
+// 輔助函數：取得當前盤面參與連線的所有格子座標
+function getWinningPositions(
+  grid: string[][],
+  wins: WinResult[],
+  currentPaytable: PaytableRule[],
+  gameType: GameType,
+  topTracker?: string[],
+  customPaylines?: number[][]
+): Set<string> {
+  const winningCoords = new Set<string>();
+
+  if (!wins || wins.length === 0) return winningCoords;
+
+  const wildSymbols = new Set(
+    currentPaytable.filter(p => p.isWild).map(p => p.symbolId)
+  );
+  wildSymbols.add('WILD'); wildSymbols.add('W'); wildSymbols.add('WX');
+
+  for (const win of wins) {
+    const isScatter = currentPaytable.some(p => p.symbolId === win.symbolId && p.isScatter);
+    const isPayAnywhere = gameType === 'payanywhere';
+
+    if (isScatter || isPayAnywhere) {
+      for (let col = 0; col < grid.length; col++) {
+        for (let row = 0; row < grid[col].length; row++) {
+          const cell = grid[col][row];
+          if (cell === win.symbolId || wildSymbols.has(cell)) {
+            winningCoords.add(`${col}-${row}`);
+          }
+        }
+      }
+      if (gameType === 'megaway' && topTracker) {
+        topTracker.forEach((cell, idx) => {
+          if (cell === win.symbolId || wildSymbols.has(cell)) {
+            winningCoords.add(`top-${idx}`);
+          }
+        });
+      }
+    } else if (gameType === 'linegame') {
+      if (win.lineIndex !== undefined) {
+        const line = customPaylines && customPaylines.length > 0 ? customPaylines[win.lineIndex] : defaultPaylines[win.lineIndex];
+        if (line) {
+          for (let col = 0; col < win.matchCount; col++) {
+            const row = line[col];
+            if (row !== undefined && row < grid[col].length) {
+              winningCoords.add(`${col}-${row}`);
+            }
+          }
+        }
+      }
+    } else {
+      for (let col = 0; col < win.matchCount; col++) {
+        for (let row = 0; row < grid[col].length; row++) {
+          const cell = grid[col][row];
+          if (cell === win.symbolId || wildSymbols.has(cell)) {
+            winningCoords.add(`${col}-${row}`);
+          }
+        }
+        if (gameType === 'megaway' && col >= 1 && col <= 4 && topTracker) {
+          const cell = topTracker[col - 1];
+          if (cell === win.symbolId || wildSymbols.has(cell)) {
+            winningCoords.add(`top-${col - 1}`);
+          }
+        }
+      }
+    }
+  }
+
+  return winningCoords;
 }
 
 // 輔助函數：搜尋符合特定連線條件的 RNG 組態，包含嚴格搜尋與最少干擾寬鬆搜尋
@@ -245,7 +254,8 @@ function findRngForCombination(
   currentPaytable: PaytableRule[],
   reelCount: number,
   gameType: GameType,
-  topTrackerOther?: string[]
+  topTrackerOther?: string[],
+  customPaylines?: number[][]
 ): { rng: number[] | null; isInterfered: boolean } {
   // 建立完整的 wild 符號集合（與 evaluation.ts 保持一致）
   const wildSymbolSet = new Set<string>();
@@ -321,21 +331,28 @@ function findRngForCombination(
     categories.push({ onlyOneTarget, onlyOneWild, anyTarget, anyWild, none, centerPreferred });
   }
 
-  // WX 固定放在連線的最後一欄（由左至右：S1...S1 WX）
-  // 例如 "S1 * 1 + WX" (L=2, W=1) → wildCols = [1]（第 2 欄是 WX）
-  const wildColCombinations: number[][] = wildCount === 0
-    ? [[]]
-    : [[length - 1]]; // WX 永遠在最後一欄
+  // WX 不需要強制在最後面，反而是越前面越好（最前面僅能到 R2，即 Index 1）
+  const wildColCombinations: number[][] = [];
+  if (wildCount === 0) {
+    wildColCombinations.push([]);
+  } else {
+    // 最前僅能 R2 (Index 1)，到該連線長度的最後一欄 (Index length - 1)
+    for (let col = 1; col < length; col++) {
+      wildColCombinations.push([col]);
+    }
+  }
 
-  // 搜尋函數核心
   const runSearch = (allowOtherWins: boolean): number[] | null => {
     let bestCandidate: number[] | null = null;
     let minScore = Infinity;
     let bestDist = Infinity;
+    let bestWildColIdx = Infinity;
 
     for (const wildCols of wildColCombinations) {
       const isWildCol = Array(length).fill(false);
       for (const c of wildCols) isWildCol[c] = true;
+
+      const currentWildColIdx = wildCols[0] !== undefined ? wildCols[0] : Infinity;
 
       const candidateRng = Array(reelCount).fill(0);
       let testCount = 0;
@@ -364,7 +381,7 @@ function findRngForCombination(
           }
 
           // 直接調用 evaluateGrid 判定中獎（includeZeroPayout=true 確保 match2 payout=0 也能被判定到）
-          const evWins = evaluateGrid(evalGrid, currentPaytable, gameType, undefined, true);
+          const evWins = evaluateGrid(evalGrid, currentPaytable, gameType, customPaylines, true);
           const targetWin = evWins.find(w => w.symbolId === targetSymbol);
           let isMatch = false;
           let ways = 1;
@@ -398,11 +415,19 @@ function findRngForCombination(
                 minScore = score;
                 bestCandidate = [...candidateRng];
                 bestDist = totalDist;
+                bestWildColIdx = currentWildColIdx;
               } else if (score === minScore) {
-                // 如果干擾分數相同，優先選擇總距離中間較近的
-                if (totalDist < bestDist) {
+                // 如果干擾分數相同，優先選擇 WX 位置越前面的（即 index 越小越好）
+                if (currentWildColIdx < bestWildColIdx) {
                   bestCandidate = [...candidateRng];
                   bestDist = totalDist;
+                  bestWildColIdx = currentWildColIdx;
+                } else if (currentWildColIdx === bestWildColIdx) {
+                  // 如果 WX 位置也相同，優先選擇總距離中間較近的
+                  if (totalDist < bestDist) {
+                    bestCandidate = [...candidateRng];
+                    bestDist = totalDist;
+                  }
                 }
               }
             }
@@ -478,14 +503,44 @@ function findRngForCombination(
   // 2. 找不到則退回寬鬆搜尋 (尋找最少干擾的 RNG)
   const fallbackResult = runSearch(true);
   if (fallbackResult) {
-    return { rng: fallbackResult, isInterfered: true };
+    // 重新評估這個 fallbackResult 以確認是否有其他贏分連線 (payout > 0)
+    const testGrid = fallbackResult.map((start, cIdx) => {
+      const r = rowCounts[cIdx] || 3;
+      const s = currentStrips[cIdx];
+      return Array.from({ length: r }).map((_, ri) => s[(start + ri) % s.length]);
+    });
+
+    let evalGrid = testGrid;
+    if (gameType === 'megaway' && topTrackerOther) {
+      evalGrid = testGrid.map((col, colIdx) => {
+        if (colIdx >= 1 && colIdx <= 4) {
+          const topSym = topTrackerOther[colIdx - 1] || 'WX';
+          return [...col, topSym];
+        }
+        return col;
+      });
+    }
+
+    const evWins = evaluateGrid(evalGrid, currentPaytable, gameType, customPaylines, true);
+    const otherWinsCount = evWins.filter(w => w.symbolId !== targetSymbol && !wildSymbolSet.has(w.symbolId) && w.payout > 0).length;
+
+    return { rng: fallbackResult, isInterfered: otherWinsCount > 0 };
   }
 
   return { rng: null, isInterfered: false };
 }
 
-export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _progress, currentSpins: _currentSpins, currentGrid, totalSpins: _totalSpins, reelCount, rowCounts, onRowCountsChange, currentStrips, currentPaytable, coin, gameType }) => {
-  const [activeTab, setActiveTab] = useState<'manual' | 'other'>('manual');
+export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _progress, currentSpins: _currentSpins, currentGrid, totalSpins: _totalSpins, reelCount, rowCounts, onRowCountsChange, currentStrips, currentPaytable, coin, gameType, customPaylines }) => {
+  const [activeTab, setActiveTab] = useState<'manual' | 'other' | 'lines'>('manual');
+  const [lineViewerSymbolState, setLineViewerSymbolState] = useState<string>('');
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [useWxInLines, setUseWxInLines] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (gameType !== 'linegame' && activeTab === 'lines') {
+      setActiveTab('manual');
+    }
+  }, [gameType, activeTab]);
   const [manualIndices, setManualIndices] = useState<string[]>(Array(reelCount).fill(''));
   const [manualIndicesOther, setManualIndicesOther] = useState<string[]>(Array(reelCount).fill(''));
   const [selectedSymbol, setSelectedSymbol] = useState<string>('');
@@ -503,8 +558,8 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
   // SVG 連線狀態與 DOM Refs
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const gridContainerRefOther = useRef<HTMLDivElement>(null);
-  const [linePaths, setLinePaths] = useState<string[]>([]);
-  const [linePathsOther, setLinePathsOther] = useState<string[]>([]);
+  const [linePaths, setLinePaths] = useState<SVGPathResult[]>([]);
+  const [linePathsOther, setLinePathsOther] = useState<SVGPathResult[]>([]);
 
   useEffect(() => {
     setManualIndices(Array(reelCount).fill(''));
@@ -588,6 +643,31 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
     return list;
   }, [groupedSymbols]);
 
+  const lineViewerSymbol = useMemo(() => {
+    const matchKey = `match${Math.min(5, reelCount)}`;
+    const candidate = currentPaytable.find(p => 
+      !p.isWild && 
+      !p.isScatter && 
+      p.payouts[matchKey as keyof typeof p.payouts] > 0
+    );
+    return candidate ? candidate.symbolId : (symbols[0] || 'M1');
+  }, [currentPaytable, reelCount, symbols]);
+
+  const activeLineViewerSymbol = lineViewerSymbolState || lineViewerSymbol;
+
+  // 當 symbols 變更，若當前選取的展示符號不存在，重設回預設自動挑選
+  useEffect(() => {
+    if (lineViewerSymbolState && !symbols.includes(lineViewerSymbolState)) {
+      setLineViewerSymbolState('');
+    }
+  }, [symbols, lineViewerSymbolState]);
+
+  const lineViewerPayout = useMemo(() => {
+    const matchKey = `match${Math.min(5, reelCount)}`;
+    const rule = currentPaytable.find(p => p.symbolId === activeLineViewerSymbol);
+    return rule ? (rule.payouts[matchKey as keyof typeof rule.payouts] || 0) : 0;
+  }, [currentPaytable, reelCount, activeLineViewerSymbol]);
+
   // 當 symbols 更新，自動選取第一個
   useEffect(() => {
     if (symbols.length > 0 && !symbols.includes(selectedSymbol)) {
@@ -622,7 +702,8 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
             currentPaytable,
             reelCount,
             gameType,
-            topTrackerOther
+            topTrackerOther,
+            customPaylines
           );
 
           newCombs.push({
@@ -634,12 +715,20 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
           });
         }
       }
+      newCombs.sort((a, b) => {
+        const getPriority = (c: typeof combinations[0]) => {
+          if (!c.rng) return 2;
+          return c.isInterfered ? 1 : 0;
+        };
+        return getPriority(a) - getPriority(b);
+      });
+
       setCombinations(newCombs);
       setIsSearching(false);
     }, 50);
 
     return () => clearTimeout(timer);
-  }, [selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther]);
+  }, [selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther, customPaylines]);
 
   // Tab 1: Manual Indices grid
   const displayGrid = Array.from({ length: reelCount }, (_, colIndex) => {
@@ -656,7 +745,14 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
     }
 
     if (currentGrid.length > 0 && currentGrid[colIndex]) {
-      return currentGrid[colIndex];
+      const gridCol = currentGrid[colIndex];
+      if (gridCol.length === rowsForThisCol) {
+        return gridCol;
+      }
+      if (gridCol.length < rowsForThisCol) {
+        return [...gridCol, ...Array(rowsForThisCol - gridCol.length).fill('-')];
+      }
+      return gridCol.slice(0, rowsForThisCol);
     }
 
     return Array(rowsForThisCol).fill('-');
@@ -673,8 +769,8 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
         return col;
       });
     }
-    return evaluateGrid(finalGrid, currentPaytable, gameType);
-  }, [displayGrid, currentPaytable, gameType, topTracker]);
+    return evaluateGrid(finalGrid, currentPaytable, gameType, customPaylines);
+  }, [displayGrid, currentPaytable, gameType, topTracker, customPaylines]);
 
   // Tab 2: Other Indices grid
   const displayGridOther = Array.from({ length: reelCount }, (_, colIndex) => {
@@ -691,7 +787,14 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
     }
 
     if (currentGrid.length > 0 && currentGrid[colIndex]) {
-      return currentGrid[colIndex];
+      const gridCol = currentGrid[colIndex];
+      if (gridCol.length === rowsForThisCol) {
+        return gridCol;
+      }
+      if (gridCol.length < rowsForThisCol) {
+        return [...gridCol, ...Array(rowsForThisCol - gridCol.length).fill('-')];
+      }
+      return gridCol.slice(0, rowsForThisCol);
     }
 
     return Array(rowsForThisCol).fill('-');
@@ -710,7 +813,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
       });
     }
 
-    const baseWins = evaluateGrid(finalGrid, currentPaytable, gameType, undefined, true);
+    const baseWins = evaluateGrid(finalGrid, currentPaytable, gameType, customPaylines, true);
 
     if (activeTab === 'other' && selectedSymbol) {
       const hasTargetWin = baseWins.some(w => w.symbolId === selectedSymbol);
@@ -743,11 +846,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
         if (matchLength >= 2) {
           let ways = 1;
           for (let c = 0; c < matchLength; c++) {
-            if (gameType === 'megaway') {
-              ways *= 1;
-            } else {
-              ways *= matchCountsByCol[c];
-            }
+            ways *= matchCountsByCol[c];
           }
 
           baseWins.push({
@@ -762,26 +861,26 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
     }
 
     return baseWins;
-  }, [displayGridOther, currentPaytable, activeTab, selectedSymbol, currentStrips, reelCount, gameType, topTrackerOther]);
+  }, [displayGridOther, currentPaytable, activeTab, selectedSymbol, currentStrips, reelCount, gameType, topTrackerOther, customPaylines]);
 
   // 計算兩個 Tab 中，哪些座標參與了中獎
   const winningCoords = useMemo(() =>
-    getWinningPositions(displayGrid, wins, currentPaytable, gameType, gameType === 'megaway' ? topTracker : undefined),
-    [displayGrid, wins, currentPaytable, gameType, topTracker]
+    getWinningPositions(displayGrid, wins, currentPaytable, gameType, gameType === 'megaway' ? topTracker : undefined, customPaylines),
+    [displayGrid, wins, currentPaytable, gameType, topTracker, customPaylines]
   );
 
   const winningCoordsOther = useMemo(() =>
-    getWinningPositions(displayGridOther, winsOther, currentPaytable, gameType, gameType === 'megaway' ? topTrackerOther : undefined),
-    [displayGridOther, winsOther, currentPaytable, gameType, topTrackerOther]
+    getWinningPositions(displayGridOther, winsOther, currentPaytable, gameType, gameType === 'megaway' ? topTrackerOther : undefined, customPaylines),
+    [displayGridOther, winsOther, currentPaytable, gameType, topTrackerOther, customPaylines]
   );
 
   // 繪製與更新 SVG 連線路徑
   const updatePaths = () => {
     if (activeTab === 'manual') {
-      const p = calculateSVGPaths(displayGrid, wins, currentPaytable, gridContainerRef.current, false, gameType, gameType === 'megaway' ? topTracker : undefined);
+      const p = calculateSVGPaths(displayGrid, wins, currentPaytable, gridContainerRef.current, false, gameType, gameType === 'megaway' ? topTracker : undefined, customPaylines);
       setLinePaths(p);
     } else {
-      const p = calculateSVGPaths(displayGridOther, winsOther, currentPaytable, gridContainerRefOther.current, true, gameType, gameType === 'megaway' ? topTrackerOther : undefined);
+      const p = calculateSVGPaths(displayGridOther, winsOther, currentPaytable, gridContainerRefOther.current, true, gameType, gameType === 'megaway' ? topTrackerOther : undefined, customPaylines);
       setLinePathsOther(p);
     }
   };
@@ -789,12 +888,12 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
   useEffect(() => {
     const timer = setTimeout(updatePaths, 150);
     return () => clearTimeout(timer);
-  }, [displayGrid, wins, displayGridOther, winsOther, activeTab, reelCount, rowCounts, gameType, topTracker, topTrackerOther]);
+  }, [displayGrid, wins, displayGridOther, winsOther, activeTab, reelCount, rowCounts, gameType, topTracker, topTrackerOther, customPaylines]);
 
   useEffect(() => {
     window.addEventListener('resize', updatePaths);
     return () => window.removeEventListener('resize', updatePaths);
-  }, [displayGrid, wins, displayGridOther, winsOther, activeTab, gameType, topTracker, topTrackerOther]);
+  }, [displayGrid, wins, displayGridOther, winsOther, activeTab, gameType, topTracker, topTrackerOther, customPaylines]);
 
   return (
     <div className="h-full flex flex-col p-6 overflow-hidden relative">
@@ -830,6 +929,17 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
         >
           連線測試產生器
         </button>
+        {gameType === 'linegame' && (
+          <button
+            onClick={() => setActiveTab('lines')}
+            className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-all duration-200 cursor-pointer ${activeTab === 'lines'
+                ? 'border-dashboard-accent text-dashboard-accent bg-[#112240]/40'
+                : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-[#112240]/20'
+              }`}
+          >
+            贏分線路一覽
+          </button>
+        )}
       </div>
 
       {/* Content Area */}
@@ -925,7 +1035,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
               {linePaths.length > 0 && (
                 <svg className="absolute inset-0 pointer-events-none w-full h-full z-20">
                   <defs>
-                    <filter id="glow-manual" x="-20%" y="-20%" width="140%" height="140%">
+                    <filter id="glow-manual" filterUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%">
                       <feGaussianBlur stdDeviation="5" result="blur" />
                       <feMerge>
                         <feMergeNode in="blur" />
@@ -933,26 +1043,30 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
                       </feMerge>
                     </filter>
                   </defs>
-                  {linePaths.map((p, idx) => (
-                    <g key={idx}>
-                      <path
-                        d={p}
-                        fill="none"
-                        stroke="#64ffda"
-                        strokeWidth="8"
-                        strokeOpacity="0.45"
-                        filter="url(#glow-manual)"
-                      />
-                      <path
-                        d={p}
-                        fill="none"
-                        stroke="#ffffff"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        className="winning-line-flow"
-                      />
-                    </g>
-                  ))}
+                  {linePaths.map((p, idx) => {
+                    const win = wins.find(w => w.symbolId === p.symbolId && w.payout > 0);
+                    const isInterference = selectedSymbol && p.symbolId !== selectedSymbol && !!win;
+                    return (
+                      <g key={idx}>
+                        <path
+                          d={p.path}
+                          fill="none"
+                          stroke={isInterference ? "#ef4444" : "#64ffda"}
+                          strokeWidth="8"
+                          strokeOpacity={isInterference ? "0.35" : "0.45"}
+                          filter="url(#glow-manual)"
+                        />
+                        <path
+                          d={p.path}
+                          fill="none"
+                          stroke={isInterference ? "#fca5a5" : "#ffffff"}
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          className="winning-line-flow"
+                        />
+                      </g>
+                    );
+                  })}
                 </svg>
               )}
 
@@ -1124,7 +1238,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
                         RNG: [{comb.rng.join(',')}] {comb.isInterfered ? '(有干擾)' : ''}
                       </span>
                     ) : (
-                      <span className="text-[10px] text-gray-500 italic">無可行滾輪位置</span>
+                      <span className="text-[10px] text-red-500 font-bold">無可行滾輪位置</span>
                     )}
                   </button>
                 ))}
@@ -1224,7 +1338,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
               {linePathsOther.length > 0 && (
                 <svg className="absolute inset-0 pointer-events-none w-full h-full z-20">
                   <defs>
-                    <filter id="glow-other" x="-20%" y="-20%" width="140%" height="140%">
+                    <filter id="glow-other" filterUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%">
                       <feGaussianBlur stdDeviation="5" result="blur" />
                       <feMerge>
                         <feMergeNode in="blur" />
@@ -1232,26 +1346,30 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
                       </feMerge>
                     </filter>
                   </defs>
-                  {linePathsOther.map((p, idx) => (
-                    <g key={idx}>
-                      <path
-                        d={p}
-                        fill="none"
-                        stroke="#64ffda"
-                        strokeWidth="8"
-                        strokeOpacity="0.45"
-                        filter="url(#glow-other)"
-                      />
-                      <path
-                        d={p}
-                        fill="none"
-                        stroke="#ffffff"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        className="winning-line-flow"
-                      />
-                    </g>
-                  ))}
+                  {linePathsOther.map((p, idx) => {
+                    const win = winsOther.find(w => w.symbolId === p.symbolId && w.payout > 0);
+                    const isInterference = selectedSymbol && p.symbolId !== selectedSymbol && !!win;
+                    return (
+                      <g key={idx}>
+                        <path
+                          d={p.path}
+                          fill="none"
+                          stroke={isInterference ? "#ef4444" : "#64ffda"}
+                          strokeWidth="8"
+                          strokeOpacity={isInterference ? "0.35" : "0.45"}
+                          filter="url(#glow-other)"
+                        />
+                        <path
+                          d={p.path}
+                          fill="none"
+                          stroke={isInterference ? "#fca5a5" : "#ffffff"}
+                          strokeWidth="2.5"
+                          strokeLinecap="round"
+                          className="winning-line-flow"
+                        />
+                      </g>
+                    );
+                  })}
                 </svg>
               )}
 
@@ -1334,7 +1452,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
               {winsOther.length > 0 ? (
                 <div className="flex flex-col gap-2">
                   {winsOther.map((w, idx) => {
-                    const isInterference = w.symbolId !== selectedSymbol;
+                    const isInterference = w.symbolId !== selectedSymbol && w.payout > 0;
                     return (
                       <div
                         key={idx}
@@ -1366,6 +1484,153 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, progress: _
               )}
             </div>
 
+          </div>
+        )}
+
+        {gameType === 'linegame' && activeTab === 'lines' && (
+          <div className="flex-1 flex flex-col gap-6">
+            <div className="flex justify-between items-center bg-[#0a192f] p-4 rounded-lg border border-gray-700/50">
+              <div className="flex flex-col gap-2.5">
+                <span className="text-sm text-dashboard-text-secondary font-bold">自訂線路展示樣式</span>
+                <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs">選擇展示符號：</span>
+                    <select
+                      value={activeLineViewerSymbol}
+                      onChange={(e) => setLineViewerSymbolState(e.target.value)}
+                      className="bg-[#112240] border border-gray-700 text-yellow-400 rounded px-2.5 py-1 outline-none focus:border-yellow-500 text-xs font-mono font-bold cursor-pointer"
+                    >
+                      {symbols.map(sym => (
+                        <option key={sym} value={sym}>{sym}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer hover:text-dashboard-accent transition-colors font-bold select-none text-dashboard-text-secondary text-xs">
+                    <input
+                      type="checkbox"
+                      checked={useWxInLines}
+                      onChange={(e) => setUseWxInLines(e.target.checked)}
+                      className="accent-dashboard-accent w-3.5 h-3.5 cursor-pointer"
+                    />
+                    是否可用 WX
+                  </label>
+                  <span className="ml-2 font-mono text-xs text-gray-400">
+                    (五連線贏分: <span className="text-dashboard-accent font-bold">{lineViewerPayout * coin}</span>)
+                  </span>
+                </div>
+              </div>
+              <span className="text-xs text-dashboard-text-secondary font-mono">共計 {customPaylines && customPaylines.length > 0 ? customPaylines.length : defaultPaylines.length} 條線路</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {(customPaylines && customPaylines.length > 0 ? customPaylines : defaultPaylines).map((line, lineIdx) => {
+                const maxRowVal = Math.max(...line);
+                const displayRows = Math.max(3, maxRowVal + 1);
+
+                // 計算該線路對應的 RNG 起點
+                const rng = (() => {
+                  const result = Array(reelCount).fill(0);
+                  for (let col = 0; col < reelCount; col++) {
+                    const strip = currentStrips[col];
+                    if (!strip || strip.length === 0) return null;
+                    
+                    let found = false;
+                    for (let i = 0; i < strip.length; i++) {
+                      const sym = strip[(i + line[col]) % strip.length];
+                      if (sym === activeLineViewerSymbol || (useWxInLines && (sym === 'WX' || sym === 'WILD' || sym === 'W'))) {
+                        result[col] = i;
+                        found = true;
+                        break;
+                      }
+                    }
+                    if (!found) return null;
+                  }
+                  return result;
+                })();
+
+                return (
+                  <div key={lineIdx} className="bg-[#0a192f] border border-gray-700/50 rounded-lg p-3 flex flex-col items-center gap-3 hover:border-dashboard-accent/50 transition-colors">
+                    <div className="flex justify-between w-full text-xs font-mono border-b border-gray-800 pb-1.5">
+                      <span className="text-dashboard-accent font-bold">Line {lineIdx + 1}</span>
+                      <span className="text-gray-400">{activeLineViewerSymbol}*{line.length}</span>
+                    </div>
+                    
+                    <div className="flex gap-1.5 bg-[#112240]/30 p-2 rounded-md border border-gray-800/50">
+                      {line.map((activeRow, colIdx) => (
+                        <div key={colIdx} className="flex flex-col gap-1.5">
+                          {Array.from({ length: displayRows }).map((_, rowIdx) => {
+                            const isActive = rowIdx === activeRow;
+                            let displaySym = '';
+                            let isWild = false;
+                            
+                            if (isActive) {
+                              displaySym = activeLineViewerSymbol;
+                              if (rng) {
+                                const strip = currentStrips[colIdx];
+                                if (strip && strip.length > 0) {
+                                  const actualSym = strip[(rng[colIdx] + rowIdx) % strip.length];
+                                  if (useWxInLines && (actualSym === 'WX' || actualSym === 'WILD' || actualSym === 'W')) {
+                                    displaySym = actualSym;
+                                    isWild = true;
+                                  }
+                                }
+                              }
+                            }
+
+                            return (
+                              <div
+                                key={rowIdx}
+                                className={`w-7 h-7 shrink-0 rounded flex items-center justify-center text-[10px] font-bold transition-all duration-300 ${
+                                  isActive
+                                    ? isWild
+                                      ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border border-pink-400 shadow-[0_0_8px_rgba(236,72,153,0.6)]'
+                                      : 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border border-yellow-300 shadow-[0_0_8px_rgba(234,179,8,0.5)]'
+                                    : 'bg-[#112240]/40 text-gray-700 border border-gray-800/20'
+                                }`}
+                              >
+                                {isActive ? displaySym : ''}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-col items-center gap-2 w-full">
+                      <div className="text-xs font-mono text-dashboard-text-secondary">
+                        贏分: <span className="text-yellow-400 font-bold">{lineViewerPayout * coin}</span>
+                      </div>
+                      {rng ? (
+                        <button
+                          onClick={() => {
+                            const strRng = rng.map(String);
+                            setManualIndices(strRng);
+                            setManualIndicesOther(strRng);
+                            
+                            // 複製到剪貼簿
+                            const text = `[${rng.join(',')}],`;
+                            navigator.clipboard.writeText(text);
+                            
+                            setCopiedIndex(lineIdx);
+                            setTimeout(() => setCopiedIndex(null), 1000);
+                          }}
+                          className={`text-xs font-mono border px-2 py-1 rounded cursor-pointer transition-all w-full text-center ${
+                            copiedIndex === lineIdx
+                              ? 'bg-[#64ffda] text-[#0a192f] border-[#64ffda] font-bold'
+                              : 'bg-[#0a192f] border-dashboard-accent/30 hover:border-dashboard-accent text-dashboard-accent hover:bg-dashboard-accent hover:text-[#0a192f]'
+                          }`}
+                          title="點擊自動套用此 RNG 數組至盤面並複製至剪貼簿"
+                        >
+                          {copiedIndex === lineIdx ? 'COPIED!' : `RNG: [${rng.join(',')}]`}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-red-500 font-bold">無可行 RNG</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
