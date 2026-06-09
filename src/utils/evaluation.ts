@@ -131,7 +131,7 @@ export function evaluateGrid(
         if (matchCount >= 2) {
           const lookupMatch = Math.min(matchCount, 5);
           const payout = rule.payouts[`match${lookupMatch}` as keyof typeof rule.payouts] || 0;
-          if (payout > 0) {
+          if (payout > 0 || includeZeroPayout) {
             results.push({
               symbolId: sym,
               matchCount: matchCount,
@@ -178,8 +178,25 @@ export function evaluateGrid(
             totalWin: payout * currentWays
           });
         }
+    }
+  }
+  }
+
+  if (gameType === 'linegame') {
+    const lineWins = new Map<number, WinResult>();
+    const nonLineWins: WinResult[] = [];
+
+    for (const win of results) {
+      if (win.lineIndex !== undefined) {
+        const existing = lineWins.get(win.lineIndex);
+        if (!existing || win.totalWin > existing.totalWin) {
+          lineWins.set(win.lineIndex, win);
+        }
+      } else {
+        nonLineWins.push(win);
       }
     }
+    return [...nonLineWins, ...Array.from(lineWins.values())];
   }
 
   return results;

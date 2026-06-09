@@ -101,7 +101,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({ result, isRu
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-dashboard-text-secondary/50 italic">
+                  <td colSpan={6} className="px-4 py-12 text-center text-dashboard-text-secondary/80 font-bold">
                     Run simulation to see symbol metrics
                   </td>
                 </tr>

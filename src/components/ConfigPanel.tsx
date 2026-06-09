@@ -115,28 +115,30 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
   }, [baseColumns]);
 
   useEffect(() => {
-    setPaytableMap(prev => {
-      let changed = false;
-      const newMap = { ...prev };
-      uniqueSymbols.forEach(sym => {
-        if (!newMap[sym]) {
-          newMap[sym] = {
-            symbolId: sym,
-            name: sym,
-            payouts: { match2: 0, match3: 0, match4: 0, match5: 0 },
-            isWild: sym.toUpperCase().includes('W') || sym.toUpperCase().includes('WILD'),
-            isScatter: sym.toUpperCase().includes('S') || sym.toUpperCase().includes('SCATTER')
-          };
-          changed = true;
-        }
+    setTimeout(() => {
+      setPaytableMap(prev => {
+        let changed = false;
+        const newMap = { ...prev };
+        uniqueSymbols.forEach(sym => {
+          if (!newMap[sym]) {
+            newMap[sym] = {
+              symbolId: sym,
+              name: sym,
+              payouts: { match2: 0, match3: 0, match4: 0, match5: 0 },
+              isWild: sym.toUpperCase().includes('W') || sym.toUpperCase().includes('WILD'),
+              isScatter: sym.toUpperCase().includes('S') || sym.toUpperCase().includes('SCATTER')
+            };
+            changed = true;
+          }
+        });
+        return changed ? newMap : prev;
       });
-      return changed ? newMap : prev;
-    });
+    }, 0);
   }, [uniqueSymbols]);
 
   useEffect(() => {
     if (gridData.length === 0) {
-      setGridData(Array.from({ length: 4 }, () => Array(reelCount).fill('')));
+      setTimeout(() => setGridData(Array.from({ length: 4 }, () => Array(reelCount).fill(''))), 0);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reelCount]);
@@ -154,7 +156,9 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
       }
       const finalPaytable = uniqueSymbols.map(sym => paytableMap[sym]).filter(Boolean);
       onConfigSync(parsedStrips, finalPaytable);
-    } catch (e) {}
+    } catch {
+      // ignore empty catch
+    }
   }, [gridData, paytableMap, uniqueSymbols, reelCount, onConfigSync]);
 
   const handleLoadDefaults = () => {
@@ -321,7 +325,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
               <td key={base} className="border-r border-b border-t border-gray-700 p-2 h-[56px] bg-[#112240] shadow-sm relative">
                 <div className="flex items-center justify-center gap-2.5">
                   <div className="text-dashboard-text-primary text-[15px] font-bold min-w-[20px] text-center">{sym}</div>
-                  <div className="flex flex-col gap-1 text-[9px] text-dashboard-text-secondary font-sans font-normal border-l border-gray-700/50 pl-2.5">
+                  <div className="flex flex-col gap-1 text-xs text-dashboard-text-secondary font-sans font-normal border-l border-gray-700/50 pl-2.5">
                     <label className="flex items-center justify-start gap-1.5 cursor-pointer hover:text-yellow-400 transition-colors">
                       <input 
                         type="checkbox" 
@@ -371,6 +375,21 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
                       value={val === 0 ? '' : val}
                       placeholder="--"
                       onChange={(e) => updatePaytablePayout(sym, `match${match}` as keyof PaytableRule['payouts'], parseInt(e.target.value) || 0)}
+                      onPaste={(e) => {
+                        const pasteData = e.clipboardData.getData('text');
+                        const nums = pasteData.trim().split(/[\s,]+/);
+                        if (nums.length > 1) {
+                          e.preventDefault();
+                          let numIdx = 0;
+                          for (let m = match; m >= 2 && numIdx < nums.length; m--) {
+                            const parsedVal = parseInt(nums[numIdx], 10);
+                            if (!isNaN(parsedVal)) {
+                              updatePaytablePayout(sym, `match${m}` as keyof PaytableRule['payouts'], parsedVal);
+                            }
+                            numIdx++;
+                          }
+                        }
+                      }}
                       className="w-full h-full bg-transparent text-center focus:outline-none focus:bg-[#1a2b4c] focus:text-dashboard-accent text-dashboard-text-primary transition-colors text-sm"
                     />
                   </td>
@@ -399,11 +418,50 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
       <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
         
         <div className={`flex flex-col gap-2 ${gameType === 'linegame' ? 'h-[220px] shrink-0' : 'flex-1 min-h-[300px]'}`}>
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <label className="text-sm text-dashboard-text-secondary font-medium">Reel Strips 表格</label>
+          <div className="flex flex-col gap-2 border-b border-gray-800/60 pb-3">
+            {/* Row 1: Title & Main Dropdowns */}
+            <div className="flex items-center justify-between gap-2">
+              <label className="text-sm text-dashboard-text-secondary font-bold whitespace-nowrap">Reel Strips 表格</label>
+              <div className="flex items-center gap-3 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-400 font-medium whitespace-nowrap">Game Type:</span>
+                  <select
+                    value={gameType}
+                    onChange={(e) => onGameTypeChange(e.target.value as GameType)}
+                    disabled={isRunning}
+                    className="bg-[#0f1d35] border border-gray-700 text-dashboard-accent rounded px-2 py-1 outline-none focus:border-dashboard-accent cursor-pointer text-xs font-bold font-mono"
+                  >
+                    <option value="waygame">Way</option>
+                    <option value="megaway">Megaways</option>
+                    <option value="payanywhere">Pay Anywhere</option>
+                    <option value="linegame">Line</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-400 font-medium">Reels:</span>
+                  <select 
+                    value={reelCount}
+                    onChange={(e) => {
+                      const newCount = Number(e.target.value);
+                      onReelCountChange(newCount);
+                      setGridData(Array.from({ length: 4 }, () => Array(newCount).fill('')));
+                    }}
+                    disabled={isRunning}
+                    className="bg-[#0f1d35] border border-gray-700 text-dashboard-accent rounded px-2 py-1 outline-none focus:border-dashboard-accent cursor-pointer text-xs font-bold font-mono"
+                  >
+                    <option value={3}>3</option>
+                    <option value={4}>4</option>
+                    <option value={5}>5</option>
+                    <option value={6}>6</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2: Secondary Filters/Inputs */}
+            <div className="flex items-center gap-3 text-xs">
               <div className="flex items-center gap-1.5 bg-[#112240] px-2 py-1 rounded border border-gray-700/50 focus-within:border-dashboard-accent transition-colors">
-                <span className="text-[10px] text-gray-400 font-bold">Highlight:</span>
+                <span className="text-xs text-gray-400 font-bold whitespace-nowrap">Highlight:</span>
                 <input 
                   type="text"
                   value={highlightSymbol}
@@ -413,10 +471,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
                   className="bg-transparent border-none outline-none text-dashboard-accent font-bold text-xs w-10 text-center uppercase"
                 />
               </div>
-            </div>
-            <div className="flex items-center gap-3 text-xs">
               <div className="flex items-center gap-1.5 bg-[#112240] px-2 py-1 rounded border border-gray-700/50">
-                <span className="text-gray-400 font-bold">Coin:</span>
+                <span className="text-gray-400 font-bold whitespace-nowrap">Coin:</span>
                 <input 
                   type="number"
                   min="1"
@@ -425,38 +481,6 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
                   disabled={isRunning}
                   className="bg-transparent border-none outline-none text-dashboard-accent font-bold text-xs w-8 text-center font-mono"
                 />
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-400 font-bold whitespace-nowrap">遊戲種類:</span>
-                <select
-                  value={gameType}
-                  onChange={(e) => onGameTypeChange(e.target.value as GameType)}
-                  disabled={isRunning}
-                  className="bg-[#0f1d35] border border-gray-700 text-dashboard-accent rounded px-2 py-1 outline-none focus:border-dashboard-accent cursor-pointer text-xs font-bold"
-                >
-                  <option value="waygame">方式連線 (Way)</option>
-                  <option value="megaway">巨量連線 (Megaways)</option>
-                  <option value="payanywhere">任處派彩 (Pay Anywhere)</option>
-                  <option value="linegame">線路連線 (Line)</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-400">欄位數 (Reels):</span>
-                <select 
-                  value={reelCount}
-                  onChange={(e) => {
-                    const newCount = Number(e.target.value);
-                    onReelCountChange(newCount);
-                    setGridData(Array.from({ length: 4 }, () => Array(newCount).fill('')));
-                  }}
-                  disabled={isRunning}
-                  className="bg-[#0f1d35] border border-gray-700 text-dashboard-accent rounded px-2 py-1 outline-none focus:border-dashboard-accent cursor-pointer text-xs font-bold"
-                >
-                  <option value={3}>3</option>
-                  <option value={4}>4</option>
-                  <option value={5}>5</option>
-                  <option value={6}>6</option>
-                </select>
               </div>
             </div>
           </div>

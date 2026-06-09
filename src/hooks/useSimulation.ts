@@ -48,27 +48,31 @@ export const useSimulation = () => {
       let lastGrid: string[][] = [];
 
       for (let i = 0; i < currentBatchLimit; i++) {
-        // 1. Generate random grid based on currentStrips
-        let grid = strips.map((strip, colIndex) => {
+        // 1. Generate random grid based on currentStrips (and optionally Megaways top row) in a single loop to avoid allocations
+        const grid: string[][] = [];
+        for (let colIndex = 0; colIndex < strips.length; colIndex++) {
+          const strip = strips[colIndex];
           const rows = rowCounts[colIndex] || 3;
-          return Array.from({ length: rows }).map(() => {
-            if (!strip || strip.length === 0) return 'WILD';
-            return strip[Math.floor(Math.random() * strip.length)];
-          });
-        });
-
-        // 2. If megaway, append simulated top tracker symbols for reels 2-5 (cols 1-4)
-        if (gameType === 'megaway') {
-          grid = grid.map((col, colIdx) => {
-            if (colIdx >= 1 && colIdx <= 4) {
-              const strip = strips[colIdx];
-              const topSym = (strip && strip.length > 0)
-                ? strip[Math.floor(Math.random() * strip.length)]
-                : 'WX';
-              return [...col, topSym];
+          const colCells: string[] = [];
+          
+          for (let r = 0; r < rows; r++) {
+            if (!strip || strip.length === 0) {
+              colCells.push('WILD');
+            } else {
+              colCells.push(strip[Math.floor(Math.random() * strip.length)]);
             }
-            return col;
-          });
+          }
+          
+          // Append Megaways top row symbols directly during generation
+          if (gameType === 'megaway' && colIndex >= 1 && colIndex <= 4) {
+            if (!strip || strip.length === 0) {
+              colCells.push('WX');
+            } else {
+              colCells.push(strip[Math.floor(Math.random() * strip.length)]);
+            }
+          }
+          
+          grid.push(colCells);
         }
 
         lastGrid = grid;

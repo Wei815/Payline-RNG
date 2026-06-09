@@ -36,7 +36,7 @@ function App() {
   }, []);
 
   return (
-    <div className="w-screen h-screen flex flex-col md:flex-row bg-dashboard-bg overflow-hidden text-dashboard-text-primary">
+    <div className="w-screen h-screen flex flex-col bg-dashboard-bg overflow-hidden text-dashboard-text-primary">
       {/* Header */}
       <div className="absolute top-0 left-0 w-full h-14 bg-[#0f1d35] border-b border-gray-800 flex items-center justify-between px-6 z-40 shadow-md">
         <div className="flex items-center gap-2">
@@ -57,7 +57,7 @@ function App() {
       </div>
 
       {/* Main Grid Layout - pt-14 to offset header */}
-      <div className="flex-1 w-full flex flex-col md:flex-row pt-14">
+      <div className="flex-1 w-full flex flex-col md:flex-row pt-14 min-h-0">
         {/* Left: ConfigPanel (35%) */}
         <div className="w-full md:w-[35%] h-full">
           <ConfigPanel 
