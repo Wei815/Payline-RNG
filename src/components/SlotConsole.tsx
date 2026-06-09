@@ -14,6 +14,7 @@ export interface SlotConsoleProps {
   currentStrips: string[][];
   currentPaytable: PaytableRule[];
   coin: number;
+  bet: number;
   gameType: GameType;
   customPaylines?: number[][];
 }
@@ -29,8 +30,8 @@ import { SlotManualTab } from './tabs/SlotManualTab';
 import { SlotGeneratorTab } from './tabs/SlotGeneratorTab';
 import { LineViewerTab } from './tabs/LineViewerTab';
 
-export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid, reelCount, rowCounts, onRowCountsChange, currentStrips, currentPaytable, coin, gameType, customPaylines }) => {
-  const betMultiplier = coin / 30;
+export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid, reelCount, rowCounts, onRowCountsChange, currentStrips, currentPaytable, coin, bet, gameType, customPaylines }) => {
+  const betMultiplier = bet / coin;
   const [activeTab, setActiveTab] = useState<'manual' | 'other' | 'lines'>('manual');
   const [lineViewerSymbolState, setLineViewerSymbolState] = useState<string>('');
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -145,7 +146,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
     const candidate = currentPaytable.find(p => 
       !p.isWild && 
       !p.isScatter && 
-      p.payouts[matchKey as keyof typeof p.payouts] > 0
+      (p.payouts[matchKey as keyof typeof p.payouts] || 0) > 0
     );
     return candidate ? candidate.symbolId : (symbols[0] || 'M1');
   }, [currentPaytable, reelCount, symbols]);

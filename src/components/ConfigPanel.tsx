@@ -13,13 +13,15 @@ interface ConfigPanelProps {
   onConfigSync: (strips: ReelStrips, paytable: PaytableRule[]) => void;
   coin: number;
   onCoinChange: (coin: number) => void;
+  bet: number;
+  onBetChange: (bet: number) => void;
   gameType: GameType;
   onGameTypeChange: (type: GameType) => void;
   customPaylines: number[][];
   onPaylinesChange: (paylines: number[][]) => void;
 }
 
-export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, onReelCountChange, rowCounts, onTestSpin, onConfigSync, coin, onCoinChange, gameType, onGameTypeChange, customPaylines, onPaylinesChange }) => {
+export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, onReelCountChange, rowCounts, onTestSpin, onConfigSync, coin, onCoinChange, bet, onBetChange, gameType, onGameTypeChange, customPaylines, onPaylinesChange }) => {
   const [gridData, setGridData] = useState<string[][]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [highlightSymbol, setHighlightSymbol] = useState<string>('');
@@ -124,7 +126,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
             newMap[sym] = {
               symbolId: sym,
               name: sym,
-              payouts: { match2: 0, match3: 0, match4: 0, match5: 0 },
+              payouts: { match2: 0, match3: 0, match4: 0, match5: 0, match6: 0 },
               isWild: sym.toUpperCase().includes('W') || sym.toUpperCase().includes('WILD'),
               isScatter: sym.toUpperCase().includes('S') || sym.toUpperCase().includes('SCATTER')
             };
@@ -186,12 +188,20 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
       if (cols[1] && cols[1].toLowerCase() === 'r1') continue;
       if (cols[0] && cols[0].toLowerCase() === 'r1') continue;
 
-      const finalCols = cols.length < currentReelCount ? line.trim().split(/\s+/) : cols;
+      let finalCols = cols.length < currentReelCount ? line.trim().split(/\s+/) : cols;
 
+      // 如果總列數大於等於 Reels + 1，說明第一欄是行號，切除它
       if (finalCols.length >= currentReelCount + 1) {
-        newData.push(finalCols.slice(1, currentReelCount + 1));
-      } else if (finalCols.length >= currentReelCount) {
-        newData.push(finalCols.slice(0, currentReelCount));
+        finalCols = finalCols.slice(1);
+      }
+
+      // 自動補齊或截斷至目前的滾輪數
+      const rowData = [...finalCols];
+      if (rowData.length > 0) {
+        while (rowData.length < currentReelCount) {
+          rowData.push(rowData[rowData.length - 1] || '');
+        }
+        newData.push(rowData.slice(0, currentReelCount));
       }
     }
 
@@ -199,7 +209,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
       setGridData(newData);
       setError(null);
     } else {
-      setError(`無法解析資料。請確保貼上的內容包含 ${currentReelCount} 個欄位。`);
+      setError(`無法解析資料。`);
     }
   };
 
@@ -228,15 +238,19 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
       if (cols[0] && (cols[0].toLowerCase().includes('no') || cols[0].toLowerCase().includes('line'))) continue;
       if (cols[0] && cols[0].toLowerCase().startsWith('r1')) continue;
 
-      const finalCols = cols.length < reelCount ? line.trim().split(/\s+/).map(s => s.trim()) : cols;
+      let finalCols = cols.length < reelCount ? line.trim().split(/\s+/).map(s => s.trim()) : cols;
 
+      // 如果總列數大於等於 Reels + 1，說明第一欄是行號，切除它
       if (finalCols.length >= reelCount + 1) {
-        const rowVals = finalCols.slice(1, reelCount + 1).map(Number);
-        if (rowVals.every(n => !isNaN(n))) {
-          newLines.push(rowVals);
+        finalCols = finalCols.slice(1);
+      }
+
+      const rowData = [...finalCols];
+      if (rowData.length > 0) {
+        while (rowData.length < reelCount) {
+          rowData.push(rowData[rowData.length - 1] || '0');
         }
-      } else if (finalCols.length >= reelCount) {
-        const rowVals = finalCols.slice(0, reelCount).map(Number);
+        const rowVals = rowData.slice(0, reelCount).map(Number);
         if (rowVals.every(n => !isNaN(n))) {
           newLines.push(rowVals);
         }
@@ -247,7 +261,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
       onPaylinesChange(newLines);
       setError(null);
     } else {
-      setError(`無法解析線路規則。請確保貼上的內容包含 ${reelCount} 個滾輪欄位。`);
+      setError(`無法解析線路規則。`);
     }
 
     if (document.activeElement instanceof HTMLElement) {
@@ -311,7 +325,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
     return (
       <React.Fragment>
         <tr className={bgColor}>
-          <td rowSpan={5} className="border-r border-b border-gray-700 p-2 font-bold text-dashboard-accent text-center bg-[#0f1d35] whitespace-pre-wrap w-24">
+          <td rowSpan={reelCount} className="border-r border-b border-gray-700 p-2 font-bold text-dashboard-accent text-center bg-[#0f1d35] whitespace-pre-wrap w-24">
             {title}
           </td>
           <td className="border-r border-b border-gray-700 p-1 font-bold text-gray-500 w-16 bg-[#0f1d35]">
@@ -349,7 +363,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
           })}
         </tr>
         
-        {[5, 4, 3, 2].map(match => {
+        {Array.from({ length: reelCount - 1 }, (_, i) => reelCount - i).map(match => {
           let labelText = String(match);
           if (gameType === 'payanywhere') {
             if (match === 5) labelText = '>=12';
@@ -366,7 +380,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
                 const sym = getSym(base);
                 if (!sym) return <td key={base} className="border-none bg-transparent h-[40px]"></td>;
                 
-                const val = paytableMap[sym]?.payouts[`match${match}` as keyof PaytableRule['payouts']];
+                const val = paytableMap[sym]?.payouts[`match${match}` as keyof PaytableRule['payouts']] ?? 0;
                 return (
                   <td key={base} className="border-r border-b border-gray-700 p-0 h-[40px] min-w-[110px] bg-[#0a192f]">
                     <input 
@@ -472,14 +486,25 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
                 />
               </div>
               <div className="flex items-center gap-1.5 bg-[#112240] px-2 py-1 rounded border border-gray-700/50">
-                <span className="text-gray-400 font-bold whitespace-nowrap">Coin:</span>
+                <span className="text-gray-400 font-bold whitespace-nowrap">COIN (規則):</span>
                 <input 
                   type="number"
                   min="1"
                   value={coin}
                   onChange={(e) => onCoinChange(Math.max(1, parseInt(e.target.value) || 1))}
                   disabled={isRunning}
-                  className="bg-transparent border-none outline-none text-dashboard-accent font-bold text-xs w-8 text-center font-mono"
+                  className="bg-transparent border-none outline-none text-dashboard-accent font-bold text-xs w-10 text-center font-mono"
+                />
+              </div>
+              <div className="flex items-center gap-1.5 bg-[#112240] px-2 py-1 rounded border border-gray-700/50">
+                <span className="text-gray-400 font-bold whitespace-nowrap">BET (實際投注):</span>
+                <input 
+                  type="number"
+                  min="1"
+                  value={bet}
+                  onChange={(e) => onBetChange(Math.max(1, parseInt(e.target.value) || 1))}
+                  disabled={isRunning}
+                  className="bg-transparent border-none outline-none text-dashboard-accent font-bold text-xs w-10 text-center font-mono"
                 />
               </div>
             </div>

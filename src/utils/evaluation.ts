@@ -63,7 +63,7 @@ export function evaluateGrid(
         }
       }
       if (scatterCount >= 2) {
-        const lookupMatch = Math.min(scatterCount, 5); 
+        const lookupMatch = Math.min(scatterCount, grid.length); 
         const payout = rule.payouts[`match${lookupMatch}` as keyof typeof rule.payouts] || 0;
         if (payout > 0 || scatterCount >= 3) {
           results.push({ symbolId: sym, matchCount: scatterCount, ways: 1, payout, totalWin: payout });
@@ -129,7 +129,7 @@ export function evaluateGrid(
         }
 
         if (matchCount >= 2) {
-          const lookupMatch = Math.min(matchCount, 5);
+          const lookupMatch = Math.min(matchCount, grid.length);
           const payout = rule.payouts[`match${lookupMatch}` as keyof typeof rule.payouts] || 0;
           if (payout > 0 || includeZeroPayout) {
             results.push({
@@ -167,7 +167,7 @@ export function evaluateGrid(
       }
 
       if (currentMatch >= 2) {
-        const lookupMatch = Math.min(currentMatch, 5); 
+        const lookupMatch = Math.min(currentMatch, grid.length); 
         const payout = rule.payouts[`match${lookupMatch}` as keyof typeof rule.payouts] || 0;
         if (payout > 0 || currentMatch >= 3 || includeZeroPayout) {
           results.push({

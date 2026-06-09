@@ -15,7 +15,9 @@ export const useSimulation = () => {
     totalSpins: number = 1000, 
     rowCounts: number[] = [],
     gameType: GameType = 'waygame',
-    paylines?: number[][]
+    paylines?: number[][],
+    coin: number = 1,
+    bet: number = 1
   ) => {
     setIsRunning(true);
     setProgress(0);
@@ -25,15 +27,17 @@ export const useSimulation = () => {
     // Initialize symbol metrics tracking
     const symbolMetrics: Record<string, SymbolMetric> = {};
     paytable.forEach(rule => {
-      symbolMetrics[rule.symbolId] = {
+      const initMetric: SymbolMetric = {
         symbolId: rule.symbolId,
         hits2: 0,
         hits3: 0,
         hits4: 0,
         hits5: 0,
+        hits6: 0,
         totalPayout: 0,
         contributionRTP: 0
       };
+      symbolMetrics[rule.symbolId] = initMetric;
     });
 
     let overallWin = 0;
@@ -42,6 +46,11 @@ export const useSimulation = () => {
 
     // Process in chunks to maintain UI responsiveness
     const batchSize = Math.max(50, Math.floor(totalSpins / 100));
+
+    // 計算實際要使用的 paylines（linegame 空陣列時 fallback 到 undefined 以套用 defaultPaylines）
+    const effectivePaylines = (gameType === 'linegame' && paylines && paylines.length === 0)
+      ? undefined
+      : paylines;
 
     const runBatch = () => {
       const currentBatchLimit = Math.min(totalSpins - spinsDone, batchSize);
@@ -78,7 +87,7 @@ export const useSimulation = () => {
         lastGrid = grid;
 
         // 3. Evaluate grid
-        const wins = evaluateGrid(grid, paytable, gameType, paylines);
+        const wins = evaluateGrid(grid, paytable, gameType, effectivePaylines);
         
         let spinWin = 0;
         wins.forEach(win => {
@@ -98,11 +107,11 @@ export const useSimulation = () => {
                 metric.hits5++;
               }
             } else {
-              const matches = Math.min(win.matchCount, 5);
-              if (matches === 2) metric.hits2++;
-              else if (matches === 3) metric.hits3++;
-              else if (matches === 4) metric.hits4++;
-              else if (matches >= 5) metric.hits5++;
+              const matches = Math.min(win.matchCount, 6);
+              const key = `hits${matches}`;
+              if (metric[key] !== undefined) {
+                metric[key]++;
+              }
             }
           }
         });
@@ -128,21 +137,33 @@ export const useSimulation = () => {
         setTimeout(runBatch, 0); // Yield main thread to allow React to paint the UI
       } else {
         // 4. Compute overall simulator statistics
-        const overallRTP = (overallWin / totalSpins) * 100;
+        // overallWin = Σ(payout)，payout 為「每線投注 × N 倍」的贏分
+        // 每 spin 實際總投注 = bet（BET 設定值）
+        // RTP = 總贏分 / 總投注 = overallWin / (totalSpins × bet)
+        const effectiveBet = bet > 0 ? bet : coin;
+        const overallRTP = (overallWin / (totalSpins * effectiveBet)) * 100;
         const hitFrequency = (winningSpins / totalSpins) * 100;
 
         // Calculate contributionRTP for each symbol
         Object.keys(symbolMetrics).forEach(symId => {
           const metric = symbolMetrics[symId];
-          metric.contributionRTP = (metric.totalPayout / totalSpins) * 100;
+          metric.contributionRTP = (metric.totalPayout / (totalSpins * effectiveBet)) * 100;
         });
+
+        // 計算實際使用的 paylines 數量（診斷用）
+        const usedPaylines = effectivePaylines
+          ? effectivePaylines.length
+          : (gameType === 'linegame' ? 20 : 0); // 20 = defaultPaylines 長度
 
         setIsRunning(false);
         setResult({
           totalSpins,
           overallRTP,
           hitFrequency,
-          symbolMetrics
+          symbolMetrics,
+          paylineCount: usedPaylines,
+          effectiveBet,
+          gameType
         });
       }
     };

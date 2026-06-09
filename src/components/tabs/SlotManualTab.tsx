@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { GameType } from '../../types';
 import type { SVGPathResult } from '../../utils/slotUtils';
 import { formatAmount } from '../../utils/slotUtils';
@@ -30,6 +30,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
   gameType, displayGrid, winningCoords, wins, betMultiplier, parsePasteRng,
   isRunning, selectedSymbol
 }) => {
+  const [noWinCollapsed, setNoWinCollapsed] = useState(false);
   return (
     <>
       <div className="flex-1 flex flex-col items-center justify-center gap-8">
@@ -234,29 +235,82 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
         {/* Evaluation Output */}
         <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 shadow-inner">
           <span className="text-sm text-dashboard-text-secondary font-bold border-b border-gray-700/50 pb-2 mb-3">連線結果 (Evaluation)</span>
-          {wins.length > 0 ? (
-            <div className="flex flex-col gap-2">
-              {wins.map((w, idx) => (
-                <div key={idx} className="flex justify-between items-center bg-[#112240] px-4 py-2 rounded border border-gray-700/30">
-                  <span className="text-sm text-yellow-400 font-mono font-bold">
-                    {w.symbolId} {gameType === 'payanywhere' ? `出現 ${w.matchCount} 個` : gameType === 'linegame' ? `線 ${w.lineIndex! + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
-                  </span>
-                  <span className="text-sm text-gray-300 font-mono">
-                    {formatAmount(betMultiplier)} * {w.payout}{w.ways > 1 ? ` * ${w.ways}` : ''} = <span className="font-bold text-dashboard-accent text-base ml-1">{formatAmount(w.totalWin * betMultiplier)}</span>
-                  </span>
+
+          {wins.length > 0 ? (() => {
+            const winHits   = wins.filter(w => w.totalWin > 0);
+            const noWinHits = wins.filter(w => w.totalWin === 0);
+            return (
+              <div className="flex gap-3 items-start">
+                {/* 左欄：有贏分 */}
+                <div className="flex-1 flex flex-col gap-2 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="w-2 h-2 rounded-full bg-dashboard-accent shrink-0" />
+                    <span className="text-xs font-bold text-dashboard-accent">有贏分 ({winHits.length})</span>
+                  </div>
+                  {winHits.length > 0 ? winHits.map((w, idx) => (
+                    <div key={idx} className="flex flex-col bg-[#112240] px-3 py-2 rounded border border-dashboard-accent/30">
+                      <span className="text-xs text-yellow-400 font-mono font-bold truncate">
+                        {w.symbolId} {gameType === 'payanywhere' ? `出現 ${w.matchCount} 個` : gameType === 'linegame' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
+                      </span>
+                      <span className="text-xs text-gray-300 font-mono mt-0.5">
+                        {formatAmount(betMultiplier)} × {w.payout}{w.ways > 1 ? ` × ${w.ways}` : ''} = <span className="font-bold text-dashboard-accent">{formatAmount(w.totalWin * betMultiplier)}</span>
+                      </span>
+                    </div>
+                  )) : (
+                    <div className="py-3 text-center text-xs text-gray-600">—</div>
+                  )}
+                  {winHits.length > 0 && (
+                    <div className="mt-1 pt-2 border-t border-dashboard-accent/20 flex justify-between items-center px-1">
+                      <span className="text-white font-bold text-xs">Total Win</span>
+                      <span className="text-dashboard-accent font-bold text-lg">{formatAmount(winHits.reduce((sum, w) => sum + w.totalWin, 0) * betMultiplier)}</span>
+                    </div>
+                  )}
                 </div>
-              ))}
-              <div className="mt-2 pt-2 border-t border-gray-700/50 flex justify-between items-center px-1">
-                <span className="text-white font-bold text-sm">Total Win</span>
-                <span className="text-dashboard-accent font-bold text-xl">{formatAmount(wins.reduce((sum, w) => sum + w.totalWin, 0) * betMultiplier)}</span>
+
+                {/* 分隔線 */}
+                <div className="w-px self-stretch bg-gray-700/50 shrink-0" />
+
+                {/* 右欄：無贏分（可摺疊）*/}
+                <div className="flex-1 flex flex-col gap-2 min-w-0">
+                  <button
+                    onClick={() => setNoWinCollapsed(v => !v)}
+                    className="flex items-center gap-1.5 mb-1 w-full text-left group cursor-pointer"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-gray-500 shrink-0" />
+                    <span className="text-xs font-bold text-gray-400 group-hover:text-gray-300 transition-colors flex-1">
+                      無贏分 ({noWinHits.length})
+                    </span>
+                    <svg
+                      className={`w-3 h-3 text-gray-500 transition-transform duration-200 shrink-0 ${noWinCollapsed ? '-rotate-90' : 'rotate-0'}`}
+                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {!noWinCollapsed && (
+                    noWinHits.length > 0 ? noWinHits.map((w, idx) => (
+                      <div key={idx} className="flex flex-col bg-[#0f1c34] px-3 py-2 rounded border border-gray-700/30">
+                        <span className="text-xs text-gray-400 font-mono truncate">
+                          {w.symbolId} {gameType === 'payanywhere' ? `出現 ${w.matchCount} 個` : gameType === 'linegame' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
+                        </span>
+                        <span className="text-xs text-gray-600 font-mono mt-0.5">
+                          payout = 0{w.ways > 1 ? ` × ${w.ways} ways` : ''}
+                        </span>
+                      </div>
+                    )) : (
+                      <div className="py-3 text-center text-xs text-gray-600">—</div>
+                    )
+                  )}
+                </div>
               </div>
-            </div>
-          ) : (
+            );
+          })() : (
             <div className="py-4 text-center">
               <span className="text-sm text-gray-400 font-bold">沒有連線</span>
             </div>
           )}
         </div>
+
 
       </div>
     </>

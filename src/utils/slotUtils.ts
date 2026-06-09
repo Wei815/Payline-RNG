@@ -5,7 +5,7 @@ import type { WinResult } from './evaluation';
 // 輔助函數：將浮點數格式化為乾淨的字串，避免 JS 浮點數精度問題 (例如 0.03333333333333333 * 400 = 13.333333333333334)
 export function formatAmount(num: number): string {
   if (Number.isInteger(num)) return num.toString();
-  return parseFloat(num.toFixed(8)).toString();
+  return parseFloat(num.toFixed(4)).toString();
 }
 
 // 輔助函數：解析貼上的 RNG 字串並轉換成數值陣列

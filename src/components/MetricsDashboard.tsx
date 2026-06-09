@@ -9,9 +9,12 @@ interface MetricsDashboardProps {
   totalSpins: number;
   hasData: boolean;
   onRunSimulation: () => void;
+  reelCount: number;
 }
 
-export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({ result, isRunning, progress, currentSpins, totalSpins, hasData, onRunSimulation }) => {
+export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({ result, isRunning, progress, currentSpins, totalSpins, hasData, onRunSimulation, reelCount }) => {
+  const matchesToShow = Array.from({ length: reelCount - 1 }, (_, i) => reelCount - i);
+
   return (
     <div className="h-full flex flex-col bg-[#0a192f] p-6 overflow-hidden">
       <div className="flex justify-between items-center mb-6">
@@ -52,7 +55,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({ result, isRu
       )}
       
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 gap-4 mb-8">
+      <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-[#1a2b4c] rounded-xl p-5 border border-blue-900/30 flex flex-col justify-center items-center">
           <span className="text-dashboard-text-secondary text-sm mb-1">Total RTP %</span>
           <span className="text-4xl font-bold text-dashboard-accent drop-shadow-[0_0_8px_rgba(100,255,218,0.3)]">
@@ -65,6 +68,22 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({ result, isRu
             {result ? result.hitFrequency.toFixed(2) + '%' : '--.--%'}
           </span>
         </div>
+        <div className="bg-[#112240] rounded-xl p-4 border border-gray-700/40 flex flex-col justify-center items-center">
+          <span className="text-dashboard-text-secondary text-xs mb-1">有效 BET（每 spin 投注）</span>
+          <span className="text-2xl font-bold text-yellow-400 font-mono">
+            {result ? result.effectiveBet : '--'}
+          </span>
+        </div>
+        <div className="bg-[#112240] rounded-xl p-4 border border-gray-700/40 flex flex-col justify-center items-center">
+          <span className="text-dashboard-text-secondary text-xs mb-1">使用條線數 / 遊戲類型</span>
+          <span className="text-2xl font-bold text-purple-400 font-mono">
+            {result
+              ? result.gameType === 'linegame'
+                ? `${result.paylineCount} 條`
+                : result.gameType
+              : '--'}
+          </span>
+        </div>
       </div>
 
       {/* Symbol Metrics Table */}
@@ -75,10 +94,9 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({ result, isRu
             <thead className="bg-[#0f1d35] sticky top-0 z-10">
               <tr>
                 <th className="px-4 py-3 text-dashboard-text-secondary font-medium">Symbol</th>
-                <th className="px-4 py-3 text-dashboard-text-secondary font-medium text-right">Hit 5</th>
-                <th className="px-4 py-3 text-dashboard-text-secondary font-medium text-right">Hit 4</th>
-                <th className="px-4 py-3 text-dashboard-text-secondary font-medium text-right">Hit 3</th>
-                <th className="px-4 py-3 text-dashboard-text-secondary font-medium text-right">Hit 2</th>
+                {matchesToShow.map(match => (
+                  <th key={match} className="px-4 py-3 text-dashboard-text-secondary font-medium text-right">Hit {match}</th>
+                ))}
                 <th className="px-4 py-3 text-dashboard-text-secondary font-medium text-right">RTP Contrib.</th>
               </tr>
             </thead>
@@ -87,13 +105,17 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({ result, isRu
                 Object.values(result.symbolMetrics).map(metric => (
                   <tr key={metric.symbolId} className="hover:bg-[#1a2b4c] transition-colors">
                     <td className="px-4 py-3 font-semibold text-dashboard-text-primary flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${metric.symbolId === 'WILD' ? 'bg-yellow-400' : metric.symbolId === 'SCATTER' ? 'bg-purple-400' : 'bg-blue-400'}`}></div>
+                      <div className={`w-2 h-2 rounded-full ${metric.symbolId === 'WILD' || metric.symbolId === 'WX' ? 'bg-yellow-400' : metric.symbolId === 'SCATTER' || metric.symbolId === 'S1' ? 'bg-purple-400' : 'bg-blue-400'}`}></div>
                       {metric.symbolId}
                     </td>
-                    <td className="px-4 py-3 text-right text-dashboard-text-secondary">{metric.hits5.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right text-dashboard-text-secondary">{metric.hits4.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right text-dashboard-text-secondary">{metric.hits3.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right text-dashboard-text-secondary">{metric.hits2.toLocaleString()}</td>
+                    {matchesToShow.map(match => {
+                      const hits = metric[`hits${match}`] || 0;
+                      return (
+                        <td key={match} className="px-4 py-3 text-right text-dashboard-text-secondary">
+                          {hits.toLocaleString()}
+                        </td>
+                      );
+                    })}
                     <td className="px-4 py-3 text-right font-mono text-dashboard-accent">
                       {metric.contributionRTP.toFixed(2)}%
                     </td>
@@ -101,7 +123,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({ result, isRu
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-dashboard-text-secondary/80 font-bold">
+                  <td colSpan={matchesToShow.length + 2} className="px-4 py-12 text-center text-dashboard-text-secondary/80 font-bold">
                     Run simulation to see symbol metrics
                   </td>
                 </tr>

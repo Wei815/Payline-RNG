@@ -13,7 +13,8 @@ function App() {
   const [isMetricsOpen, setIsMetricsOpen] = useState<boolean>(false);
   const [currentStrips, setCurrentStrips] = useState<any[]>([]);
   const [currentPaytable, setCurrentPaytable] = useState<any[]>([]);
-  const [coin, setCoin] = useState<number>(1);
+  const [coin, setCoin] = useState<number>(30);
+  const [bet, setBet] = useState<number>(1);
   const [gameType, setGameType] = useState<GameType>('waygame');
   const [customPaylines, setCustomPaylines] = useState<number[][]>([]);
 
@@ -27,8 +28,8 @@ function App() {
   };
 
   const handleTestSpin = useCallback((strips: any[], paytable: any[], spins?: number, rows?: number[], paylines?: number[][]) => {
-    runSimulation(strips, paytable, spins, rows, gameType, paylines || customPaylines);
-  }, [runSimulation, gameType, customPaylines]);
+    runSimulation(strips, paytable, spins, rows, gameType, paylines || customPaylines, coin, bet);
+  }, [runSimulation, gameType, customPaylines, coin, bet]);
 
   const handleConfigSync = useCallback((strips: any[], paytable: any[]) => {
     setCurrentStrips(strips);
@@ -64,6 +65,8 @@ function App() {
             isRunning={isRunning} 
             coin={coin}
             onCoinChange={setCoin}
+            bet={bet}
+            onBetChange={setBet}
             gameType={gameType}
             onGameTypeChange={setGameType}
             onTestSpin={handleTestSpin}
@@ -90,6 +93,7 @@ function App() {
             currentStrips={currentStrips}
             currentPaytable={currentPaytable}
             coin={coin}
+            bet={bet}
             gameType={gameType}
             customPaylines={customPaylines}
           />
@@ -121,8 +125,9 @@ function App() {
                 totalSpins={result ? result.totalSpins : (isRunning ? Math.max(currentSpins, 100000) : 100000)}
                 hasData={currentStrips.length > 0 && currentStrips.every(strip => strip.length > 0)}
                 onRunSimulation={() => {
-                  runSimulation(currentStrips, currentPaytable, 100000, rowCounts, gameType, customPaylines);
+                  runSimulation(currentStrips, currentPaytable, 100000, rowCounts, gameType, customPaylines, coin, bet);
                 }}
+                reelCount={reelCount}
               />
             </div>
           </div>
