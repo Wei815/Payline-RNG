@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { GameType } from '../../types';
 import type { SVGPathResult } from '../../utils/slotUtils';
 import { formatAmount } from '../../utils/slotUtils';
@@ -36,6 +36,15 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
   groupedSymbols, parsePasteRng, isRunning
 }) => {
   const [noWinCollapsed, setNoWinCollapsed] = useState(false);
+  const [pulseToggle, setPulseToggle] = useState(false);
+
+  const coordsString = useMemo(() => Array.from(winningCoordsOther).sort().join(','), [winningCoordsOther]);
+  useEffect(() => {
+    setPulseToggle(p => !p);
+  }, [coordsString]);
+
+  const pulseClass = pulseToggle ? 'animate-sync-pulse-1' : 'animate-sync-pulse-2';
+
   return (
     <>
       <div className="flex-1 flex flex-col items-center justify-center gap-6">
@@ -83,7 +92,16 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                 disabled={!comb.rng || isSearching}
                 onClick={() => {
                   if (comb.rng) {
-                    setManualIndicesOther(comb.rng.map((val: number) => String(val)));
+                    setManualIndicesOther(comb.rng.map((val: any) => String(val)));
+                    if (gameType === 'payanywhere_set2' && comb.fullMathIds) {
+                      const initStr = `初始:\n${comb.fullMathIds.slice(0, 30).join(',')}`;
+                      let finalCopy = initStr;
+                      if (comb.length >= 8) {
+                        const dropStr = `\n遞補:\n${comb.fullMathIds.slice(30).join(',')}`;
+                        finalCopy += dropStr;
+                      }
+                      navigator.clipboard.writeText(finalCopy);
+                    }
                   }
                 }}
                 className={`flex justify-between items-center px-4 py-2.5 rounded border text-left transition-all ${comb.rng
@@ -93,13 +111,28 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                     : 'bg-[#112240]/10 border-gray-800/50 text-gray-600 cursor-not-allowed'
                   }`}
               >
-                <span className="text-xs font-bold">{comb.name}</span>
+                <span className="text-xs font-bold whitespace-pre-line">{comb.name}</span>
                 {comb.rng ? (
                   <span className={`text-xs font-mono border bg-[#0a192f] px-1.5 py-0.5 rounded ${comb.isInterfered
                       ? 'text-orange-400 border-orange-500/30'
                       : 'text-[#64ffda] border-[#64ffda]/30'
                     }`}>
-                    RNG: [{comb.rng.join(',')}] {comb.isInterfered ? '(有干擾)' : ''}
+                    {gameType === 'payanywhere_set2' ? (
+                      <div className="flex flex-col gap-0.5 mt-0.5 max-w-[140px] sm:max-w-[200px]">
+                        <span className="text-[#64ffda] leading-tight truncate" title={`初始: [${comb.fullMathIds?.slice(0, 30).join(',')}]`}>
+                          初始: [{comb.fullMathIds?.slice(0, 30).join(',')}]
+                        </span>
+                        {comb.length >= 8 ? (
+                          <span className="text-[#64ffda] leading-tight opacity-75 truncate" title={`遞補: [${comb.fullMathIds?.slice(30).join(',')}]`}>
+                            遞補: [{comb.fullMathIds?.slice(30).join(',')}] (自動複製)
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 leading-tight opacity-75 text-[10px] truncate">
+                            無消除，不產生遞補 (自動複製)
+                          </span>
+                        )}
+                      </div>
+                    ) : `RNG: [${comb.rng.join(',')}] ${comb.isInterfered ? '(有干擾)' : ''}`}
                   </span>
                 ) : (
                   <span className="text-xs text-red-500 font-bold">無可行滾輪位置</span>
@@ -136,7 +169,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
             </div>
             <div className="flex items-center gap-2 bg-[#112240] px-2 py-1 rounded border border-gray-700/30">
               <span className="text-xs text-gray-400 font-bold">RNG:</span>
-              <code className="text-xs text-yellow-400 font-mono">
+              <code className="text-xs text-yellow-400 font-mono truncate max-w-[150px] sm:max-w-[300px]" title={`[${manualIndicesOther.map(i => i === '' ? '0' : i).join(',')}]`}>
                 [{manualIndicesOther.map(i => i === '' ? '0' : i).join(',')}],
               </code>
               <button
@@ -172,22 +205,26 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                       ))}
                     </select>
                   </div>
-                  <div className="flex items-center justify-between gap-1 w-full">
-                    <span className="text-xs text-gray-400 shrink-0">Line</span>
-                    <input
-                      type="text"
-                      placeholder="-"
-                      value={manualIndicesOther[idx]}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, ''); // Only allow digits
-                        const newIndices = [...manualIndicesOther];
-                        newIndices[idx] = val;
-                        setManualIndicesOther(newIndices);
-                      }}
-                      disabled={isRunning}
-                      className="w-full max-w-[45px] bg-[#0a192f] border border-gray-600 text-yellow-400 rounded px-0.5 py-0.5 outline-none focus:border-yellow-500 text-xs text-center"
-                    />
-                  </div>
+                  {gameType !== 'payanywhere_set2' ? (
+                    <div className="flex items-center justify-between gap-1 w-full">
+                      <span className="text-xs text-gray-400 shrink-0">Line</span>
+                      <input
+                        type="text"
+                        placeholder="-"
+                        value={manualIndicesOther[idx]}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, ''); // Only allow digits
+                          const newIndices = [...manualIndicesOther];
+                          newIndices[idx] = val;
+                          setManualIndicesOther(newIndices);
+                        }}
+                        disabled={isRunning}
+                        className="w-full max-w-[45px] bg-[#0a192f] border border-gray-600 text-yellow-400 rounded px-0.5 py-0.5 outline-none focus:border-yellow-500 text-xs text-center"
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-[24px] w-full" />
+                  )}
                 </div>
               </div>
             ))}
@@ -251,9 +288,10 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                       key={idx}
                       id={`cell-top-other-${idx}`}
                       className={`
-                        w-20 h-20 rounded-lg flex flex-col items-center justify-center font-bold shadow-lg transform transition-all duration-300 relative border
+                        w-20 h-20 rounded-lg flex flex-col items-center justify-center font-bold shadow-lg transform relative border
+                        ${!isWinning && 'transition-all duration-300'}
                         ${topTrackerOther[idx] === 'WILD' || topTrackerOther[idx].startsWith('W') || topTrackerOther[idx] === 'WX' ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border-yellow-300' : 'bg-[#112240] text-dashboard-text-primary border-dashboard-accent/30'}
-                        ${isWinning ? 'scale-[1.06] border-2 border-[#64ffda] shadow-[0_0_15px_rgba(100,255,218,0.85)] z-10 bg-[#152e4b]' : hasAnyWin ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]' : ''}
+                        ${isWinning ? `scale-[1.06] border-2 border-[#64ffda] shadow-[0_0_15px_rgba(100,255,218,0.85)] z-10 bg-[#152e4b] ${pulseClass}` : hasAnyWin ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]' : ''}
                       `}
                     >
                       <span className="text-[11px] text-gray-300 font-bold font-mono tracking-tighter absolute top-1">TOP R{idx + 2}</span>
@@ -283,25 +321,47 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                   {col.map((symbol, rowIndex) => {
                     const isWinning = winningCoordsOther.has(`${colIndex}-${rowIndex}`);
                     const hasAnyWin = winningCoordsOther.size > 0;
+                    
+                    let isNoPayoutWin = false;
+                    if (isWinning) {
+                      const payoutWins = winsOther.filter(w => w.totalWin > 0);
+                      const noPayoutWins = winsOther.filter(w => w.totalWin === 0);
+                      if (payoutWins.length === 0) {
+                        isNoPayoutWin = true;
+                      } else if (noPayoutWins.some(w => w.symbolId === symbol) && !payoutWins.some(w => w.symbolId === symbol)) {
+                        isNoPayoutWin = true;
+                      }
+                    }
+
                     return (
                       <div
                         key={`${colIndex}-${rowIndex}`}
                         id={`cell-other-${colIndex}-${rowIndex}`}
                         className={`
                           w-20 h-20 rounded-lg flex items-center justify-center text-xl font-bold
-                          shadow-lg transform transition-all duration-300 relative
+                          shadow-lg transform relative
+                          ${!isWinning && 'transition-all duration-300'}
                           ${symbol === '-' ? 'bg-[#0a192f] text-gray-700 border-2 border-gray-800 border-dashed' :
                             symbol === 'WILD' || symbol.startsWith('W') || symbol === 'WX' ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border border-yellow-300' :
                               symbol === 'SCATTER' ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border border-pink-300' :
                                 'bg-[#112240] text-dashboard-text-primary border border-dashboard-accent/30'}
                           ${isWinning
-                            ? 'scale-[1.06] border-2 border-[#64ffda] shadow-[0_0_15px_rgba(100,255,218,0.85)] z-10 bg-[#152e4b]'
+                            ? isNoPayoutWin
+                              ? `bg-orange-500 text-white scale-105 shadow-[0_0_15px_rgba(249,115,22,0.8)] border border-orange-300 z-10 ${pulseClass}`
+                              : `bg-dashboard-accent text-[#0a192f] scale-105 shadow-[0_0_15px_rgba(100,255,218,0.5)] z-10 ${pulseClass}`
                             : hasAnyWin
                               ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]'
                               : ''}
                         `}
                       >
-                        {symbol}
+                        <div className="flex flex-col items-center justify-center">
+                          <span>{symbol}</span>
+                          {gameType === 'payanywhere_set2' && manualIndicesOther[colIndex] && (
+                            <span className="text-[10px] text-gray-500 font-mono mt-1 leading-none font-normal">
+                              ID:{manualIndicesOther[colIndex].split(',')[rowIndex] || '-'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -327,7 +387,9 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                     <span className="text-xs font-bold text-dashboard-accent">有贏分 ({winHits.length})</span>
                   </div>
                   {winHits.length > 0 ? winHits.map((w, idx) => {
-                    const isInterference = w.symbolId !== selectedSymbol;
+                    const isInterference = selectedSymbol === 'B1/B2' 
+                      ? (w.symbolId !== 'B1' && w.symbolId !== 'B2')
+                      : w.symbolId !== selectedSymbol;
                     return (
                       <div
                         key={idx}
@@ -338,7 +400,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                         }`}
                       >
                         <span className={`text-xs font-mono font-bold truncate ${isInterference ? 'text-red-400' : 'text-yellow-400'}`}>
-                          {w.symbolId} {gameType === 'payanywhere' ? `出現 ${w.matchCount} 個` : gameType === 'linegame' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
+                          {w.symbolId} {gameType === 'payanywhere' || gameType === 'payanywhere_set2' ? `個數 ${w.matchCount}` : gameType === 'linegame' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
                           {isInterference && <span className="ml-1 text-[10px] opacity-80"> (干擾)</span>}
                         </span>
                         <span className={`text-xs font-mono mt-0.5 ${isInterference ? 'text-red-300' : 'text-gray-300'}`}>
@@ -380,8 +442,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                   {!noWinCollapsed && (
                     noWinHits.length > 0 ? noWinHits.map((w, idx) => (
                       <div key={idx} className="flex flex-col bg-[#0f1c34] px-3 py-2 rounded border border-gray-700/30">
-                        <span className="text-xs text-gray-400 font-mono truncate">
-                          {w.symbolId} {gameType === 'payanywhere' ? `出現 ${w.matchCount} 個` : gameType === 'linegame' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
+                        <span className="text-xs font-mono font-bold truncate text-gray-400">
+                          {w.symbolId} {gameType === 'payanywhere' || gameType === 'payanywhere_set2' ? `個數 ${w.matchCount}` : gameType === 'linegame' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
                         </span>
                         <span className="text-xs text-gray-600 font-mono mt-0.5">
                           payout = 0{w.ways > 1 ? ` × ${w.ways} ways` : ''}

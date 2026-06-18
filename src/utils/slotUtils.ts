@@ -51,7 +51,8 @@ export function calculateSVGPaths(
   customPaylines?: number[][]
 ): SVGPathResult[] {
   if (!container || !wins || wins.length === 0) return [];
-  if (gameType === 'payanywhere') return [];
+  // 針對賽特2 (payanywhere_set2) 新增的邏輯：不繪製連線 SVG
+  if (gameType === 'payanywhere' || gameType === 'payanywhere_set2') return [];
 
   const paths: SVGPathResult[] = [];
   const containerRect = container.getBoundingClientRect();
@@ -182,20 +183,21 @@ export function getWinningPositions(
 
   for (const win of wins) {
     const isScatter = currentPaytable.some(p => p.symbolId === win.symbolId && p.isScatter);
-    const isPayAnywhere = gameType === 'payanywhere';
+    // 針對賽特2 (payanywhere_set2) 新增的邏輯：亮起中獎方塊
+    const isPayAnywhere = gameType === 'payanywhere' || gameType === 'payanywhere_set2';
 
     if (isScatter || isPayAnywhere) {
       for (let col = 0; col < grid.length; col++) {
         for (let row = 0; row < grid[col].length; row++) {
           const cell = grid[col][row];
-          if (cell === win.symbolId || wildSymbols.has(cell)) {
+          if (cell === win.symbolId || wildSymbols.has(cell) || (win.symbolId === 'B1' && cell === 'B2')) {
             winningCoords.add(`${col}-${row}`);
           }
         }
       }
       if (gameType === 'megaway' && topTracker) {
         topTracker.forEach((cell, idx) => {
-          if (cell === win.symbolId || wildSymbols.has(cell)) {
+          if (cell === win.symbolId || wildSymbols.has(cell) || (win.symbolId === 'B1' && cell === 'B2')) {
             winningCoords.add(`top-${idx}`);
           }
         });
@@ -216,13 +218,13 @@ export function getWinningPositions(
       for (let col = 0; col < win.matchCount; col++) {
         for (let row = 0; row < grid[col].length; row++) {
           const cell = grid[col][row];
-          if (cell === win.symbolId || wildSymbols.has(cell)) {
+          if (cell === win.symbolId || wildSymbols.has(cell) || (win.symbolId === 'B1' && cell === 'B2')) {
             winningCoords.add(`${col}-${row}`);
           }
         }
         if (gameType === 'megaway' && col >= 1 && col <= 4 && topTracker) {
           const cell = topTracker[col - 1];
-          if (cell === win.symbolId || wildSymbols.has(cell)) {
+          if (cell === win.symbolId || wildSymbols.has(cell) || (win.symbolId === 'B1' && cell === 'B2')) {
             winningCoords.add(`top-${col - 1}`);
           }
         }

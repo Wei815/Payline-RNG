@@ -29,6 +29,7 @@ import { useRngSearch } from '../hooks/useRngSearch';
 import { SlotManualTab } from './tabs/SlotManualTab';
 import { SlotGeneratorTab } from './tabs/SlotGeneratorTab';
 import { LineViewerTab } from './tabs/LineViewerTab';
+import { TumbleViewerTab } from './tabs/TumbleViewerTab';
 
 export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid, reelCount, rowCounts, onRowCountsChange, currentStrips, currentPaytable, coin, bet, gameType, customPaylines }) => {
   const betMultiplier = bet / coin;
@@ -40,7 +41,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
   const [prevGameType, setPrevGameType] = useState(gameType);
   if (gameType !== prevGameType) {
     setPrevGameType(gameType);
-    if (gameType !== 'linegame' && activeTab === 'lines') {
+    if (gameType !== 'linegame' && gameType !== 'payanywhere_set2' && activeTab === 'lines') {
       setActiveTab('manual');
     }
   }
@@ -57,6 +58,13 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
     setManualIndices(Array(reelCount).fill(''));
     setManualIndicesOther(Array(reelCount).fill(''));
   }
+
+  // Sync active tab if payanywhere_set2 is selected and manual is active
+  useEffect(() => {
+    if (gameType === 'payanywhere_set2' && activeTab === 'manual') {
+      setActiveTab('other');
+    }
+  }, [gameType, activeTab]);
 
   const { isSearching, combinations } = useRngSearch(
     selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther, customPaylines
@@ -126,6 +134,16 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
       }
     });
 
+    if (gameType === 'payanywhere_set2') {
+      const hasB1 = others.includes('B1');
+      const hasB2 = others.includes('B2');
+      if (hasB1 || hasB2) {
+        if (hasB1) others.splice(others.indexOf('B1'), 1);
+        if (hasB2) others.splice(others.indexOf('B2'), 1);
+        others.unshift('B1/B2');
+      }
+    }
+
     return [
       { id: 'others', title: '第一區塊 (其他)', list: others },
       { id: 'mnum', title: '第二區塊 (M數字)', list: mnum },
@@ -170,18 +188,34 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
     return rule ? (rule.payouts[matchKey as keyof typeof rule.payouts] || 0) : 0;
   }, [currentPaytable, reelCount, activeLineViewerSymbol]);
 
+  // Reset Generator Grid when target symbol changes
+  useEffect(() => {
+    if (activeTab === 'other') {
+      setManualIndicesOther(Array(reelCount).fill(''));
+    }
+  }, [selectedSymbol, reelCount]);
+
   // Tab 1: Manual Indices grid
   const displayGrid = Array.from({ length: reelCount }, (_, colIndex) => {
     const rowsForThisCol = rowCounts[colIndex] || 3;
     const strip = currentStrips[colIndex];
     const manualInput = manualIndices[colIndex];
 
-    if (strip && strip.length > 0 && manualInput !== '' && !isNaN(Number(manualInput))) {
-      const startIndex = Number(manualInput);
-      return Array.from({ length: rowsForThisCol }).map((_, rIndex) => {
-        const actualIndex = (startIndex + rIndex) % strip.length;
-        return strip[actualIndex];
-      });
+    if (manualInput && manualInput !== '') {
+      if (strip && strip.length > 0 && !isNaN(Number(manualInput))) {
+        const startIndex = Number(manualInput);
+        return Array.from({ length: rowsForThisCol }).map((_, rIndex) => {
+          const actualIndex = (startIndex + rIndex) % strip.length;
+          return strip[actualIndex];
+        });
+      } else if (manualInput.includes(',')) {
+        const symbols = manualInput.split(',').map(s => s.trim());
+        if (symbols.length >= rowsForThisCol) {
+          return symbols.slice(0, rowsForThisCol);
+        } else {
+          return [...symbols, ...Array(rowsForThisCol - symbols.length).fill('-')];
+        }
+      }
     }
 
     if (currentGrid.length > 0 && currentGrid[colIndex]) {
@@ -218,12 +252,33 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
     const strip = currentStrips[colIndex];
     const manualInput = manualIndicesOther[colIndex];
 
-    if (strip && strip.length > 0 && manualInput !== '' && !isNaN(Number(manualInput))) {
-      const startIndex = Number(manualInput);
-      return Array.from({ length: rowsForThisCol }).map((_, rIndex) => {
-        const actualIndex = (startIndex + rIndex) % strip.length;
-        return strip[actualIndex];
-      });
+    if (manualInput && manualInput !== '') {
+      if (strip && strip.length > 0 && !isNaN(Number(manualInput))) {
+        const startIndex = Number(manualInput);
+        return Array.from({ length: rowsForThisCol }).map((_, rIndex) => {
+          const actualIndex = (startIndex + rIndex) % strip.length;
+          return strip[actualIndex];
+        });
+      } else if (manualInput.includes(',')) {
+        const mathIds = manualInput.split(',').map(s => s.trim());
+        const symbols = mathIds.map(id => {
+          if (!isNaN(Number(id))) {
+             const numId = Number(id);
+             const rule = currentPaytable.find(r => {
+               if (r.mathId === undefined) return false;
+               const ruleIds = String(r.mathId).split(',').map(s => Number(s.trim()));
+               return ruleIds.includes(numId);
+             });
+             return rule ? rule.symbolId : id;
+          }
+          return id;
+        });
+        if (symbols.length >= rowsForThisCol) {
+          return symbols.slice(0, rowsForThisCol);
+        } else {
+          return [...symbols, ...Array(rowsForThisCol - symbols.length).fill('-')];
+        }
+      }
     }
 
     if (currentGrid.length > 0 && currentGrid[colIndex]) {
@@ -269,32 +324,45 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
           }
         }
 
-        const matchCountsByCol = finalGrid.map(col =>
-          col.filter(s => s === selectedSymbol || s === wildSymbol).length
-        );
-
-        let matchLength = 0;
-        for (let c = 0; c < reelCount; c++) {
-          if (matchCountsByCol[c] > 0) {
-            matchLength++;
-          } else {
-            break;
+        if (gameType === 'payanywhere' || gameType === 'payanywhere_set2') {
+          const count = finalGrid.flat().filter(s => s === selectedSymbol || s === wildSymbol).length;
+          if (count > 0) {
+            baseWins.push({
+              symbolId: selectedSymbol,
+              matchCount: count,
+              ways: 1,
+              payout: 0,
+              totalWin: 0
+            });
           }
-        }
+        } else {
+          const matchCountsByCol = finalGrid.map(col =>
+            col.filter(s => s === selectedSymbol || s === wildSymbol).length
+          );
 
-        if (matchLength >= 2) {
-          let ways = 1;
-          for (let c = 0; c < matchLength; c++) {
-            ways *= matchCountsByCol[c];
+          let matchLength = 0;
+          for (let c = 0; c < reelCount; c++) {
+            if (matchCountsByCol[c] > 0) {
+              matchLength++;
+            } else {
+              break;
+            }
           }
 
-          baseWins.push({
-            symbolId: selectedSymbol,
-            matchCount: matchLength,
-            ways: ways,
-            payout: 0,
-            totalWin: 0
-          });
+          if (matchLength >= 2) {
+            let ways = 1;
+            for (let c = 0; c < matchLength; c++) {
+              ways *= matchCountsByCol[c];
+            }
+
+            baseWins.push({
+              symbolId: selectedSymbol,
+              matchCount: matchLength,
+              ways: ways,
+              payout: 0,
+              totalWin: 0
+            });
+          }
         }
       }
     }
@@ -348,15 +416,17 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
 
       {/* Tabs Switcher */}
       <div className="flex border-b border-gray-800 bg-[#0f1d35] rounded-t-xl overflow-hidden shrink-0 border border-gray-700/50">
-        <button
-          onClick={() => setActiveTab('manual')}
-          className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-all duration-200 cursor-pointer ${activeTab === 'manual'
-              ? 'border-dashboard-accent text-dashboard-accent bg-[#112240]/40'
-              : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-[#112240]/20'
-            }`}
-        >
-          手動計算盤面
-        </button>
+        {gameType !== 'payanywhere_set2' && (
+          <button
+            onClick={() => setActiveTab('manual')}
+            className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-all duration-200 cursor-pointer ${activeTab === 'manual'
+                ? 'border-dashboard-accent text-dashboard-accent bg-[#112240]/40'
+                : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-[#112240]/20'
+              }`}
+          >
+            手動計算盤面
+          </button>
+        )}
         <button
           onClick={() => setActiveTab('other')}
           className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-all duration-200 cursor-pointer ${activeTab === 'other'
@@ -366,7 +436,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
         >
           連線測試產生器
         </button>
-        {gameType === 'linegame' && (
+        {(gameType === 'linegame' || gameType === 'payanywhere_set2') && (
           <button
             onClick={() => setActiveTab('lines')}
             className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-all duration-200 cursor-pointer ${activeTab === 'lines'
@@ -374,7 +444,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
                 : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-[#112240]/20'
               }`}
           >
-            贏分線路一覽
+            {gameType === 'linegame' ? '贏分線路一覽' : '消除掉落測試'}
           </button>
         )}
       </div>
@@ -415,6 +485,17 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
             setManualIndices={setManualIndices} setManualIndicesOther={setManualIndicesOther}
             copiedIndex={copiedIndex} setCopiedIndex={setCopiedIndex}
             currentPaytable={currentPaytable} gameType={gameType}
+          />
+        )}
+        {gameType === 'payanywhere_set2' && activeTab === 'lines' && (
+          <TumbleViewerTab
+            reelCount={reelCount}
+            rowCounts={rowCounts}
+            currentStrips={currentStrips}
+            currentPaytable={currentPaytable}
+            gameType={gameType}
+            manualIndices={manualIndices}
+            betMultiplier={betMultiplier}
           />
         )}
       </div>

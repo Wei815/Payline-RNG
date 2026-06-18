@@ -247,16 +247,21 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                     <span className="w-2 h-2 rounded-full bg-dashboard-accent shrink-0" />
                     <span className="text-xs font-bold text-dashboard-accent">有贏分 ({winHits.length})</span>
                   </div>
-                  {winHits.length > 0 ? winHits.map((w, idx) => (
-                    <div key={idx} className="flex flex-col bg-[#112240] px-3 py-2 rounded border border-dashboard-accent/30">
-                      <span className="text-xs text-yellow-400 font-mono font-bold truncate">
-                        {w.symbolId} {gameType === 'payanywhere' ? `出現 ${w.matchCount} 個` : gameType === 'linegame' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
-                      </span>
-                      <span className="text-xs text-gray-300 font-mono mt-0.5">
-                        {formatAmount(betMultiplier)} × {w.payout}{w.ways > 1 ? ` × ${w.ways}` : ''} = <span className="font-bold text-dashboard-accent">{formatAmount(w.totalWin * betMultiplier)}</span>
-                      </span>
-                    </div>
-                  )) : (
+                  {winHits.length > 0 ? winHits.map((w, idx) => {
+                    const isInterference = selectedSymbol === 'B1/B2'
+                      ? (w.symbolId !== 'B1' && w.symbolId !== 'B2')
+                      : w.symbolId !== selectedSymbol;
+                    return (
+                      <div key={idx} className={`flex flex-col px-3 py-2 rounded border ${selectedSymbol && isInterference ? 'bg-[#2b1616] border-red-900/50' : 'bg-[#112240] border-dashboard-accent/30'}`}>
+                        <span className="text-xs text-yellow-400 font-mono font-bold truncate">
+                          {w.symbolId} {gameType === 'payanywhere' ? `出現 ${w.matchCount} 個` : gameType === 'linegame' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
+                        </span>
+                        <span className="text-xs text-gray-300 font-mono mt-0.5">
+                          {formatAmount(betMultiplier)} × {w.payout}{w.ways > 1 ? ` × ${w.ways}` : ''} = <span className="font-bold text-dashboard-accent">{formatAmount(w.totalWin * betMultiplier)}</span>
+                        </span>
+                      </div>
+                    );
+                  }) : (
                     <div className="py-3 text-center text-xs text-gray-600">—</div>
                   )}
                   {winHits.length > 0 && (
@@ -288,18 +293,25 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                     </svg>
                   </button>
                   {!noWinCollapsed && (
-                    noWinHits.length > 0 ? noWinHits.map((w, idx) => (
-                      <div key={idx} className="flex flex-col bg-[#0f1c34] px-3 py-2 rounded border border-gray-700/30">
-                        <span className="text-xs text-gray-400 font-mono truncate">
-                          {w.symbolId} {gameType === 'payanywhere' ? `出現 ${w.matchCount} 個` : gameType === 'linegame' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
-                        </span>
-                        <span className="text-xs text-gray-600 font-mono mt-0.5">
-                          payout = 0{w.ways > 1 ? ` × ${w.ways} ways` : ''}
-                        </span>
-                      </div>
-                    )) : (
-                      <div className="py-3 text-center text-xs text-gray-600">—</div>
-                    )
+                    <div className="flex flex-col gap-2 mt-1">
+                      {noWinHits.length > 0 ? noWinHits.map((w, idx) => {
+                        const isInterference = selectedSymbol === 'B1/B2'
+                          ? (w.symbolId !== 'B1' && w.symbolId !== 'B2')
+                          : w.symbolId !== selectedSymbol;
+                        return (
+                          <div key={idx} className={`flex flex-col px-3 py-2 rounded border ${selectedSymbol && isInterference ? 'bg-[#2b1616] border-red-900/50' : 'bg-[#0f1c34] border-gray-700/30'}`}>
+                            <span className={`text-xs font-mono truncate ${selectedSymbol && isInterference ? 'text-red-400' : 'text-gray-400'}`}>
+                              {w.symbolId} {gameType === 'payanywhere' ? `出現 ${w.matchCount} 個` : gameType === 'linegame' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
+                            </span>
+                            <span className={`text-xs font-mono mt-0.5 ${selectedSymbol && isInterference ? 'text-red-500/80' : 'text-gray-600'}`}>
+                              payout = 0{w.ways > 1 ? ` × ${w.ways} ways` : ''}
+                            </span>
+                          </div>
+                        );
+                      }) : (
+                        <div className="py-3 text-center text-xs text-gray-600">—</div>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

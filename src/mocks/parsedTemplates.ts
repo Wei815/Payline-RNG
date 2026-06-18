@@ -2,7 +2,7 @@
 import type { PaytableRule } from '../types';
 
 export interface ParsedTemplate {
-  gameType?: 'waygame' | 'linegame' | 'payanywhere';
+  gameType?: 'waygame' | 'linegame' | 'payanywhere' | 'megaway' | 'payanywhere_set2';
   coin?: number;
   bet?: number;
   paylines?: number[][];
@@ -679,6 +679,33 @@ export const parsedTemplates: Record<string, ParsedTemplate> = {
         "isWild": false,
         "isScatter": false
       }
+    ]
+  },
+  "決戰賽特2": {
+    "gameType": "payanywhere_set2",
+    "reelCount": 6,
+    "rowCounts": [5, 5, 5, 5, 5, 5],
+    "coin": 20,
+    "paytable": [
+      { "symbolId": "WX", "name": "Wild", "payouts": { "match2": 0, "match3": 0, "match4": 0, "match5": 0 }, "isWild": true, "isScatter": false, "mathId": 0 },
+      { "symbolId": "B1", "name": "Bonus", "payouts": { "match2": 0, "match3": 0, "match4": 3, "match5": 5, "match6": 100 }, "isWild": false, "isScatter": true, "mathId": 1 },
+      { "symbolId": "B2", "name": "SuperBonus", "payouts": { "match2": 0, "match3": 0, "match4": 3, "match5": 5, "match6": 100 }, "isWild": false, "isScatter": true, "mathId": 2 },
+      { "symbolId": "S1", "name": "S1", "payouts": { "match2": 0, "match3": 0, "match4": 0, "match5": 0, "match6": 5 }, "isWild": false, "isScatter": true, "mathId": 23 },
+      { "symbolId": "S2", "name": "S2", "payouts": { "match2": 0, "match3": 0, "match4": 0, "match5": 0, "match6": 5 }, "isWild": false, "isScatter": true, "mathId": 24 },
+      { "symbolId": "M1", "name": "M1", "payouts": { "match2": 0, "match3": 200, "match4": 500, "match5": 1000 }, "isWild": false, "isScatter": false, "mathId": 3 },
+      { "symbolId": "M2", "name": "M2", "payouts": { "match2": 0, "match3": 50, "match4": 200, "match5": 500 }, "isWild": false, "isScatter": false, "mathId": 4 },
+      { "symbolId": "M3", "name": "M3", "payouts": { "match2": 0, "match3": 40, "match4": 100, "match5": 300 }, "isWild": false, "isScatter": false, "mathId": 5 },
+      { "symbolId": "M4", "name": "M4", "payouts": { "match2": 0, "match3": 30, "match4": 40, "match5": 240 }, "isWild": false, "isScatter": false, "mathId": 6 },
+      { "symbolId": "M5", "name": "M5", "payouts": { "match2": 0, "match3": 0, "match4": 0, "match5": 0 }, "isWild": false, "isScatter": false, "mathId": 7 },
+      { "symbolId": "M6", "name": "M6", "payouts": { "match2": 0, "match3": 0, "match4": 0, "match5": 0 }, "isWild": false, "isScatter": false, "mathId": 8 },
+      { "symbolId": "A", "name": "A", "payouts": { "match2": 0, "match3": 20, "match4": 30, "match5": 200 }, "isWild": false, "isScatter": false, "mathId": 9 },
+      { "symbolId": "K", "name": "K", "payouts": { "match2": 0, "match3": 16, "match4": 24, "match5": 160 }, "isWild": false, "isScatter": false, "mathId": 10 },
+      { "symbolId": "Q", "name": "Q", "payouts": { "match2": 0, "match3": 10, "match4": 20, "match5": 100 }, "isWild": false, "isScatter": false, "mathId": 11 },
+      { "symbolId": "J", "name": "J", "payouts": { "match2": 0, "match3": 8, "match4": 18, "match5": 80 }, "isWild": false, "isScatter": false, "mathId": 12 },
+      { "symbolId": "TE", "name": "TE", "payouts": { "match2": 0, "match3": 5, "match4": 15, "match5": 40 }, "isWild": false, "isScatter": false, "mathId": 13 },
+      { "symbolId": "NI", "name": "NI", "payouts": { "match2": 0, "match3": 0, "match4": 0, "match5": 0 }, "isWild": false, "isScatter": false, "mathId": 14 },
+      { "symbolId": "F1", "name": "F1", "payouts": { "match2": 0, "match3": 0, "match4": 0, "match5": 0 }, "isWild": false, "isScatter": false, "mathId": "15, 16, 17, 18" },
+      { "symbolId": "L1", "name": "L1", "payouts": { "match2": 0, "match3": 0, "match4": 0, "match5": 0 }, "isWild": false, "isScatter": false, "mathId": "19, 20, 21, 22" }
     ]
   }
 };

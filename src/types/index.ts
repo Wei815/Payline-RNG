@@ -4,9 +4,10 @@ export interface PaytableRule {
   payouts: { match2: number; match3: number; match4: number; match5: number; match6?: number; };
   isWild: boolean;
   isScatter: boolean;
+  mathId?: string | number;
 }
 
-export type GameType = 'waygame' | 'megaway' | 'payanywhere' | 'linegame';
+export type GameType = 'waygame' | 'megaway' | 'payanywhere' | 'payanywhere_set2' | 'linegame';
 
 export type ReelStrips = string[][];
 

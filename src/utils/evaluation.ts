@@ -59,25 +59,31 @@ export function evaluateGrid(
       let scatterCount = 0;
       for (const col of grid) {
         for (const cell of col) {
-          if (cell === sym) scatterCount++;
+          if (cell === sym || (sym === 'B1' && cell === 'B2')) scatterCount++;
         }
       }
-      if (scatterCount >= 2) {
+
+      // 針對賽特2 (payanywhere_set2) 新增的邏輯：Scatter 至少需要 4 顆
+      const minScatter = gameType === 'payanywhere_set2' ? 4 : 2;
+      const autoWinCount = gameType === 'payanywhere_set2' ? 4 : 3;
+
+      if (scatterCount >= minScatter) {
         const lookupMatch = Math.min(scatterCount, grid.length);
         const payout = rule.payouts[`match${lookupMatch}` as keyof typeof rule.payouts] || 0;
-        if (payout > 0 || scatterCount >= 3 || includeZeroPayout) {
+        if (payout > 0 || scatterCount >= autoWinCount || includeZeroPayout) {
           results.push({ symbolId: sym, matchCount: scatterCount, ways: 1, payout, totalWin: payout });
         }
       }
       continue;
     }
 
-    if (gameType === 'payanywhere') {
+    // 針對賽特2 (payanywhere_set2) 新增的邏輯：與 payanywhere 共用相同判斷
+    if (gameType === 'payanywhere' || gameType === 'payanywhere_set2') {
       // Pay Anywhere 模式：統計盤面總數，排除 Wild 符號
       let count = 0;
       for (const col of grid) {
         for (const cell of col) {
-          if (cell === sym) {
+          if (cell === sym || (sym === 'B1' && cell === 'B2')) {
             count++;
           }
         }

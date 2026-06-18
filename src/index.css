@@ -30,4 +30,19 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgba(100, 255, 218, 0.5); 
   }
+
+  @keyframes sync-pulse-1 {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  @keyframes sync-pulse-2 {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .animate-sync-pulse-1 {
+    animation: sync-pulse-1 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  .animate-sync-pulse-2 {
+    animation: sync-pulse-2 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
 }

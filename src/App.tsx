@@ -59,8 +59,8 @@ function App() {
 
       {/* Main Grid Layout - pt-14 to offset header */}
       <div className="flex-1 w-full flex flex-col md:flex-row pt-14 min-h-0">
-        {/* Left: ConfigPanel (35%) */}
-        <div className="w-full md:w-[35%] h-full">
+        {/* Left: ConfigPanel */}
+        <div className={`w-full h-full transition-all duration-300 ${gameType === 'payanywhere_set2' ? 'md:w-[360px] shrink-0' : 'md:w-[35%]'}`}>
           <ConfigPanel 
             isRunning={isRunning} 
             coin={coin}
@@ -74,13 +74,14 @@ function App() {
             reelCount={reelCount}
             onReelCountChange={handleReelCountChange}
             rowCounts={rowCounts}
+            onRowCountsChange={setRowCounts}
             customPaylines={customPaylines}
             onPaylinesChange={setCustomPaylines}
           />
         </div>
 
-        {/* Center: SlotConsole (65%) */}
-        <div className="w-full md:w-[65%] h-full">
+        {/* Center: SlotConsole */}
+        <div className="w-full flex-1 h-full min-w-0">
           <SlotConsole 
             isRunning={isRunning}
             progress={progress}

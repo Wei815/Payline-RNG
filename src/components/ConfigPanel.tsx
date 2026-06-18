@@ -10,6 +10,7 @@ interface ConfigPanelProps {
   reelCount: number;
   onReelCountChange: (count: number) => void;
   rowCounts: number[];
+  onRowCountsChange: (counts: number[]) => void;
   onTestSpin: (strips: ReelStrips, paytable: PaytableRule[], totalSpins?: number, rowCounts?: number[], paylines?: number[][]) => void;
   onConfigSync: (strips: ReelStrips, paytable: PaytableRule[]) => void;
   coin: number;
@@ -22,7 +23,7 @@ interface ConfigPanelProps {
   onPaylinesChange: (paylines: number[][]) => void;
 }
 
-export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, onReelCountChange, rowCounts, onTestSpin, onConfigSync, coin, onCoinChange, bet, onBetChange, gameType, onGameTypeChange, customPaylines, onPaylinesChange }) => {
+export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, onReelCountChange, rowCounts, onRowCountsChange, onTestSpin, onConfigSync, coin, onCoinChange, bet, onBetChange, gameType, onGameTypeChange, customPaylines, onPaylinesChange }) => {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('人魚傳說');
   const [gridData, setGridData] = useState<string[][]>(Array(20).fill(Array(5).fill('')));
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,8 +46,11 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
         if (cell && cell.trim() !== '') symbols.add(cell.trim());
       });
     });
+    Object.keys(paytableMap).forEach(sym => {
+      if (sym && sym.trim() !== '') symbols.add(sym.trim());
+    });
     return Array.from(symbols);
-  }, [gridData]);
+  }, [gridData, paytableMap]);
 
   const baseColumns = useMemo(() => {
     const bases = new Set<string>();
@@ -158,7 +162,11 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
           }
         }
       }
-      const finalPaytable = uniqueSymbols.map(sym => paytableMap[sym]).filter(Boolean);
+      let finalPaytable = uniqueSymbols.map(sym => paytableMap[sym]).filter(Boolean);
+      // For games without strips (like payanywhere_set2), pass all defined rules
+      if (finalPaytable.length === 0 && Object.keys(paytableMap).length > 0) {
+        finalPaytable = Object.values(paytableMap);
+      }
       onConfigSync(parsedStrips, finalPaytable);
     } catch {
       // ignore empty catch
@@ -179,6 +187,9 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
         if (tmpl.coin) onCoinChange(tmpl.coin);
         if (tmpl.bet) onBetChange(tmpl.bet);
         if (tmpl.reelCount) onReelCountChange(tmpl.reelCount);
+        if (tmpl.rowCounts && tmpl.rowCounts.length > 0) {
+          onRowCountsChange(tmpl.rowCounts);
+        }
         if (tmpl.paylines) onPaylinesChange(tmpl.paylines);
         
         if (tmpl.strips && tmpl.strips.length > 0) {
@@ -393,10 +404,11 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
 
         {Array.from({ length: reelCount - 1 }, (_, i) => reelCount - i).map(match => {
           let labelText = String(match);
-          if (gameType === 'payanywhere') {
-            if (match === 5) labelText = '>=12';
-            else if (match === 4) labelText = '10-11';
-            else if (match === 3) labelText = '8-9';
+          if (gameType === 'payanywhere' || gameType === 'payanywhere_set2') {
+            if (match === 6) labelText = '6';
+            else if (match === 5) labelText = '12+ (S:5)';
+            else if (match === 4) labelText = '10-11 (S:4)';
+            else if (match === 3) labelText = '8-9 (S:3)';
             else if (match === 2) labelText = '<8';
           }
           return (
@@ -446,9 +458,9 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
 
   return (
     <div className="h-full bg-dashboard-card p-4 flex flex-col gap-4 border-r border-gray-700/50 relative">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col 2xl:flex-row items-start 2xl:items-center justify-between gap-3">
         <h2 className="text-xl font-bold text-dashboard-text-primary">Configuration</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <select 
             value={selectedTemplate}
             onChange={(e) => setSelectedTemplate(e.target.value)}
@@ -528,12 +540,14 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
 
       <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
 
-        <div className={`flex flex-col gap-2 ${gameType === 'linegame' ? 'h-[450px] shrink-0' : 'flex-1 min-h-[450px]'}`}>
+        <div className={`flex flex-col gap-2 ${gameType === 'linegame' ? 'h-[450px] shrink-0' : gameType === 'payanywhere_set2' ? 'shrink-0' : 'flex-1 min-h-[450px]'}`}>
           <div className="flex flex-col gap-2 border-b border-gray-800/60 pb-3">
             {/* Row 1: Title & Main Dropdowns */}
-            <div className="flex items-center justify-between gap-2">
-              <label className="text-sm text-dashboard-text-secondary font-bold whitespace-nowrap">Reel Strips 表格</label>
-              <div className="flex items-center gap-3 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label className="text-sm text-dashboard-text-secondary font-bold whitespace-nowrap">
+                {gameType === 'payanywhere_set2' ? '參數設定' : 'Reel Strips 表格'}
+              </label>
+              <div className="flex flex-wrap items-center gap-3 text-xs">
                 <div className="flex items-center gap-1.5">
                   <span className="text-gray-400 font-medium whitespace-nowrap">Game Type:</span>
                   <select
@@ -545,6 +559,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
                     <option value="waygame">Way</option>
                     <option value="megaway">Megaways</option>
                     <option value="payanywhere">Pay Anywhere</option>
+                    <option value="payanywhere_set2">Pay Anywhere (Set 2)</option>
                     <option value="linegame">Line</option>
                   </select>
                 </div>
@@ -570,7 +585,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
             </div>
 
             {/* Row 2: Secondary Filters/Inputs */}
-            <div className="flex items-center gap-3 text-xs">
+            <div className="flex flex-wrap items-center gap-3 text-xs">
               <div className="flex items-center gap-1.5 bg-[#112240] px-2 py-1 rounded border border-gray-700/50 focus-within:border-dashboard-accent transition-colors">
                 <span className="text-xs text-gray-400 font-bold whitespace-nowrap">Highlight:</span>
                 <input
@@ -607,11 +622,47 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
             </div>
           </div>
 
-          <div
-            className="flex-1 border border-gray-700 rounded-lg overflow-hidden flex flex-col bg-[#0a192f] focus-within:ring-1 focus-within:ring-dashboard-accent focus-within:border-dashboard-accent transition-all relative"
-            tabIndex={0}
-            onPaste={isRunning ? undefined : onPaste}
-          >
+          {gameType === 'payanywhere_set2' && (
+            <div className="flex-1 border border-gray-700 rounded-lg overflow-hidden flex flex-col bg-[#0a192f] mt-2">
+              <div className="flex justify-between items-center bg-[#0f1d35] border-b border-gray-700 p-3 shrink-0">
+                <span className="text-sm text-dashboard-text-secondary font-bold">MathID 映射表</span>
+                <span className="text-xs text-gray-500">多個請用逗號分隔</span>
+              </div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-3 flex flex-col gap-3 min-h-[300px]">
+                {Object.values(paytableMap).sort((a, b) => {
+                  const parseId = (val: string | number | undefined) => {
+                    if (val === undefined || val === '') return 999;
+                    if (typeof val === 'number') return val;
+                    const match = String(val).match(/\d+/);
+                    return match ? parseInt(match[0], 10) : 999;
+                  };
+                  return parseId(a.mathId) - parseId(b.mathId);
+                }).map(rule => (
+                  <div key={rule.symbolId} className="flex items-center gap-3">
+                    <span className="text-xs font-bold w-14 text-right text-dashboard-accent shrink-0">{rule.symbolId}</span>
+                    <input
+                      type="text"
+                      placeholder="e.g. 15,16,17"
+                      value={rule.mathId !== undefined ? rule.mathId : ''}
+                      onChange={(e) => {
+                        const newMap = { ...paytableMap };
+                        newMap[rule.symbolId] = { ...rule, mathId: e.target.value };
+                        setPaytableMap(newMap);
+                      }}
+                      className="flex-1 bg-[#112240] border border-gray-600 rounded px-3 py-1.5 text-xs text-white outline-none focus:border-dashboard-accent transition-colors"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {gameType !== 'payanywhere_set2' && (
+            <div
+              className="flex-1 border border-gray-700 rounded-lg overflow-hidden flex flex-col bg-[#0a192f] focus-within:ring-1 focus-within:ring-dashboard-accent focus-within:border-dashboard-accent transition-all relative"
+              tabIndex={0}
+              onPaste={isRunning ? undefined : onPaste}
+            >
             <div className="flex bg-[#0f1d35] text-xs font-bold text-dashboard-text-secondary border-b border-gray-700 select-none">
               <div className="w-12 py-2 text-center border-r border-gray-700">Line #</div>
               {Array.from({ length: reelCount }).map((_, i) => (
@@ -655,6 +706,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
               </div>
             )}
           </div>
+          )}
         </div>
 
         {gameType === 'linegame' && (
