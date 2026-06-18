@@ -1,5 +1,6 @@
 import type { PaytableRule, ReelStrips } from '../types';
 
+
 export const defaultExcelStripsString = `Line #\tR1\tR2\tR3\tR4\tR5
 0\tTE\tNI\tNI\tJ\tJ
 1\tA\tM1\tK\tNI\tTE
@@ -220,4 +221,667 @@ export const defaultPaytable: PaytableRule[] = [
     isWild: false,
     isScatter: false
   }
+];
+
+
+
+
+export const mermaidReelStrips: ReelStrips = [
+  [
+    "M4",
+    "A",
+    "Q",
+    "K",
+    "TE",
+    "M2",
+    "WX",
+    "M3",
+    "TE",
+    "J",
+    "J",
+    "A",
+    "K",
+    "B1",
+    "TE",
+    "Q",
+    "M2",
+    "M1",
+    "K",
+    "J",
+    "J",
+    "A",
+    "M3",
+    "B1",
+    "K",
+    "Q",
+    "J",
+    "J",
+    "TE",
+    "TE",
+    "M1",
+    "M3",
+    "M2",
+    "M4",
+    "A",
+    "Q",
+    "WX",
+    "TE",
+    "J",
+    "A",
+    "K",
+    "K",
+    "M4",
+    "Q",
+    "Q",
+    "K",
+    "TE",
+    "WX",
+    "J",
+    "Q"
+  ],
+  [
+    "M1",
+    "K",
+    "J",
+    "M4",
+    "WX",
+    "M2",
+    "M3",
+    "TE",
+    "B1",
+    "A",
+    "J",
+    "J",
+    "Q",
+    "M2",
+    "J",
+    "M4",
+    "Q",
+    "K",
+    "B1",
+    "J",
+    "Q",
+    "K",
+    "K",
+    "A",
+    "A",
+    "M1",
+    "TE",
+    "WX",
+    "M3",
+    "TE",
+    "M4",
+    "A",
+    "B1",
+    "K",
+    "K",
+    "TE",
+    "TE",
+    "Q",
+    "J",
+    "Q",
+    "M1",
+    "M3",
+    "A",
+    "M1",
+    "Q",
+    "M4",
+    "M4",
+    "A",
+    "J",
+    "TE"
+  ],
+  [
+    "M2",
+    "M3",
+    "WX",
+    "J",
+    "TE",
+    "Q",
+    "K",
+    "A",
+    "A",
+    "M1",
+    "TE",
+    "M3",
+    "M4",
+    "M2",
+    "A",
+    "Q",
+    "Q",
+    "TE",
+    "TE",
+    "TE",
+    "J",
+    "K",
+    "K",
+    "M4",
+    "J",
+    "J",
+    "M1",
+    "K",
+    "M1",
+    "WX",
+    "Q",
+    "J",
+    "M2",
+    "J",
+    "TE",
+    "A",
+    "TE",
+    "M2",
+    "WX",
+    "M3",
+    "K",
+    "B1",
+    "M4",
+    "A",
+    "K",
+    "K",
+    "M4",
+    "J",
+    "Q",
+    "Q"
+  ],
+  [
+    "K",
+    "TE",
+    "J",
+    "A",
+    "M3",
+    "B1",
+    "Q",
+    "K",
+    "M1",
+    "M1",
+    "A",
+    "Q",
+    "J",
+    "WX",
+    "TE",
+    "A",
+    "M4",
+    "M4",
+    "M2",
+    "TE",
+    "J",
+    "J",
+    "M2",
+    "Q",
+    "WX",
+    "M3",
+    "M3",
+    "A",
+    "K",
+    "K",
+    "Q",
+    "J",
+    "TE",
+    "TE",
+    "M1",
+    "M2",
+    "Q",
+    "B1",
+    "K",
+    "A",
+    "J",
+    "M4",
+    "Q",
+    "M4",
+    "K",
+    "J",
+    "K",
+    "TE",
+    "Q",
+    "TE"
+  ],
+  [
+    "Q",
+    "A",
+    "M4",
+    "M1",
+    "A",
+    "K",
+    "M2",
+    "M2",
+    "TE",
+    "TE",
+    "M1",
+    "M1",
+    "J",
+    "J",
+    "M3",
+    "B1",
+    "M3",
+    "K",
+    "Q",
+    "A",
+    "WX",
+    "WX",
+    "J",
+    "TE",
+    "J",
+    "M4",
+    "A",
+    "B1",
+    "K",
+    "TE",
+    "Q",
+    "Q",
+    "TE",
+    "TE",
+    "J",
+    "M4",
+    "M4",
+    "A",
+    "A",
+    "K",
+    "K",
+    "WX",
+    "TE",
+    "TE",
+    "M2",
+    "M2",
+    "A",
+    "Q",
+    "M3",
+    "M3"
+  ]
+];
+
+export const mermaidPaytable: PaytableRule[] = [
+  {
+    "symbolId": "WX",
+    "name": "Wild",
+    "payouts": {
+      "match2": 10,
+      "match3": 50,
+      "match4": 200,
+      "match5": 1000
+    },
+    "isWild": true,
+    "isScatter": false
+  },
+  {
+    "symbolId": "B1",
+    "name": "Bonus",
+    "payouts": {
+      "match2": 0,
+      "match3": 2,
+      "match4": 20,
+      "match5": 200
+    },
+    "isWild": false,
+    "isScatter": true
+  },
+  {
+    "symbolId": "SCATTER",
+    "name": "Scatter",
+    "payouts": {
+      "match2": 0,
+      "match3": 0,
+      "match4": 0,
+      "match5": 0
+    },
+    "isWild": false,
+    "isScatter": true
+  },
+  {
+    "symbolId": "M1",
+    "name": "M1",
+    "payouts": {
+      "match2": 0,
+      "match3": 30,
+      "match4": 150,
+      "match5": 400
+    },
+    "isWild": false,
+    "isScatter": false
+  },
+  {
+    "symbolId": "M2",
+    "name": "M2",
+    "payouts": {
+      "match2": 0,
+      "match3": 30,
+      "match4": 150,
+      "match5": 400
+    },
+    "isWild": false,
+    "isScatter": false
+  },
+  {
+    "symbolId": "M3",
+    "name": "M3",
+    "payouts": {
+      "match2": 0,
+      "match3": 20,
+      "match4": 100,
+      "match5": 200
+    },
+    "isWild": false,
+    "isScatter": false
+  },
+  {
+    "symbolId": "M4",
+    "name": "M4",
+    "payouts": {
+      "match2": 0,
+      "match3": 20,
+      "match4": 100,
+      "match5": 200
+    },
+    "isWild": false,
+    "isScatter": false
+  },
+  {
+    "symbolId": "W5",
+    "name": "W5",
+    "payouts": {
+      "match2": 0,
+      "match3": 0,
+      "match4": 0,
+      "match5": 0
+    },
+    "isWild": false,
+    "isScatter": false
+  },
+  {
+    "symbolId": "W6",
+    "name": "W6",
+    "payouts": {
+      "match2": 0,
+      "match3": 0,
+      "match4": 0,
+      "match5": 0
+    },
+    "isWild": false,
+    "isScatter": false
+  },
+  {
+    "symbolId": "WA",
+    "name": "WA",
+    "payouts": {
+      "match2": 0,
+      "match3": 10,
+      "match4": 30,
+      "match5": 120
+    },
+    "isWild": false,
+    "isScatter": false
+  },
+  {
+    "symbolId": "WK",
+    "name": "WK",
+    "payouts": {
+      "match2": 0,
+      "match3": 10,
+      "match4": 30,
+      "match5": 120
+    },
+    "isWild": false,
+    "isScatter": false
+  },
+  {
+    "symbolId": "WQ",
+    "name": "WQ",
+    "payouts": {
+      "match2": 0,
+      "match3": 5,
+      "match4": 25,
+      "match5": 100
+    },
+    "isWild": false,
+    "isScatter": false
+  },
+  {
+    "symbolId": "WJ",
+    "name": "WJ",
+    "payouts": {
+      "match2": 0,
+      "match3": 5,
+      "match4": 25,
+      "match5": 100
+    },
+    "isWild": false,
+    "isScatter": false
+  },
+  {
+    "symbolId": "WT",
+    "name": "WT",
+    "payouts": {
+      "match2": 0,
+      "match3": 5,
+      "match4": 20,
+      "match5": 100
+    },
+    "isWild": false,
+    "isScatter": false
+  },
+  {
+    "symbolId": "WN",
+    "name": "WN",
+    "payouts": {
+      "match2": 0,
+      "match3": 0,
+      "match4": 0,
+      "match5": 0
+    },
+    "isWild": false,
+    "isScatter": false
+  }
+];
+
+
+export const mermaidPaylines: number[][] = [
+  [
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  [
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  [
+    2,
+    2,
+    2,
+    2,
+    2
+  ],
+  [
+    0,
+    1,
+    2,
+    1,
+    0
+  ],
+  [
+    2,
+    1,
+    0,
+    1,
+    2
+  ],
+  [
+    0,
+    0,
+    1,
+    2,
+    2
+  ],
+  [
+    2,
+    2,
+    1,
+    0,
+    0
+  ],
+  [
+    1,
+    0,
+    1,
+    2,
+    1
+  ],
+  [
+    1,
+    2,
+    1,
+    0,
+    1
+  ],
+  [
+    0,
+    1,
+    1,
+    1,
+    2
+  ],
+  [
+    2,
+    1,
+    1,
+    1,
+    0
+  ],
+  [
+    1,
+    0,
+    0,
+    1,
+    2
+  ],
+  [
+    1,
+    2,
+    2,
+    1,
+    0
+  ],
+  [
+    1,
+    1,
+    0,
+    1,
+    2
+  ],
+  [
+    1,
+    1,
+    2,
+    1,
+    0
+  ],
+  [
+    0,
+    0,
+    1,
+    2,
+    1
+  ],
+  [
+    2,
+    2,
+    1,
+    0,
+    1
+  ],
+  [
+    1,
+    0,
+    1,
+    2,
+    2
+  ],
+  [
+    1,
+    2,
+    1,
+    0,
+    0
+  ],
+  [
+    0,
+    0,
+    0,
+    1,
+    2
+  ],
+  [
+    2,
+    2,
+    2,
+    1,
+    0
+  ],
+  [
+    0,
+    1,
+    2,
+    2,
+    2
+  ],
+  [
+    2,
+    1,
+    0,
+    0,
+    0
+  ],
+  [
+    0,
+    1,
+    0,
+    1,
+    0
+  ],
+  [
+    2,
+    1,
+    2,
+    1,
+    2
+  ],
+  [
+    0,
+    1,
+    1,
+    1,
+    0
+  ],
+  [
+    2,
+    1,
+    1,
+    1,
+    2
+  ],
+  [
+    1,
+    0,
+    0,
+    0,
+    1
+  ],
+  [
+    1,
+    2,
+    2,
+    2,
+    1
+  ],
+  [
+    0,
+    1,
+    0,
+    1,
+    2
+  ]
 ];

@@ -73,7 +73,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
     currentStrips.forEach(strip => {
       if (!strip) return;
       strip.forEach(s => {
-        if (s && s !== 'WILD' && s !== 'W' && s !== 'WX' && s !== '-' && s !== '') {
+        if (s && s !== '-' && s !== '') {
           allSyms.add(s);
         }
       });
@@ -81,7 +81,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
 
     if (allSyms.size === 0) {
       currentPaytable.forEach(r => {
-        if (r.symbolId && r.symbolId !== 'WILD' && r.symbolId !== 'W' && r.symbolId !== 'WX') {
+        if (r.symbolId) {
           allSyms.add(r.symbolId);
         }
       });

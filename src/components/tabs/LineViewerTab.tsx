@@ -227,7 +227,7 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                       }`}
                       title="點擊自動套用此 RNG 數組至盤面並複製至剪貼簿"
                     >
-                      {copiedIndex === lineIdx ? 'COPIED!' : `RNG: [${rng.join(',')}]`}
+                      {copiedIndex === lineIdx ? 'COPIED!' : `RNG: [${rng.join(',')}],`}
                     </button>
                   ) : (
                     <span className="text-xs text-red-500 font-bold">無可行 RNG</span>

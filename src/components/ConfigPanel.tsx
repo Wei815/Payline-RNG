@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Play, Database, Table, Edit3, X } from 'lucide-react';
 import type { ReelStrips, PaytableRule, GameType } from '../types';
 import { defaultPaytable, defaultExcelStripsString } from '../mocks/defaultData';
+import { parsedTemplates } from '../mocks/parsedTemplates';
 import { defaultPaylines } from '../utils/evaluation';
 
 interface ConfigPanelProps {
@@ -22,16 +23,17 @@ interface ConfigPanelProps {
 }
 
 export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, onReelCountChange, rowCounts, onTestSpin, onConfigSync, coin, onCoinChange, bet, onBetChange, gameType, onGameTypeChange, customPaylines, onPaylinesChange }) => {
-  const [gridData, setGridData] = useState<string[][]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('人魚傳說');
+  const [gridData, setGridData] = useState<string[][]>(Array(20).fill(Array(5).fill('')));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [highlightSymbol, setHighlightSymbol] = useState<string>('');
-  
+
   const [paytableMap, setPaytableMap] = useState<Record<string, PaytableRule>>(() => {
     const init: Record<string, PaytableRule> = {};
     defaultPaytable.forEach(rule => init[rule.symbolId] = rule);
     return init;
   });
-  
+
   const [error, setError] = useState<string | null>(null);
 
   const isGridEmpty = gridData.length <= 4 && gridData.every(row => row.every(cell => !cell || cell.trim() === ''));
@@ -54,22 +56,22 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
       else if (s === 'WN' || s === 'WNI') bases.add('NI');
       else if (/^W\d+$/.test(s)) bases.add(`M${s.substring(1)}`);
       else if (/^W[AKQJ]$/.test(s)) bases.add(s.substring(1));
-      else bases.add(s); 
+      else bases.add(s);
     });
 
     const order = ['WW', 'WX', 'B1', 'S1', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'A', 'K', 'Q', 'J', 'TE', 'NI'];
     const getOrder = (b: string) => {
-       const idx = order.indexOf(b);
-       return idx === -1 ? 999 : idx;
+      const idx = order.indexOf(b);
+      return idx === -1 ? 999 : idx;
     };
-    
+
     return Array.from(bases).sort((a, b) => getOrder(a) - getOrder(b));
   }, [uniqueSymbols]);
 
   const rowBlocks = useMemo(() => {
     // 0: Base, 1: W_Num, 2: W_Let
-    const blocks: Record<string, string>[] = [{}, {}, {}]; 
-    
+    const blocks: Record<string, string>[] = [{}, {}, {}];
+
     uniqueSymbols.forEach(sym => {
       const s = sym.toUpperCase();
       let base = s;
@@ -88,7 +90,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
         blockIdx = 0;
       }
 
-      blocks[blockIdx][base] = sym; 
+      blocks[blockIdx][base] = sym;
     });
     return blocks;
   }, [uniqueSymbols]);
@@ -102,7 +104,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
       const b = base.toUpperCase();
       if (/^M\d+$/.test(b)) {
         mNum.push(base);
-      } else if (['A','K','Q','J','T','TE','N','NI'].includes(b)) {
+      } else if (['A', 'K', 'Q', 'J', 'T', 'TE', 'N', 'NI'].includes(b)) {
         mLet.push(base);
       } else {
         others.push(base);
@@ -164,15 +166,41 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
   }, [gridData, paytableMap, uniqueSymbols, reelCount, onConfigSync]);
 
   const handleLoadDefaults = () => {
-    handlePasteText(defaultExcelStripsString, reelCount);
-    
-    const init: Record<string, PaytableRule> = {};
-    defaultPaytable.forEach(rule => init[rule.symbolId] = rule);
-    setPaytableMap(init);
-
-    // Load default paylines
-    onPaylinesChange(defaultPaylines);
-    
+    if (selectedTemplate === '預設泛用') {
+      handlePasteText(defaultExcelStripsString, reelCount);
+      const init: Record<string, PaytableRule> = {};
+      defaultPaytable.forEach(rule => init[rule.symbolId] = rule);
+      setPaytableMap(init);
+      onPaylinesChange(defaultPaylines);
+    } else {
+      const tmpl = parsedTemplates[selectedTemplate];
+      if (tmpl) {
+        if (tmpl.gameType) onGameTypeChange(tmpl.gameType);
+        if (tmpl.coin) onCoinChange(tmpl.coin);
+        if (tmpl.bet) onBetChange(tmpl.bet);
+        if (tmpl.reelCount) onReelCountChange(tmpl.reelCount);
+        if (tmpl.paylines) onPaylinesChange(tmpl.paylines);
+        
+        if (tmpl.strips && tmpl.strips.length > 0) {
+          const maxRows = Math.max(...tmpl.strips.map(s => s.length));
+          const newGrid: string[][] = [];
+          for (let r = 0; r < maxRows; r++) {
+            const rowData = [];
+            for (let c = 0; c < tmpl.strips.length; c++) {
+              rowData.push(tmpl.strips[c][r] || '');
+            }
+            newGrid.push(rowData);
+          }
+          setGridData(newGrid);
+        }
+        
+        if (tmpl.paytable) {
+          const init: Record<string, PaytableRule> = {};
+          tmpl.paytable.forEach(rule => init[rule.symbolId] = rule);
+          setPaytableMap(init);
+        }
+      }
+    }
     setError(null);
   };
 
@@ -183,7 +211,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
     for (const line of lines) {
       if (!line.trim()) continue;
       const cols = line.split('\t');
-      
+
       if (cols[0] && cols[0].toLowerCase().includes('line')) continue;
       if (cols[1] && cols[1].toLowerCase() === 'r1') continue;
       if (cols[0] && cols[0].toLowerCase() === 'r1') continue;
@@ -217,7 +245,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
     e.preventDefault();
     const text = e.clipboardData.getData('Text');
     handlePasteText(text, reelCount);
-    
+
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
@@ -226,14 +254,14 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
   const onPastePaylines = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const text = e.clipboardData.getData('Text');
-    
+
     const lines = text.trim().split(/\r?\n/);
     const newLines: number[][] = [];
 
     for (const line of lines) {
       if (!line.trim()) continue;
       const cols = line.split('\t').map(s => s.trim()).filter(s => s !== '');
-      
+
       // 跳過標頭 (No., Line, R1...)
       if (cols[0] && (cols[0].toLowerCase().includes('no') || cols[0].toLowerCase().includes('line'))) continue;
       if (cols[0] && cols[0].toLowerCase().startsWith('r1')) continue;
@@ -292,7 +320,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
   const handleTestSpin = () => {
     try {
       setError(null);
-      
+
       const parsedStrips: ReelStrips = Array.from({ length: reelCount }, () => []);
       for (let rowIndex = 0; rowIndex < gridData.length; rowIndex++) {
         for (let colIndex = 0; colIndex < reelCount; colIndex++) {
@@ -317,8 +345,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
   };
 
   const renderRowGroup = (
-    bases: string[], 
-    title: string, 
+    bases: string[],
+    title: string,
     getSym: (base: string) => string | undefined,
     bgColor: string
   ) => {
@@ -334,23 +362,23 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
           {bases.map(base => {
             const sym = getSym(base);
             if (!sym) return <td key={base} className="border-none bg-transparent"></td>;
-            
+
             return (
               <td key={base} className="border-r border-b border-t border-gray-700 p-2 h-[56px] bg-[#112240] shadow-sm relative">
                 <div className="flex items-center justify-center gap-2.5">
                   <div className="text-dashboard-text-primary text-[15px] font-bold min-w-[20px] text-center">{sym}</div>
                   <div className="flex flex-col gap-1 text-xs text-dashboard-text-secondary font-sans font-normal border-l border-gray-700/50 pl-2.5">
                     <label className="flex items-center justify-start gap-1.5 cursor-pointer hover:text-yellow-400 transition-colors">
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         checked={paytableMap[sym]?.isWild || false}
                         onChange={(e) => updatePaytableProperty(sym, 'isWild', e.target.checked)}
                         className="accent-yellow-500 w-2.5 h-2.5 cursor-pointer"
                       /> Wild
                     </label>
                     <label className="flex items-center justify-start gap-1.5 cursor-pointer hover:text-purple-400 transition-colors">
-                      <input 
-                        type="checkbox" 
+                      <input
+                        type="checkbox"
                         checked={paytableMap[sym]?.isScatter || false}
                         onChange={(e) => updatePaytableProperty(sym, 'isScatter', e.target.checked)}
                         className="accent-purple-500 w-2.5 h-2.5 cursor-pointer"
@@ -362,7 +390,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
             );
           })}
         </tr>
-        
+
         {Array.from({ length: reelCount - 1 }, (_, i) => reelCount - i).map(match => {
           let labelText = String(match);
           if (gameType === 'payanywhere') {
@@ -379,11 +407,11 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
               {bases.map(base => {
                 const sym = getSym(base);
                 if (!sym) return <td key={base} className="border-none bg-transparent h-[40px]"></td>;
-                
+
                 const val = paytableMap[sym]?.payouts[`match${match}` as keyof PaytableRule['payouts']] ?? 0;
                 return (
                   <td key={base} className="border-r border-b border-gray-700 p-0 h-[40px] min-w-[110px] bg-[#0a192f]">
-                    <input 
+                    <input
                       type="number"
                       min="0"
                       value={val === 0 ? '' : val}
@@ -420,18 +448,87 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
     <div className="h-full bg-dashboard-card p-4 flex flex-col gap-4 border-r border-gray-700/50 relative">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-dashboard-text-primary">Configuration</h2>
-        <button 
-          onClick={handleLoadDefaults}
-          disabled={isRunning}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-900/40 text-blue-300 hover:bg-blue-800/50 rounded-md transition-colors disabled:opacity-50"
-        >
-          <Database size={16} /> Load Defaults
-        </button>
+        <div className="flex items-center gap-2">
+          <select 
+            value={selectedTemplate}
+            onChange={(e) => setSelectedTemplate(e.target.value)}
+            disabled={isRunning}
+            className="bg-[#0f1d35] border border-gray-700 text-dashboard-accent rounded px-2 py-1.5 outline-none focus:border-dashboard-accent cursor-pointer text-sm font-bold font-mono"
+          >
+            {Object.keys(parsedTemplates).map(tmpl => (
+              <option key={tmpl} value={tmpl}>{tmpl}</option>
+            ))}
+            <option value="預設泛用">預設泛用</option>
+          </select>
+          <button 
+            onClick={handleLoadDefaults}
+            disabled={isRunning}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-900/40 text-blue-300 hover:bg-blue-800/50 rounded-md transition-colors disabled:opacity-50"
+          >
+            <Database size={16} /> 載入範本
+          </button>
+          <label className="flex items-center gap-2 px-3 py-1.5 text-sm bg-green-900/40 text-green-400 hover:bg-green-800/50 rounded-md transition-colors cursor-pointer disabled:opacity-50">
+            <Database size={16} /> 上傳 Excel
+            <input 
+              type="file" 
+              accept=".xlsx,.xls" 
+              className="hidden" 
+              disabled={isRunning}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                
+                try {
+                  const { parseExcelData } = await import('../utils/excelParser');
+                  const parsed = await parseExcelData(file);
+                  
+                  if (parsed.gameType) onGameTypeChange(parsed.gameType);
+                  if (parsed.coin) onCoinChange(parsed.coin);
+                  if (parsed.bet) onBetChange(parsed.bet);
+                  if (parsed.reelCount) onReelCountChange(parsed.reelCount);
+                  if (parsed.paylines) onPaylinesChange(parsed.paylines);
+                  
+                  if (parsed.strips && parsed.strips.length > 0) {
+                    const maxRows = Math.max(...parsed.strips.map(s => s.length));
+                    const newGrid: string[][] = [];
+                    for (let r = 0; r < maxRows; r++) {
+                      const rowData = [];
+                      for (let c = 0; c < parsed.strips.length; c++) {
+                        rowData.push(parsed.strips[c][r] || '');
+                      }
+                      newGrid.push(rowData);
+                    }
+                    setGridData(newGrid);
+                  }
+                  
+                  if (parsed.paytable) {
+                    const init: Record<string, PaytableRule> = {};
+                    parsed.paytable.forEach(rule => init[rule.symbolId] = rule);
+                    setPaytableMap(init);
+                  }
+                  
+                  setError(null);
+                } catch (err) {
+                  setError('Failed to parse Excel file: ' + (err as Error).message);
+                }
+                
+                e.target.value = '';
+              }}
+            />
+          </label>
+          <button 
+            onClick={handleLoadDefaults}
+            disabled={isRunning}
+            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-900/40 text-blue-300 hover:bg-blue-800/50 rounded-md transition-colors disabled:opacity-50"
+          >
+            <Database size={16} /> Load Defaults
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
-        
-        <div className={`flex flex-col gap-2 ${gameType === 'linegame' ? 'h-[220px] shrink-0' : 'flex-1 min-h-[300px]'}`}>
+
+        <div className={`flex flex-col gap-2 ${gameType === 'linegame' ? 'h-[450px] shrink-0' : 'flex-1 min-h-[450px]'}`}>
           <div className="flex flex-col gap-2 border-b border-gray-800/60 pb-3">
             {/* Row 1: Title & Main Dropdowns */}
             <div className="flex items-center justify-between gap-2">
@@ -453,7 +550,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-gray-400 font-medium">Reels:</span>
-                  <select 
+                  <select
                     value={reelCount}
                     onChange={(e) => {
                       const newCount = Number(e.target.value);
@@ -476,7 +573,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
             <div className="flex items-center gap-3 text-xs">
               <div className="flex items-center gap-1.5 bg-[#112240] px-2 py-1 rounded border border-gray-700/50 focus-within:border-dashboard-accent transition-colors">
                 <span className="text-xs text-gray-400 font-bold whitespace-nowrap">Highlight:</span>
-                <input 
+                <input
                   type="text"
                   value={highlightSymbol}
                   onChange={(e) => setHighlightSymbol(e.target.value)}
@@ -487,7 +584,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
               </div>
               <div className="flex items-center gap-1.5 bg-[#112240] px-2 py-1 rounded border border-gray-700/50">
                 <span className="text-gray-400 font-bold whitespace-nowrap">COIN (規則):</span>
-                <input 
+                <input
                   type="number"
                   min="1"
                   value={coin}
@@ -498,7 +595,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
               </div>
               <div className="flex items-center gap-1.5 bg-[#112240] px-2 py-1 rounded border border-gray-700/50">
                 <span className="text-gray-400 font-bold whitespace-nowrap">BET (實際投注):</span>
-                <input 
+                <input
                   type="number"
                   min="1"
                   value={bet}
@@ -510,7 +607,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
             </div>
           </div>
 
-          <div 
+          <div
             className="flex-1 border border-gray-700 rounded-lg overflow-hidden flex flex-col bg-[#0a192f] focus-within:ring-1 focus-within:ring-dashboard-accent focus-within:border-dashboard-accent transition-all relative"
             tabIndex={0}
             onPaste={isRunning ? undefined : onPaste}
@@ -523,7 +620,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
                 </div>
               ))}
             </div>
-            
+
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               <table className="w-full text-center text-xs font-mono">
                 <tbody className="divide-y divide-gray-800/50">
@@ -535,11 +632,10 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
                       {row.map((cell, colIndex) => {
                         const isMatch = highlightSymbol && cell && cell.trim().toUpperCase() === highlightSymbol.trim().toUpperCase();
                         return (
-                          <td 
-                            key={colIndex} 
-                            className={`py-1.5 px-1 border-r border-gray-700/50 last:border-r-0 break-all transition-colors ${
-                              isMatch ? 'bg-dashboard-accent/20 text-dashboard-accent font-bold outline outline-1 outline-dashboard-accent/50 z-10 relative' : 'text-dashboard-text-primary'
-                            }`}
+                          <td
+                            key={colIndex}
+                            className={`py-1.5 px-1 border-r border-gray-700/50 last:border-r-0 break-all transition-colors ${isMatch ? 'bg-dashboard-accent/20 text-dashboard-accent font-bold outline outline-1 outline-dashboard-accent/50 z-10 relative' : 'text-dashboard-text-primary'
+                              }`}
                           >
                             {cell}
                           </td>
@@ -567,7 +663,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
               <label className="text-sm text-dashboard-text-secondary font-medium">線路規則 表格 (Line Rules)</label>
               <span className="text-xs text-dashboard-text-secondary font-mono">已載入 {customPaylines.length} 條線</span>
             </div>
-            <div 
+            <div
               className="flex-1 border border-gray-700 rounded-lg overflow-hidden flex flex-col bg-[#0a192f] focus-within:ring-1 focus-within:ring-dashboard-accent focus-within:border-dashboard-accent transition-all relative"
               tabIndex={0}
               onPaste={isRunning ? undefined : onPastePaylines}
@@ -580,7 +676,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
                   </div>
                 ))}
               </div>
-              
+
               <div className="flex-1 overflow-y-auto custom-scrollbar">
                 <table className="w-full text-center text-xs font-mono">
                   <tbody className="divide-y divide-gray-800/50">
@@ -590,8 +686,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
                           {rowIndex + 1}
                         </td>
                         {row.map((cell, colIndex) => (
-                          <td 
-                            key={colIndex} 
+                          <td
+                            key={colIndex}
                             className="py-1.5 px-1 border-r border-gray-700/50 last:border-r-0 text-dashboard-text-primary"
                           >
                             {cell}
@@ -613,7 +709,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
             </div>
           </div>
         )}
-        
+
         <div className="flex flex-col gap-2 mt-2">
           <label className="text-sm text-dashboard-text-secondary font-medium">Paytable Rules</label>
           <div className="bg-[#0f1d35] border border-gray-700 rounded-lg p-4 flex items-center justify-between">
@@ -623,7 +719,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
                 已提取 {uniqueSymbols.length} 個獨特符號
               </span>
             </div>
-            <button 
+            <button
               onClick={() => setIsModalOpen(true)}
               disabled={isRunning || uniqueSymbols.length === 0}
               className="flex items-center gap-2 px-4 py-2 bg-[#112240] border border-dashboard-accent text-dashboard-accent rounded-lg hover:bg-dashboard-accent hover:text-[#0a192f] transition-all font-bold text-sm disabled:opacity-50 disabled:hover:bg-[#112240] disabled:hover:text-dashboard-accent disabled:cursor-not-allowed"
@@ -664,14 +760,14 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200">
           <div className="bg-[#0a192f] border border-gray-600 w-full max-w-7xl h-full max-h-[90vh] rounded-xl flex flex-col shadow-2xl overflow-hidden relative">
-            
+
             <div className="flex justify-between items-center p-5 border-b border-gray-700 bg-[#0f1d35] shrink-0">
               <div className="flex items-center gap-3">
                 <Table className="text-dashboard-accent" />
                 <h2 className="text-xl font-bold text-dashboard-text-primary tracking-wide">Paytable Editor</h2>
               </div>
-              <button 
-                onClick={() => setIsModalOpen(false)} 
+              <button
+                onClick={() => setIsModalOpen(false)}
                 className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-gray-800 transition-colors"
               >
                 <X size={24} />
@@ -682,7 +778,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
               <div className="flex flex-col gap-10 pb-10 max-w-[100%] mx-auto">
                 {columnGroups.map(group => {
                   const hasWilds = group.bases.some(base => rowBlocks[1][base] || rowBlocks[2][base]);
-                  
+
                   return (
                     <div key={group.id} className="flex flex-col gap-3">
                       <h3 className="text-dashboard-accent font-bold text-lg px-1">{group.title}</h3>

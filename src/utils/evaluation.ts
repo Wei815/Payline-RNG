@@ -41,7 +41,7 @@ export function evaluateGrid(
   includeZeroPayout = false
 ): WinResult[] {
   const results: WinResult[] = [];
-  
+
   if (!grid || grid.length === 0 || !paytable || paytable.length === 0) {
     return results;
   }
@@ -53,7 +53,7 @@ export function evaluateGrid(
 
   for (const rule of paytable) {
     const sym = rule.symbolId;
-    
+
     // Scatter 計算
     if (rule.isScatter) {
       let scatterCount = 0;
@@ -63,9 +63,9 @@ export function evaluateGrid(
         }
       }
       if (scatterCount >= 2) {
-        const lookupMatch = Math.min(scatterCount, grid.length); 
+        const lookupMatch = Math.min(scatterCount, grid.length);
         const payout = rule.payouts[`match${lookupMatch}` as keyof typeof rule.payouts] || 0;
-        if (payout > 0 || scatterCount >= 3) {
+        if (payout > 0 || scatterCount >= 3 || includeZeroPayout) {
           results.push({ symbolId: sym, matchCount: scatterCount, ways: 1, payout, totalWin: payout });
         }
       }
@@ -99,7 +99,7 @@ export function evaluateGrid(
 
         if (lookupKey) {
           const payout = rule.payouts[lookupKey] || 0;
-          if (payout > 0) {
+          if (payout > 0 || includeZeroPayout) {
             results.push({
               symbolId: sym,
               matchCount: count,
@@ -110,7 +110,7 @@ export function evaluateGrid(
           }
         }
       }
-    } 
+    }
     else if (gameType === 'linegame') {
       // Line Game 模式：沿中獎線檢查連線
       paylines.forEach((line, lineIdx) => {
@@ -143,7 +143,7 @@ export function evaluateGrid(
           }
         }
       });
-    } 
+    }
     else {
       // waygame 或是 megaway 模式
       let currentWays = 1;
@@ -167,7 +167,7 @@ export function evaluateGrid(
       }
 
       if (currentMatch >= 2) {
-        const lookupMatch = Math.min(currentMatch, grid.length); 
+        const lookupMatch = Math.min(currentMatch, grid.length);
         const payout = rule.payouts[`match${lookupMatch}` as keyof typeof rule.payouts] || 0;
         if (payout > 0 || currentMatch >= 3 || includeZeroPayout) {
           results.push({
@@ -178,8 +178,8 @@ export function evaluateGrid(
             totalWin: payout * currentWays
           });
         }
+      }
     }
-  }
   }
 
   if (gameType === 'linegame') {
