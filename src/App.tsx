@@ -4,7 +4,7 @@ import { SlotConsole } from './components/SlotConsole';
 import { MetricsDashboard } from './components/MetricsDashboard';
 import { useSimulation } from './hooks/useSimulation';
 import { BarChart3, X } from 'lucide-react';
-import type { GameType } from './types';
+import type { GameType, GameConfig } from './types';
 
 function App() {
   const { isRunning, progress, currentSpins, currentGrid, result, runSimulation } = useSimulation();
@@ -28,7 +28,15 @@ function App() {
   };
 
   const handleTestSpin = useCallback((strips: any[], paytable: any[], spins?: number, rows?: number[], paylines?: number[][]) => {
-    runSimulation(strips, paytable, spins, rows, gameType, paylines || customPaylines, coin, bet);
+    const config: GameConfig = {
+      gameType,
+      paylines: paylines || customPaylines,
+      effectiveBet: bet,
+      specialRules: {
+        derivativeSymbols: { 'B1': ['B2'] }
+      }
+    };
+    runSimulation(strips, paytable, spins, rows, config, coin, bet);
   }, [runSimulation, gameType, customPaylines, coin, bet]);
 
   const handleConfigSync = useCallback((strips: any[], paytable: any[]) => {
@@ -126,7 +134,15 @@ function App() {
                 totalSpins={result ? result.totalSpins : (isRunning ? Math.max(currentSpins, 100000) : 100000)}
                 hasData={currentStrips.length > 0 && currentStrips.every(strip => strip.length > 0)}
                 onRunSimulation={() => {
-                  runSimulation(currentStrips, currentPaytable, 100000, rowCounts, gameType, customPaylines, coin, bet);
+                  const config: GameConfig = {
+                    gameType,
+                    paylines: customPaylines,
+                    effectiveBet: bet,
+                    specialRules: {
+                      derivativeSymbols: { 'B1': ['B2'] }
+                    }
+                  };
+                  runSimulation(currentStrips, currentPaytable, 100000, rowCounts, config, coin, bet);
                 }}
                 reelCount={reelCount}
               />

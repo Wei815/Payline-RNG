@@ -109,7 +109,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({ result, isRu
                       {metric.symbolId}
                     </td>
                     {matchesToShow.map(match => {
-                      const hits = metric[`hits${match}`] || 0;
+                      const hits = (metric[`hits${match}` as keyof typeof metric] as number) || 0;
                       return (
                         <td key={match} className="px-4 py-3 text-right text-dashboard-text-secondary">
                           {hits.toLocaleString()}

@@ -10,6 +10,7 @@ export function useRngSearch(
   currentPaytable: PaytableRule[],
   gameType: GameType,
   topTrackerOther: string[],
+  specialSymbolConfig: import('../types').SpecialSymbolConfig,
   customPaylines?: number[][]
 ) {
   const [combinations, setCombinations] = useState<{
@@ -43,8 +44,10 @@ export function useRngSearch(
         const requiredTotal = totalGridCells * 2;
         
         // Get all available regular symbols (not target, not scatters) to fill the grid without wins
-        const excludeSymbols = selectedSymbol === 'B1/B2' ? ['B1', 'B2', 'WX', 'NI'] : [selectedSymbol, 'WX', 'NI'];
-        const nonScatters = currentPaytable.filter(p => !p.isScatter && !excludeSymbols.includes(p.symbolId)).map(p => p.symbolId);
+        const excludeSymbols = selectedSymbol === 'B1/B2' 
+          ? ['B1', 'B2', 'WX', 'NI', 'F1', 'F2', 'F3', 'F4', 'L1', 'L2'] 
+          : [selectedSymbol, 'WX', 'NI', 'F1', 'F2', 'F3', 'F4', 'L1', 'L2'];
+        const nonScatters = currentPaytable.filter(p => p.isEnabled !== false && !p.isScatter && !excludeSymbols.includes(p.symbolId)).map(p => p.symbolId);
         
         // Ensure nonScatters has symbols
         if (nonScatters.length > 0) {
@@ -77,10 +80,33 @@ export function useRngSearch(
               }
 
               let nsIdx = 0;
+              
+              const specialSymbolsToPlace: string[] = [];
+              if (specialSymbolConfig.s1Enabled && specialSymbolConfig.s1Count > 0) {
+                for(let i=0; i<specialSymbolConfig.s1Count; i++) specialSymbolsToPlace.push('S1');
+              }
+              if (specialSymbolConfig.s2Enabled && specialSymbolConfig.s2Count > 0) {
+                for(let i=0; i<specialSymbolConfig.s2Count; i++) specialSymbolsToPlace.push('S2');
+              }
+              if (specialSymbolConfig.multipliersEnabled) {
+                Object.entries(specialSymbolConfig.multiplierCounts).forEach(([key, count]) => {
+                  for(let i=0; i<count; i++) specialSymbolsToPlace.push(key); // e.g. "F1_2X"
+                });
+              }
+              if (specialSymbolConfig.luckyBallsEnabled) {
+                Object.entries(specialSymbolConfig.luckyCounts).forEach(([key, count]) => {
+                  for(let i=0; i<count; i++) specialSymbolsToPlace.push(key); // e.g. "L1_2X"
+                });
+              }
+
               for (let i = 0; i < requiredTotal; i++) {
                 if (grid[i] === '-') {
-                  grid[i] = nonScatters[nsIdx % nonScatters.length];
-                  nsIdx++;
+                  if (specialSymbolsToPlace.length > 0) {
+                    grid[i] = specialSymbolsToPlace.shift()!;
+                  } else {
+                    grid[i] = nonScatters[nsIdx % nonScatters.length];
+                    nsIdx++;
+                  }
                 }
               }
 
@@ -98,13 +124,22 @@ export function useRngSearch(
                 const colRows = rowCounts[c] || 3;
                 const colArr = [];
                 for (let r = 0; r < colRows; r++) {
-                  colArr.push(mathIdMap[grid[cellPointer]] || '0');
+                  colArr.push(mathIdMap[grid[cellPointer]] || grid[cellPointer]);
                   cellPointer++;
                 }
                 columnStrings.push(colArr.join(','));
               }
 
-              const fullMathIds = grid.map(s => mathIdMap[s] || '0');
+              const fullMathIds = grid.map(s => {
+                if (mathIdMap[s]) return mathIdMap[s];
+                if (s.includes('_') && s.match(/^[F|L][1-4]_/)) {
+                  if (s.startsWith('F')) return '15';
+                  if (s.startsWith('L')) return '19';
+                  const base = s.split('_')[0];
+                  return mathIdMap[base] || base;
+                }
+                return s;
+              });
 
               newCombs.push({
                 name: `B1*${target.b1}${target.b2 > 0 ? '+B2' : ''}`,
@@ -142,10 +177,32 @@ export function useRngSearch(
               // Fill the rest with distributed nonScatters to prevent wins (<8 occurrences globally)
               // Distribute evenly so no symbol exceeds 7.
               let nsIdx = 0;
+              const specialSymbolsToPlace: string[] = [];
+              if (specialSymbolConfig.s1Enabled && specialSymbolConfig.s1Count > 0 && selectedSymbol !== 'S1') {
+                for(let i=0; i<specialSymbolConfig.s1Count; i++) specialSymbolsToPlace.push('S1');
+              }
+              if (specialSymbolConfig.s2Enabled && specialSymbolConfig.s2Count > 0 && selectedSymbol !== 'S2') {
+                for(let i=0; i<specialSymbolConfig.s2Count; i++) specialSymbolsToPlace.push('S2');
+              }
+              if (specialSymbolConfig.multipliersEnabled) {
+                Object.entries(specialSymbolConfig.multiplierCounts).forEach(([key, count]) => {
+                  for(let i=0; i<count; i++) specialSymbolsToPlace.push(key);
+                });
+              }
+              if (specialSymbolConfig.luckyBallsEnabled) {
+                Object.entries(specialSymbolConfig.luckyCounts).forEach(([key, count]) => {
+                  for(let i=0; i<count; i++) specialSymbolsToPlace.push(key);
+                });
+              }
+
               for (let i = 0; i < requiredTotal; i++) {
                 if (grid[i] === '-') {
-                  grid[i] = nonScatters[nsIdx % nonScatters.length];
-                  nsIdx++;
+                  if (specialSymbolsToPlace.length > 0) {
+                    grid[i] = specialSymbolsToPlace.shift()!;
+                  } else {
+                    grid[i] = nonScatters[nsIdx % nonScatters.length];
+                    nsIdx++;
+                  }
                 }
               }
 
@@ -166,7 +223,7 @@ export function useRngSearch(
                 const colRows = rowCounts[c] || 3;
                 const colArr = [];
                 for (let r = 0; r < colRows; r++) {
-                  colArr.push(mathIdMap[grid[cellPointer]] || '0');
+                  colArr.push(mathIdMap[grid[cellPointer]] || grid[cellPointer]);
                   cellPointer++;
                 }
                 columnStrings.push(colArr.join(','));
@@ -174,7 +231,22 @@ export function useRngSearch(
 
               // Also attach the full 60-array MathIDs for the clipboard copying in SlotGeneratorTab
               // We use a custom object format in rng array for this specific case
-              const fullMathIds = grid.map(s => mathIdMap[s] || '0');
+              const fullMathIds = grid.map(s => {
+                if (mathIdMap[s]) return mathIdMap[s];
+                if (s.includes('_') && s.match(/^[F|L][1-4]_/)) {
+                  if (s.startsWith('F')) return '15';
+                  if (s.startsWith('L')) return '19';
+                  const base = s.split('_')[0];
+                  return mathIdMap[base] || base;
+                }
+                return s;
+              });
+
+              const dropMathIds = [];
+              for (let i = 0; i < 50; i++) {
+                const sym = nonScatters[Math.floor(Math.random() * nonScatters.length)];
+                dropMathIds.push(mathIdMap[sym] || sym);
+              }
 
               newCombs.push({
                 name: gameType === 'payanywhere_set2' 
@@ -185,8 +257,9 @@ export function useRngSearch(
                 rng: columnStrings as any, // Visual columns
                 isInterfered: false
               });
-              // Attach the fullMathIds array to the comb object dynamically
+              // Attach the arrays to the comb object dynamically
               (newCombs[newCombs.length - 1] as any).fullMathIds = fullMathIds;
+              (newCombs[newCombs.length - 1] as any).dropMathIds = dropMathIds;
             }
           }
         }
@@ -235,7 +308,7 @@ export function useRngSearch(
     }, 50);
 
     return () => clearTimeout(timer);
-  }, [selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther, customPaylines]);
+  }, [selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther, specialSymbolConfig, customPaylines]);
 
   return { isSearching, combinations };
 }

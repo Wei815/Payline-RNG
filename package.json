@@ -1,5 +1,6 @@
 {
-  "name": "temp-app",
+  "name": "payline-rng",
+  "description": "A high-performance slot math RNG evaluation and simulation engine.",
   "private": true,
   "version": "0.0.0",
   "type": "module",

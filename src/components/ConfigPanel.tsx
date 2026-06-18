@@ -134,7 +134,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
               name: sym,
               payouts: { match2: 0, match3: 0, match4: 0, match5: 0, match6: 0 },
               isWild: sym.toUpperCase().includes('W') || sym.toUpperCase().includes('WILD'),
-              isScatter: sym.toUpperCase().includes('S') || sym.toUpperCase().includes('SCATTER')
+              isScatter: sym.toUpperCase().includes('S') || sym.toUpperCase().includes('SCATTER'),
+              isEnabled: true
             };
             changed = true;
           }
@@ -162,10 +163,10 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
           }
         }
       }
-      let finalPaytable = uniqueSymbols.map(sym => paytableMap[sym]).filter(Boolean);
+      let finalPaytable = uniqueSymbols.map(sym => paytableMap[sym]).filter(r => r && r.isEnabled !== false);
       // For games without strips (like payanywhere_set2), pass all defined rules
       if (finalPaytable.length === 0 && Object.keys(paytableMap).length > 0) {
-        finalPaytable = Object.values(paytableMap);
+        finalPaytable = Object.values(paytableMap).filter(r => r.isEnabled !== false);
       }
       onConfigSync(parsedStrips, finalPaytable);
     } catch {
@@ -347,7 +348,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
         throw new Error(`R${emptyReels + 1} 沒有任何資料，請檢查表格內容。`);
       }
 
-      const finalPaytable = uniqueSymbols.map(sym => paytableMap[sym]).filter(Boolean);
+      const finalPaytable = uniqueSymbols.map(sym => paytableMap[sym]).filter(r => r && r.isEnabled !== false);
 
       onTestSpin(parsedStrips, finalPaytable, 50, rowCounts, customPaylines);
     } catch (e: any) {
@@ -359,7 +360,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
     bases: string[],
     title: string,
     getSym: (base: string) => string | undefined,
-    bgColor: string
+    bgColor: string,
+    groupId: string
   ) => {
     return (
       <React.Fragment>
@@ -402,15 +404,22 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
           })}
         </tr>
 
-        {Array.from({ length: reelCount - 1 }, (_, i) => reelCount - i).map(match => {
-          let labelText = String(match);
-          if (gameType === 'payanywhere' || gameType === 'payanywhere_set2') {
-            if (match === 6) labelText = '6';
-            else if (match === 5) labelText = '12+ (S:5)';
-            else if (match === 4) labelText = '10-11 (S:4)';
-            else if (match === 3) labelText = '8-9 (S:3)';
-            else if (match === 2) labelText = '<8';
+        {(() => {
+          let matchesToRender: number[] = [];
+          if (groupId === 'mnum' || groupId === 'mlet') {
+            matchesToRender = [5, 4, 3];
+          } else {
+            matchesToRender = [6, 5, 4, 3];
           }
+
+          return matchesToRender.map(match => {
+            let labelText = String(match);
+            if (groupId === 'mnum' || groupId === 'mlet') {
+              if (match === 5) labelText = '12+';
+              else if (match === 4) labelText = '10-11';
+              else if (match === 3) labelText = '8-9';
+            }
+
           return (
             <tr key={match} className={`hover:bg-[#1a2b4c] transition-colors ${bgColor}`}>
               <td className="border-r border-b border-gray-700 p-2 font-bold text-dashboard-text-secondary bg-[#0f1d35] shadow-sm">
@@ -451,7 +460,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
               })}
             </tr>
           );
-        })}
+          });
+        })()}
       </React.Fragment>
     );
   };
@@ -639,18 +649,37 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
                   return parseId(a.mathId) - parseId(b.mathId);
                 }).map(rule => (
                   <div key={rule.symbolId} className="flex items-center gap-3">
-                    <span className="text-xs font-bold w-14 text-right text-dashboard-accent shrink-0">{rule.symbolId}</span>
+                    <span className={`text-xs font-bold w-14 text-right shrink-0 ${rule.isEnabled !== false ? 'text-dashboard-accent' : 'text-gray-500'}`}>{rule.symbolId}</span>
                     <input
                       type="text"
                       placeholder="e.g. 15,16,17"
                       value={rule.mathId !== undefined ? rule.mathId : ''}
+                      disabled={rule.isEnabled === false}
                       onChange={(e) => {
                         const newMap = { ...paytableMap };
                         newMap[rule.symbolId] = { ...rule, mathId: e.target.value };
                         setPaytableMap(newMap);
                       }}
-                      className="flex-1 bg-[#112240] border border-gray-600 rounded px-3 py-1.5 text-xs text-white outline-none focus:border-dashboard-accent transition-colors"
+                      className={`flex-1 border rounded px-3 py-1.5 text-xs outline-none transition-colors ${
+                        rule.isEnabled !== false 
+                          ? 'bg-[#112240] border-gray-600 text-white focus:border-dashboard-accent' 
+                          : 'bg-gray-800/50 border-gray-700/50 text-gray-500 cursor-not-allowed'
+                      }`}
                     />
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-medium text-gray-400 hover:text-white transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={rule.isEnabled !== false}
+                        onChange={(e) => {
+                          const newMap = { ...paytableMap };
+                          newMap[rule.symbolId] = { ...rule, isEnabled: e.target.checked };
+                          setPaytableMap(newMap);
+                        }}
+                        className="accent-dashboard-accent w-4 h-4 cursor-pointer"
+                        title="是否啟用該符號 (取消勾選將完全排除此符號)"
+                      />
+                      啟用
+                    </label>
                   </div>
                 ))}
               </div>
@@ -848,8 +877,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-800/50">
-                            {renderRowGroup(group.bases, 'Base\\Free', (base) => rowBlocks[0][base], 'bg-blue-900/10')}
-                            {hasWilds && renderRowGroup(group.bases, 'Wilds', (base) => rowBlocks[1][base] || rowBlocks[2][base], 'bg-purple-900/10')}
+                            {renderRowGroup(group.bases, 'Base\\Free', (base) => rowBlocks[0][base], 'bg-blue-900/10', group.id)}
+                            {hasWilds && renderRowGroup(group.bases, 'Wilds', (base) => rowBlocks[1][base] || rowBlocks[2][base], 'bg-purple-900/10', group.id)}
                           </tbody>
                         </table>
                       </div>

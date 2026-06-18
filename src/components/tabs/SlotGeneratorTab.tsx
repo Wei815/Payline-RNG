@@ -3,6 +3,7 @@ import type { GameType } from '../../types';
 import type { SVGPathResult } from '../../utils/slotUtils';
 import { formatAmount } from '../../utils/slotUtils';
 import type { WinResult } from '../../utils/evaluation';
+import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
 
 export interface SlotGeneratorTabProps {
   gridContainerRefOther: React.RefObject<HTMLDivElement | null>;
@@ -26,6 +27,8 @@ export interface SlotGeneratorTabProps {
   groupedSymbols: { id: string, title: string, list: string[] }[];
   parsePasteRng: (text: string, count: number) => string[] | null;
   isRunning: boolean;
+  specialSymbolConfig: import('../../types').SpecialSymbolConfig;
+  setSpecialSymbolConfig: React.Dispatch<React.SetStateAction<import('../../types').SpecialSymbolConfig>>;
 }
 
 export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
@@ -33,21 +36,34 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
   manualIndicesOther, setManualIndicesOther, topTrackerOther, setTopTrackerOther,
   gameType, displayGridOther, winningCoordsOther, winsOther, betMultiplier,
   isSearching, combinations, selectedSymbol, setSelectedSymbol,
-  groupedSymbols, parsePasteRng, isRunning
+  groupedSymbols, parsePasteRng, isRunning,
+  specialSymbolConfig, setSpecialSymbolConfig
 }) => {
   const [noWinCollapsed, setNoWinCollapsed] = useState(false);
   const [pulseToggle, setPulseToggle] = useState(false);
+  const [selectedCombIndex, setSelectedCombIndex] = useState(0);
 
   const coordsString = useMemo(() => Array.from(winningCoordsOther).sort().join(','), [winningCoordsOther]);
   useEffect(() => {
     setPulseToggle(p => !p);
   }, [coordsString]);
 
+  useEffect(() => {
+    if (!isSearching && combinations.length > 0) {
+      const targetIdx = selectedCombIndex < combinations.length ? selectedCombIndex : 0;
+      const comb = combinations[targetIdx];
+      if (comb && comb.rng) {
+        setManualIndicesOther(comb.rng.map((val: any) => String(val)));
+      }
+    }
+  }, [combinations, isSearching, setManualIndicesOther, selectedCombIndex]);
+
   const pulseClass = pulseToggle ? 'animate-sync-pulse-1' : 'animate-sync-pulse-2';
 
   return (
-    <>
-      <div className="flex-1 flex flex-col items-center justify-center gap-6">
+    <div className="w-full flex flex-col lg:flex-row gap-6 items-start justify-center">
+      {/* Left Column: Generator controls and visualization */}
+      <div className="flex-1 flex flex-col items-center justify-center gap-6 w-full lg:max-w-3xl">
 
         {/* Symbol Selector */}
         <div className="flex items-center justify-between bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 w-full max-w-3xl">
@@ -58,15 +74,19 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
               onChange={(e) => setSelectedSymbol(e.target.value)}
               className="bg-[#112240] border border-gray-600 text-dashboard-text-primary rounded px-3 py-1.5 outline-none focus:border-dashboard-accent text-sm cursor-pointer font-bold"
             >
-              {groupedSymbols.map(group => (
-                <optgroup key={group.id} label={group.title} className="bg-[#0a192f] text-dashboard-accent font-bold text-xs">
-                  {group.list.map(sym => (
-                    <option key={sym} value={sym} className="bg-[#112240] text-dashboard-text-primary font-normal text-sm">
-                      {sym}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
+              {groupedSymbols.map(group => {
+                const filteredList = group.list.filter(sym => !['S1', 'S2', 'F1', 'L1'].includes(sym));
+                if (filteredList.length === 0) return null;
+                return (
+                  <optgroup key={group.id} label={group.title} className="bg-[#0a192f] text-dashboard-accent font-bold text-xs">
+                    {filteredList.map(sym => (
+                      <option key={sym} value={sym} className="bg-[#112240] text-dashboard-text-primary font-normal text-sm">
+                        {sym}
+                      </option>
+                    ))}
+                  </optgroup>
+                );
+              })}
             </select>
           </div>
           <span className="text-xs text-dashboard-text-secondary">
@@ -91,20 +111,23 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                 key={idx}
                 disabled={!comb.rng || isSearching}
                 onClick={() => {
+                  setSelectedCombIndex(idx);
                   if (comb.rng) {
                     setManualIndicesOther(comb.rng.map((val: any) => String(val)));
                     if (gameType === 'payanywhere_set2' && comb.fullMathIds) {
-                      const initStr = `初始:\n${comb.fullMathIds.slice(0, 30).join(',')}`;
+                      const initStr = `[${comb.fullMathIds.slice(0, 30).join(',')}],`;
                       let finalCopy = initStr;
                       if (comb.length >= 8) {
-                        const dropStr = `\n遞補:\n${comb.fullMathIds.slice(30).join(',')}`;
+                        const dropStr = `\n[${comb.fullMathIds.slice(30).join(',')}],`;
                         finalCopy += dropStr;
                       }
                       navigator.clipboard.writeText(finalCopy);
                     }
                   }
                 }}
-                className={`flex justify-between items-center px-4 py-2.5 rounded border text-left transition-all ${comb.rng
+                className={`flex justify-between items-center px-4 py-2.5 rounded border text-left transition-all ${
+                  selectedCombIndex === idx ? 'ring-1 ring-[#64ffda] ' : ''
+                }${comb.rng
                     ? comb.isInterfered
                       ? 'bg-[#112240] border-orange-500/40 hover:border-orange-500 text-dashboard-text-primary cursor-pointer'
                       : 'bg-[#112240] border-gray-700/50 hover:border-dashboard-accent hover:bg-[#112240]/80 text-dashboard-text-primary cursor-pointer'
@@ -119,16 +142,16 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                     }`}>
                     {gameType === 'payanywhere_set2' ? (
                       <div className="flex flex-col gap-0.5 mt-0.5 max-w-[140px] sm:max-w-[200px]">
-                        <span className="text-[#64ffda] leading-tight truncate" title={`初始: [${comb.fullMathIds?.slice(0, 30).join(',')}]`}>
-                          初始: [{comb.fullMathIds?.slice(0, 30).join(',')}]
+                        <span className="text-[#64ffda] leading-tight truncate" title={`[${comb.fullMathIds?.slice(0, 30).join(',')}]`}>
+                          [{comb.fullMathIds?.slice(0, 30).join(',')}],
                         </span>
                         {comb.length >= 8 ? (
-                          <span className="text-[#64ffda] leading-tight opacity-75 truncate" title={`遞補: [${comb.fullMathIds?.slice(30).join(',')}]`}>
-                            遞補: [{comb.fullMathIds?.slice(30).join(',')}] (自動複製)
+                          <span className="text-[#64ffda] leading-tight opacity-75 truncate" title={`[${comb.fullMathIds?.slice(30).join(',')}]`}>
+                            [{comb.fullMathIds?.slice(30).join(',')}], (自動複製)
                           </span>
                         ) : (
                           <span className="text-gray-400 leading-tight opacity-75 text-[10px] truncate">
-                            無消除，不產生遞補 (自動複製)
+                            無消除 (自動複製)
                           </span>
                         )}
                       </div>
@@ -149,9 +172,9 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
 
         {/* Controls */}
         <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-3 rounded-lg border border-gray-700/50 shadow-inner gap-3">
-          <div className="flex justify-between items-center border-b border-gray-700/50 pb-2">
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-dashboard-text-secondary font-bold pl-2">Reel Settings (單一連線測試)</span>
+          <div className="flex justify-between items-start border-b border-gray-700/50 pb-3">
+            <div className="flex flex-col gap-2 shrink-0 min-w-[200px]">
+              <span className="text-sm text-dashboard-text-secondary font-bold pl-1">Reel Settings (單一連線測試)</span>
               <input
                 type="text"
                 placeholder="貼上 RNG 數組..."
@@ -164,68 +187,149 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                     e.target.value = '';
                   }
                 }}
-                className="bg-[#112240] border border-gray-700 text-yellow-400 rounded px-2 py-0.5 outline-none focus:border-yellow-500 text-xs w-40 placeholder:text-gray-600 font-mono"
+                className="bg-[#112240] border border-gray-700 text-yellow-400 rounded px-2 py-1 outline-none focus:border-yellow-500 text-xs w-full placeholder:text-gray-600 font-mono"
               />
             </div>
-            <div className="flex items-center gap-2 bg-[#112240] px-2 py-1 rounded border border-gray-700/30">
-              <span className="text-xs text-gray-400 font-bold">RNG:</span>
-              <code className="text-xs text-yellow-400 font-mono truncate max-w-[150px] sm:max-w-[300px]" title={`[${manualIndicesOther.map(i => i === '' ? '0' : i).join(',')}]`}>
-                [{manualIndicesOther.map(i => i === '' ? '0' : i).join(',')}],
-              </code>
-              <button
-                onClick={() => {
-                  const text = `[${manualIndicesOther.map(i => i === '' ? '0' : i).join(',')}],`;
-                  navigator.clipboard.writeText(text);
-                }}
-                className="text-xs font-bold bg-[#0a192f] text-dashboard-accent border border-dashboard-accent/50 px-2 py-0.5 rounded hover:bg-dashboard-accent hover:text-[#0a192f] transition-colors ml-1 cursor-pointer"
-              >
-                COPY
-              </button>
+            <div className="flex flex-col gap-1 items-end flex-1 pl-4">
+              <div className="flex items-center gap-2 bg-[#112240] px-2 py-1 rounded border border-gray-700/30 w-full justify-between">
+                <span className="text-xs text-gray-400 font-bold shrink-0">RNG:</span>
+                {(() => {
+                  let formattedRngArray: string[] = [];
+                  const targetComb = combinations[selectedCombIndex < combinations.length ? selectedCombIndex : 0];
+                  
+                  if (gameType === 'payanywhere_set2' && targetComb?.fullMathIds) {
+                    // base array is just the first 30 (or whatever totalCells is)
+                    formattedRngArray = targetComb.fullMathIds.slice(0, 30).map((id: number) => String(id));
+                  } else {
+                    formattedRngArray = manualIndicesOther.map(colStr => {
+                      return colStr.split(',').map(cell => {
+                        const i = cell.trim();
+                        if (i === '') return '0';
+                        if (i.includes('_') && i.match(/^[F|L][1-4]_/)) {
+                          if (i.startsWith('F')) return '15';
+                          if (i.startsWith('L')) return '19';
+                          return i.split('_')[0];
+                        }
+                        return i;
+                      }).join(',');
+                    });
+                  }
+                  
+                  const rngString = `[${formattedRngArray.join(',')}],`;
+                  
+                  // Calculate exact drops needed for first tumble
+                  const dropLength = winningCoordsOther.size;
+                  let dropString = '';
+                  if (gameType === 'payanywhere_set2' && targetComb?.dropMathIds && dropLength > 0) {
+                    const dropArr = targetComb.dropMathIds.slice(0, dropLength).map((id: number) => String(id));
+                    dropString = `[${dropArr.join(',')}],`;
+                  }
+
+                  return (
+                    <div className="flex flex-col gap-1 w-full">
+                      <div className="flex items-center gap-1 w-full justify-between">
+                        <code className="text-xs text-yellow-400 font-mono truncate max-w-[150px] sm:max-w-[300px]" title={rngString}>
+                          {rngString}
+                        </code>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(rngString)}
+                          className="text-[10px] font-bold bg-[#0a192f] text-dashboard-accent border border-dashboard-accent/50 px-1.5 py-0.5 rounded hover:bg-dashboard-accent hover:text-[#0a192f] transition-colors shrink-0 cursor-pointer"
+                        >
+                          COPY
+                        </button>
+                      </div>
+                      {dropString && (
+                        <div className="flex items-center gap-1 w-full justify-between mt-0.5 pt-1 border-t border-gray-700/50">
+                          <span className="text-xs text-gray-400 font-bold shrink-0">遞補:</span>
+                          <code className="text-xs text-[#64ffda] font-mono truncate max-w-[120px] sm:max-w-[250px]" title={dropString}>
+                            {dropString}
+                          </code>
+                          <button
+                            onClick={() => navigator.clipboard.writeText(dropString)}
+                            className="text-[10px] font-bold bg-[#0a192f] text-[#64ffda] border border-[#64ffda]/50 px-1.5 py-0.5 rounded hover:bg-[#64ffda] hover:text-[#0a192f] transition-colors shrink-0 cursor-pointer"
+                          >
+                            COPY
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {(() => {
+                const classIdsArray: number[] = [];
+                manualIndicesOther.forEach(colStr => {
+                  colStr.split(',').forEach(cell => {
+                    const i = cell.trim();
+                    if (i.includes('_') && i.match(/^[F|L][1-4]_/)) {
+                      const val = parseInt(i.split('_')[1].replace('X', ''), 10);
+                      if (!isNaN(val)) classIdsArray.push(val);
+                    }
+                  });
+                });
+                
+                if (classIdsArray.length === 0) return null;
+                
+                const classIdsString = `[${classIdsArray.join(',')}],`;
+                return (
+                  <div className="flex items-center gap-2 bg-[#112240] px-2 py-1 rounded border border-gray-700/30 w-full justify-between">
+                    <span className="text-xs text-gray-400 font-bold shrink-0">ClassIDs:</span>
+                    <div className="flex items-center gap-1 overflow-hidden">
+                      <code className="text-xs text-purple-400 font-mono truncate max-w-[150px] sm:max-w-[300px]" title={classIdsString}>
+                        {classIdsString}
+                      </code>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(classIdsString)}
+                        className="text-[10px] font-bold bg-[#0a192f] text-purple-400 border border-purple-400/50 px-1.5 py-0.5 rounded hover:bg-purple-400 hover:text-[#0a192f] transition-colors shrink-0 cursor-pointer"
+                      >
+                        COPY
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
-          <div className="flex flex-nowrap justify-center gap-1.5 w-full">
+          <div className="flex flex-nowrap justify-center gap-2 w-full">
             {rowCounts.slice(0, reelCount).map((rows, idx) => (
-              <div key={idx} className="flex flex-col items-center gap-1.5 p-2 bg-[#112240] rounded-md border border-gray-700/50 shadow-sm hover:border-gray-600 transition-colors flex-1 min-w-[65px] max-w-[110px]">
-                <span className="text-xs text-dashboard-accent font-mono font-bold mb-0.5">R{idx + 1}</span>
-                <div className="flex flex-col gap-1.5 w-full">
-                  <div className="flex items-center justify-between gap-1 w-full">
-                    <span className="text-xs text-gray-400 shrink-0">Rows</span>
-                    <select
-                      value={rows}
+              <div key={idx} className="flex flex-col justify-center items-center gap-1.5 py-2 px-2 bg-[#112240] rounded-md border border-gray-700/50 shadow-sm hover:border-gray-600 transition-colors flex-1 min-w-[70px] max-w-[100px]">
+                <div className="flex items-center gap-1 mb-0.5">
+                  <span className="text-[11px] text-dashboard-accent font-mono font-bold">R{idx + 1}</span>
+                  <span className="text-[10px] text-gray-400">Rows</span>
+                </div>
+                <select
+                  value={rows}
+                  onChange={(e) => {
+                    const newCounts = [...rowCounts];
+                    newCounts[idx] = Number(e.target.value);
+                    onRowCountsChange(newCounts);
+                  }}
+                  disabled={isRunning}
+                  className="bg-[#0a192f] border border-gray-600 text-dashboard-text-primary rounded px-1 py-0.5 outline-none focus:border-dashboard-accent text-[11px] cursor-pointer appearance-none text-center w-full"
+                >
+                  {[2, 3, 4, 5, 6, 7, 8].map(n => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+                {gameType !== 'payanywhere_set2' && (
+                  <div className="flex items-center justify-between gap-1 w-full mt-1">
+                    <span className="text-[10px] text-gray-400 shrink-0">Line</span>
+                    <input
+                      type="text"
+                      placeholder="-"
+                      value={manualIndicesOther[idx]}
                       onChange={(e) => {
-                        const newCounts = [...rowCounts];
-                        newCounts[idx] = Number(e.target.value);
-                        onRowCountsChange(newCounts);
+                        const val = e.target.value.replace(/\D/g, ''); // Only allow digits
+                        const newIndices = [...manualIndicesOther];
+                        newIndices[idx] = val;
+                        setManualIndicesOther(newIndices);
                       }}
                       disabled={isRunning}
-                      className="bg-[#0a192f] border border-gray-600 text-dashboard-text-primary rounded px-0.5 py-0.5 outline-none focus:border-dashboard-accent text-xs cursor-pointer appearance-none text-center w-full max-w-[45px]"
-                    >
-                      {[2, 3, 4, 5, 6, 7, 8].map(n => (
-                        <option key={n} value={n}>{n}</option>
-                      ))}
-                    </select>
+                      className="w-full bg-[#0a192f] border border-gray-600 text-yellow-400 rounded px-1 py-0.5 outline-none focus:border-yellow-500 text-[11px] text-center"
+                    />
                   </div>
-                  {gameType !== 'payanywhere_set2' ? (
-                    <div className="flex items-center justify-between gap-1 w-full">
-                      <span className="text-xs text-gray-400 shrink-0">Line</span>
-                      <input
-                        type="text"
-                        placeholder="-"
-                        value={manualIndicesOther[idx]}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, ''); // Only allow digits
-                          const newIndices = [...manualIndicesOther];
-                          newIndices[idx] = val;
-                          setManualIndicesOther(newIndices);
-                        }}
-                        disabled={isRunning}
-                        className="w-full max-w-[45px] bg-[#0a192f] border border-gray-600 text-yellow-400 rounded px-0.5 py-0.5 outline-none focus:border-yellow-500 text-xs text-center"
-                      />
-                    </div>
-                  ) : (
-                    <div className="h-[24px] w-full" />
-                  )}
-                </div>
+                )}
               </div>
             ))}
           </div>
@@ -333,6 +437,17 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                       }
                     }
 
+                    let customBg = '';
+                    let displaySymbol = symbol;
+                    if (symbol.includes('_') && symbol.match(/^[F|L][1-4]_/)) {
+                      const [ballId, val] = symbol.split('_');
+                      displaySymbol = val;
+                      const ball = [...MULTIPLIER_BALLS, ...LUCKY_BALLS].find(b => b.id === ballId);
+                      if (ball) {
+                        customBg = `bg-[#0a192f] border ${ball.border} ${ball.color}`;
+                      }
+                    }
+
                     return (
                       <div
                         key={`${colIndex}-${rowIndex}`}
@@ -341,7 +456,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                           w-20 h-20 rounded-lg flex items-center justify-center text-xl font-bold
                           shadow-lg transform relative
                           ${!isWinning && 'transition-all duration-300'}
-                          ${symbol === '-' ? 'bg-[#0a192f] text-gray-700 border-2 border-gray-800 border-dashed' :
+                          ${customBg ? customBg :
+                            symbol === '-' ? 'bg-[#0a192f] text-gray-700 border-2 border-gray-800 border-dashed' :
                             symbol === 'WILD' || symbol.startsWith('W') || symbol === 'WX' ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border border-yellow-300' :
                               symbol === 'SCATTER' ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border border-pink-300' :
                                 'bg-[#112240] text-dashboard-text-primary border border-dashboard-accent/30'}
@@ -349,18 +465,27 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                             ? isNoPayoutWin
                               ? `bg-orange-500 text-white scale-105 shadow-[0_0_15px_rgba(249,115,22,0.8)] border border-orange-300 z-10 ${pulseClass}`
                               : `bg-dashboard-accent text-[#0a192f] scale-105 shadow-[0_0_15px_rgba(100,255,218,0.5)] z-10 ${pulseClass}`
-                            : hasAnyWin
+                            : hasAnyWin && !customBg
                               ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]'
                               : ''}
                         `}
                       >
                         <div className="flex flex-col items-center justify-center">
-                          <span>{symbol}</span>
-                          {gameType === 'payanywhere_set2' && manualIndicesOther[colIndex] && (
-                            <span className="text-[10px] text-gray-500 font-mono mt-1 leading-none font-normal">
-                              ID:{manualIndicesOther[colIndex].split(',')[rowIndex] || '-'}
-                            </span>
-                          )}
+                          <span>{displaySymbol}</span>
+                          {gameType === 'payanywhere_set2' && manualIndicesOther[colIndex] && (() => {
+                            const rawId = manualIndicesOther[colIndex].split(',')[rowIndex] || '-';
+                            let displayId = rawId;
+                            if (rawId.includes('_') && rawId.match(/^[F|L][1-4]_/)) {
+                              if (rawId.startsWith('F')) displayId = '15';
+                              else if (rawId.startsWith('L')) displayId = '19';
+                              else displayId = rawId.split('_')[0];
+                            }
+                            return (
+                              <span className="text-[10px] text-gray-500 font-mono mt-1 leading-none font-normal">
+                                ID:{displayId}
+                              </span>
+                            );
+                          })()}
                         </div>
                       </div>
                     );
@@ -411,12 +536,40 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                   }) : (
                     <div className="py-3 text-center text-xs text-gray-600">—</div>
                   )}
-                  {winHits.length > 0 && (
-                    <div className="mt-1 pt-2 border-t border-dashboard-accent/20 flex justify-between items-center px-1">
-                      <span className="text-white font-bold text-xs">Total Win</span>
-                      <span className="text-dashboard-accent font-bold text-lg">{formatAmount(winHits.reduce((sum, w) => sum + w.totalWin, 0) * betMultiplier)}</span>
-                    </div>
-                  )}
+                  {winHits.length > 0 && (() => {
+                    let globalMultiplier = 0;
+                    displayGridOther.forEach(col => {
+                      col.forEach(sym => {
+                        if (sym.includes('_') && sym.match(/^F[1-4]_/)) {
+                          const valStr = sym.split('_')[1];
+                          const num = parseInt(valStr.replace('X', ''), 10);
+                          if (!isNaN(num)) globalMultiplier += num;
+                        }
+                      });
+                    });
+                    const finalMultiplier = globalMultiplier > 0 ? globalMultiplier : 1;
+                    const baseTotalWin = winHits.reduce((sum, w) => sum + w.totalWin, 0) * betMultiplier;
+                    const grandTotalWin = baseTotalWin * finalMultiplier;
+                    
+                    return (
+                      <div className="mt-1 pt-2 border-t border-dashboard-accent/20 flex flex-col gap-1 px-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-gray-400 font-bold text-xs">Base Win</span>
+                          <span className="text-gray-300 font-bold text-sm">{formatAmount(baseTotalWin)}</span>
+                        </div>
+                        {globalMultiplier > 0 && (
+                          <div className="flex justify-between items-center">
+                            <span className="text-[#64ffda] font-bold text-xs">Total Multiplier</span>
+                            <span className="text-[#64ffda] font-bold text-sm">x{globalMultiplier}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center mt-1">
+                          <span className="text-white font-bold text-sm">Total Win</span>
+                          <span className="text-dashboard-accent font-bold text-lg">{formatAmount(grandTotalWin)}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* 分隔線 */}
@@ -464,6 +617,190 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
         </div>
 
       </div>
-    </>
+
+      {/* Right Column: Special Symbol & Multiplier Config */}
+      <div className="w-full lg:w-[480px] shrink-0 bg-[#0a192f] p-5 rounded-lg border border-gray-700/50 flex flex-col gap-4">
+        <span className="text-base font-bold text-dashboard-text-secondary border-b border-gray-700/50 pb-2 mb-1">特殊符號與倍數球配置</span>
+        
+        <div className="flex flex-col gap-4 p-4 bg-[#112240] rounded border border-gray-700/50">
+          <div className="flex flex-wrap gap-5 items-center">
+            <label className="flex items-center gap-2.5 cursor-pointer hover:opacity-90">
+              <input type="checkbox" className="accent-dashboard-accent w-4 h-4" checked={specialSymbolConfig.s1Enabled}
+                onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, s1Enabled: e.target.checked }))} />
+              <span className="text-sm font-semibold text-white">啟用 S1</span>
+            </label>
+            {specialSymbolConfig.s1Enabled && (
+              <select className="bg-[#0a192f] text-xs text-white border border-gray-600 rounded px-2.5 py-1.5 outline-none focus:border-dashboard-accent cursor-pointer"
+                value={specialSymbolConfig.s1Count} onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, s1Count: Number(e.target.value) }))}>
+                {[0, 1, 2, 3].map(n => (
+                  <option key={n} value={n} className="bg-[#112240] text-white">
+                    {n} 個
+                  </option>
+                ))}
+              </select>
+            )}
+            <div className="w-px h-5 bg-gray-600 mx-1"></div>
+            <label className="flex items-center gap-2.5 cursor-pointer hover:opacity-90">
+              <input type="checkbox" className="accent-dashboard-accent w-4 h-4" checked={specialSymbolConfig.s2Enabled}
+                onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, s2Enabled: e.target.checked }))} />
+              <span className="text-sm font-semibold text-white">啟用 S2</span>
+            </label>
+            {specialSymbolConfig.s2Enabled && (
+              <select className="bg-[#0a192f] text-xs text-white border border-gray-600 rounded px-2.5 py-1.5 outline-none focus:border-dashboard-accent cursor-pointer"
+                value={specialSymbolConfig.s2Count} onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, s2Count: Number(e.target.value) }))}>
+                {[0, 1, 2, 3].map(n => (
+                  <option key={n} value={n} className="bg-[#112240] text-white">
+                    {n} 個
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          
+            <div className="flex flex-col gap-3 mt-2 pt-4 border-t border-gray-700/50">
+              <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-dashboard-accent/20">
+                <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">
+                  <input type="checkbox" className="accent-dashboard-accent w-5 h-5" checked={specialSymbolConfig.multipliersEnabled}
+                    onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, multipliersEnabled: e.target.checked }))} />
+                  <span className="text-base font-bold text-dashboard-accent">啟用倍數球 (F1~F4)</span>
+                </label>
+                {specialSymbolConfig.multipliersEnabled && (() => {
+                  const total = Object.values(specialSymbolConfig.multiplierCounts).reduce((a, b) => a + b, 0);
+                  return (
+                    <div className="flex items-center gap-3 mr-1">
+                      <span className={`text-sm ${total === 6 ? 'text-dashboard-accent font-bold' : 'text-gray-300 font-bold'}`}>總數: {total}/6 (最多可選 6 顆)</span>
+                      {total > 0 && (
+                        <button
+                          onClick={() => setSpecialSymbolConfig(prev => ({ ...prev, multiplierCounts: {} }))}
+                          className="text-xs font-bold px-2 py-1 rounded border border-red-500/40 text-red-400 hover:bg-red-500/20 hover:border-red-500 transition-colors shadow-sm"
+                        >
+                          重置歸零
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+              
+              {specialSymbolConfig.multipliersEnabled && (() => {
+                const totalMultipliers = Object.values(specialSymbolConfig.multiplierCounts).reduce((a, b) => a + b, 0);
+                return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                  {MULTIPLIER_BALLS.map(ball => (
+                    <div key={ball.id} className={`flex flex-col gap-3 p-4 rounded-lg border-2 bg-[#0a192f] ${ball.border} shadow-lg relative overflow-hidden`}>
+                      <div className={`absolute top-0 right-0 w-16 h-16 opacity-10 rounded-bl-full ${ball.color.replace('text-', 'bg-')}`}></div>
+                      <span className={`text-sm font-bold ${ball.color}`}>{ball.name}</span>
+                      <div className="flex flex-wrap gap-2 relative z-10">
+                        {ball.values.map(val => {
+                          const key = `${ball.id}_${val}X`;
+                          const count = specialSymbolConfig.multiplierCounts[key] || 0;
+                          return (
+                            <div key={val} className={`flex items-center gap-2 bg-[#112240] rounded-md px-3 py-1.5 border transition-colors ${count > 0 ? 'border-[#64ffda] shadow-[0_0_8px_rgba(100,255,218,0.2)]' : 'border-gray-700/50 hover:border-gray-500'}`}>
+                              <span className={`text-sm w-8 text-right font-bold ${count > 0 ? 'text-[#64ffda]' : 'text-gray-300'}`}>{val}X</span>
+                              <select className="bg-transparent text-sm text-white outline-none cursor-pointer border-none font-bold"
+                                value={count}
+                                onChange={(e) => {
+                                const num = Number(e.target.value);
+                                if (totalMultipliers + (num - count) > 6) return;
+                                setSpecialSymbolConfig(prev => {
+                                  const next = { ...prev, multiplierCounts: { ...prev.multiplierCounts, [key]: num } };
+                                  if (num === 0) delete next.multiplierCounts[key];
+                                  return next;
+                                });
+                              }}>
+                              {[0, 1, 2, 3, 4, 5, 6].map(n => {
+                                const wouldExceed = totalMultipliers + (n - count) > 6;
+                                return (
+                                  <option key={n} value={n} disabled={wouldExceed} className={`bg-[#112240] ${wouldExceed ? 'text-gray-600' : 'text-white'}`}>
+                                    {n}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+            })()}
+
+            <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-gray-700/50">
+              <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-pink-500/20">
+                <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">
+                  <input type="checkbox" className="accent-pink-500 w-5 h-5" checked={specialSymbolConfig.luckyBallsEnabled}
+                    onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, luckyBallsEnabled: e.target.checked }))} />
+                  <span className="text-base font-bold text-pink-400">啟用升級倍數球 (L1~L4)</span>
+                </label>
+                {specialSymbolConfig.luckyBallsEnabled && (() => {
+                  const total = Object.values(specialSymbolConfig.luckyCounts).reduce((a, b) => a + b, 0);
+                  return (
+                    <div className="flex items-center gap-3 mr-1">
+                      <span className={`text-sm ${total === 6 ? 'text-pink-400 font-bold' : 'text-gray-300 font-bold'}`}>總數: {total}/6 (最多可選 6 顆)</span>
+                      {total > 0 && (
+                        <button
+                          onClick={() => setSpecialSymbolConfig(prev => ({ ...prev, luckyCounts: {} }))}
+                          className="text-xs font-bold px-2 py-1 rounded border border-red-500/40 text-red-400 hover:bg-red-500/20 hover:border-red-500 transition-colors shadow-sm"
+                        >
+                          重置歸零
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+              
+              {specialSymbolConfig.luckyBallsEnabled && (() => {
+                const totalLucky = Object.values(specialSymbolConfig.luckyCounts).reduce((a, b) => a + b, 0);
+                return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                  {LUCKY_BALLS.map(ball => (
+                    <div key={ball.id} className={`flex flex-col gap-3 p-4 rounded-lg border-2 bg-[#0a192f] ${ball.border} shadow-lg relative overflow-hidden`}>
+                      <div className={`absolute top-0 right-0 w-16 h-16 opacity-10 rounded-bl-full ${ball.color.replace('text-', 'bg-')}`}></div>
+                      <span className={`text-sm font-bold ${ball.color}`}>{ball.name}</span>
+                      <div className="flex flex-wrap gap-2 relative z-10">
+                        {ball.values.map(val => {
+                          const key = `${ball.id}_${val}X`;
+                          const count = specialSymbolConfig.luckyCounts[key] || 0;
+                          return (
+                            <div key={val} className={`flex items-center gap-2 bg-[#112240] rounded-md px-3 py-1.5 border transition-colors ${count > 0 ? 'border-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.2)]' : 'border-gray-700/50 hover:border-gray-500'}`}>
+                              <span className={`text-sm w-8 text-right font-bold ${count > 0 ? 'text-pink-400' : 'text-gray-300'}`}>{val}X</span>
+                              <select className="bg-transparent text-sm text-white outline-none cursor-pointer border-none font-bold"
+                                value={count}
+                                onChange={(e) => {
+                                const num = Number(e.target.value);
+                                if (totalLucky + (num - count) > 6) return;
+                                setSpecialSymbolConfig(prev => {
+                                  const next = { ...prev, luckyCounts: { ...prev.luckyCounts, [key]: num } };
+                                  if (num === 0) delete next.luckyCounts[key];
+                                  return next;
+                                });
+                              }}>
+                              {[0, 1, 2, 3, 4, 5, 6].map(n => {
+                                const wouldExceed = totalLucky + (n - count) > 6;
+                                return (
+                                  <option key={n} value={n} disabled={wouldExceed} className={`bg-[#112240] ${wouldExceed ? 'text-gray-600' : 'text-white'}`}>
+                                    {n}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+            })()}
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
   );
 };

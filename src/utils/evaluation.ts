@@ -1,4 +1,10 @@
-import type { PaytableRule, GameType } from '../types';
+import type { PaytableRule, GameType, GameConfig } from '../types';
+import { DEFAULT_WILD_SYMBOLS } from './evaluation/GameConstants';
+import { ScatterStrategy } from './evaluation/strategies/ScatterStrategy';
+import { PayAnywhereStrategy } from './evaluation/strategies/PayAnywhereStrategy';
+import { LineGameStrategy } from './evaluation/strategies/LineGameStrategy';
+import { WayGameStrategy } from './evaluation/strategies/WayGameStrategy';
+import type { EvaluationContext, EvaluationStrategy } from './evaluation/strategies/EvaluationStrategy';
 
 export interface WinResult {
   symbolId: string;
@@ -33,10 +39,17 @@ export const defaultPaylines = [
   [1, 2, 2, 2, 1]
 ];
 
+const STRATEGY_INSTANCES = {
+  scatter: new ScatterStrategy(),
+  payanywhere: new PayAnywhereStrategy(),
+  linegame: new LineGameStrategy(),
+  waygame: new WayGameStrategy()
+};
+
 export function evaluateGrid(
   grid: string[][],
   paytable: PaytableRule[],
-  gameType: GameType = 'waygame',
+  gameConfigOrType: GameType | GameConfig = 'waygame',
   paylines: number[][] = defaultPaylines,
   includeZeroPayout = false
 ): WinResult[] {
@@ -46,146 +59,41 @@ export function evaluateGrid(
     return results;
   }
 
+  // Backwards compatibility layer for legacy calls
+  const gameConfig: GameConfig = typeof gameConfigOrType === 'string' 
+    ? { gameType: gameConfigOrType, paylines }
+    : gameConfigOrType;
+
+  const gameType = gameConfig.gameType;
+
   const wildSymbols = new Set(paytable.filter(p => p.isWild).map(p => p.symbolId));
-  wildSymbols.add('WILD');
-  wildSymbols.add('W');
-  wildSymbols.add('WX');
+  const configuredWilds = gameConfig.wildSymbols || DEFAULT_WILD_SYMBOLS;
+  configuredWilds.forEach(w => wildSymbols.add(w));
+
+  const context: EvaluationContext = {
+    grid,
+    paytable,
+    gameConfig,
+    wildSymbols,
+    includeZeroPayout
+  };
 
   for (const rule of paytable) {
-    const sym = rule.symbolId;
+    let strategy: EvaluationStrategy;
 
-    // Scatter 計算
     if (rule.isScatter) {
-      let scatterCount = 0;
-      for (const col of grid) {
-        for (const cell of col) {
-          if (cell === sym || (sym === 'B1' && cell === 'B2')) scatterCount++;
-        }
-      }
-
-      // 針對賽特2 (payanywhere_set2) 新增的邏輯：Scatter 至少需要 4 顆
-      const minScatter = gameType === 'payanywhere_set2' ? 4 : 2;
-      const autoWinCount = gameType === 'payanywhere_set2' ? 4 : 3;
-
-      if (scatterCount >= minScatter) {
-        const lookupMatch = Math.min(scatterCount, grid.length);
-        const payout = rule.payouts[`match${lookupMatch}` as keyof typeof rule.payouts] || 0;
-        if (payout > 0 || scatterCount >= autoWinCount || includeZeroPayout) {
-          results.push({ symbolId: sym, matchCount: scatterCount, ways: 1, payout, totalWin: payout });
-        }
-      }
-      continue;
+      strategy = STRATEGY_INSTANCES.scatter;
+    } else if (gameType === 'payanywhere' || gameType === 'payanywhere_set2') {
+      strategy = STRATEGY_INSTANCES.payanywhere;
+    } else if (gameType === 'linegame') {
+      strategy = STRATEGY_INSTANCES.linegame;
+    } else {
+      // fallback to waygame/megaway
+      strategy = STRATEGY_INSTANCES.waygame;
     }
 
-    // 針對賽特2 (payanywhere_set2) 新增的邏輯：與 payanywhere 共用相同判斷
-    if (gameType === 'payanywhere' || gameType === 'payanywhere_set2') {
-      // Pay Anywhere 模式：統計盤面總數，排除 Wild 符號
-      let count = 0;
-      for (const col of grid) {
-        for (const cell of col) {
-          if (cell === sym || (sym === 'B1' && cell === 'B2')) {
-            count++;
-          }
-        }
-      }
-
-      // 映射規則：至少 8 顆才算中獎
-      // match3 -> 8-9 個
-      // match4 -> 10-11 個
-      // match5 -> >=12 個
-      if (count >= 8) {
-        let lookupKey: 'match3' | 'match4' | 'match5' | null = null;
-        if (count >= 8 && count <= 9) {
-          lookupKey = 'match3';
-        } else if (count >= 10 && count <= 11) {
-          lookupKey = 'match4';
-        } else if (count >= 12) {
-          lookupKey = 'match5';
-        }
-
-        if (lookupKey) {
-          const payout = rule.payouts[lookupKey] || 0;
-          if (payout > 0 || includeZeroPayout) {
-            results.push({
-              symbolId: sym,
-              matchCount: count,
-              ways: 1,
-              payout,
-              totalWin: payout
-            });
-          }
-        }
-      }
-    }
-    else if (gameType === 'linegame') {
-      // Line Game 模式：沿中獎線檢查連線
-      paylines.forEach((line, lineIdx) => {
-        let matchCount = 0;
-        for (let colIdx = 0; colIdx < grid.length; colIdx++) {
-          const targetRow = line[colIdx];
-          if (targetRow === undefined || targetRow >= grid[colIdx].length) {
-            break;
-          }
-          const cell = grid[colIdx][targetRow];
-          if (cell === sym || (!rule.isWild && wildSymbols.has(cell))) {
-            matchCount++;
-          } else {
-            break;
-          }
-        }
-
-        if (matchCount >= 2) {
-          const lookupMatch = Math.min(matchCount, grid.length);
-          const payout = rule.payouts[`match${lookupMatch}` as keyof typeof rule.payouts] || 0;
-          if (payout > 0 || includeZeroPayout) {
-            results.push({
-              symbolId: sym,
-              matchCount: matchCount,
-              ways: 1,
-              payout,
-              totalWin: payout,
-              lineIndex: lineIdx
-            });
-          }
-        }
-      });
-    }
-    else {
-      // waygame 或是 megaway 模式
-      let currentWays = 1;
-      let currentMatch = 0;
-
-      for (let colIndex = 0; colIndex < grid.length; colIndex++) {
-        const col = grid[colIndex];
-        let countInCol = 0;
-        for (const cell of col) {
-          if (cell === sym || (!rule.isWild && wildSymbols.has(cell))) {
-            countInCol++;
-          }
-        }
-
-        if (countInCol > 0) {
-          currentMatch++;
-          currentWays *= countInCol;
-        } else {
-          break;
-        }
-      }
-
-      if (currentMatch >= 2) {
-        const lookupMatch = Math.min(currentMatch, grid.length);
-        const payout = rule.payouts[`match${lookupMatch}` as keyof typeof rule.payouts] || 0;
-        if (payout > 0 || currentMatch >= 3 || includeZeroPayout) {
-          results.push({
-            symbolId: sym,
-            matchCount: currentMatch,
-            ways: currentWays,
-            payout,
-            totalWin: payout * currentWays
-          });
-        }
-      }
-    }
+    const wins = strategy.evaluate(context, rule);
+    results.push(...wins);
   }
 
   if (gameType === 'linegame') {
