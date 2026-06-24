@@ -201,7 +201,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                       let finalCopy = initStr;
                       if (comb.fullMathIds && comb.length >= 8) {
                         const dropMathIds = (comb as any).dropMathIds || [];
-                        const dropStr = `\n[${dropMathIds.slice(0, comb.length).join(',')}],`;
+                        const dropStr = `[${dropMathIds.slice(0, comb.length).join(',')}],`;
                         finalCopy += dropStr;
                       }
                       navigator.clipboard.writeText(finalCopy);
