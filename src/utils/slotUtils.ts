@@ -9,7 +9,7 @@ export function formatAmount(num: number): string {
 }
 
 // 輔助函數：解析貼上的 RNG 字串並轉換成數值陣列
-export function parsePasteRng(text: string, count: number): string[] | null {
+export function parsePasteRng(text: string, count: number, rowCounts?: number[]): string[] | null {
   const match = text.match(/\[([^\]]+)\]/);
   let numbersString = "";
 
@@ -19,11 +19,27 @@ export function parsePasteRng(text: string, count: number): string[] | null {
     numbersString = text;
   }
 
-  // 提取所有的數字
-  const cleanStr = numbersString.replace(/[^0-9]/g, ' ');
+  // 提取所有的數字、英文字母與底線 (允許符號或帶有倍數的ID如 F1_2X)
+  const cleanStr = numbersString.replace(/[^0-9A-Za-z_]/g, ' ');
   const nums = cleanStr.trim().split(/\s+/).filter(s => s !== '');
 
   if (nums.length === 0) return null;
+
+  // 如果提供的數量大於 count 並且有提供 rowCounts，表示可能是 30 格的扁平陣列，將其按欄位分拆
+  if (nums.length > count && rowCounts && rowCounts.length > 0) {
+    const result = Array(count).fill('');
+    let idx = 0;
+    for (let c = 0; c < count; c++) {
+      const rows = rowCounts[c] || 3;
+      const colItems = [];
+      for (let r = 0; r < rows; r++) {
+        colItems.push(nums[idx] !== undefined ? nums[idx] : '0');
+        idx++;
+      }
+      result[c] = colItems.join(',');
+    }
+    return result;
+  }
 
   const result = Array(count).fill('0');
   for (let i = 0; i < count; i++) {
@@ -163,6 +179,25 @@ export function calculateSVGPaths(
   return paths;
 }
 
+// 定義贏分線/符號的顏色池
+const WIN_COLORS = [
+  'ring-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.8)]',
+  'ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)]',
+  'ring-green-500 shadow-[0_0_15px_rgba(34,197,94,0.8)]',
+  'ring-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.8)]',
+  'ring-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.8)]',
+  'ring-teal-500 shadow-[0_0_15px_rgba(20,184,166,0.8)]',
+  'ring-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.8)]',
+  'ring-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)]'
+];
+
+export function getWinColorClass(winIndices: number[] | undefined): string {
+  if (!winIndices || winIndices.length === 0) return '';
+  // 若同一個格子同時參與多個贏分（例如 WILD），這裡我們簡單取第一個參與的贏分的顏色
+  const index = winIndices[0] % WIN_COLORS.length;
+  return WIN_COLORS[index];
+}
+
 // 輔助函數：取得當前盤面參與連線的所有格子座標
 export function getWinningPositions(
   grid: string[][],
@@ -171,17 +206,23 @@ export function getWinningPositions(
   gameType: GameType,
   topTracker?: string[],
   customPaylines?: number[][]
-): Set<string> {
-  const winningCoords = new Set<string>();
+): Map<string, number[]> {
+  const winningCoords = new Map<string, number[]>();
 
   if (!wins || wins.length === 0) return winningCoords;
+
+  const addCoord = (coord: string, winIndex: number) => {
+    if (!winningCoords.has(coord)) winningCoords.set(coord, []);
+    winningCoords.get(coord)!.push(winIndex);
+  };
 
   const wildSymbols = new Set(
     currentPaytable.filter(p => p.isWild).map(p => p.symbolId)
   );
   wildSymbols.add('WILD'); wildSymbols.add('W'); wildSymbols.add('WX');
 
-  for (const win of wins) {
+  for (let w = 0; w < wins.length; w++) {
+    const win = wins[w];
     const isScatter = currentPaytable.some(p => p.symbolId === win.symbolId && p.isScatter);
     // 針對賽特2 (payanywhere_set2) 新增的邏輯：亮起中獎方塊
     const isPayAnywhere = gameType === 'payanywhere' || gameType === 'payanywhere_set2';
@@ -191,14 +232,14 @@ export function getWinningPositions(
         for (let row = 0; row < grid[col].length; row++) {
           const cell = grid[col][row];
           if (cell === win.symbolId || wildSymbols.has(cell) || (win.symbolId === 'B1' && cell === 'B2')) {
-            winningCoords.add(`${col}-${row}`);
+            addCoord(`${col}-${row}`, w);
           }
         }
       }
       if (gameType === 'megaway' && topTracker) {
         topTracker.forEach((cell, idx) => {
           if (cell === win.symbolId || wildSymbols.has(cell) || (win.symbolId === 'B1' && cell === 'B2')) {
-            winningCoords.add(`top-${idx}`);
+            addCoord(`top-${idx}`, w);
           }
         });
       }
@@ -209,7 +250,7 @@ export function getWinningPositions(
           for (let col = 0; col < win.matchCount; col++) {
             const row = line[col];
             if (row !== undefined && row < grid[col].length) {
-              winningCoords.add(`${col}-${row}`);
+              addCoord(`${col}-${row}`, w);
             }
           }
         }
@@ -219,13 +260,13 @@ export function getWinningPositions(
         for (let row = 0; row < grid[col].length; row++) {
           const cell = grid[col][row];
           if (cell === win.symbolId || wildSymbols.has(cell) || (win.symbolId === 'B1' && cell === 'B2')) {
-            winningCoords.add(`${col}-${row}`);
+            addCoord(`${col}-${row}`, w);
           }
         }
         if (gameType === 'megaway' && col >= 1 && col <= 4 && topTracker) {
           const cell = topTracker[col - 1];
           if (cell === win.symbolId || wildSymbols.has(cell) || (win.symbolId === 'B1' && cell === 'B2')) {
-            winningCoords.add(`top-${col - 1}`);
+            addCoord(`top-${col - 1}`, w);
           }
         }
       }

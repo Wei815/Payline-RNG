@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import type { GameType } from '../../types';
 import type { SVGPathResult } from '../../utils/slotUtils';
-import { formatAmount } from '../../utils/slotUtils';
+import { formatAmount, getWinColorClass } from '../../utils/slotUtils';
 import type { WinResult } from '../../utils/evaluation';
+import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
 
 export interface SlotManualTabProps {
   gridContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -16,7 +17,7 @@ export interface SlotManualTabProps {
   setTopTracker: (val: string[]) => void;
   gameType: GameType;
   displayGrid: string[][];
-  winningCoords: Set<string>;
+  winningCoords: Map<string, number[]>;
   wins: WinResult[];
   betMultiplier: number;
   parsePasteRng: (text: string, count: number) => string[] | null;
@@ -31,6 +32,61 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
   isRunning, selectedSymbol
 }) => {
   const [noWinCollapsed, setNoWinCollapsed] = useState(false);
+
+  const handleDragStart = (e: React.DragEvent, col: number, row: number) => {
+    e.dataTransfer.setData("sourceCol", col.toString());
+    e.dataTransfer.setData("sourceRow", row.toString());
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = (e: React.DragEvent, targetCol: number, targetRow: number) => {
+    e.preventDefault();
+    const sourceColStr = e.dataTransfer.getData("sourceCol");
+    const sourceRowStr = e.dataTransfer.getData("sourceRow");
+    if (!sourceColStr || !sourceRowStr) return;
+
+    const sourceCol = parseInt(sourceColStr);
+    const sourceRow = parseInt(sourceRowStr);
+
+    if (sourceCol === targetCol && sourceRow === targetRow) return;
+
+    const expandCol = (colIdx: number) => {
+      const val = manualIndices[colIdx] || '';
+      if (val.includes(',')) {
+        return val.split(',').map(s => s.trim());
+      } else {
+        return displayGrid[colIdx].map(sym => sym);
+      }
+    };
+
+    const sourceArr = expandCol(sourceCol);
+
+    if (sourceCol === targetCol) {
+      const temp = sourceArr[sourceRow];
+      sourceArr[sourceRow] = sourceArr[targetRow];
+      sourceArr[targetRow] = temp;
+
+      const newIndices = [...manualIndices];
+      newIndices[sourceCol] = sourceArr.join(',');
+      setManualIndices(newIndices);
+    } else {
+      const targetArr = expandCol(targetCol);
+      const temp = sourceArr[sourceRow];
+      sourceArr[sourceRow] = targetArr[targetRow];
+      targetArr[targetRow] = temp;
+
+      const newIndices = [...manualIndices];
+      newIndices[sourceCol] = sourceArr.join(',');
+      newIndices[targetCol] = targetArr.join(',');
+      setManualIndices(newIndices);
+    }
+  };
+
   return (
     <>
       <div className="flex-1 flex flex-col items-center justify-center gap-8">
@@ -100,7 +156,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                       placeholder="-"
                       value={manualIndices[idx]}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, ''); // Only allow digits
+                        const val = e.target.value.replace(/[^a-zA-Z0-9,_]/g, '');
                         const newIndices = [...manualIndices];
                         newIndices[idx] = val;
                         setManualIndices(newIndices);
@@ -165,16 +221,16 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
               <div className="flex gap-3 justify-center mb-1">
                 <div className="w-20 h-20 bg-transparent" />
                 {Array.from({ length: 4 }).map((_, idx) => {
-                  const isWinning = winningCoords.has(`top-${idx}`);
+                  const winIndices = winningCoords.get(`top-${idx}`);
+                  const isWinning = !!winIndices;
+                  const winColorClass = isWinning ? getWinColorClass(winIndices) : '';
                   const hasAnyWin = winningCoords.size > 0;
                   return (
                     <div
                       key={idx}
-                      id={`cell-top-manual-${idx}`}
                       className={`
                         w-20 h-20 rounded-lg flex flex-col items-center justify-center font-bold shadow-lg transform transition-all duration-300 relative border
-                        ${topTracker[idx] === 'WILD' || topTracker[idx].startsWith('W') || topTracker[idx] === 'WX' ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border-yellow-300' : 'bg-[#112240] text-dashboard-text-primary border-dashboard-accent/30'}
-                        ${isWinning ? 'scale-[1.06] border-2 border-[#64ffda] shadow-[0_0_15px_rgba(100,255,218,0.85)] z-10 bg-[#152e4b]' : hasAnyWin ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]' : ''}
+                        ${isWinning ? `z-10 ring-2 scale-105 ${winColorClass}` : hasAnyWin ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]' : 'bg-[#112240] text-dashboard-text-primary border-dashboard-accent/30'}
                       `}
                     >
                       <span className="text-[11px] text-gray-300 font-bold font-mono tracking-tighter absolute top-1">TOP R{idx + 2}</span>
@@ -202,27 +258,47 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                   className="flex flex-col gap-3"
                 >
                   {col.map((symbol, rowIndex) => {
-                    const isWinning = winningCoords.has(`${colIndex}-${rowIndex}`);
+                    const winIndices = winningCoords.get(`${colIndex}-${rowIndex}`);
+                    const isWinning = !!winIndices;
+                    const winColorClass = isWinning ? getWinColorClass(winIndices) : '';
                     const hasAnyWin = winningCoords.size > 0;
+                    
+                    let customBg = '';
+                    
+                    if (symbol.includes('_') && symbol.match(/^[F|L][1-4]_/)) {
+                      const [ballId, valStr] = symbol.split('_');
+                      const numVal = parseInt(valStr.replace('X', ''), 10);
+                      const balls = ballId.startsWith('F') ? MULTIPLIER_BALLS : LUCKY_BALLS;
+                      const ball = balls.find(b => b.values.includes(numVal)) || balls.find(b => b.id === ballId);
+                      if (ball) customBg = `bg-[#0a192f] border ${ball.border} ${ball.color}`;
+                    }
+
                     return (
                       <div
                         key={`${colIndex}-${rowIndex}`}
                         id={`cell-manual-${colIndex}-${rowIndex}`}
+                        draggable={true}
+                        onDragStart={(e) => handleDragStart(e, colIndex, rowIndex)}
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, colIndex, rowIndex)}
                         className={`
                           w-20 h-20 rounded-lg flex items-center justify-center text-xl font-bold
-                          shadow-lg transform transition-all duration-300 relative
-                          ${symbol === '-' ? 'bg-[#0a192f] text-gray-700 border-2 border-gray-800 border-dashed' :
-                            symbol === 'WILD' || symbol.startsWith('W') || symbol === 'WX' ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border border-yellow-300' :
-                              symbol === 'SCATTER' ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border border-pink-300' :
-                                'bg-[#112240] text-dashboard-text-primary border border-dashboard-accent/30'}
+                          shadow-lg transform transition-all duration-300 relative cursor-grab active:cursor-grabbing border
+                          ${customBg ? customBg :
+                            symbol === '-' ? 'bg-[#0a192f] text-gray-700 border-2 border-gray-800 border-dashed' :
+                            symbol === 'WILD' || symbol.startsWith('W') || symbol === 'WX' ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border-yellow-300' :
+                              symbol === 'SCATTER' ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border-pink-300' :
+                                'bg-[#112240] text-dashboard-text-primary border-dashboard-accent/30'}
                           ${isWinning
-                            ? 'scale-[1.06] border-2 border-[#64ffda] shadow-[0_0_15px_rgba(100,255,218,0.85)] z-10 bg-[#152e4b]'
+                            ? `z-10 ring-2 scale-105 ${winColorClass}`
                             : hasAnyWin
                               ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]'
                               : ''}
                         `}
                       >
-                        {symbol}
+                        <div className="flex items-center justify-center pointer-events-none">
+                          {symbol}
+                        </div>
                       </div>
                     );
                   })}

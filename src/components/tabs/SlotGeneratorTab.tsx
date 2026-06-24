@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { GameType } from '../../types';
-import type { SVGPathResult } from '../../utils/slotUtils';
-import { formatAmount } from '../../utils/slotUtils';
 import type { WinResult } from '../../utils/evaluation';
+import type { SVGPathResult } from '../../utils/slotUtils';
+import { formatAmount, getWinColorClass } from '../../utils/slotUtils';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
 
 export interface SlotGeneratorTabProps {
@@ -17,7 +17,7 @@ export interface SlotGeneratorTabProps {
   setTopTrackerOther: (val: string[]) => void;
   gameType: GameType;
   displayGridOther: string[][];
-  winningCoordsOther: Set<string>;
+  winningCoordsOther: Map<string, number[]>;
   winsOther: WinResult[];
   betMultiplier: number;
   isSearching: boolean;
@@ -25,7 +25,7 @@ export interface SlotGeneratorTabProps {
   selectedSymbol: string;
   setSelectedSymbol: (val: string) => void;
   groupedSymbols: { id: string, title: string, list: string[] }[];
-  parsePasteRng: (text: string, count: number) => string[] | null;
+  parsePasteRng: (text: string, count: number, rows: number[]) => string[] | null;
   isRunning: boolean;
   specialSymbolConfig: import('../../types').SpecialSymbolConfig;
   setSpecialSymbolConfig: React.Dispatch<React.SetStateAction<import('../../types').SpecialSymbolConfig>>;
@@ -42,8 +42,9 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
   const [noWinCollapsed, setNoWinCollapsed] = useState(false);
   const [pulseToggle, setPulseToggle] = useState(false);
   const [selectedCombIndex, setSelectedCombIndex] = useState(0);
+  const [isManualEdited, setIsManualEdited] = useState(false);
 
-  const coordsString = useMemo(() => Array.from(winningCoordsOther).sort().join(','), [winningCoordsOther]);
+  const coordsString = useMemo(() => Array.from(winningCoordsOther.keys()).sort().join(','), [winningCoordsOther]);
   useEffect(() => {
     setPulseToggle(p => !p);
   }, [coordsString]);
@@ -54,18 +55,97 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
       const comb = combinations[targetIdx];
       if (comb && comb.rng) {
         setManualIndicesOther(comb.rng.map((val: any) => String(val)));
+        setIsManualEdited(false);
       }
     }
   }, [combinations, isSearching, setManualIndicesOther, selectedCombIndex]);
 
+  const currentFormattedRngArray = useMemo(() => {
+    let formattedRngArray: string[] = [];
+    const targetComb = combinations[selectedCombIndex < combinations.length ? selectedCombIndex : 0];
+    
+    if (gameType === 'payanywhere_set2' && targetComb?.fullMathIds && !isManualEdited) {
+      formattedRngArray = targetComb.fullMathIds.slice(0, 30).map((id: number) => String(id));
+    } else {
+      formattedRngArray = manualIndicesOther.map(colStr => {
+        return colStr.split(',').map(cell => {
+          const i = cell.trim();
+          if (i === '') return '0';
+          if (i.includes('_') && i.match(/^[F|L][1-4]_/)) {
+            if (i.startsWith('F')) return '15';
+            if (i.startsWith('L')) return '19';
+            return i.split('_')[0];
+          }
+          return i;
+        }).join(',');
+      });
+    }
+    return formattedRngArray;
+  }, [gameType, combinations, selectedCombIndex, isManualEdited, manualIndicesOther]);
+
+  const currentRngString = `[${currentFormattedRngArray.join(',')}],`;
+
   const pulseClass = pulseToggle ? 'animate-sync-pulse-1' : 'animate-sync-pulse-2';
+
+  const handleDragStart = (e: React.DragEvent, col: number, row: number) => {
+    e.dataTransfer.setData("sourceCol", col.toString());
+    e.dataTransfer.setData("sourceRow", row.toString());
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = (e: React.DragEvent, targetCol: number, targetRow: number) => {
+    e.preventDefault();
+    const sourceColStr = e.dataTransfer.getData("sourceCol");
+    const sourceRowStr = e.dataTransfer.getData("sourceRow");
+    if (!sourceColStr || !sourceRowStr) return;
+
+    const sourceCol = parseInt(sourceColStr);
+    const sourceRow = parseInt(sourceRowStr);
+
+    if (sourceCol === targetCol && sourceRow === targetRow) return;
+
+    const expandCol = (colIdx: number) => {
+      const val = manualIndicesOther[colIdx] || '';
+      if (val.includes(',')) {
+        return val.split(',').map(s => s.trim());
+      } else {
+        return displayGridOther[colIdx].map(sym => sym);
+      }
+    };
+
+    const sourceArr = expandCol(sourceCol);
+
+    if (sourceCol === targetCol) {
+      const temp = sourceArr[sourceRow];
+      sourceArr[sourceRow] = sourceArr[targetRow];
+      sourceArr[targetRow] = temp;
+
+      const newIndices = [...manualIndicesOther];
+      newIndices[sourceCol] = sourceArr.join(',');
+      setManualIndicesOther(newIndices);
+    } else {
+      const targetArr = expandCol(targetCol);
+      const temp = sourceArr[sourceRow];
+      sourceArr[sourceRow] = targetArr[targetRow];
+      targetArr[targetRow] = temp;
+
+      const newIndices = [...manualIndicesOther];
+      newIndices[sourceCol] = sourceArr.join(',');
+      newIndices[targetCol] = targetArr.join(',');
+      setManualIndicesOther(newIndices);
+    }
+
+    setIsManualEdited(true);
+  };
 
   return (
     <div className="w-full flex flex-col lg:flex-row gap-6 items-start justify-center">
-      {/* Left Column: Generator controls and visualization */}
       <div className="flex-1 flex flex-col items-center justify-center gap-6 w-full lg:max-w-3xl">
-
-        {/* Symbol Selector */}
         <div className="flex items-center justify-between bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 w-full max-w-3xl">
           <div className="flex items-center gap-3">
             <span className="text-sm font-bold text-dashboard-text-secondary">選擇目標 Symbol:</span>
@@ -94,7 +174,6 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
           </span>
         </div>
 
-        {/* Combination Generator Button Area */}
         <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 shadow-inner">
           <div className="flex justify-between items-center border-b border-gray-700/50 pb-2 mb-3">
             <span className="text-sm text-dashboard-text-secondary font-bold pl-1">
@@ -114,11 +193,15 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                   setSelectedCombIndex(idx);
                   if (comb.rng) {
                     setManualIndicesOther(comb.rng.map((val: any) => String(val)));
-                    if (gameType === 'payanywhere_set2' && comb.fullMathIds) {
-                      const initStr = `[${comb.fullMathIds.slice(0, 30).join(',')}],`;
+                    setIsManualEdited(false);
+                    if (gameType === 'payanywhere_set2') {
+                      const initStr = isManualEdited && selectedCombIndex === idx 
+                        ? currentRngString 
+                        : (comb.fullMathIds ? `[${comb.fullMathIds.slice(0, 30).join(',')}],` : '');
                       let finalCopy = initStr;
-                      if (comb.length >= 8) {
-                        const dropStr = `\n[${comb.fullMathIds.slice(30).join(',')}],`;
+                      if (comb.fullMathIds && comb.length >= 8) {
+                        const dropMathIds = (comb as any).dropMathIds || [];
+                        const dropStr = `\n[${dropMathIds.slice(0, comb.length).join(',')}],`;
                         finalCopy += dropStr;
                       }
                       navigator.clipboard.writeText(finalCopy);
@@ -142,12 +225,12 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                     }`}>
                     {gameType === 'payanywhere_set2' ? (
                       <div className="flex flex-col gap-0.5 mt-0.5 max-w-[140px] sm:max-w-[200px]">
-                        <span className="text-[#64ffda] leading-tight truncate" title={`[${comb.fullMathIds?.slice(0, 30).join(',')}]`}>
-                          [{comb.fullMathIds?.slice(0, 30).join(',')}],
+                        <span className="text-[#64ffda] leading-tight truncate" title={selectedCombIndex === idx && isManualEdited ? currentRngString : `[${comb.fullMathIds?.slice(0, 30).join(',')}]`}>
+                          {selectedCombIndex === idx && isManualEdited ? currentRngString : `[${comb.fullMathIds?.slice(0, 30).join(',')}],`}
                         </span>
                         {comb.length >= 8 ? (
-                          <span className="text-[#64ffda] leading-tight opacity-75 truncate" title={`[${comb.fullMathIds?.slice(30).join(',')}]`}>
-                            [{comb.fullMathIds?.slice(30).join(',')}], (自動複製)
+                          <span className="text-[#64ffda] leading-tight opacity-75 truncate" title={`[${((comb as any).dropMathIds || []).slice(0, comb.length).join(',')}]`}>
+                            [{((comb as any).dropMathIds || []).slice(0, comb.length).join(',')}], (自動複製)
                           </span>
                         ) : (
                           <span className="text-gray-400 leading-tight opacity-75 text-[10px] truncate">
@@ -155,7 +238,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                           </span>
                         )}
                       </div>
-                    ) : `RNG: [${comb.rng.join(',')}] ${comb.isInterfered ? '(有干擾)' : ''}`}
+                    ) : `RNG: ${selectedCombIndex === idx && isManualEdited ? currentRngString : `[${comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''}`}
                   </span>
                 ) : (
                   <span className="text-xs text-red-500 font-bold">無可行滾輪位置</span>
@@ -170,7 +253,6 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
           </div>
         </div>
 
-        {/* Controls */}
         <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-3 rounded-lg border border-gray-700/50 shadow-inner gap-3">
           <div className="flex justify-between items-start border-b border-gray-700/50 pb-3">
             <div className="flex flex-col gap-2 shrink-0 min-w-[200px]">
@@ -182,8 +264,11 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                 onChange={(e) => {
                   const val = e.target.value;
                   if (val) {
-                    const parsed = parsePasteRng(val, reelCount);
-                    if (parsed) setManualIndicesOther(parsed);
+                    const parsed = parsePasteRng(val, reelCount, rowCounts);
+                    if (parsed) {
+                      setManualIndicesOther(parsed);
+                      setIsManualEdited(true);
+                    }
                     e.target.value = '';
                   }
                 }}
@@ -194,30 +279,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
               <div className="flex items-center gap-2 bg-[#112240] px-2 py-1 rounded border border-gray-700/30 w-full justify-between">
                 <span className="text-xs text-gray-400 font-bold shrink-0">RNG:</span>
                 {(() => {
-                  let formattedRngArray: string[] = [];
                   const targetComb = combinations[selectedCombIndex < combinations.length ? selectedCombIndex : 0];
-                  
-                  if (gameType === 'payanywhere_set2' && targetComb?.fullMathIds) {
-                    // base array is just the first 30 (or whatever totalCells is)
-                    formattedRngArray = targetComb.fullMathIds.slice(0, 30).map((id: number) => String(id));
-                  } else {
-                    formattedRngArray = manualIndicesOther.map(colStr => {
-                      return colStr.split(',').map(cell => {
-                        const i = cell.trim();
-                        if (i === '') return '0';
-                        if (i.includes('_') && i.match(/^[F|L][1-4]_/)) {
-                          if (i.startsWith('F')) return '15';
-                          if (i.startsWith('L')) return '19';
-                          return i.split('_')[0];
-                        }
-                        return i;
-                      }).join(',');
-                    });
-                  }
-                  
-                  const rngString = `[${formattedRngArray.join(',')}],`;
-                  
-                  // Calculate exact drops needed for first tumble
                   const dropLength = winningCoordsOther.size;
                   let dropString = '';
                   if (gameType === 'payanywhere_set2' && targetComb?.dropMathIds && dropLength > 0) {
@@ -228,11 +290,11 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                   return (
                     <div className="flex flex-col gap-1 w-full">
                       <div className="flex items-center gap-1 w-full justify-between">
-                        <code className="text-xs text-yellow-400 font-mono truncate max-w-[150px] sm:max-w-[300px]" title={rngString}>
-                          {rngString}
+                        <code className="text-xs text-yellow-400 font-mono truncate max-w-[150px] sm:max-w-[300px]" title={currentRngString}>
+                          {currentRngString}
                         </code>
                         <button
-                          onClick={() => navigator.clipboard.writeText(rngString)}
+                          onClick={() => navigator.clipboard.writeText(currentRngString)}
                           className="text-[10px] font-bold bg-[#0a192f] text-dashboard-accent border border-dashboard-accent/50 px-1.5 py-0.5 rounded hover:bg-dashboard-accent hover:text-[#0a192f] transition-colors shrink-0 cursor-pointer"
                         >
                           COPY
@@ -320,10 +382,11 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                       placeholder="-"
                       value={manualIndicesOther[idx]}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, ''); // Only allow digits
+                        const val = e.target.value.replace(/[^a-zA-Z0-9,_]/g, '');
                         const newIndices = [...manualIndicesOther];
                         newIndices[idx] = val;
                         setManualIndicesOther(newIndices);
+                        setIsManualEdited(true);
                       }}
                       disabled={isRunning}
                       className="w-full bg-[#0a192f] border border-gray-600 text-yellow-400 rounded px-1 py-0.5 outline-none focus:border-yellow-500 text-[11px] text-center"
@@ -335,12 +398,10 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
           </div>
         </div>
 
-        {/* Slot Grid Visualization */}
         <div
           ref={gridContainerRefOther}
           className="bg-dashboard-card p-6 rounded-xl shadow-2xl border border-gray-700/30 w-full max-w-3xl overflow-hidden relative"
         >
-          {/* SVG Winning Line Overlay */}
           {linePathsOther.length > 0 && (
             <svg className="absolute inset-0 pointer-events-none w-full h-full z-20">
               <defs>
@@ -380,22 +441,22 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
           )}
 
           <div className="flex flex-col items-center justify-center gap-3 relative z-10 w-full">
-            {/* Megaways Top Tracker */}
             {gameType === 'megaway' && (
               <div className="flex gap-3 justify-center mb-1">
                 <div className="w-20 h-20 bg-transparent" />
                 {Array.from({ length: 4 }).map((_, idx) => {
-                  const isWinning = winningCoordsOther.has(`top-${idx}`);
+                  const winIndices = winningCoordsOther.get(`top-${idx}`);
+                  const isWinning = !!winIndices;
+                  const winColorClass = isWinning ? getWinColorClass(winIndices) : '';
                   const hasAnyWin = winningCoordsOther.size > 0;
+                  
                   return (
                     <div
                       key={idx}
                       id={`cell-top-other-${idx}`}
                       className={`
                         w-20 h-20 rounded-lg flex flex-col items-center justify-center font-bold shadow-lg transform relative border
-                        ${!isWinning && 'transition-all duration-300'}
-                        ${topTrackerOther[idx] === 'WILD' || topTrackerOther[idx].startsWith('W') || topTrackerOther[idx] === 'WX' ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border-yellow-300' : 'bg-[#112240] text-dashboard-text-primary border-dashboard-accent/30'}
-                        ${isWinning ? `scale-[1.06] border-2 border-[#64ffda] shadow-[0_0_15px_rgba(100,255,218,0.85)] z-10 bg-[#152e4b] ${pulseClass}` : hasAnyWin ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]' : ''}
+                        ${isWinning ? `scale-[1.06] border-2 shadow-[0_0_15px_rgba(100,255,218,0.85)] z-10 bg-[#152e4b] ${pulseClass} ${winColorClass}` : hasAnyWin ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]' : 'bg-[#112240] text-dashboard-text-primary border-dashboard-accent/30'}
                       `}
                     >
                       <span className="text-[11px] text-gray-300 font-bold font-mono tracking-tighter absolute top-1">TOP R{idx + 2}</span>
@@ -418,12 +479,11 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
 
             <div className="flex justify-center items-center gap-3 min-h-[300px]">
               {displayGridOther.map((col, colIndex) => (
-                <div
-                  key={colIndex}
-                  className="flex flex-col gap-3"
-                >
+                <div key={colIndex} className="flex flex-col gap-3">
                   {col.map((symbol, rowIndex) => {
-                    const isWinning = winningCoordsOther.has(`${colIndex}-${rowIndex}`);
+                    const winIndices = winningCoordsOther.get(`${colIndex}-${rowIndex}`);
+                    const isWinning = !!winIndices;
+                    const winColorClass = isWinning ? getWinColorClass(winIndices) : '';
                     const hasAnyWin = winningCoordsOther.size > 0;
                     
                     let isNoPayoutWin = false;
@@ -440,9 +500,11 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                     let customBg = '';
                     let displaySymbol = symbol;
                     if (symbol.includes('_') && symbol.match(/^[F|L][1-4]_/)) {
-                      const [ballId, val] = symbol.split('_');
-                      displaySymbol = val;
-                      const ball = [...MULTIPLIER_BALLS, ...LUCKY_BALLS].find(b => b.id === ballId);
+                      const [ballId, valStr] = symbol.split('_');
+                      displaySymbol = valStr;
+                      const numVal = parseInt(valStr.replace('X', ''), 10);
+                      const balls = ballId.startsWith('F') ? MULTIPLIER_BALLS : LUCKY_BALLS;
+                      const ball = balls.find(b => b.values.includes(numVal)) || balls.find(b => b.id === ballId);
                       if (ball) {
                         customBg = `bg-[#0a192f] border ${ball.border} ${ball.color}`;
                       }
@@ -452,9 +514,13 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                       <div
                         key={`${colIndex}-${rowIndex}`}
                         id={`cell-other-${colIndex}-${rowIndex}`}
+                        draggable={true}
+                        onDragStart={(e) => handleDragStart(e, colIndex, rowIndex)}
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, colIndex, rowIndex)}
                         className={`
                           w-20 h-20 rounded-lg flex items-center justify-center text-xl font-bold
-                          shadow-lg transform relative
+                          shadow-lg transform relative cursor-grab active:cursor-grabbing
                           ${!isWinning && 'transition-all duration-300'}
                           ${customBg ? customBg :
                             symbol === '-' ? 'bg-[#0a192f] text-gray-700 border-2 border-gray-800 border-dashed' :
@@ -462,15 +528,13 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                               symbol === 'SCATTER' ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border border-pink-300' :
                                 'bg-[#112240] text-dashboard-text-primary border border-dashboard-accent/30'}
                           ${isWinning
-                            ? isNoPayoutWin
-                              ? `bg-orange-500 text-white scale-105 shadow-[0_0_15px_rgba(249,115,22,0.8)] border border-orange-300 z-10 ${pulseClass}`
-                              : `bg-dashboard-accent text-[#0a192f] scale-105 shadow-[0_0_15px_rgba(100,255,218,0.5)] z-10 ${pulseClass}`
-                            : hasAnyWin && !customBg
+                            ? `z-10 ring-2 scale-105 ${winColorClass} ${isNoPayoutWin ? 'ring-gray-400 shadow-[0_0_15px_rgba(156,163,175,0.8)]' : ''}`
+                            : hasAnyWin
                               ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]'
                               : ''}
                         `}
                       >
-                        <div className="flex flex-col items-center justify-center">
+                        <div className="flex flex-col items-center justify-center pointer-events-none">
                           <span>{displaySymbol}</span>
                           {gameType === 'payanywhere_set2' && manualIndicesOther[colIndex] && (() => {
                             const rawId = manualIndicesOther[colIndex].split(',')[rowIndex] || '-';

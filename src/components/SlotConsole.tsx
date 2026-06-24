@@ -30,10 +30,11 @@ import { SlotManualTab } from './tabs/SlotManualTab';
 import { SlotGeneratorTab } from './tabs/SlotGeneratorTab';
 import { LineViewerTab } from './tabs/LineViewerTab';
 import { TumbleViewerTab } from './tabs/TumbleViewerTab';
+import { SlotCustomGridTab } from './tabs/SlotCustomGridTab';
 
 export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid, reelCount, rowCounts, onRowCountsChange, currentStrips, currentPaytable, coin, bet, gameType, customPaylines }) => {
   const betMultiplier = bet / coin;
-  const [activeTab, setActiveTab] = useState<'manual' | 'other' | 'lines'>('manual');
+  const [activeTab, setActiveTab] = useState<'manual' | 'other' | 'lines' | 'customGrid'>('manual');
   const [lineViewerSymbolState, setLineViewerSymbolState] = useState<string>('');
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [useWxInLines, setUseWxInLines] = useState<boolean>(true);
@@ -475,6 +476,15 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
             {gameType === 'linegame' ? '贏分線路一覽' : '消除掉落測試'}
           </button>
         )}
+        <button
+          onClick={() => setActiveTab('customGrid')}
+          className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-all duration-200 cursor-pointer ${activeTab === 'customGrid'
+              ? 'border-dashboard-accent text-dashboard-accent bg-[#112240]/40'
+              : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-[#112240]/20'
+            }`}
+        >
+          自定義盤面
+        </button>
       </div>
 
       {/* Content Area */}
@@ -528,6 +538,19 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
               gameType={gameType}
               manualIndices={manualIndices}
               betMultiplier={betMultiplier}
+            />
+          </div>
+        )}
+        {activeTab === 'customGrid' && (
+          <div className="w-full flex-1 flex flex-col min-h-0">
+            <SlotCustomGridTab
+              reelCount={reelCount}
+              rowCounts={rowCounts}
+              currentPaytable={currentPaytable}
+              groupedSymbols={groupedSymbols}
+              gameType={gameType}
+              betMultiplier={betMultiplier}
+              customPaylines={customPaylines}
             />
           </div>
         )}

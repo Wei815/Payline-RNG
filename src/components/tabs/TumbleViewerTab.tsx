@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { evaluateGrid } from '../../utils/evaluation';
-import { getWinningPositions, formatAmount } from '../../utils/slotUtils';
+import { getWinningPositions, formatAmount, getWinColorClass } from '../../utils/slotUtils';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
 import type { GameType, PaytableRule } from '../../types';
 
@@ -116,8 +116,8 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
 
   // 當前盤面的贏分結果
   const { wins, winningCoords, totalWin } = useMemo(() => {
-    if (currentGridSymbols.length === 0) return { wins: [], winningCoords: new Set<string>(), totalWin: 0 };
-    const evWins = evaluateGrid(currentGridSymbols, currentPaytable, gameType);
+    if (currentGridSymbols.length === 0) return { wins: [], winningCoords: new Map<string, number[]>(), totalWin: 0 };
+    const evWins = evaluateGrid(currentGridSymbols, currentPaytable, gameType, undefined, true);
     const coords = getWinningPositions(currentGridSymbols, evWins, currentPaytable, gameType);
     const winSum = evWins.reduce((sum, w) => sum + w.totalWin, 0);
     return { wins: evWins, winningCoords: coords, totalWin: winSum };
@@ -125,7 +125,7 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
 
   const [pulseToggle, setPulseToggle] = useState(false);
   
-  const coordsString = useMemo(() => Array.from(winningCoords).sort().join(','), [winningCoords]);
+  const coordsString = useMemo(() => Array.from(winningCoords.keys()).sort().join(','), [winningCoords]);
   useEffect(() => {
     setPulseToggle(p => !p);
   }, [coordsString]);
@@ -339,7 +339,9 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
               {currentGridSymbols.map((col, cIdx) => (
                 <div key={cIdx} className="flex flex-col gap-2">
                   {col.map((sym, rIdx) => {
-                    const isWin = winningCoords.has(`${cIdx}-${rIdx}`);
+                    const winIndices = winningCoords.get(`${cIdx}-${rIdx}`);
+                    const isWin = !!winIndices;
+                    const winColorClass = isWin ? getWinColorClass(winIndices) : '';
                     const isWild = sym === 'WILD' || sym === 'W' || sym === 'WX';
                     const isUnknown = sym.startsWith('?');
                     
@@ -367,14 +369,14 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
                         className={`w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center rounded-lg relative transform text-sm sm:text-base font-bold
                           ${!isWin && 'transition-all duration-300'} ${
                           isWin
-                            ? `bg-dashboard-accent text-[#0a192f] scale-105 shadow-[0_0_15px_rgba(100,255,218,0.5)] z-10 ${pulseClass}`
+                            ? `z-10 ring-2 scale-105 ${winColorClass} ${pulseClass}`
                             : customBg ? customBg
                             : isWild
                             ? 'bg-[#112240] text-purple-400 border border-purple-500/30'
                             : isUnknown
                             ? 'bg-red-900/30 text-red-400 border border-red-500/50'
                             : 'bg-[#112240] text-gray-300 border border-gray-700/50'
-                        } ${!isWin && hasAnyWin && !customBg ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]' : ''}`}
+                        } ${!isWin && hasAnyWin && !customBg ? 'opacity-30 scale-95 border-transparent' : ''}`}
                       >
                         <span>{displaySymbol}</span>
                         <span className="text-[10px] text-gray-500 font-mono mt-1">

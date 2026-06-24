@@ -141,6 +141,12 @@ export function useRngSearch(
                 return s;
               });
 
+              const dropMathIds = [];
+              for (let i = 0; i < 50; i++) {
+                const sym = nonScatters[Math.floor(Math.random() * nonScatters.length)];
+                dropMathIds.push(mathIdMap[sym] || sym);
+              }
+
               newCombs.push({
                 name: `B1*${target.b1}${target.b2 > 0 ? '+B2' : ''}`,
                 length: target.b1 + target.b2,
@@ -149,6 +155,7 @@ export function useRngSearch(
                 isInterfered: false
               });
               (newCombs[newCombs.length - 1] as any).fullMathIds = fullMathIds;
+              (newCombs[newCombs.length - 1] as any).dropMathIds = dropMathIds;
             });
           } else {
             for (let N = 7; N <= 13; N++) {
