@@ -687,37 +687,55 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
         <span className="text-base font-bold text-dashboard-text-secondary border-b border-gray-700/50 pb-2 mb-1">特殊符號與倍數球配置</span>
         
         <div className="flex flex-col gap-4 p-4 bg-[#112240] rounded border border-gray-700/50">
-          <div className="flex flex-wrap gap-5 items-center">
-            <label className="flex items-center gap-2.5 cursor-pointer hover:opacity-90">
-              <input type="checkbox" className="accent-dashboard-accent w-4 h-4" checked={specialSymbolConfig.s1Enabled}
-                onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, s1Enabled: e.target.checked }))} />
-              <span className="text-sm font-semibold text-white">啟用 S1</span>
-            </label>
-            {specialSymbolConfig.s1Enabled && (
-              <select className="bg-[#0a192f] text-xs text-white border border-gray-600 rounded px-2.5 py-1.5 outline-none focus:border-dashboard-accent cursor-pointer"
-                value={specialSymbolConfig.s1Count} onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, s1Count: Number(e.target.value) }))}>
-                {[0, 1, 2, 3].map(n => (
-                  <option key={n} value={n} className="bg-[#112240] text-white">
-                    {n} 個
-                  </option>
-                ))}
-              </select>
-            )}
-            <div className="w-px h-5 bg-gray-600 mx-1"></div>
-            <label className="flex items-center gap-2.5 cursor-pointer hover:opacity-90">
-              <input type="checkbox" className="accent-dashboard-accent w-4 h-4" checked={specialSymbolConfig.s2Enabled}
-                onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, s2Enabled: e.target.checked }))} />
-              <span className="text-sm font-semibold text-white">啟用 S2</span>
-            </label>
-            {specialSymbolConfig.s2Enabled && (
-              <select className="bg-[#0a192f] text-xs text-white border border-gray-600 rounded px-2.5 py-1.5 outline-none focus:border-dashboard-accent cursor-pointer"
-                value={specialSymbolConfig.s2Count} onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, s2Count: Number(e.target.value) }))}>
-                {[0, 1, 2, 3].map(n => (
-                  <option key={n} value={n} className="bg-[#112240] text-white">
-                    {n} 個
-                  </option>
-                ))}
-              </select>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-purple-500/20">
+              <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">
+                <input type="checkbox" className="accent-purple-500 w-5 h-5" checked={specialSymbolConfig.s1Enabled || specialSymbolConfig.s2Enabled}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setSpecialSymbolConfig(prev => ({ ...prev, s1Enabled: checked, s2Enabled: checked }));
+                  }} />
+                <span className="text-base font-bold text-purple-400">啟用 Scatter (S1/S2)</span>
+              </label>
+            </div>
+            
+            {(specialSymbolConfig.s1Enabled || specialSymbolConfig.s2Enabled) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                {specialSymbolConfig.s1Enabled && (
+                  <div className="flex flex-col gap-3 p-4 rounded-lg border-2 bg-[#0a192f] border-purple-500/30 shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-16 h-16 opacity-10 rounded-bl-full bg-purple-500"></div>
+                    <span className="text-sm font-bold text-purple-400">S1 (Scatter 1)</span>
+                    <div className="flex flex-wrap gap-2 relative z-10">
+                      <div className="flex items-center gap-2 bg-[#112240] rounded-md px-3 py-1.5 border border-purple-500/50 hover:border-purple-500 transition-colors">
+                        <span className="text-sm text-purple-300 font-bold">數量</span>
+                        <select className="bg-transparent text-sm text-white outline-none cursor-pointer border-none font-bold"
+                          value={specialSymbolConfig.s1Count} onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, s1Count: Number(e.target.value) }))}>
+                          {[0, 1, 2, 3].map(n => (
+                            <option key={n} value={n} className="bg-[#112240] text-white">{n}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {specialSymbolConfig.s2Enabled && (
+                  <div className="flex flex-col gap-3 p-4 rounded-lg border-2 bg-[#0a192f] border-purple-500/30 shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-16 h-16 opacity-10 rounded-bl-full bg-purple-500"></div>
+                    <span className="text-sm font-bold text-purple-400">S2 (Scatter 2)</span>
+                    <div className="flex flex-wrap gap-2 relative z-10">
+                      <div className="flex items-center gap-2 bg-[#112240] rounded-md px-3 py-1.5 border border-purple-500/50 hover:border-purple-500 transition-colors">
+                        <span className="text-sm text-purple-300 font-bold">數量</span>
+                        <select className="bg-transparent text-sm text-white outline-none cursor-pointer border-none font-bold"
+                          value={specialSymbolConfig.s2Count} onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, s2Count: Number(e.target.value) }))}>
+                          {[0, 1, 2, 3].map(n => (
+                            <option key={n} value={n} className="bg-[#112240] text-white">{n}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
           

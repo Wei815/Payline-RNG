@@ -200,7 +200,14 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   const allPaletteSymbols = useMemo(() => {
     const list: string[] = [];
     groupedSymbols.forEach(g => {
-      g.list.forEach(sym => list.push(sym));
+      g.list.forEach(sym => {
+        if (sym === 'B1/B2') {
+          list.push('B1');
+          list.push('B2');
+        } else {
+          list.push(sym);
+        }
+      });
     });
     return list;
   }, [groupedSymbols]);
