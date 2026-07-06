@@ -57,9 +57,8 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
     displayGrid[c] = new Array(rows).fill('0');
   }
 
-  const effectivePaylines = (gameConfig.gameType === 'linegame' && gameConfig.paylines && gameConfig.paylines.length === 0)
-    ? undefined
-    : gameConfig.paylines;
+  const effectivePaylines = ((gameConfig.gameType === 'linegame' || gameConfig.gameType === 'linegame_set2') && gameConfig.paylines && gameConfig.paylines.length > 0)
+    ? gameConfig.paylines : undefined;
 
   // Optimize batch size and progress reporting
   // Avoid postMessage too often.
@@ -157,7 +156,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
     metric.contributionRTP = (metric.totalPayout / (totalSpins * effectiveBet)) * 100;
   });
 
-  const usedPaylines = effectivePaylines ? effectivePaylines.length : (gameConfig.gameType === 'linegame' ? 20 : 0);
+  const usedPaylines = effectivePaylines ? effectivePaylines.length : ((gameConfig.gameType === 'linegame' || gameConfig.gameType === 'linegame_set2') ? 20 : 0);
 
   self.postMessage({
     type: 'DONE',

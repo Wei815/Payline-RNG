@@ -29,6 +29,10 @@ export interface SlotGeneratorTabProps {
   isRunning: boolean;
   specialSymbolConfig: import('../../types').SpecialSymbolConfig;
   setSpecialSymbolConfig: React.Dispatch<React.SetStateAction<import('../../types').SpecialSymbolConfig>>;
+  goldFrames: Record<string, number>;
+  setGoldFrames: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  jackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>;
+  setJackpots: React.Dispatch<React.SetStateAction<Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>>>;
 }
 
 export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
@@ -37,12 +41,52 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
   gameType, displayGridOther, winningCoordsOther, winsOther, betMultiplier,
   isSearching, combinations, selectedSymbol, setSelectedSymbol,
   groupedSymbols, parsePasteRng, isRunning,
-  specialSymbolConfig, setSpecialSymbolConfig
+  specialSymbolConfig, setSpecialSymbolConfig,
+  goldFrames, setGoldFrames, jackpots, setJackpots
 }) => {
   const [noWinCollapsed, setNoWinCollapsed] = useState(false);
   const [pulseToggle, setPulseToggle] = useState(false);
   const [selectedCombIndex, setSelectedCombIndex] = useState(0);
   const [isManualEdited, setIsManualEdited] = useState(false);
+
+  // Gold Frame states
+  const [showGoldFrameEditor, setShowGoldFrameEditor] = useState(false);
+  const [isGoldFrameMode, setIsGoldFrameMode] = useState(false);
+  const [selectedGoldMultiplier, setSelectedGoldMultiplier] = useState<number>(250);
+
+  // Jackpot states
+  const [showJackpotEditor, setShowJackpotEditor] = useState(false);
+  const [isJackpotMode, setIsJackpotMode] = useState(false);
+  const [selectedJackpot, setSelectedJackpot] = useState<'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>('MINI');
+
+  const goldFrameClassIdStr = useMemo(() => {
+    const arr: number[] = [];
+    const keys = Object.keys(goldFrames).sort((a, b) => {
+      const [ca, ra] = a.split('-').map(Number);
+      const [cb, rb] = b.split('-').map(Number);
+      return ca !== cb ? ca - cb : ra - rb;
+    });
+    for (const key of keys) {
+      const [col, row] = key.split('-').map(Number);
+      arr.push(col, row, goldFrames[key]);
+    }
+    return arr.length > 0 ? `[${arr.join(', ')}]` : '';
+  }, [goldFrames]);
+
+  const jackpotClassIdStr = useMemo(() => {
+    const arr: (number | string)[] = [];
+    const keys = Object.keys(jackpots).sort((a, b) => {
+      const [ca, ra] = a.split('-').map(Number);
+      const [cb, rb] = b.split('-').map(Number);
+      return ca !== cb ? ca - cb : ra - rb;
+    });
+    const typeToId = { 'MINI': 1, 'MAJOR': 2, 'MEGA': 3, 'MAXWIN': 4 }; // Or use strings if preferred by backend
+    for (const key of keys) {
+      const [col, row] = key.split('-').map(Number);
+      arr.push(col, row, typeToId[jackpots[key]]);
+    }
+    return arr.length > 0 ? `[${arr.join(', ')}]` : '';
+  }, [jackpots]);
 
   const coordsString = useMemo(() => Array.from(winningCoordsOther.keys()).sort().join(','), [winningCoordsOther]);
   useEffect(() => {
@@ -514,10 +558,28 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                       <div
                         key={`${colIndex}-${rowIndex}`}
                         id={`cell-other-${colIndex}-${rowIndex}`}
-                        draggable={true}
-                        onDragStart={(e) => handleDragStart(e, colIndex, rowIndex)}
+                        onClick={() => {
+                          const key = `${colIndex}-${rowIndex}`;
+                          if (isGoldFrameMode) {
+                            setGoldFrames(prev => {
+                              const next = { ...prev };
+                              if (next[key] === selectedGoldMultiplier) delete next[key];
+                              else next[key] = selectedGoldMultiplier;
+                              return next;
+                            });
+                          } else if (isJackpotMode) {
+                            setJackpots(prev => {
+                              const next = { ...prev };
+                              if (next[key] === selectedJackpot) delete next[key];
+                              else next[key] = selectedJackpot;
+                              return next;
+                            });
+                          }
+                        }}
+                        draggable={!isGoldFrameMode && !isJackpotMode}
+                        onDragStart={(e) => !isGoldFrameMode && !isJackpotMode && handleDragStart(e, colIndex, rowIndex)}
                         onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, colIndex, rowIndex)}
+                        onDrop={(e) => !isGoldFrameMode && !isJackpotMode && handleDrop(e, colIndex, rowIndex)}
                         className={`
                           w-20 h-20 rounded-lg flex items-center justify-center text-xl font-bold
                           shadow-lg transform relative cursor-grab active:cursor-grabbing
@@ -551,6 +613,20 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                             );
                           })()}
                         </div>
+                        {isGoldFrameMode && goldFrames[`${colIndex}-${rowIndex}`] !== undefined && (
+                          <div className="absolute inset-0 rounded-lg border-[3px] border-yellow-400 pointer-events-none z-20 flex items-end justify-end p-0.5">
+                            <span className="text-[9px] font-bold text-[#0a192f] bg-yellow-400 px-1 rounded-sm leading-tight shadow-sm">
+                              {goldFrames[`${colIndex}-${rowIndex}`]}X
+                            </span>
+                          </div>
+                        )}
+                        {isJackpotMode && jackpots[`${colIndex}-${rowIndex}`] !== undefined && (
+                          <div className="absolute inset-0 rounded-lg border-[3px] border-red-500 pointer-events-none z-20 flex items-end justify-end p-0.5">
+                            <span className="text-[9px] font-bold text-white bg-red-500 px-1 rounded-sm leading-tight shadow-sm">
+                              {jackpots[`${colIndex}-${rowIndex}`]}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -690,16 +766,126 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-purple-500/20">
               <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">
-                <input type="checkbox" className="accent-purple-500 w-5 h-5" checked={specialSymbolConfig.s1Enabled || specialSymbolConfig.s2Enabled}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setSpecialSymbolConfig(prev => ({ ...prev, s1Enabled: checked, s2Enabled: checked }));
-                  }} />
-                <span className="text-base font-bold text-purple-400">啟用 Scatter (S1/S2)</span>
+                {gameType === 'linegame_set2' ? (
+                  <input type="checkbox" className="accent-purple-500 w-5 h-5" checked={showGoldFrameEditor}
+                    onChange={(e) => setShowGoldFrameEditor(e.target.checked)} />
+                ) : (
+                  <input type="checkbox" className="accent-purple-500 w-5 h-5" checked={specialSymbolConfig.s1Enabled || specialSymbolConfig.s2Enabled}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setSpecialSymbolConfig(prev => ({ ...prev, s1Enabled: checked, s2Enabled: checked }));
+                    }} />
+                )}
+                <span className="text-base font-bold text-purple-400">{gameType === 'linegame_set2' ? '啟用金框' : '啟用 Scatter (S1/S2)'}</span>
               </label>
             </div>
             
-            {(specialSymbolConfig.s1Enabled || specialSymbolConfig.s2Enabled) && (
+            {gameType === 'linegame_set2' && showGoldFrameEditor && (
+              <div className="mt-2 flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-bold text-dashboard-text-secondary">金框倍數 ID:</span>
+                  <select 
+                    value={selectedGoldMultiplier}
+                    onChange={e => setSelectedGoldMultiplier(Number(e.target.value))}
+                    className="bg-[#0a192f] border border-dashboard-accent/30 text-white rounded px-2 py-1 text-sm outline-none focus:border-dashboard-accent cursor-pointer"
+                  >
+                    {[2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 50, 100, 250, 500].map(m => (
+                      <option key={m} value={m}>{m}X</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={() => setIsGoldFrameMode(!isGoldFrameMode)}
+                  className={`w-full py-1.5 px-2 rounded text-xs font-bold transition-all border flex justify-center items-center gap-1 ${
+                    isGoldFrameMode 
+                      ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500 ring-1 ring-yellow-400' 
+                      : 'bg-[#0a192f] text-gray-400 border-gray-600 hover:border-gray-400'
+                  }`}
+                >
+                  👑 金框編輯模式 {isGoldFrameMode ? '(ON)' : '(OFF)'}
+                </button>
+
+                {goldFrameClassIdStr && (
+                  <div className="flex flex-col gap-2 mt-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-yellow-400 font-bold">金框 ClassID</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-[#0a192f] px-2 py-1.5 rounded border border-yellow-500/30">
+                      <code className="text-xs text-yellow-400 font-mono truncate w-[85%]" title={goldFrameClassIdStr}>
+                        {goldFrameClassIdStr}
+                      </code>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(goldFrameClassIdStr)}
+                        className="text-[10px] font-bold bg-[#112240] text-yellow-400 border border-yellow-400/50 px-2 py-0.5 rounded hover:bg-yellow-400 hover:text-[#0a192f] transition-colors cursor-pointer"
+                      >
+                        COPY
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-red-500/20 mt-2">
+              <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">
+                {gameType === 'linegame_set2' && (
+                  <>
+                    <input type="checkbox" className="accent-red-500 w-5 h-5" checked={showJackpotEditor}
+                      onChange={(e) => setShowJackpotEditor(e.target.checked)} />
+                    <span className="text-base font-bold text-red-400">啟用大獎 (Jackpot)</span>
+                  </>
+                )}
+              </label>
+            </div>
+
+            {gameType === 'linegame_set2' && showJackpotEditor && (
+              <div className="mt-2 flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-bold text-dashboard-text-secondary">選擇大獎類型:</span>
+                  <select 
+                    value={selectedJackpot}
+                    onChange={e => setSelectedJackpot(e.target.value as any)}
+                    className="bg-[#0a192f] border border-red-500/30 text-white rounded px-2 py-1 text-sm outline-none focus:border-red-500 cursor-pointer"
+                  >
+                    <option value="MINI">MINI (25x)</option>
+                    <option value="MAJOR">MAJOR (100x)</option>
+                    <option value="MEGA">MEGA (500x)</option>
+                    <option value="MAXWIN">MAXWIN (20000x)</option>
+                  </select>
+                </div>
+                <button
+                  onClick={() => setIsJackpotMode(!isJackpotMode)}
+                  className={`w-full py-1.5 px-2 rounded text-xs font-bold transition-all border flex justify-center items-center gap-1 ${
+                    isJackpotMode 
+                      ? 'bg-red-500/20 text-red-400 border-red-500 ring-1 ring-red-400' 
+                      : 'bg-[#0a192f] text-gray-400 border-gray-600 hover:border-gray-400'
+                  }`}
+                >
+                  🎯 大獎編輯模式 {isJackpotMode ? '(ON)' : '(OFF)'}
+                </button>
+
+                {jackpotClassIdStr && (
+                  <div className="flex flex-col gap-2 mt-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-red-400 font-bold">大獎 ClassID</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-[#0a192f] px-2 py-1.5 rounded border border-red-500/30">
+                      <code className="text-xs text-red-400 font-mono truncate w-[85%]" title={jackpotClassIdStr}>
+                        {jackpotClassIdStr}
+                      </code>
+                      <button
+                        onClick={() => navigator.clipboard.writeText(jackpotClassIdStr)}
+                        className="text-[10px] font-bold bg-[#112240] text-red-400 border border-red-400/50 px-2 py-0.5 rounded hover:bg-red-400 hover:text-[#0a192f] transition-colors cursor-pointer"
+                      >
+                        COPY
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {gameType !== 'linegame_set2' && (specialSymbolConfig.s1Enabled || specialSymbolConfig.s2Enabled) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                 {specialSymbolConfig.s1Enabled && (
                   <div className="flex flex-col gap-3 p-4 rounded-lg border-2 bg-[#0a192f] border-purple-500/30 shadow-lg relative overflow-hidden">
@@ -742,11 +928,19 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
             <div className="flex flex-col gap-3 mt-2 pt-4 border-t border-gray-700/50">
               <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-dashboard-accent/20">
                 <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">
-                  <input type="checkbox" className="accent-dashboard-accent w-5 h-5" checked={specialSymbolConfig.multipliersEnabled}
-                    onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, multipliersEnabled: e.target.checked }))} />
-                  <span className="text-base font-bold text-dashboard-accent">啟用倍數球 (F1~F4)</span>
+                  {gameType === 'linegame_set2' ? (
+                    <input type="checkbox" className="accent-dashboard-accent w-5 h-5" checked={specialSymbolConfig.s1Enabled}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setSpecialSymbolConfig(prev => ({ ...prev, s1Enabled: checked, s1Count: checked ? 1 : 0 }));
+                      }} />
+                  ) : (
+                    <input type="checkbox" className="accent-dashboard-accent w-5 h-5" checked={specialSymbolConfig.multipliersEnabled}
+                      onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, multipliersEnabled: e.target.checked }))} />
+                  )}
+                  <span className="text-base font-bold text-dashboard-accent">{gameType === 'linegame_set2' ? '啟用幸運草' : '啟用倍數球 (F1~F4)'}</span>
                 </label>
-                {specialSymbolConfig.multipliersEnabled && (() => {
+                {specialSymbolConfig.multipliersEnabled && gameType !== 'linegame_set2' && (() => {
                   const total = Object.values(specialSymbolConfig.multiplierCounts).reduce((a, b) => a + b, 0);
                   return (
                     <div className="flex items-center gap-3 mr-1">
@@ -764,7 +958,28 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                 })()}
               </div>
               
-              {specialSymbolConfig.multipliersEnabled && (() => {
+              {gameType === 'linegame_set2' && specialSymbolConfig.s1Enabled && (
+                <div className="grid grid-cols-1 gap-4 mt-2">
+                  <div className="flex flex-col gap-3 p-4 rounded-lg border-2 bg-[#0a192f] border-[#64ffda]/30 shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-16 h-16 opacity-10 rounded-bl-full bg-[#64ffda]"></div>
+                    <span className="text-sm font-bold text-[#64ffda]">幸運草 (S1)</span>
+                    <div className="flex flex-wrap gap-2 relative z-10">
+                      <div className="flex items-center gap-2 bg-[#112240] rounded-md px-3 py-1.5 border border-[#64ffda]/50 hover:border-[#64ffda] transition-colors">
+                        <span className="text-sm text-[#64ffda] font-bold">數量</span>
+                        <select className="bg-transparent text-sm text-white outline-none cursor-pointer border-none font-bold"
+                          value={specialSymbolConfig.s1Count} onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, s1Count: Number(e.target.value) }))}>
+                          {[0, 1].map(n => (
+                            <option key={n} value={n} className="bg-[#112240] text-white">{n}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <span className="text-[10px] text-gray-400 mt-2">* 每個盤面最多只能出現 1 個</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {gameType !== 'linegame_set2' && specialSymbolConfig.multipliersEnabled && (() => {
                 const totalMultipliers = Object.values(specialSymbolConfig.multiplierCounts).reduce((a, b) => a + b, 0);
                 return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
@@ -809,76 +1024,78 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
             )
             })()}
 
-            <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-gray-700/50">
-              <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-pink-500/20">
-                <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">
-                  <input type="checkbox" className="accent-pink-500 w-5 h-5" checked={specialSymbolConfig.luckyBallsEnabled}
-                    onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, luckyBallsEnabled: e.target.checked }))} />
-                  <span className="text-base font-bold text-pink-400">啟用升級倍數球 (L1~L4)</span>
-                </label>
+            {gameType !== 'linegame_set2' && (
+              <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-gray-700/50">
+                <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-pink-500/20">
+                  <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">
+                    <input type="checkbox" className="accent-pink-500 w-5 h-5" checked={specialSymbolConfig.luckyBallsEnabled}
+                      onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, luckyBallsEnabled: e.target.checked }))} />
+                    <span className="text-base font-bold text-pink-400">啟用升級倍數球 (L1~L4)</span>
+                  </label>
+                  {specialSymbolConfig.luckyBallsEnabled && (() => {
+                    const total = Object.values(specialSymbolConfig.luckyCounts).reduce((a, b) => a + b, 0);
+                    return (
+                      <div className="flex items-center gap-3 mr-1">
+                        <span className={`text-sm ${total === 6 ? 'text-pink-400 font-bold' : 'text-gray-300 font-bold'}`}>總數: {total}/6 (最多可選 6 顆)</span>
+                        {total > 0 && (
+                          <button
+                            onClick={() => setSpecialSymbolConfig(prev => ({ ...prev, luckyCounts: {} }))}
+                            className="text-xs font-bold px-2 py-1 rounded border border-red-500/40 text-red-400 hover:bg-red-500/20 hover:border-red-500 transition-colors shadow-sm"
+                          >
+                            重置歸零
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
+                
                 {specialSymbolConfig.luckyBallsEnabled && (() => {
-                  const total = Object.values(specialSymbolConfig.luckyCounts).reduce((a, b) => a + b, 0);
+                  const totalLucky = Object.values(specialSymbolConfig.luckyCounts).reduce((a, b) => a + b, 0);
                   return (
-                    <div className="flex items-center gap-3 mr-1">
-                      <span className={`text-sm ${total === 6 ? 'text-pink-400 font-bold' : 'text-gray-300 font-bold'}`}>總數: {total}/6 (最多可選 6 顆)</span>
-                      {total > 0 && (
-                        <button
-                          onClick={() => setSpecialSymbolConfig(prev => ({ ...prev, luckyCounts: {} }))}
-                          className="text-xs font-bold px-2 py-1 rounded border border-red-500/40 text-red-400 hover:bg-red-500/20 hover:border-red-500 transition-colors shadow-sm"
-                        >
-                          重置歸零
-                        </button>
-                      )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                    {LUCKY_BALLS.map(ball => (
+                      <div key={ball.id} className={`flex flex-col gap-3 p-4 rounded-lg border-2 bg-[#0a192f] ${ball.border} shadow-lg relative overflow-hidden`}>
+                        <div className={`absolute top-0 right-0 w-16 h-16 opacity-10 rounded-bl-full ${ball.color.replace('text-', 'bg-')}`}></div>
+                        <span className={`text-sm font-bold ${ball.color}`}>{ball.name}</span>
+                        <div className="flex flex-wrap gap-2 relative z-10">
+                          {ball.values.map(val => {
+                            const key = `${ball.id}_${val}X`;
+                            const count = specialSymbolConfig.luckyCounts[key] || 0;
+                            return (
+                              <div key={val} className={`flex items-center gap-2 bg-[#112240] rounded-md px-3 py-1.5 border transition-colors ${count > 0 ? 'border-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.2)]' : 'border-gray-700/50 hover:border-gray-500'}`}>
+                                <span className={`text-sm w-8 text-right font-bold ${count > 0 ? 'text-pink-400' : 'text-gray-300'}`}>{val}X</span>
+                                <select className="bg-transparent text-sm text-white outline-none cursor-pointer border-none font-bold"
+                                  value={count}
+                                  onChange={(e) => {
+                                  const num = Number(e.target.value);
+                                  if (totalLucky + (num - count) > 6) return;
+                                  setSpecialSymbolConfig(prev => {
+                                    const next = { ...prev, luckyCounts: { ...prev.luckyCounts, [key]: num } };
+                                    if (num === 0) delete next.luckyCounts[key];
+                                    return next;
+                                  });
+                                }}>
+                                {[0, 1, 2, 3, 4, 5, 6].map(n => {
+                                  const wouldExceed = totalLucky + (n - count) > 6;
+                                  return (
+                                    <option key={n} value={n} disabled={wouldExceed} className={`bg-[#112240] ${wouldExceed ? 'text-gray-600' : 'text-white'}`}>
+                                      {n}
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  );
-                })()}
-              </div>
-              
-              {specialSymbolConfig.luckyBallsEnabled && (() => {
-                const totalLucky = Object.values(specialSymbolConfig.luckyCounts).reduce((a, b) => a + b, 0);
-                return (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                  {LUCKY_BALLS.map(ball => (
-                    <div key={ball.id} className={`flex flex-col gap-3 p-4 rounded-lg border-2 bg-[#0a192f] ${ball.border} shadow-lg relative overflow-hidden`}>
-                      <div className={`absolute top-0 right-0 w-16 h-16 opacity-10 rounded-bl-full ${ball.color.replace('text-', 'bg-')}`}></div>
-                      <span className={`text-sm font-bold ${ball.color}`}>{ball.name}</span>
-                      <div className="flex flex-wrap gap-2 relative z-10">
-                        {ball.values.map(val => {
-                          const key = `${ball.id}_${val}X`;
-                          const count = specialSymbolConfig.luckyCounts[key] || 0;
-                          return (
-                            <div key={val} className={`flex items-center gap-2 bg-[#112240] rounded-md px-3 py-1.5 border transition-colors ${count > 0 ? 'border-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.2)]' : 'border-gray-700/50 hover:border-gray-500'}`}>
-                              <span className={`text-sm w-8 text-right font-bold ${count > 0 ? 'text-pink-400' : 'text-gray-300'}`}>{val}X</span>
-                              <select className="bg-transparent text-sm text-white outline-none cursor-pointer border-none font-bold"
-                                value={count}
-                                onChange={(e) => {
-                                const num = Number(e.target.value);
-                                if (totalLucky + (num - count) > 6) return;
-                                setSpecialSymbolConfig(prev => {
-                                  const next = { ...prev, luckyCounts: { ...prev.luckyCounts, [key]: num } };
-                                  if (num === 0) delete next.luckyCounts[key];
-                                  return next;
-                                });
-                              }}>
-                              {[0, 1, 2, 3, 4, 5, 6].map(n => {
-                                const wouldExceed = totalLucky + (n - count) > 6;
-                                return (
-                                  <option key={n} value={n} disabled={wouldExceed} className={`bg-[#112240] ${wouldExceed ? 'text-gray-600' : 'text-white'}`}>
-                                    {n}
-                                  </option>
-                                );
-                              })}
-                            </select>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )
-            })()}
+                  ))}
+                </div>
+              )
+              })()}
             </div>
+            )}
           </div>
         </div>
       </div>

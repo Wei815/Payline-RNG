@@ -149,22 +149,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                       ))}
                     </select>
                   </div>
-                  <div className="flex items-center justify-between gap-1 w-full">
-                    <span className="text-xs text-gray-400 shrink-0">Line</span>
-                    <input
-                      type="text"
-                      placeholder="-"
-                      value={manualIndices[idx]}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^a-zA-Z0-9,_]/g, '');
-                        const newIndices = [...manualIndices];
-                        newIndices[idx] = val;
-                        setManualIndices(newIndices);
-                      }}
-                      disabled={isRunning}
-                      className="w-full max-w-[45px] bg-[#0a192f] border border-gray-600 text-yellow-400 rounded px-0.5 py-0.5 outline-none focus:border-yellow-500 text-xs text-center"
-                    />
-                  </div>
+
                 </div>
               </div>
             ))}
@@ -330,7 +315,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                     return (
                       <div key={idx} className={`flex flex-col px-3 py-2 rounded border ${selectedSymbol && isInterference ? 'bg-[#2b1616] border-red-900/50' : 'bg-[#112240] border-dashboard-accent/30'}`}>
                         <span className="text-xs text-yellow-400 font-mono font-bold truncate">
-                          {w.symbolId} {gameType === 'payanywhere' ? `出現 ${w.matchCount} 個` : gameType === 'linegame' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
+                          {w.symbolId} {gameType === 'payanywhere' || gameType === 'payanywhere_set2' ? `出現 ${w.matchCount} 個` : (gameType === 'linegame' || gameType === 'linegame_set2') ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
                         </span>
                         <span className="text-xs text-gray-300 font-mono mt-0.5">
                           {formatAmount(betMultiplier)} × {w.payout}{w.ways > 1 ? ` × ${w.ways}` : ''} = <span className="font-bold text-dashboard-accent">{formatAmount(w.totalWin * betMultiplier)}</span>
@@ -377,7 +362,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                         return (
                           <div key={idx} className={`flex flex-col px-3 py-2 rounded border ${selectedSymbol && isInterference ? 'bg-[#2b1616] border-red-900/50' : 'bg-[#0f1c34] border-gray-700/30'}`}>
                             <span className={`text-xs font-mono truncate ${selectedSymbol && isInterference ? 'text-red-400' : 'text-gray-400'}`}>
-                              {w.symbolId} {gameType === 'payanywhere' ? `出現 ${w.matchCount} 個` : gameType === 'linegame' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
+                              {w.symbolId} {gameType === 'payanywhere' || gameType === 'payanywhere_set2' ? `出現 ${w.matchCount} 個` : (gameType === 'linegame' || gameType === 'linegame_set2') ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
                             </span>
                             <span className={`text-xs font-mono mt-0.5 ${selectedSymbol && isInterference ? 'text-red-500/80' : 'text-gray-600'}`}>
                               payout = 0{w.ways > 1 ? ` × ${w.ways} ways` : ''}

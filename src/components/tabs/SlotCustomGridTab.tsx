@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Trash2, RotateCcw } from 'lucide-react';
 import type { GameType, PaytableRule, GameConfig } from '../../types';
 import { evaluateGrid } from '../../utils/evaluation';
-import { getWinningPositions, formatAmount, getWinColorClass } from '../../utils/slotUtils';
+import { getWinningPositions, formatAmount, getWinColorClass, calculateSVGPaths } from '../../utils/slotUtils';
+import type { SVGPathResult } from '../../utils/slotUtils';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
 
 export interface SlotCustomGridTabProps {
@@ -19,6 +20,13 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   reelCount, rowCounts, currentPaytable, groupedSymbols, gameType, betMultiplier, customPaylines
 }) => {
   // --- States ---
+  const gridContainerRef = useRef<HTMLDivElement>(null);
+  const [linePaths, setLinePaths] = useState<SVGPathResult[]>([]);
+  const [isGoldFrameMode, setIsGoldFrameMode] = useState(false);
+  const [goldFrames, setGoldFrames] = useState<Record<string, number>>({});
+  const [isJackpotMode, setIsJackpotMode] = useState(false);
+  const [jackpots, setJackpots] = useState<Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>>({});
+  const [selectedJackpot, setSelectedJackpot] = useState<'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>('MINI');
   const [gridSymbols, setGridSymbols] = useState<string[][]>(() => {
     // Initialize with a default symbol, e.g., the lowest value symbol or just '-'
     return Array.from({ length: reelCount }, (_, c) => 
@@ -51,6 +59,8 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
       gameType,
       paylines: customPaylines || [],
       effectiveBet: betMultiplier * 30, // Rough assumption for config
+      goldFrames,
+      jackpots,
       specialRules: { derivativeSymbols: { 'B1': ['B2'] } }
     };
     const wins = evaluateGrid(gridSymbols, currentPaytable, config, undefined, true);
@@ -58,7 +68,65 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     return { wins, winningCoords };
   }, [gridSymbols, currentPaytable, gameType, customPaylines, betMultiplier]);
 
-  // Smart Dummy Drops Generation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (gridContainerRef.current) {
+        const p = calculateSVGPaths(gridSymbols, wins, currentPaytable, gridContainerRef.current, 'custom', gameType, undefined, customPaylines);
+        setLinePaths(p);
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [gridSymbols, wins, currentPaytable, gameType, customPaylines]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (gridContainerRef.current) {
+        const p = calculateSVGPaths(gridSymbols, wins, currentPaytable, gridContainerRef.current, 'custom', gameType, undefined, customPaylines);
+        setLinePaths(p);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [gridSymbols, wins, currentPaytable, gameType, customPaylines]);
+
+  // Gold Frame ClassID String
+  const goldFrameClassIdStr = useMemo(() => {
+    const keys = Object.keys(goldFrames);
+    if (keys.length === 0) return '';
+    const output: number[] = [];
+    
+    // Sort by col, then row
+    keys.sort((a, b) => {
+      const [colA, rowA] = a.split('-').map(Number);
+      const [colB, rowB] = b.split('-').map(Number);
+      if (colA !== colB) return colA - colB;
+      return rowA - rowB;
+    });
+
+    keys.forEach(k => {
+      const [col, row] = k.split('-').map(Number);
+      output.push(col, row, goldFrames[k]);
+    });
+
+    return `[${output.join(',')}]`;
+  }, [goldFrames]);
+
+  const jackpotClassIdStr = useMemo(() => {
+    const arr: (number | string)[] = [];
+    const keys = Object.keys(jackpots).sort((a, b) => {
+      const [ca, ra] = a.split('-').map(Number);
+      const [cb, rb] = b.split('-').map(Number);
+      return ca !== cb ? ca - cb : ra - rb;
+    });
+    const typeToId = { 'MINI': 1, 'MAJOR': 2, 'MEGA': 3, 'MAXWIN': 4 };
+    for (const key of keys) {
+      const [col, row] = key.split('-').map(Number);
+      arr.push(col, row, typeToId[jackpots[key]]);
+    }
+    return arr.length > 0 ? `[${arr.join(',')}]` : '';
+  }, [jackpots]);
+
+  // Handle Drag & Drops Generation
   const dropRng = useMemo(() => {
     if (winningCoords.size === 0) return '';
     
@@ -182,6 +250,34 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   };
 
   const handleCellClick = (colIndex: number, rowIndex: number) => {
+    if (isGoldFrameMode) {
+      setGoldFrames(prev => {
+        const key = `${colIndex}-${rowIndex}`;
+        const next = { ...prev };
+        if (next[key] === selectedMultiplier) {
+          delete next[key];
+        } else {
+          next[key] = selectedMultiplier;
+        }
+        return next;
+      });
+      return;
+    }
+    
+    if (isJackpotMode) {
+      setJackpots(prev => {
+        const key = `${colIndex}-${rowIndex}`;
+        const next = { ...prev };
+        if (next[key] === selectedJackpot) {
+          delete next[key];
+        } else {
+          next[key] = selectedJackpot;
+        }
+        return next;
+      });
+      return;
+    }
+
     if (!selectedPaletteSymbol) return;
     const isSpecial = selectedPaletteSymbol.match(/^[F|L][1-4]/);
     const newSym = isSpecial ? `${selectedPaletteSymbol}_${selectedMultiplier}X` : selectedPaletteSymbol;
@@ -220,16 +316,49 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
         
         {/* Special Symbol Multiplier Config */}
         <div className="bg-[#112240] p-3 rounded-md border border-gray-700/50">
-          <span className="text-xs text-dashboard-accent font-bold mb-2 block">拖曳特殊符號預設倍數:</span>
+          <span className="text-xs text-dashboard-accent font-bold mb-2 block">特殊設定預設倍數:</span>
           <select 
             value={selectedMultiplier}
             onChange={e => setSelectedMultiplier(Number(e.target.value))}
-            className="w-full bg-[#0a192f] border border-dashboard-accent/30 text-white rounded px-2 py-1 text-sm outline-none focus:border-dashboard-accent cursor-pointer"
+            className="w-full bg-[#0a192f] border border-dashboard-accent/30 text-white rounded px-2 py-1 text-sm outline-none focus:border-dashboard-accent cursor-pointer mb-3"
           >
             {[2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 50, 100, 250, 500].map(m => (
               <option key={m} value={m}>{m}X</option>
             ))}
           </select>
+
+          <button
+            onClick={() => setIsGoldFrameMode(!isGoldFrameMode)}
+            className={`w-full py-1.5 px-2 rounded text-xs font-bold transition-all border flex justify-center items-center gap-1 ${
+              isGoldFrameMode 
+                ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500 ring-1 ring-yellow-400' 
+                : 'bg-[#0a192f] text-gray-400 border-gray-600 hover:border-gray-400'
+            }`}
+          >
+            👑 金框編輯模式 {isGoldFrameMode ? '(ON)' : '(OFF)'}
+          </button>
+
+          <span className="text-xs text-red-400 font-bold mb-2 block mt-4">大獎設定:</span>
+          <select 
+            value={selectedJackpot}
+            onChange={e => setSelectedJackpot(e.target.value as any)}
+            className="w-full bg-[#0a192f] border border-red-500/30 text-white rounded px-2 py-1 text-sm outline-none focus:border-red-500 cursor-pointer mb-3"
+          >
+            <option value="MINI">MINI (25x)</option>
+            <option value="MAJOR">MAJOR (100x)</option>
+            <option value="MEGA">MEGA (500x)</option>
+            <option value="MAXWIN">MAXWIN (20000x)</option>
+          </select>
+          <button
+            onClick={() => setIsJackpotMode(!isJackpotMode)}
+            className={`w-full py-1.5 px-2 rounded text-xs font-bold transition-all border flex justify-center items-center gap-1 ${
+              isJackpotMode 
+                ? 'bg-red-500/20 text-red-400 border-red-500 ring-1 ring-red-400' 
+                : 'bg-[#0a192f] text-gray-400 border-gray-600 hover:border-gray-400'
+            }`}
+          >
+            🎯 大獎編輯模式 {isJackpotMode ? '(ON)' : '(OFF)'}
+          </button>
         </div>
 
         {/* MathID & Visibility Toggles */}
@@ -300,13 +429,56 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
           </button>
         </div>
         
-        <div className="flex justify-center items-center gap-3 bg-[#050b14] p-4 sm:p-6 rounded-xl border-2 border-gray-800 shadow-inner w-full overflow-x-auto custom-scrollbar">
+        <div 
+          ref={gridContainerRef}
+          className="flex justify-center items-center gap-3 bg-[#050b14] p-4 sm:p-6 rounded-xl border-2 border-gray-800 shadow-inner w-full overflow-x-auto custom-scrollbar relative"
+        >
+          {linePaths.length > 0 && (
+            <svg className="absolute inset-0 pointer-events-none w-full h-full z-20" style={{ minWidth: '100%', minHeight: '100%' }}>
+              <defs>
+                <filter id="glow-custom" filterUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%">
+                  <feGaussianBlur stdDeviation="5" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+              {linePaths.map((p, idx) => (
+                <g key={idx}>
+                  <path
+                    d={p.path}
+                    fill="none"
+                    stroke="#64ffda"
+                    strokeWidth="8"
+                    strokeOpacity="0.45"
+                    filter="url(#glow-custom)"
+                  />
+                  <path
+                    d={p.path}
+                    fill="none"
+                    stroke="#ffffff"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    className="winning-line-flow"
+                  />
+                </g>
+              ))}
+            </svg>
+          )}
+
           {gridSymbols.map((col, colIndex) => (
             <div key={colIndex} className="flex flex-col gap-3">
               {col.map((symbol, rowIndex) => {
                 const winIndices = winningCoords.get(`${colIndex}-${rowIndex}`);
                 const isWinning = !!winIndices;
                 const winColorClass = isWinning ? getWinColorClass(winIndices) : '';
+                const goldMultiplier = goldFrames[`${colIndex}-${rowIndex}`];
+                const hasGoldFrame = goldMultiplier !== undefined;
+                
+                const jackpotValue = jackpots[`${colIndex}-${rowIndex}`];
+                const hasJackpot = jackpotValue !== undefined;
+                
                 let displaySymbol = symbol;
                 let customBg = '';
                 
@@ -321,6 +493,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
 
                 return (
                   <div
+                    id={`cell-custom-${colIndex}-${rowIndex}`}
                     key={`${colIndex}-${rowIndex}`}
                     draggable
                     onClick={() => handleCellClick(colIndex, rowIndex)}
@@ -336,12 +509,24 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
                         symbol === 'SCATTER' ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border border-pink-300' :
                         'bg-[#112240] text-dashboard-text-primary border border-dashboard-accent/30'}
                       ${isWinning ? `ring-2 z-10 scale-105 ${winColorClass}` : ''}
+                      ${hasGoldFrame && !isWinning ? `ring-2 ring-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.6)]` : ''}
+                      ${hasJackpot && !isWinning ? `ring-2 ring-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]` : ''}
                     `}
                   >
-                    <div className="flex flex-col items-center justify-center pointer-events-none">
+                    <div className="flex flex-col items-center justify-center pointer-events-none w-full h-full relative">
                       <span>{displaySymbol}</span>
                       {symbol.match(/^[F|L][1-4]_/) && (
                          <span className="text-[10px] text-gray-500 font-mono mt-1 leading-none">{symbol.split('_')[0]}</span>
+                      )}
+                      {hasGoldFrame && (
+                        <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-[#0a192f] text-[10px] font-black px-1 rounded-sm shadow border border-yellow-600 z-10">
+                          {goldMultiplier}
+                        </div>
+                      )}
+                      {hasJackpot && (
+                        <div className="absolute -bottom-1 left-0 right-0 mx-1 bg-red-500 text-white text-[9px] font-black px-1 rounded-sm shadow border border-red-700 z-10 truncate text-center">
+                          {jackpotValue}
+                        </div>
                       )}
                     </div>
                   </div>
@@ -392,7 +577,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
           </div>
         </div>
 
-        {winningCoords.size > 0 && (
+        {winningCoords.size > 0 && gameType !== 'linegame_set2' && (
           <div className="flex flex-col gap-2 mt-2">
             <div className="flex justify-between items-center">
               <span className="text-xs text-orange-400 font-bold">消除數: {winningCoords.size}</span>
@@ -406,6 +591,44 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
               <button
                 onClick={() => navigator.clipboard.writeText(dropRng)}
                 className="text-[10px] font-bold bg-[#0a192f] text-[#64ffda] border border-[#64ffda]/50 px-2 py-0.5 rounded hover:bg-[#64ffda] hover:text-[#0a192f] transition-colors cursor-pointer"
+              >
+                COPY
+              </button>
+            </div>
+          </div>
+        )}
+
+        {goldFrameClassIdStr && (
+          <div className="flex flex-col gap-2 mt-2">
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-yellow-400 font-bold">金框 ClassID</span>
+            </div>
+            <div className="flex items-center justify-between bg-[#112240] px-2 py-1.5 rounded border border-yellow-500/30">
+              <code className="text-xs text-yellow-400 font-mono truncate w-48" title={goldFrameClassIdStr}>
+                {goldFrameClassIdStr}
+              </code>
+              <button
+                onClick={() => navigator.clipboard.writeText(goldFrameClassIdStr)}
+                className="text-[10px] font-bold bg-[#0a192f] text-yellow-400 border border-yellow-400/50 px-2 py-0.5 rounded hover:bg-yellow-400 hover:text-[#0a192f] transition-colors cursor-pointer"
+              >
+                COPY
+              </button>
+            </div>
+          </div>
+        )}
+
+        {jackpotClassIdStr && (
+          <div className="flex flex-col gap-2 mt-2">
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-red-400 font-bold">大獎 ClassID</span>
+            </div>
+            <div className="flex items-center justify-between bg-[#112240] px-2 py-1.5 rounded border border-red-500/30">
+              <code className="text-xs text-red-400 font-mono truncate w-48" title={jackpotClassIdStr}>
+                {jackpotClassIdStr}
+              </code>
+              <button
+                onClick={() => navigator.clipboard.writeText(jackpotClassIdStr)}
+                className="text-[10px] font-bold bg-[#0a192f] text-red-400 border border-red-400/50 px-2 py-0.5 rounded hover:bg-red-400 hover:text-[#0a192f] transition-colors cursor-pointer"
               >
                 COPY
               </button>

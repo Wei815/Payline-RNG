@@ -61,7 +61,7 @@ export function calculateSVGPaths(
   wins: WinResult[],
   currentPaytable: PaytableRule[],
   container: HTMLDivElement | null,
-  isOtherTab: boolean,
+  idPrefix: string,
   gameType: GameType,
   topTracker?: string[],
   customPaylines?: number[][]
@@ -82,7 +82,7 @@ export function calculateSVGPaths(
     const isScatter = currentPaytable.some(p => p.symbolId === win.symbolId && p.isScatter);
     if (isScatter) continue;
 
-    if (gameType === 'linegame') {
+    if (gameType === 'linegame' || gameType === 'linegame_set2') {
       if (win.lineIndex === undefined) continue;
       const line = customPaylines && customPaylines.length > 0 ? customPaylines[win.lineIndex] : defaultPaylines[win.lineIndex];
       if (!line) continue;
@@ -92,9 +92,7 @@ export function calculateSVGPaths(
 
       for (let col = 0; col < win.matchCount; col++) {
         const row = line[col];
-        const cellId = isOtherTab
-          ? `cell-other-${col}-${row}`
-          : `cell-manual-${col}-${row}`;
+        const cellId = `cell-${idPrefix}-${col}-${row}`;
 
         const element = document.getElementById(cellId);
         if (element) {
@@ -155,8 +153,8 @@ export function calculateSVGPaths(
 
       for (const pt of path) {
         const cellId = pt.row === -1
-          ? (isOtherTab ? `cell-top-other-${pt.col - 1}` : `cell-top-manual-${pt.col - 1}`)
-          : (isOtherTab ? `cell-other-${pt.col}-${pt.row}` : `cell-manual-${pt.col}-${pt.row}`);
+          ? `cell-top-${idPrefix}-${pt.col - 1}`
+          : `cell-${idPrefix}-${pt.col}-${pt.row}`;
 
         const element = document.getElementById(cellId);
         if (element) {
@@ -243,7 +241,7 @@ export function getWinningPositions(
           }
         });
       }
-    } else if (gameType === 'linegame') {
+    } else if (gameType === 'linegame' || gameType === 'linegame_set2') {
       if (win.lineIndex !== undefined) {
         const line = customPaylines && customPaylines.length > 0 ? customPaylines[win.lineIndex] : defaultPaylines[win.lineIndex];
         if (line) {

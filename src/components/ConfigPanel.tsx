@@ -550,47 +550,43 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
 
       <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
 
-        <div className={`flex flex-col gap-2 ${gameType === 'linegame' ? 'h-[450px] shrink-0' : gameType === 'payanywhere_set2' ? 'shrink-0' : 'flex-1 min-h-[450px]'}`}>
+        <div className={`flex flex-col gap-2 ${gameType === 'linegame' || gameType === 'linegame_set2' ? 'h-[450px] shrink-0' : gameType === 'payanywhere_set2' ? 'shrink-0' : 'flex-1 min-h-[450px]'}`}>
           <div className="flex flex-col gap-2 border-b border-gray-800/60 pb-3">
-            {/* Row 1: Title & Main Dropdowns */}
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <label className="text-sm text-dashboard-text-secondary font-bold whitespace-nowrap">
-                {gameType === 'payanywhere_set2' ? '參數設定' : 'Reel Strips 表格'}
-              </label>
-              <div className="flex flex-wrap items-center gap-3 text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-gray-400 font-medium whitespace-nowrap">Game Type:</span>
-                  <select
-                    value={gameType}
-                    onChange={(e) => onGameTypeChange(e.target.value as GameType)}
-                    disabled={isRunning}
-                    className="bg-[#0f1d35] border border-gray-700 text-dashboard-accent rounded px-2 py-1 outline-none focus:border-dashboard-accent cursor-pointer text-xs font-bold font-mono"
-                  >
-                    <option value="waygame">Way</option>
-                    <option value="megaway">Megaways</option>
-                    <option value="payanywhere">Pay Anywhere</option>
-                    <option value="payanywhere_set2">Pay Anywhere (Set 2)</option>
-                    <option value="linegame">Line</option>
-                  </select>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-gray-400 font-medium">Reels:</span>
-                  <select
-                    value={reelCount}
-                    onChange={(e) => {
-                      const newCount = Number(e.target.value);
-                      onReelCountChange(newCount);
-                      setGridData(Array.from({ length: 4 }, () => Array(newCount).fill('')));
-                    }}
-                    disabled={isRunning}
-                    className="bg-[#0f1d35] border border-gray-700 text-dashboard-accent rounded px-2 py-1 outline-none focus:border-dashboard-accent cursor-pointer text-xs font-bold font-mono"
-                  >
-                    <option value={3}>3</option>
-                    <option value={4}>4</option>
-                    <option value={5}>5</option>
-                    <option value={6}>6</option>
-                  </select>
-                </div>
+            {/* Row 1: Game Settings */}
+            <div className="flex flex-wrap items-center gap-3 text-xs">
+              <div className="flex items-center gap-1.5">
+                <span className="text-gray-400 font-bold whitespace-nowrap">遊戲種類:</span>
+                <select
+                  value={gameType}
+                  onChange={(e) => onGameTypeChange(e.target.value as GameType)}
+                  disabled={isRunning}
+                  className="bg-[#0f1d35] border border-gray-700 text-dashboard-accent rounded px-2 py-1 outline-none focus:border-dashboard-accent cursor-pointer text-xs font-bold font-mono"
+                >
+                  <option value="waygame">Way</option>
+                  <option value="megaway">Megaways</option>
+                  <option value="payanywhere">Pay Anywhere</option>
+                  <option value="payanywhere_set2">Pay Anywhere (Set 2)</option>
+                  <option value="linegame">Line</option>
+                  <option value="linegame_set2">Line Game (Set 2)</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-gray-400 font-bold whitespace-nowrap">欄位數 (Reels):</span>
+                <select
+                  value={reelCount}
+                  onChange={(e) => {
+                    const newCount = Number(e.target.value);
+                    onReelCountChange(newCount);
+                    setGridData(Array.from({ length: 4 }, () => Array(newCount).fill('')));
+                  }}
+                  disabled={isRunning}
+                  className="bg-[#0f1d35] border border-gray-700 text-dashboard-accent rounded px-2 py-1 outline-none focus:border-dashboard-accent cursor-pointer text-xs font-bold font-mono"
+                >
+                  <option value={3}>3</option>
+                  <option value={4}>4</option>
+                  <option value={5}>5</option>
+                  <option value={6}>6</option>
+                </select>
               </div>
             </div>
 
@@ -630,9 +626,16 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
                 />
               </div>
             </div>
+
+            {/* Row 3: Title */}
+            <div className="flex items-center justify-between gap-2 pt-1 mt-1 border-t border-gray-800/60">
+              <label className="text-sm text-dashboard-text-secondary font-bold whitespace-nowrap">
+                {gameType === 'payanywhere_set2' || gameType === 'linegame_set2' ? '參數設定' : 'Reel Strips 表格'}
+              </label>
+            </div>
           </div>
 
-          {gameType === 'payanywhere_set2' && (
+          {(gameType === 'payanywhere_set2' || gameType === 'linegame_set2') && (
             <div className="flex-1 border border-gray-700 rounded-lg overflow-hidden flex flex-col bg-[#0a192f] mt-2">
               <div className="flex justify-between items-center bg-[#0f1d35] border-b border-gray-700 p-3 shrink-0">
                 <span className="text-sm text-dashboard-text-secondary font-bold">MathID 映射表</span>
@@ -686,7 +689,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
             </div>
           )}
 
-          {gameType !== 'payanywhere_set2' && (
+          {(gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2') && (
             <div
               className="flex-1 border border-gray-700 rounded-lg overflow-hidden flex flex-col bg-[#0a192f] focus-within:ring-1 focus-within:ring-dashboard-accent focus-within:border-dashboard-accent transition-all relative"
               tabIndex={0}
@@ -738,7 +741,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
           )}
         </div>
 
-        {gameType === 'linegame' && (
+        {(gameType === 'linegame' || gameType === 'linegame_set2') && (
           <div className="flex flex-col gap-2 h-[220px] shrink-0">
             <div className="flex justify-between items-center">
               <label className="text-sm text-dashboard-text-secondary font-medium">線路規則 表格 (Line Rules)</label>

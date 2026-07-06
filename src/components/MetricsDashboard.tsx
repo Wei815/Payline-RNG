@@ -78,7 +78,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({ result, isRu
           <span className="text-dashboard-text-secondary text-xs mb-1">使用條線數 / 遊戲類型</span>
           <span className="text-2xl font-bold text-purple-400 font-mono">
             {result
-              ? result.gameType === 'linegame'
+              ? (result.gameType === 'linegame' || result.gameType === 'linegame_set2')
                 ? `${result.paylineCount} 條`
                 : result.gameType
               : '--'}

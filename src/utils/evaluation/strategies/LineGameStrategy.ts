@@ -42,6 +42,33 @@ export class LineGameStrategy implements EvaluationStrategy {
           if (sym === 'B1' || sym === 'B2') {
             totalWin = payout * (gameConfig.effectiveBet || 1);
           }
+
+          let goldFrameMultipliers = 0;
+          let jackpotBonus = 0;
+
+          // Check gold frames and jackpots along the matched symbols
+          for (let c = 0; c < matchCount; c++) {
+            const r = line[c];
+            const posKey = `${c}-${r}`;
+            if (gameConfig.goldFrames && gameConfig.goldFrames[posKey]) {
+              goldFrameMultipliers += gameConfig.goldFrames[posKey];
+            }
+            if (gameConfig.jackpots && gameConfig.jackpots[posKey]) {
+              const jp = gameConfig.jackpots[posKey];
+              const bet = gameConfig.effectiveBet || 1;
+              if (jp === 'MINI') jackpotBonus += bet * 25;
+              else if (jp === 'MAJOR') jackpotBonus += bet * 100;
+              else if (jp === 'MEGA') jackpotBonus += bet * 500;
+              else if (jp === 'MAXWIN') jackpotBonus += bet * 20000;
+            }
+          }
+
+          if (goldFrameMultipliers > 0) {
+            totalWin = totalWin * goldFrameMultipliers;
+          }
+          
+          totalWin += jackpotBonus;
+
           results.push({
             symbolId: sym,
             matchCount: matchCount,

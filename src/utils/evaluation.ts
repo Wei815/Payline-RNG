@@ -85,7 +85,7 @@ export function evaluateGrid(
       strategy = STRATEGY_INSTANCES.scatter;
     } else if (gameType === 'payanywhere' || gameType === 'payanywhere_set2') {
       strategy = STRATEGY_INSTANCES.payanywhere;
-    } else if (gameType === 'linegame') {
+    } else if (gameType === 'linegame' || gameType === 'linegame_set2') {
       strategy = STRATEGY_INSTANCES.linegame;
     } else {
       // fallback to waygame/megaway
@@ -96,7 +96,7 @@ export function evaluateGrid(
     results.push(...wins);
   }
 
-  if (gameType === 'linegame') {
+  if (gameType === 'linegame' || gameType === 'linegame_set2') {
     const lineWins = new Map<number, WinResult>();
     const nonLineWins: WinResult[] = [];
 

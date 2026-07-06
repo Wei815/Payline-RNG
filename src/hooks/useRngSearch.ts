@@ -27,7 +27,7 @@ export function useRngSearch(
       setTimeout(() => setCombinations([]), 0);
       return;
     }
-    if (gameType !== 'payanywhere_set2' && (currentStrips.length === 0 || currentStrips.every(s => !s || s.length === 0))) {
+    if (gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2' && (currentStrips.length === 0 || currentStrips.every(s => !s || s.length === 0))) {
       setTimeout(() => setCombinations([]), 0);
       return;
     }
@@ -256,7 +256,7 @@ export function useRngSearch(
               }
 
               newCombs.push({
-                name: gameType === 'payanywhere_set2' 
+                name: (gameType === 'payanywhere_set2' || gameType === 'linegame_set2')
                   ? (N < 8 ? `無贏分 (1)\n${selectedSymbol} 個數 ${N}` : `有贏分 (1)\n${selectedSymbol} 個數 ${N}`) 
                   : `${selectedSymbol} * ${N} 連線`,
                 length: N,
@@ -269,6 +269,97 @@ export function useRngSearch(
               (newCombs[newCombs.length - 1] as any).dropMathIds = dropMathIds;
             }
           }
+        }
+      } else if (gameType === 'linegame_set2') {
+        // --- LINE GAME SET 2 GENERATOR ---
+        const excludeSymbols = [selectedSymbol, 'WX', 'NI', 'F1', 'F2', 'F3', 'F4', 'L1', 'L2'];
+        const nonScatters = currentPaytable.filter(p => p.isEnabled !== false && !p.isScatter && !excludeSymbols.includes(p.symbolId)).map(p => p.symbolId);
+
+        if (nonScatters.length > 0) {
+          const linesToUse = customPaylines && customPaylines.length > 0 ? customPaylines : [Array(reelCount).fill(0)];
+          const targetLengths = [3, 4, 5, 6].filter(l => l <= reelCount);
+
+          const mathIdMap: Record<string, string> = {};
+          currentPaytable.forEach(p => {
+            if (p.mathId !== undefined) {
+              const ids = String(p.mathId).split(',').map(s => s.trim());
+              mathIdMap[p.symbolId] = ids[0];
+            }
+          });
+
+          targetLengths.forEach(len => {
+            const line = linesToUse[0];
+            
+            const grid: string[][] = Array.from({ length: reelCount }, (_, c) => Array(rowCounts[c] || 3).fill('-'));
+            
+            for (let c = 0; c < len; c++) {
+              grid[c][line[c]] = selectedSymbol;
+            }
+
+            const flatGrid: {c: number, r: number, val: string}[] = [];
+            for (let c = 0; c < reelCount; c++) {
+              for (let r = 0; r < (rowCounts[c] || 3); r++) {
+                flatGrid.push({c, r, val: grid[c][r]});
+              }
+            }
+
+            const specialSymbolsToPlace: string[] = [];
+            if (specialSymbolConfig.s1Enabled && specialSymbolConfig.s1Count > 0) {
+              for(let i=0; i<specialSymbolConfig.s1Count; i++) specialSymbolsToPlace.push('S1');
+            }
+            if (specialSymbolConfig.s2Enabled && specialSymbolConfig.s2Count > 0) {
+              for(let i=0; i<specialSymbolConfig.s2Count; i++) specialSymbolsToPlace.push('S2');
+            }
+            if (specialSymbolConfig.multipliersEnabled) {
+              Object.entries(specialSymbolConfig.multiplierCounts).forEach(([key, count]) => {
+                for(let i=0; i<count; i++) specialSymbolsToPlace.push(key);
+              });
+            }
+
+            let nsIdx = 0;
+            const emptySpots = flatGrid.filter(cell => cell.val === '-');
+            emptySpots.sort(() => Math.random() - 0.5);
+
+            for (let i = 0; i < emptySpots.length; i++) {
+              if (specialSymbolsToPlace.length > 0) {
+                emptySpots[i].val = specialSymbolsToPlace.shift()!;
+              } else {
+                emptySpots[i].val = nonScatters[nsIdx % nonScatters.length];
+                nsIdx++;
+              }
+            }
+
+            const fullMathIds: string[] = [];
+            const columnStrings: string[] = [];
+            for (let c = 0; c < reelCount; c++) {
+              const colArr: string[] = [];
+              for (let r = 0; r < (rowCounts[c] || 3); r++) {
+                const cell = flatGrid.find(cell => cell.c === c && cell.r === r)!;
+                let s = cell.val;
+                let mathId = mathIdMap[s] || s;
+                if (s.includes('_') && s.match(/^[F|L][1-4]_/)) {
+                  if (s.startsWith('F')) mathId = '15';
+                  else if (s.startsWith('L')) mathId = '19';
+                  else {
+                    const base = s.split('_')[0];
+                    mathId = mathIdMap[base] || base;
+                  }
+                }
+                fullMathIds.push(mathId);
+                colArr.push(mathId);
+              }
+              columnStrings.push(colArr.join(','));
+            }
+
+            newCombs.push({
+              name: `${selectedSymbol} * ${len} 連線 (Line 1)`,
+              length: len,
+              wildCount: 0,
+              rng: columnStrings,
+              isInterfered: false,
+              fullMathIds: fullMathIds
+            } as any);
+          });
         }
       } else {
         // --- STANDARD RNG SEARCH ---

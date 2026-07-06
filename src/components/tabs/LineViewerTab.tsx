@@ -72,7 +72,47 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
             const displayRows = Math.max(3, maxRowVal + 1);
 
             // 計算該線路對應的 RNG 起點 (尋找最乾淨盤面)
-            const { rng, actualTotalWin } = (() => {
+            const { rng, actualTotalWin, mathIdRng } = (() => {
+              if (gameType === 'linegame_set2') {
+                const grid: string[][] = Array.from({ length: reelCount }, (_, c) => Array(rowCounts[c] || 3).fill('-'));
+                for (let c = 0; c < line.length; c++) {
+                  grid[c][line[c]] = activeLineViewerSymbol;
+                }
+
+                const excludeSymbols = [activeLineViewerSymbol, 'WX', 'NI', 'F1', 'F2', 'F3', 'F4', 'L1', 'L2'];
+                const nonScatters = currentPaytable.filter(p => p.isEnabled !== false && !p.isScatter && !excludeSymbols.includes(p.symbolId)).map(p => p.symbolId);
+
+                let nsIdx = 0;
+                for (let c = 0; c < reelCount; c++) {
+                  for (let r = 0; r < grid[c].length; r++) {
+                    if (grid[c][r] === '-') {
+                      grid[c][r] = nonScatters.length > 0 ? nonScatters[nsIdx % nonScatters.length] : 'NI';
+                      nsIdx++;
+                    }
+                  }
+                }
+
+                const mathIdMap: Record<string, string> = {};
+                currentPaytable.forEach(p => {
+                  if (p.mathId !== undefined) {
+                    const ids = String(p.mathId).split(',').map(s => s.trim());
+                    mathIdMap[p.symbolId] = ids[0];
+                  }
+                });
+
+                const columnStrings: string[] = [];
+                for (let c = 0; c < reelCount; c++) {
+                  const colArr = [];
+                  for (let r = 0; r < grid[c].length; r++) {
+                    const s = grid[c][r];
+                    colArr.push(mathIdMap[s] || s);
+                  }
+                  columnStrings.push(colArr.join(','));
+                }
+
+                return { rng: null, actualTotalWin: lineViewerPayout, mathIdRng: columnStrings };
+              }
+
               const candidatesPerReel: number[][] = [];
               for (let col = 0; col < reelCount; col++) {
                 const strip = currentStrips[col];
@@ -85,7 +125,7 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                     }
                   }
                 }
-                if (candidates.length === 0) return { rng: null, actualTotalWin: 0 };
+                if (candidates.length === 0) return { rng: null, actualTotalWin: 0, mathIdRng: null };
                 candidatesPerReel.push(candidates);
               }
 
@@ -147,11 +187,12 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                 const evWins = evaluateGrid(testGrid, currentPaytable, gameType, customPaylines, true);
                 return {
                   rng: fallbackRng,
-                  actualTotalWin: evWins.reduce((sum, w) => sum + w.totalWin, 0)
+                  actualTotalWin: evWins.reduce((sum, w) => sum + w.totalWin, 0),
+                  mathIdRng: null
                 };
               }
 
-              return { rng: bestRng, actualTotalWin: bestTotalWin };
+              return { rng: bestRng, actualTotalWin: bestTotalWin, mathIdRng: null };
             })();
 
             return (
@@ -204,17 +245,23 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
 
                 <div className="flex flex-col items-center gap-2 w-full">
                   <div className="text-xs font-mono text-dashboard-text-secondary">
-                    贏分: <span className="text-yellow-400 font-bold">{rng ? formatAmount(actualTotalWin * betMultiplier) : 0}</span>
+                    贏分: <span className="text-yellow-400 font-bold">{(rng || mathIdRng) ? formatAmount(actualTotalWin * betMultiplier) : 0}</span>
                   </div>
-                  {rng ? (
+                  {(rng || mathIdRng) ? (
                     <button
                       onClick={() => {
-                        const strRng = rng.map(String);
-                        setManualIndices(strRng);
-                        setManualIndicesOther(strRng);
-
-                        // 複製到剪貼簿
-                        const text = `[${rng.join(',')}],`;
+                        let text = '';
+                        if (mathIdRng) {
+                          setManualIndices(mathIdRng);
+                          setManualIndicesOther(mathIdRng);
+                          text = `[${mathIdRng.join(',')}],`;
+                        } else if (rng) {
+                          const strRng = rng.map(String);
+                          setManualIndices(strRng);
+                          setManualIndicesOther(strRng);
+                          text = `[${rng.join(',')}],`;
+                        }
+                        
                         navigator.clipboard.writeText(text);
 
                         setCopiedIndex(lineIdx);
@@ -227,7 +274,7 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                       }`}
                       title="點擊自動套用此 RNG 數組至盤面並複製至剪貼簿"
                     >
-                      {copiedIndex === lineIdx ? 'COPIED!' : `RNG: [${rng.join(',')}],`}
+                      {copiedIndex === lineIdx ? 'COPIED!' : (mathIdRng ? `RNG: [${mathIdRng.join(',').slice(0,10)}...],` : `RNG: [${rng?.join(',')}],`)}
                     </button>
                   ) : (
                     <span className="text-xs text-red-500 font-bold">無可行 RNG</span>

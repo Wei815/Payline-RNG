@@ -68,7 +68,7 @@ function App() {
       {/* Main Grid Layout - pt-14 to offset header */}
       <div className="flex-1 w-full flex flex-col md:flex-row pt-14 min-h-0">
         {/* Left: ConfigPanel */}
-        <div className={`w-full h-full transition-all duration-300 ${gameType === 'payanywhere_set2' ? 'md:w-[360px] shrink-0' : 'md:w-[35%]'}`}>
+        <div className={`w-full h-full transition-all duration-300 ${gameType === 'payanywhere_set2' || gameType === 'linegame_set2' ? 'md:w-[360px] shrink-0' : 'md:w-[35%]'}`}>
           <ConfigPanel 
             isRunning={isRunning} 
             coin={coin}

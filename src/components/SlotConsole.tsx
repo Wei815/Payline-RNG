@@ -42,7 +42,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
   const [prevGameType, setPrevGameType] = useState(gameType);
   if (gameType !== prevGameType) {
     setPrevGameType(gameType);
-    if (gameType !== 'linegame' && gameType !== 'payanywhere_set2' && activeTab === 'lines') {
+    if (gameType !== 'linegame' && gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2' && activeTab === 'lines') {
       setActiveTab('manual');
     }
   }
@@ -62,7 +62,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
 
   // Sync active tab if payanywhere_set2 is selected and manual is active
   useEffect(() => {
-    if (gameType === 'payanywhere_set2' && activeTab === 'manual') {
+    if ((gameType === 'payanywhere_set2' || gameType === 'linegame_set2') && activeTab === 'manual') {
       setActiveTab('other');
     }
   }, [gameType, activeTab]);
@@ -81,6 +81,9 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
   const { isSearching, combinations } = useRngSearch(
     selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther, specialSymbolConfig, customPaylines
   );
+
+  const [goldFramesGenerator, setGoldFramesGenerator] = useState<Record<string, number>>({});
+  const [jackpotsGenerator, setJackpotsGenerator] = useState<Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>>({});
 
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const gridContainerRefOther = useRef<HTMLDivElement>(null);
@@ -336,6 +339,8 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
       gameType,
       paylines: customPaylines,
       effectiveBet: bet,
+      goldFrames: goldFramesGenerator,
+      jackpots: jackpotsGenerator,
       specialRules: { derivativeSymbols: { 'B1': ['B2'] } }
     };
     const baseWins = evaluateGrid(finalGrid, currentPaytable, config, undefined, true);
@@ -411,10 +416,10 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
 
   const updatePaths = () => {
     if (activeTab === 'manual') {
-      const p = calculateSVGPaths(displayGrid, wins, currentPaytable, gridContainerRef.current, false, gameType, gameType === 'megaway' ? topTracker : undefined, customPaylines);
+      const p = calculateSVGPaths(displayGrid, wins, currentPaytable, gridContainerRef.current, 'manual', gameType, gameType === 'megaway' ? topTracker : undefined, customPaylines);
       setLinePaths(p);
     } else {
-      const p = calculateSVGPaths(displayGridOther, winsOther, currentPaytable, gridContainerRefOther.current, true, gameType, gameType === 'megaway' ? topTrackerOther : undefined, customPaylines);
+      const p = calculateSVGPaths(displayGridOther, winsOther, currentPaytable, gridContainerRefOther.current, 'other', gameType, gameType === 'megaway' ? topTrackerOther : undefined, customPaylines);
       setLinePathsOther(p);
     }
   };
@@ -445,7 +450,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
 
       {/* Tabs Switcher */}
       <div className="flex border-b border-gray-800 bg-[#0f1d35] rounded-t-xl overflow-hidden shrink-0 border border-gray-700/50">
-        {gameType !== 'payanywhere_set2' && (
+        {(gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2') && (
           <button
             onClick={() => setActiveTab('manual')}
             className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-all duration-200 cursor-pointer ${activeTab === 'manual'
@@ -465,7 +470,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
         >
           連線測試產生器
         </button>
-        {(gameType === 'linegame' || gameType === 'payanywhere_set2') && (
+        {(gameType === 'linegame' || gameType === 'payanywhere_set2' || gameType === 'linegame_set2') && (
           <button
             onClick={() => setActiveTab('lines')}
             className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-all duration-200 cursor-pointer ${activeTab === 'lines'
@@ -473,7 +478,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
                 : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-[#112240]/20'
               }`}
           >
-            {gameType === 'linegame' ? '贏分線路一覽' : '消除掉落測試'}
+            {(gameType === 'linegame' || gameType === 'linegame_set2') ? '贏分線路一覽' : '消除掉落測試'}
           </button>
         )}
         <button
@@ -512,9 +517,11 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
             selectedSymbol={selectedSymbol} setSelectedSymbol={setSelectedSymbol}
             groupedSymbols={groupedSymbols} parsePasteRng={parsePasteRng} isRunning={isRunning}
             specialSymbolConfig={specialSymbolConfig} setSpecialSymbolConfig={setSpecialSymbolConfig}
+            goldFrames={goldFramesGenerator} setGoldFrames={setGoldFramesGenerator}
+            jackpots={jackpotsGenerator} setJackpots={setJackpotsGenerator}
           />
         </div>
-        {gameType === 'linegame' && (
+        {(gameType === 'linegame' || gameType === 'linegame_set2') && (
           <div className={activeTab === 'lines' ? 'w-full flex-1 flex flex-col' : 'hidden'}>
             <LineViewerTab 
               reelCount={reelCount} rowCounts={rowCounts} currentStrips={currentStrips}

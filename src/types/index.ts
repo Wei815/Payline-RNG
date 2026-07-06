@@ -8,7 +8,7 @@ export interface PaytableRule {
   isEnabled?: boolean;
 }
 
-export type GameType = 'waygame' | 'megaway' | 'payanywhere' | 'payanywhere_set2' | 'linegame';
+export type GameType = 'waygame' | 'megaway' | 'payanywhere' | 'payanywhere_set2' | 'linegame' | 'linegame_set2';
 
 export type ReelStrips = string[][];
 
@@ -49,6 +49,8 @@ export interface GameConfig {
   paylines?: number[][];
   wildSymbols?: string[];
   effectiveBet?: number; // Added for B1/B2 base bet multiplication
+  goldFrames?: Record<string, number>; // e.g. '0-0': 2
+  jackpots?: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>; // e.g. '0-0': 'MINI'
   specialRules?: {
     derivativeSymbols?: Record<string, string[]>; // e.g. { 'B1': ['B2'] }
     payAnywhereThresholds?: { match3: number; match4: number; match5: number };
