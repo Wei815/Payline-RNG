@@ -1,13 +1,12 @@
-import React, { useState } from 'react';
-import type { GameType } from '../../types';
-import type { SVGPathResult } from '../../utils/slotUtils';
-import { formatAmount, getWinColorClass } from '../../utils/slotUtils';
-import type { WinResult } from '../../utils/evaluation';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import type { GameType, PaytableRule, GameConfig } from '../../types';
+import type { SVGPathResult } from '../../utils/svgPaths';
+import { formatAmount } from '../../utils/formatters';
+import { getWinColorClass, calculateSVGPaths, getWinningPositions } from '../../utils/svgPaths';
+import { evaluateGrid } from '../../utils/evaluation';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
 
 export interface SlotManualTabProps {
-  gridContainerRef: React.RefObject<HTMLDivElement | null>;
-  linePaths: SVGPathResult[];
   reelCount: number;
   rowCounts: number[];
   onRowCountsChange: (rows: number[]) => void;
@@ -16,22 +15,100 @@ export interface SlotManualTabProps {
   topTracker: string[];
   setTopTracker: (val: string[]) => void;
   gameType: GameType;
-  displayGrid: string[][];
-  winningCoords: Map<string, number[]>;
-  wins: WinResult[];
   betMultiplier: number;
   parsePasteRng: (text: string, count: number) => string[] | null;
   isRunning: boolean;
   selectedSymbol: string;
+  currentStrips: string[][];
+  currentGrid: string[][];
+  currentPaytable: PaytableRule[];
+  customPaylines?: number[][];
+  bet: number;
 }
 
 export const SlotManualTab: React.FC<SlotManualTabProps> = ({
-  gridContainerRef, linePaths, reelCount, rowCounts, onRowCountsChange,
+  reelCount, rowCounts, onRowCountsChange,
   manualIndices, setManualIndices, topTracker, setTopTracker,
-  gameType, displayGrid, winningCoords, wins, betMultiplier, parsePasteRng,
-  isRunning, selectedSymbol
+  gameType, betMultiplier, parsePasteRng,
+  isRunning, selectedSymbol,
+  currentStrips, currentGrid, currentPaytable, customPaylines, bet
 }) => {
   const [noWinCollapsed, setNoWinCollapsed] = useState(false);
+  const gridContainerRef = useRef<HTMLDivElement>(null);
+  const [linePaths, setLinePaths] = useState<SVGPathResult[]>([]);
+
+  const displayGrid = useMemo(() => Array.from({ length: reelCount }, (_, colIndex) => {
+    const rowsForThisCol = rowCounts[colIndex] || 3;
+    const strip = currentStrips[colIndex];
+    const manualInput = manualIndices[colIndex];
+
+    if (manualInput && manualInput !== '') {
+      if (strip && strip.length > 0 && !isNaN(Number(manualInput))) {
+        const startIndex = Number(manualInput);
+        return Array.from({ length: rowsForThisCol }).map((_, rIndex) => {
+          const actualIndex = (startIndex + rIndex) % strip.length;
+          return strip[actualIndex];
+        });
+      } else if (manualInput.includes(',')) {
+        const symbols = manualInput.split(',').map(s => s.trim());
+        if (symbols.length >= rowsForThisCol) {
+          return symbols.slice(0, rowsForThisCol);
+        } else {
+          return [...symbols, ...Array(rowsForThisCol - symbols.length).fill('-')];
+        }
+      }
+    }
+
+    if (currentGrid.length > 0 && currentGrid[colIndex]) {
+      const gridCol = currentGrid[colIndex];
+      if (gridCol.length === rowsForThisCol) {
+        return gridCol;
+      }
+      if (gridCol.length < rowsForThisCol) {
+        return [...gridCol, ...Array(rowsForThisCol - gridCol.length).fill('-')];
+      }
+      return gridCol.slice(0, rowsForThisCol);
+    }
+
+    return Array(rowsForThisCol).fill('-');
+  }), [reelCount, rowCounts, currentStrips, manualIndices, currentGrid]);
+
+  const wins = useMemo(() => {
+    let finalGrid = displayGrid;
+    if (gameType === 'megaway') {
+      finalGrid = displayGrid.map((col, colIdx) => {
+        if (colIdx >= 1 && colIdx <= 4) {
+          const topSym = topTracker[colIdx - 1] || 'WX';
+          return [...col, topSym];
+        }
+        return col;
+      });
+    }
+    const config: GameConfig = {
+      gameType,
+      paylines: customPaylines,
+      effectiveBet: bet,
+      specialRules: { derivativeSymbols: { 'B1': ['B2'] } }
+    };
+    return evaluateGrid(finalGrid, currentPaytable, config);
+  }, [displayGrid, currentPaytable, gameType, topTracker, customPaylines, bet]);
+
+  const winningCoords = useMemo(() => {
+    return getWinningPositions(displayGrid, wins, currentPaytable, gameType, gameType === 'megaway' ? topTracker : undefined, customPaylines);
+  }, [displayGrid, wins, currentPaytable, gameType, topTracker, customPaylines, bet]);
+
+  useEffect(() => {
+    const updatePaths = () => {
+      const p = calculateSVGPaths(displayGrid, wins, currentPaytable, gridContainerRef.current, 'manual', gameType, gameType === 'megaway' ? topTracker : undefined, customPaylines);
+      setLinePaths(p);
+    };
+    const timer = setTimeout(updatePaths, 150);
+    window.addEventListener('resize', updatePaths);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', updatePaths);
+    };
+  }, [displayGrid, wins, currentPaytable, gameType, topTracker, customPaylines]);
 
   const handleDragStart = (e: React.DragEvent, col: number, row: number) => {
     e.dataTransfer.setData("sourceCol", col.toString());
@@ -158,9 +235,9 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
 
         {/* Slot Grid Visualization */}
         <div
-          ref={gridContainerRef}
-          className="bg-dashboard-card p-6 rounded-xl shadow-2xl border border-gray-700/30 w-full max-w-3xl overflow-hidden relative"
+          className="bg-dashboard-card p-6 rounded-xl shadow-2xl border border-gray-700/30 w-full max-w-3xl overflow-hidden flex justify-center items-center"
         >
+          <div ref={gridContainerRef} className="relative inline-flex flex-col items-center justify-center">
           {/* SVG Winning Line Overlay */}
           {linePaths.length > 0 && (
             <svg className="absolute inset-0 pointer-events-none w-full h-full z-20">
@@ -290,6 +367,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                 </div>
               ))}
             </div>
+          </div>
           </div>
         </div>
 

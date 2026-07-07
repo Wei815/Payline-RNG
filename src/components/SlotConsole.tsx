@@ -1,64 +1,67 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import type { PaytableRule, GameType, GameConfig } from '../types';
-import { evaluateGrid, defaultPaylines } from '../utils/evaluation';
+import React, { useState, useEffect, useMemo } from 'react';
+import { defaultPaylines } from '../utils/evaluation';
+import { useMachineStore } from '../store/useMachineStore';
+import { useGameStore } from '../store/useGameStore';
 
 export interface SlotConsoleProps {
-  isRunning: boolean;
-  progress: number;
-  currentSpins: number;
   currentGrid: string[][];
-  totalSpins: number;
-  reelCount: number;
-  rowCounts: number[];
-  onRowCountsChange: (rows: number[]) => void;
-  currentStrips: string[][];
-  currentPaytable: PaytableRule[];
-  coin: number;
-  bet: number;
-  gameType: GameType;
-  customPaylines?: number[][];
 }
 
-import {
-  parsePasteRng,
-  calculateSVGPaths,
-  getWinningPositions
-} from '../utils/slotUtils';
-import type { SVGPathResult } from '../utils/slotUtils';
-import { useRngSearch } from '../hooks/useRngSearch';
+import { parsePasteRng } from '../utils/formatters';
 import { SlotManualTab } from './tabs/SlotManualTab';
 import { SlotGeneratorTab } from './tabs/SlotGeneratorTab';
 import { LineViewerTab } from './tabs/LineViewerTab';
 import { TumbleViewerTab } from './tabs/TumbleViewerTab';
 import { SlotCustomGridTab } from './tabs/SlotCustomGridTab';
 
-export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid, reelCount, rowCounts, onRowCountsChange, currentStrips, currentPaytable, coin, bet, gameType, customPaylines }) => {
+export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
+  const isRunning = useMachineStore(state => state.isRunning);
+  const bet = useMachineStore(state => state.bet);
+  const coin = useMachineStore(state => state.coin);
+  const gameType = useMachineStore(state => state.gameType);
+
+  const reelCount = useGameStore(state => state.reelCount);
+  const rowCounts = useGameStore(state => state.rowCounts);
+  const setRowCounts = useGameStore(state => state.setRowCounts);
+  const currentStrips = useGameStore(state => state.currentStrips);
+  const currentPaytable = useGameStore(state => state.currentPaytable);
+  const customPaylines = useGameStore(state => state.customPaylines);
+  const specialSymbolConfig = useGameStore(state => state.specialSymbolConfig);
+  const setSpecialSymbolConfig = useGameStore(state => state.setSpecialSymbolConfig);
+  const goldFrames = useGameStore(state => state.goldFrames);
+  const setGoldFrames = useGameStore(state => state.setGoldFrames);
+  const jackpots = useGameStore(state => state.jackpots);
+  const setJackpots = useGameStore(state => state.setJackpots);
+  const clovers = useGameStore(state => state.clovers);
+  const setClovers = useGameStore(state => state.setClovers);
+  const manualIndices = useGameStore(state => state.manualIndices);
+  const setManualIndices = useGameStore(state => state.setManualIndices);
+  const manualIndicesOther = useGameStore(state => state.manualIndicesOther);
+  const setManualIndicesOther = useGameStore(state => state.setManualIndicesOther);
+  const topTracker = useGameStore(state => state.topTracker);
+  const setTopTracker = useGameStore(state => state.setTopTracker);
+  const topTrackerOther = useGameStore(state => state.topTrackerOther);
+  const setTopTrackerOther = useGameStore(state => state.setTopTrackerOther);
+  const activeTab = useGameStore(state => state.activeTab);
+  const setActiveTab = useGameStore(state => state.setActiveTab);
+
   const betMultiplier = bet / coin;
-  const [activeTab, setActiveTab] = useState<'manual' | 'other' | 'lines' | 'customGrid'>('manual');
   const [lineViewerSymbolState, setLineViewerSymbolState] = useState<string>('');
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [useWxInLines, setUseWxInLines] = useState<boolean>(true);
 
-  const [prevGameType, setPrevGameType] = useState(gameType);
-  if (gameType !== prevGameType) {
-    setPrevGameType(gameType);
+  useEffect(() => {
     if (gameType !== 'linegame' && gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2' && activeTab === 'lines') {
       setActiveTab('manual');
     }
-  }
+  }, [gameType, activeTab]);
 
-  const [manualIndices, setManualIndices] = useState<string[]>(Array(reelCount).fill(''));
-  const [manualIndicesOther, setManualIndicesOther] = useState<string[]>(Array(reelCount).fill(''));
   const [selectedSymbol, setSelectedSymbol] = useState<string>('');
-  const [topTracker, setTopTracker] = useState<string[]>(Array(4).fill('WX'));
-  const [topTrackerOther, setTopTrackerOther] = useState<string[]>(Array(4).fill('WX'));
 
-  const [prevReelCount, setPrevReelCount] = useState(reelCount);
-  if (reelCount !== prevReelCount) {
-    setPrevReelCount(reelCount);
+  useEffect(() => {
     setManualIndices(Array(reelCount).fill(''));
     setManualIndicesOther(Array(reelCount).fill(''));
-  }
+  }, [reelCount]);
 
   // Sync active tab if payanywhere_set2 is selected and manual is active
   useEffect(() => {
@@ -66,29 +69,6 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
       setActiveTab('other');
     }
   }, [gameType, activeTab]);
-
-  const [specialSymbolConfig, setSpecialSymbolConfig] = useState<import('../types').SpecialSymbolConfig>({
-    s1Enabled: false,
-    s1Count: 0,
-    s2Enabled: false,
-    s2Count: 0,
-    multipliersEnabled: false,
-    multiplierCounts: {},
-    luckyBallsEnabled: false,
-    luckyCounts: {}
-  });
-
-  const { isSearching, combinations } = useRngSearch(
-    selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther, specialSymbolConfig, customPaylines
-  );
-
-  const [goldFramesGenerator, setGoldFramesGenerator] = useState<Record<string, number>>({});
-  const [jackpotsGenerator, setJackpotsGenerator] = useState<Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>>({});
-
-  const gridContainerRef = useRef<HTMLDivElement>(null);
-  const gridContainerRefOther = useRef<HTMLDivElement>(null);
-  const [linePaths, setLinePaths] = useState<SVGPathResult[]>([]);
-  const [linePathsOther, setLinePathsOther] = useState<SVGPathResult[]>([]);
 
   // 分組與排序邏輯 (同 Paytable Editor 三個區塊，並按指定順序排序)
   const groupedSymbols = useMemo(() => {
@@ -189,16 +169,14 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
 
   const activeLineViewerSymbol = lineViewerSymbolState || lineViewerSymbol;
 
-  const [prevSymbols, setPrevSymbols] = useState(symbols);
-  if (symbols !== prevSymbols) {
-    setPrevSymbols(symbols);
+  useEffect(() => {
     if (lineViewerSymbolState && !symbols.includes(lineViewerSymbolState)) {
       setLineViewerSymbolState('');
     }
     if (symbols.length > 0 && !symbols.includes(selectedSymbol)) {
       setSelectedSymbol(symbols[0]);
     }
-  }
+  }, [symbols, lineViewerSymbolState, selectedSymbol]);
 
   const lineViewerPayout = useMemo(() => {
     const matchKey = `match${Math.min(5, reelCount)}`;
@@ -213,226 +191,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
     }
   }, [selectedSymbol, reelCount]);
 
-  // Tab 1: Manual Indices grid
-  const displayGrid = Array.from({ length: reelCount }, (_, colIndex) => {
-    const rowsForThisCol = rowCounts[colIndex] || 3;
-    const strip = currentStrips[colIndex];
-    const manualInput = manualIndices[colIndex];
 
-    if (manualInput && manualInput !== '') {
-      if (strip && strip.length > 0 && !isNaN(Number(manualInput))) {
-        const startIndex = Number(manualInput);
-        return Array.from({ length: rowsForThisCol }).map((_, rIndex) => {
-          const actualIndex = (startIndex + rIndex) % strip.length;
-          return strip[actualIndex];
-        });
-      } else if (manualInput.includes(',')) {
-        const symbols = manualInput.split(',').map(s => s.trim());
-        if (symbols.length >= rowsForThisCol) {
-          return symbols.slice(0, rowsForThisCol);
-        } else {
-          return [...symbols, ...Array(rowsForThisCol - symbols.length).fill('-')];
-        }
-      }
-    }
-
-    if (currentGrid.length > 0 && currentGrid[colIndex]) {
-      const gridCol = currentGrid[colIndex];
-      if (gridCol.length === rowsForThisCol) {
-        return gridCol;
-      }
-      if (gridCol.length < rowsForThisCol) {
-        return [...gridCol, ...Array(rowsForThisCol - gridCol.length).fill('-')];
-      }
-      return gridCol.slice(0, rowsForThisCol);
-    }
-
-    return Array(rowsForThisCol).fill('-');
-  });
-
-  const wins = useMemo(() => {
-    let finalGrid = displayGrid;
-    if (gameType === 'megaway') {
-      finalGrid = displayGrid.map((col, colIdx) => {
-        if (colIdx >= 1 && colIdx <= 4) {
-          const topSym = topTracker[colIdx - 1] || 'WX';
-          return [...col, topSym];
-        }
-        return col;
-      });
-    }
-    const config: GameConfig = {
-      gameType,
-      paylines: customPaylines,
-      effectiveBet: bet,
-      specialRules: { derivativeSymbols: { 'B1': ['B2'] } }
-    };
-    return evaluateGrid(finalGrid, currentPaytable, config);
-  }, [displayGrid, currentPaytable, gameType, topTracker, customPaylines, bet]);
-
-  // Tab 2: Other Indices grid
-  const displayGridOther = Array.from({ length: reelCount }, (_, colIndex) => {
-    const rowsForThisCol = rowCounts[colIndex] || 3;
-    const strip = currentStrips[colIndex];
-    const manualInput = manualIndicesOther[colIndex];
-
-    if (manualInput && manualInput !== '') {
-      if (strip && strip.length > 0 && !isNaN(Number(manualInput))) {
-        const startIndex = Number(manualInput);
-        return Array.from({ length: rowsForThisCol }).map((_, rIndex) => {
-          const actualIndex = (startIndex + rIndex) % strip.length;
-          return strip[actualIndex];
-        });
-      } else if (manualInput.includes(',')) {
-        const mathIds = manualInput.split(',').map(s => s.trim());
-        const symbols = mathIds.map(id => {
-          if (!isNaN(Number(id))) {
-             const numId = Number(id);
-             const rule = currentPaytable.find(r => {
-               if (r.mathId === undefined) return false;
-               const ruleIds = String(r.mathId).split(',').map(s => Number(s.trim()));
-               return ruleIds.includes(numId);
-             });
-             if (rule) {
-               if (rule.symbolId.match(/^[F|L][1-4]$/)) {
-                 return `${rule.symbolId}_2X`;
-               }
-               return rule.symbolId;
-             }
-          }
-          return id;
-        });
-        if (symbols.length >= rowsForThisCol) {
-          return symbols.slice(0, rowsForThisCol);
-        } else {
-          return [...symbols, ...Array(rowsForThisCol - symbols.length).fill('-')];
-        }
-      }
-    }
-
-    if (currentGrid.length > 0 && currentGrid[colIndex]) {
-      const gridCol = currentGrid[colIndex];
-      if (gridCol.length === rowsForThisCol) {
-        return gridCol;
-      }
-      if (gridCol.length < rowsForThisCol) {
-        return [...gridCol, ...Array(rowsForThisCol - gridCol.length).fill('-')];
-      }
-      return gridCol.slice(0, rowsForThisCol);
-    }
-
-    return Array(rowsForThisCol).fill('-');
-  });
-
-  const winsOther = useMemo(() => {
-    let finalGrid = displayGridOther;
-    if (gameType === 'megaway') {
-      finalGrid = displayGridOther.map((col, colIdx) => {
-        if (colIdx >= 1 && colIdx <= 4) {
-          const topSym = topTrackerOther[colIdx - 1] || 'WX';
-          return [...col, topSym];
-        }
-        return col;
-      });
-    }
-    const config: GameConfig = {
-      gameType,
-      paylines: customPaylines,
-      effectiveBet: bet,
-      goldFrames: goldFramesGenerator,
-      jackpots: jackpotsGenerator,
-      specialRules: { derivativeSymbols: { 'B1': ['B2'] } }
-    };
-    const baseWins = evaluateGrid(finalGrid, currentPaytable, config, undefined, true);
-
-    if (activeTab === 'other' && selectedSymbol) {
-      const hasTargetWin = baseWins.some(w => w.symbolId === selectedSymbol);
-
-      if (!hasTargetWin) {
-        let wildSymbol = "WILD";
-        for (const strip of currentStrips) {
-          if (!strip) continue;
-          for (const sym of strip) {
-            if (sym === "WILD" || sym === "W" || sym === "WX") {
-              wildSymbol = sym;
-              break;
-            }
-          }
-        }
-
-        if (gameType === 'payanywhere' || gameType === 'payanywhere_set2') {
-          const count = finalGrid.flat().filter(s => s === selectedSymbol || s === wildSymbol).length;
-          if (count > 0) {
-            baseWins.push({
-              symbolId: selectedSymbol,
-              matchCount: count,
-              ways: 1,
-              payout: 0,
-              totalWin: 0
-            });
-          }
-        } else {
-          const matchCountsByCol = finalGrid.map(col =>
-            col.filter(s => s === selectedSymbol || s === wildSymbol).length
-          );
-
-          let matchLength = 0;
-          for (let c = 0; c < reelCount; c++) {
-            if (matchCountsByCol[c] > 0) {
-              matchLength++;
-            } else {
-              break;
-            }
-          }
-
-          if (matchLength >= 2) {
-            let ways = 1;
-            for (let c = 0; c < matchLength; c++) {
-              ways *= matchCountsByCol[c];
-            }
-
-            baseWins.push({
-              symbolId: selectedSymbol,
-              matchCount: matchLength,
-              ways: ways,
-              payout: 0,
-              totalWin: 0
-            });
-          }
-        }
-      }
-    }
-
-    return baseWins;
-  }, [displayGridOther, currentPaytable, activeTab, selectedSymbol, currentStrips, reelCount, gameType, topTrackerOther, customPaylines, bet]);
-
-  const winningCoords = useMemo(() => {
-    return getWinningPositions(displayGrid, wins, currentPaytable, gameType, gameType === 'megaway' ? topTracker : undefined, customPaylines);
-  }, [displayGrid, wins, currentPaytable, gameType, topTracker, customPaylines, bet]);
-
-  const winningCoordsOther = useMemo(() => {
-    return getWinningPositions(displayGridOther, winsOther, currentPaytable, gameType, gameType === 'megaway' ? topTrackerOther : undefined, customPaylines);
-  }, [displayGridOther, winsOther, currentPaytable, gameType, topTrackerOther, customPaylines, bet]);
-
-  const updatePaths = () => {
-    if (activeTab === 'manual') {
-      const p = calculateSVGPaths(displayGrid, wins, currentPaytable, gridContainerRef.current, 'manual', gameType, gameType === 'megaway' ? topTracker : undefined, customPaylines);
-      setLinePaths(p);
-    } else {
-      const p = calculateSVGPaths(displayGridOther, winsOther, currentPaytable, gridContainerRefOther.current, 'other', gameType, gameType === 'megaway' ? topTrackerOther : undefined, customPaylines);
-      setLinePathsOther(p);
-    }
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(updatePaths, 150);
-    return () => clearTimeout(timer);
-  }, [displayGrid, wins, displayGridOther, winsOther, activeTab, reelCount, rowCounts, gameType, topTracker, topTrackerOther, customPaylines]);
-
-  useEffect(() => {
-    window.addEventListener('resize', updatePaths);
-    return () => window.removeEventListener('resize', updatePaths);
-  }, [displayGrid, wins, displayGridOther, winsOther, activeTab, gameType, topTracker, topTrackerOther, customPaylines]);
 
   return (
     <div className="h-full flex flex-col p-6 overflow-hidden relative">
@@ -496,33 +255,34 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
       <div className="flex-1 min-h-0 bg-[#112240]/10 border-x border-b border-gray-700/30 rounded-b-xl overflow-y-auto custom-scrollbar p-6 flex flex-col">
         {activeTab === 'manual' && (
           <SlotManualTab 
-            reelCount={reelCount} rowCounts={rowCounts} onRowCountsChange={onRowCountsChange}
+            reelCount={reelCount} rowCounts={rowCounts} onRowCountsChange={setRowCounts}
             manualIndices={manualIndices} setManualIndices={setManualIndices}
             topTracker={topTracker} setTopTracker={setTopTracker}
-            gameType={gameType} displayGrid={displayGrid}
-            winningCoords={winningCoords} wins={wins} betMultiplier={betMultiplier}
-            parsePasteRng={parsePasteRng} gridContainerRef={gridContainerRef} linePaths={linePaths}
+            gameType={gameType} betMultiplier={betMultiplier}
+            parsePasteRng={parsePasteRng}
             isRunning={isRunning} selectedSymbol={selectedSymbol}
+            currentStrips={currentStrips} currentGrid={currentGrid} currentPaytable={currentPaytable} customPaylines={customPaylines} bet={bet}
           />
         )}
-        <div className={activeTab === 'other' ? 'w-full' : 'hidden'}>
-          <SlotGeneratorTab 
-            reelCount={reelCount} rowCounts={rowCounts} onRowCountsChange={onRowCountsChange}
-            manualIndicesOther={manualIndicesOther} setManualIndicesOther={setManualIndicesOther}
-            topTrackerOther={topTrackerOther} setTopTrackerOther={setTopTrackerOther}
-            gameType={gameType} displayGridOther={displayGridOther}
-            winningCoordsOther={winningCoordsOther} winsOther={winsOther} betMultiplier={betMultiplier}
-            gridContainerRefOther={gridContainerRefOther} linePathsOther={linePathsOther}
-            isSearching={isSearching} combinations={combinations}
-            selectedSymbol={selectedSymbol} setSelectedSymbol={setSelectedSymbol}
-            groupedSymbols={groupedSymbols} parsePasteRng={parsePasteRng} isRunning={isRunning}
-            specialSymbolConfig={specialSymbolConfig} setSpecialSymbolConfig={setSpecialSymbolConfig}
-            goldFrames={goldFramesGenerator} setGoldFrames={setGoldFramesGenerator}
-            jackpots={jackpotsGenerator} setJackpots={setJackpotsGenerator}
-          />
-        </div>
-        {(gameType === 'linegame' || gameType === 'linegame_set2') && (
-          <div className={activeTab === 'lines' ? 'w-full flex-1 flex flex-col' : 'hidden'}>
+        {activeTab === 'other' && (
+          <div className="w-full">
+            <SlotGeneratorTab 
+              reelCount={reelCount} rowCounts={rowCounts} onRowCountsChange={setRowCounts}
+              manualIndicesOther={manualIndicesOther} setManualIndicesOther={setManualIndicesOther}
+              topTrackerOther={topTrackerOther} setTopTrackerOther={setTopTrackerOther}
+              gameType={gameType} betMultiplier={betMultiplier}
+              selectedSymbol={selectedSymbol} setSelectedSymbol={setSelectedSymbol}
+              groupedSymbols={groupedSymbols} parsePasteRng={parsePasteRng} isRunning={isRunning}
+              specialSymbolConfig={specialSymbolConfig} setSpecialSymbolConfig={setSpecialSymbolConfig}
+              goldFrames={goldFrames} setGoldFrames={setGoldFrames}
+              jackpots={jackpots} setJackpots={setJackpots}
+              clovers={clovers} setClovers={setClovers}
+              currentStrips={currentStrips} currentGrid={currentGrid} currentPaytable={currentPaytable} customPaylines={customPaylines} bet={bet}
+            />
+          </div>
+        )}
+        {(gameType === 'linegame' || gameType === 'linegame_set2') && activeTab === 'lines' && (
+          <div className="w-full flex-1 flex flex-col">
             <LineViewerTab 
               reelCount={reelCount} rowCounts={rowCounts} currentStrips={currentStrips}
               activeLineViewerSymbol={activeLineViewerSymbol} setLineViewerSymbolState={setLineViewerSymbolState}
@@ -535,8 +295,8 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ isRunning, currentGrid
             />
           </div>
         )}
-        {gameType === 'payanywhere_set2' && (
-          <div className={activeTab === 'lines' ? 'w-full flex-1 flex flex-col min-h-0' : 'hidden'}>
+        {gameType === 'payanywhere_set2' && activeTab === 'lines' && (
+          <div className="w-full flex-1 flex flex-col min-h-0">
             <TumbleViewerTab
               reelCount={reelCount}
               rowCounts={rowCounts}

@@ -2,8 +2,9 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Trash2, RotateCcw } from 'lucide-react';
 import type { GameType, PaytableRule, GameConfig } from '../../types';
 import { evaluateGrid } from '../../utils/evaluation';
-import { getWinningPositions, formatAmount, getWinColorClass, calculateSVGPaths } from '../../utils/slotUtils';
-import type { SVGPathResult } from '../../utils/slotUtils';
+import { formatAmount } from '../../utils/formatters';
+import { getWinningPositions, getWinColorClass, calculateSVGPaths } from '../../utils/svgPaths';
+import type { SVGPathResult } from '../../utils/svgPaths';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
 
 export interface SlotCustomGridTabProps {

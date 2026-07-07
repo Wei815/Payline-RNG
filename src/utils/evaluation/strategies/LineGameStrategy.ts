@@ -8,6 +8,7 @@ export class LineGameStrategy implements EvaluationStrategy {
     const sym = rule.symbolId;
     const paylines = gameConfig.paylines || [];
     const results: WinResult[] = [];
+    const derivatives = gameConfig.specialRules?.derivativeSymbols?.[sym];
 
     paylines.forEach((line, lineIdx) => {
       let matchCount = 0;
@@ -20,8 +21,7 @@ export class LineGameStrategy implements EvaluationStrategy {
         const cell = grid[colIdx][targetRow];
         let isMatch = cell === sym || (!rule.isWild && wildSymbols.has(cell));
         
-        if (!isMatch && gameConfig.specialRules?.derivativeSymbols?.[sym]) {
-           const derivatives = gameConfig.specialRules.derivativeSymbols[sym];
+        if (!isMatch && derivatives) {
            if (derivatives.includes(cell)) {
              isMatch = true;
            }

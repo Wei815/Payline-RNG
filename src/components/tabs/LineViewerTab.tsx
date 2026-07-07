@@ -1,6 +1,6 @@
 import React from 'react';
 import { evaluateGrid } from '../../utils/evaluation';
-import { formatAmount } from '../../utils/slotUtils';
+import { formatAmount } from '../../utils/formatters';
 import type { GameType, PaytableRule } from '../../types';
 
 export interface LineViewerTabProps {

@@ -2,29 +2,50 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Play, Database, Table, Edit3, X } from 'lucide-react';
 import type { ReelStrips, PaytableRule, GameType } from '../types';
 import { defaultPaytable, defaultExcelStripsString } from '../mocks/defaultData';
-import { parsedTemplates } from '../mocks/parsedTemplates';
 import { defaultPaylines } from '../utils/evaluation';
 
+import { useMachineStore } from '../store/useMachineStore';
+import { useGameStore } from '../store/useGameStore';
+
+const templateFiles = import.meta.glob('/templates/*.{xlsx,xls}', { query: '?url', eager: true, import: 'default' }) as Record<string, string>;
+const getTemplateName = (path: string) => {
+  const parts = path.split('/');
+  const filename = parts[parts.length - 1];
+  return filename.replace(/\.(xlsx|xls)$/, '').replace('範本-', '');
+};
+
 interface ConfigPanelProps {
-  isRunning: boolean;
-  reelCount: number;
-  onReelCountChange: (count: number) => void;
-  rowCounts: number[];
-  onRowCountsChange: (counts: number[]) => void;
   onTestSpin: (strips: ReelStrips, paytable: PaytableRule[], totalSpins?: number, rowCounts?: number[], paylines?: number[][]) => void;
-  onConfigSync: (strips: ReelStrips, paytable: PaytableRule[]) => void;
-  coin: number;
-  onCoinChange: (coin: number) => void;
-  bet: number;
-  onBetChange: (bet: number) => void;
-  gameType: GameType;
-  onGameTypeChange: (type: GameType) => void;
-  customPaylines: number[][];
-  onPaylinesChange: (paylines: number[][]) => void;
 }
 
-export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, onReelCountChange, rowCounts, onRowCountsChange, onTestSpin, onConfigSync, coin, onCoinChange, bet, onBetChange, gameType, onGameTypeChange, customPaylines, onPaylinesChange }) => {
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('人魚傳說');
+export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
+  const isRunning = useMachineStore(state => state.isRunning);
+  const coin = useMachineStore(state => state.coin);
+  const setCoin = useMachineStore(state => state.setCoin);
+  const bet = useMachineStore(state => state.bet);
+  const setBet = useMachineStore(state => state.setBet);
+  const gameType = useMachineStore(state => state.gameType);
+  const setGameType = useMachineStore(state => state.setGameType);
+
+  const reelCount = useGameStore(state => state.reelCount);
+  const setReelCount = useGameStore(state => state.setReelCount);
+  const rowCounts = useGameStore(state => state.rowCounts);
+  const setRowCounts = useGameStore(state => state.setRowCounts);
+  const customPaylines = useGameStore(state => state.customPaylines);
+  const setCustomPaylines = useGameStore(state => state.setCustomPaylines);
+  const setCurrentStrips = useGameStore(state => state.setCurrentStrips);
+  const setCurrentPaytable = useGameStore(state => state.setCurrentPaytable);
+
+  const onReelCountChange = setReelCount;
+  const onRowCountsChange = setRowCounts;
+  const onCoinChange = setCoin;
+  const onBetChange = setBet;
+  const onGameTypeChange = setGameType;
+  const onPaylinesChange = setCustomPaylines;
+  
+  const templateKeys = Object.keys(templateFiles);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(templateKeys.length > 0 ? templateKeys[0] : '預設泛用');
+  
   const [gridData, setGridData] = useState<string[][]>(Array(20).fill(Array(5).fill('')));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [highlightSymbol, setHighlightSymbol] = useState<string>('');
@@ -168,22 +189,33 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
       if (finalPaytable.length === 0 && Object.keys(paytableMap).length > 0) {
         finalPaytable = Object.values(paytableMap).filter(r => r.isEnabled !== false);
       }
-      onConfigSync(parsedStrips, finalPaytable);
+      setCurrentStrips(parsedStrips);
+      setCurrentPaytable(finalPaytable);
     } catch {
       // ignore empty catch
     }
-  }, [gridData, paytableMap, uniqueSymbols, reelCount, onConfigSync]);
+  }, [gridData, paytableMap, uniqueSymbols, reelCount, setCurrentStrips, setCurrentPaytable]);
 
-  const handleLoadDefaults = () => {
+  const handleLoadDefaults = async () => {
     if (selectedTemplate === '預設泛用') {
       handlePasteText(defaultExcelStripsString, reelCount);
       const init: Record<string, PaytableRule> = {};
       defaultPaytable.forEach(rule => init[rule.symbolId] = rule);
       setPaytableMap(init);
       onPaylinesChange(defaultPaylines);
+      setError(null);
     } else {
-      const tmpl = parsedTemplates[selectedTemplate];
-      if (tmpl) {
+      try {
+        const url = templateFiles[selectedTemplate] || selectedTemplate;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Network response was not ok');
+        const blob = await res.blob();
+        const filename = selectedTemplate.split('/').pop() || 'template.xlsx';
+        const file = new File([blob], filename, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        
+        const { parseExcelData } = await import('../utils/excelParser');
+        const tmpl = await parseExcelData(file);
+
         if (tmpl.gameType) onGameTypeChange(tmpl.gameType);
         if (tmpl.coin) onCoinChange(tmpl.coin);
         if (tmpl.bet) onBetChange(tmpl.bet);
@@ -211,9 +243,11 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
           tmpl.paytable.forEach(rule => init[rule.symbolId] = rule);
           setPaytableMap(init);
         }
+        setError(null);
+      } catch (err) {
+        setError('載入範本失敗: ' + (err as Error).message);
       }
     }
-    setError(null);
   };
 
   const handlePasteText = (text: string, currentReelCount: number) => {
@@ -477,8 +511,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
             disabled={isRunning}
             className="bg-[#0f1d35] border border-gray-700 text-dashboard-accent rounded px-2 py-1.5 outline-none focus:border-dashboard-accent cursor-pointer text-sm font-bold font-mono"
           >
-            {Object.keys(parsedTemplates).map(tmpl => (
-              <option key={tmpl} value={tmpl}>{tmpl}</option>
+            {templateKeys.map(path => (
+              <option key={path} value={path}>{getTemplateName(path)}</option>
             ))}
             <option value="預設泛用">預設泛用</option>
           </select>
@@ -508,6 +542,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ isRunning, reelCount, 
                   if (parsed.coin) onCoinChange(parsed.coin);
                   if (parsed.bet) onBetChange(parsed.bet);
                   if (parsed.reelCount) onReelCountChange(parsed.reelCount);
+                  if (parsed.rowCounts) onRowCountsChange(parsed.rowCounts);
                   if (parsed.paylines) onPaylinesChange(parsed.paylines);
                   
                   if (parsed.strips && parsed.strips.length > 0) {

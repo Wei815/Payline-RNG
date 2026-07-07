@@ -1,18 +1,20 @@
 import React from 'react';
 import type { SimulationResult } from '../types';
+import { useMachineStore } from '../store/useMachineStore';
+import { useGameStore } from '../store/useGameStore';
 
 interface MetricsDashboardProps {
   result: SimulationResult | null;
-  isRunning: boolean;
   progress: number;
   currentSpins: number;
   totalSpins: number;
   hasData: boolean;
   onRunSimulation: () => void;
-  reelCount: number;
 }
 
-export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({ result, isRunning, progress, currentSpins, totalSpins, hasData, onRunSimulation, reelCount }) => {
+export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({ result, progress, currentSpins, totalSpins, hasData, onRunSimulation }) => {
+  const { isRunning } = useMachineStore();
+  const { reelCount } = useGameStore();
   const matchesToShow = Array.from({ length: reelCount - 1 }, (_, i) => reelCount - i);
 
   return (

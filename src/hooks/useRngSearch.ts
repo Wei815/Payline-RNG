@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { PaytableRule, GameType } from '../types';
-import { findRngForCombination } from '../utils/slotUtils';
+import { findRngForCombination } from '../utils/rngSearch';
 
 export function useRngSearch(
   selectedSymbol: string,
@@ -33,7 +33,7 @@ export function useRngSearch(
     }
 
     setTimeout(() => setIsSearching(true), 0);
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       const newCombs: typeof combinations = [];
 
       if (gameType === 'payanywhere_set2') {
@@ -274,6 +274,7 @@ export function useRngSearch(
         // --- LINE GAME SET 2 GENERATOR ---
         const excludeSymbols = [selectedSymbol, 'WX', 'NI', 'F1', 'F2', 'F3', 'F4', 'L1', 'L2'];
         const nonScatters = currentPaytable.filter(p => p.isEnabled !== false && !p.isScatter && !excludeSymbols.includes(p.symbolId)).map(p => p.symbolId);
+        const isSelScatter = currentPaytable.some(p => p.symbolId === selectedSymbol && p.isScatter);
 
         if (nonScatters.length > 0) {
           const linesToUse = customPaylines && customPaylines.length > 0 ? customPaylines : [Array(reelCount).fill(0)];
@@ -352,7 +353,7 @@ export function useRngSearch(
             }
 
             newCombs.push({
-              name: `${selectedSymbol} * ${len} 連線 (Line 1)`,
+              name: isSelScatter ? `${selectedSymbol} * ${len} 個 (任意位置)` : `${selectedSymbol} * ${len} 連線 (Line 1)`,
               length: len,
               wildCount: 0,
               rng: columnStrings,
@@ -363,14 +364,18 @@ export function useRngSearch(
         }
       } else {
         // --- STANDARD RNG SEARCH ---
+        const isSelScatter = currentPaytable.some(p => p.symbolId === selectedSymbol && p.isScatter);
         for (let L = 2; L <= reelCount; L++) {
           const maxWild = Math.min(1, L - 1);
           for (let W = 0; W <= maxWild; W++) {
-            const name = W === 0
-              ? `${selectedSymbol} * ${L} 連線`
-              : `${selectedSymbol} * ${L - W} + WX`;
+            let name = '';
+            if (isSelScatter) {
+              name = W === 0 ? `${selectedSymbol} * ${L} 個 (任意位置)` : `${selectedSymbol} * ${L - W} + WX (任意位置)`;
+            } else {
+              name = W === 0 ? `${selectedSymbol} * ${L} 連線` : `${selectedSymbol} * ${L - W} + WX`;
+            }
 
-            const { rng, isInterfered } = findRngForCombination(
+            const { rng, isInterfered } = await findRngForCombination(
               selectedSymbol,
               L,
               W,

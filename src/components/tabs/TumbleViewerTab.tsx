@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { evaluateGrid } from '../../utils/evaluation';
-import { getWinningPositions, formatAmount, getWinColorClass } from '../../utils/slotUtils';
+import { formatAmount } from '../../utils/formatters';
+import { getWinningPositions, getWinColorClass } from '../../utils/svgPaths';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
 import type { GameType, PaytableRule } from '../../types';
 

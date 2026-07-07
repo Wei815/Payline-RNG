@@ -141,7 +141,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
         self.postMessage({
           type: 'PROGRESS',
           spinsDone: i + 1,
-          currentGrid: JSON.parse(JSON.stringify(displayGrid)) // Send a copy
+          currentGrid: displayGrid.map(col => [...col]) // Send a copy
         } as WorkerResponse);
       }
     }

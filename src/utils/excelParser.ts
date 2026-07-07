@@ -18,18 +18,38 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
   const result: ExcelParsedData = {};
 
   // 1. Line Table
-  if (workbook.Sheets['Line Table']) {
-    const lineData = xlsx.utils.sheet_to_json<any[]>(workbook.Sheets['Line Table'], { header: 1 });
+  const lineSheetName = workbook.SheetNames.find(s => s.toLowerCase().replace(/\s/g, '') === 'linetable');
+  if (lineSheetName) {
+    const lineData = xlsx.utils.sheet_to_json<any[]>(workbook.Sheets[lineSheetName], { header: 1 });
     const paylines: number[][] = [];
+    
+    let colOffset = 2; // Default for old format
+    if (lineData.length > 1) {
+      const headerRow = lineData[1] || lineData[0];
+      if (headerRow[0] === 'No.' && headerRow[1] === 'R1') {
+        colOffset = 1;
+      }
+    }
+
     for (let i = 1; i < lineData.length; i++) {
       const row = lineData[i];
-      if (row && row.length >= 7 && row[0] !== undefined) {
-        paylines.push([row[2], row[3], row[4], row[5], row[6]]);
+      if (row && row.length >= colOffset + 5 && row[0] !== undefined && !isNaN(Number(row[0]))) {
+        paylines.push([
+          Number(row[colOffset]), 
+          Number(row[colOffset + 1]), 
+          Number(row[colOffset + 2]), 
+          Number(row[colOffset + 3]), 
+          Number(row[colOffset + 4])
+        ]);
       }
     }
     if (paylines.length > 0) {
       result.paylines = paylines;
-      result.gameType = 'linegame'; // if there's a line table, it's likely a linegame
+      if (file.name.includes('奢華')) {
+        result.gameType = 'linegame_set2';
+      } else {
+        result.gameType = 'linegame'; // if there's a line table, it's likely a linegame
+      }
     }
   }
 
@@ -58,9 +78,10 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
     for (let i = 0; i < overviewData.length; i++) {
       const row = overviewData[i];
       if (!row) continue;
-      if (row[0] === 'Coin') {
+      if (row[0] === 'Coin' && result.coin === undefined) {
         if (overviewData[i+1] && overviewData[i+1][0] !== undefined) {
           result.coin = parseFloat(overviewData[i+1][0]);
+          result.bet = result.coin;
         }
       }
       if (row[0] === 'Reel Size') {
@@ -77,7 +98,7 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
 
     let ptStart = -1;
     for (let i = 0; i < overviewData.length; i++) {
-      if (overviewData[i] && overviewData[i][0] === 'Base\\Free:') {
+      if (overviewData[i] && (overviewData[i][0] === 'Base\\Free:' || String(overviewData[i][0]).includes('Base/Free') || String(overviewData[i][0]).includes('Base\\Free'))) {
         ptStart = i + 1;
         break;
       }
@@ -86,6 +107,15 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
     const paytableMap: Record<string, PaytableRule> = {};
     const loopStart = ptStart !== -1 ? ptStart : 0;
     
+    // Pre-scan to see if this file has explicit SymbolID rows
+    let hasExplicitMathId = false;
+    for (let r = 0; r < overviewData.length; r++) {
+      if (overviewData[r] && overviewData[r].some((c: any) => String(c).trim() === 'SymbolID' || String(c).trim().replace(/\s/g, '') === 'SymbolID')) {
+        hasExplicitMathId = true;
+        break;
+      }
+    }
+
     for (let i = loopStart; i < overviewData.length; i++) {
       if (!overviewData[i]) continue;
       const row = overviewData[i];
@@ -111,6 +141,8 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
               if (symId === 'W2') realSymId = 'M2';
               if (symId === 'W3') realSymId = 'M3';
               if (symId === 'W4') realSymId = 'M4';
+              if (symId === 'W5') realSymId = 'M5';
+              if (symId === 'W6') realSymId = 'M6';
               if (symId === 'WA') realSymId = 'A';
               if (symId === 'WK') realSymId = 'K';
               if (symId === 'WQ') realSymId = 'Q';
@@ -139,6 +171,7 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
 
               if (existing) {
                 existing.mathId = newMathId;
+                if (newMathId !== undefined) existing.isEnabled = true;
               } else {
                 paytableMap[realSymId] = {
                   symbolId: realSymId,
@@ -146,7 +179,8 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
                   payouts: { match2: 0, match3: 0, match4: 0, match5: 0 },
                   isWild: realSymId === 'WX',
                   isScatter: realSymId === 'SCATTER' || realSymId === 'B1' || realSymId === 'B2' || realSymId === 'S1' || realSymId === 'S2',
-                  mathId: newMathId
+                  mathId: newMathId,
+                  isEnabled: newMathId !== undefined
                 };
               }
             }
@@ -163,24 +197,38 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
             }
           }
 
-          if (headerStartCol !== -1 && String(row[headerStartCol]).trim() !== 'SymbolID' && String(row[headerStartCol]).trim() !== 'MathID' && String(row[headerStartCol]).trim() !== '示意圖') {
-            // Verify it's a header row by checking if the next row has payouts
+          if (headerStartCol !== -1 && String(row[headerStartCol]).trim().replace(/\s/g, '') !== 'SymbolID' && String(row[headerStartCol]).trim().replace(/\s/g, '') !== 'MathID' && String(row[headerStartCol]).trim() !== '示意圖') {
+            // Verify it's a header row by checking if any of the next 5 rows have payouts
             let nextRowHasPayouts = false;
-            if (overviewData[i+1]) {
-              const firstCell = String(overviewData[i+1][0] || overviewData[i+1][headerStartCol - 1] || '').trim();
-              if (firstCell && (!isNaN(parseInt(firstCell)) || firstCell.includes('+') || firstCell.includes('-'))) {
-                nextRowHasPayouts = true;
+            let payoutStartOffset = 1;
+            for (let offset = 1; offset <= 5; offset++) {
+              if (overviewData[i+offset]) {
+                const firstCell = String(overviewData[i+offset][0] || overviewData[i+offset][headerStartCol - 1] || '').trim();
+                if (firstCell && (!isNaN(parseInt(firstCell)) || firstCell.includes('+') || firstCell.includes('-'))) {
+                  nextRowHasPayouts = true;
+                  payoutStartOffset = offset;
+                  break;
+                }
               }
             }
 
             if (nextRowHasPayouts) {
               let mathIdRow: any[] | null = null;
               for (let r = Math.max(0, i - 3); r <= i + 5; r++) {
-                if (overviewData[r] && (overviewData[r][headerStartCol] === 0 || overviewData[r][headerStartCol] === '0' || overviewData[r][headerStartCol] === 'MathID')) {
-                  mathIdRow = overviewData[r];
-                  break;
+                if (overviewData[r]) {
+                  const label = String(overviewData[r][0] || overviewData[r][headerStartCol - 1] || '').trim().replace(/\s/g, '');
+                  if (label === 'MathID' || label === 'SymbolID') {
+                    mathIdRow = overviewData[r];
+                    break;
+                  }
+                  if (overviewData[r][headerStartCol] === 0 || overviewData[r][headerStartCol] === '0') {
+                    mathIdRow = overviewData[r];
+                    break;
+                  }
                 }
               }
+
+              let lastValidPayoutRow = payoutStartOffset - 1;
 
               for (let c = headerStartCol; c < row.length; c++) {
               if (row[c]) {
@@ -191,6 +239,8 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
                 if (symId === 'W2') realSymId = 'M2';
                 if (symId === 'W3') realSymId = 'M3';
                 if (symId === 'W4') realSymId = 'M4';
+                if (symId === 'W5') realSymId = 'M5';
+                if (symId === 'W6') realSymId = 'M6';
                 if (symId === 'WA') realSymId = 'A';
                 if (symId === 'WK') realSymId = 'K';
                 if (symId === 'WQ') realSymId = 'Q';
@@ -204,7 +254,7 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
                 if (mathIdRow && mathIdRow[c] !== undefined) {
                   const parsed = parseInt(mathIdRow[c]);
                   if (!isNaN(parsed)) parsedMathId = parsed;
-                } else {
+                } else if (!hasExplicitMathId) {
                   parsedMathId = c - 1;
                 }
 
@@ -221,6 +271,7 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
 
                 if (existing) {
                   existing.mathId = newMathId;
+                  if (newMathId !== undefined) existing.isEnabled = true;
                 } else {
                   paytableMap[realSymId] = {
                     symbolId: realSymId,
@@ -228,11 +279,12 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
                     payouts: { match2: 0, match3: 0, match4: 0, match5: 0 },
                     isWild: realSymId === 'WX',
                     isScatter: realSymId === 'SCATTER' || realSymId === 'B1' || realSymId === 'B2' || realSymId === 'S1' || realSymId === 'S2',
-                    mathId: newMathId
+                    mathId: newMathId,
+                    isEnabled: newMathId !== undefined
                   };
                 }
 
-                for (let r = 1; r <= 4; r++) {
+                for (let r = payoutStartOffset; r < payoutStartOffset + 5; r++) {
                   if (overviewData[i+r]) {
                     const matchCountStr = String(overviewData[i+r][0] || overviewData[i+r][headerStartCol - 1] || '').trim();
                     if (matchCountStr) {
@@ -255,19 +307,25 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
                       }
 
                       let payout = overviewData[i+r][c];
-                      if (payout === '--' || !payout) payout = 0;
+                      if (payout === '--' || payout === '-' || !payout) payout = 0;
                       else payout = parseFloat(payout) || 0;
                       
                       if (matchKey && paytableMap[realSymId]) {
                         paytableMap[realSymId].payouts[matchKey] = payout;
+                        if (r > lastValidPayoutRow) {
+                          lastValidPayoutRow = r;
+                        }
                       }
                     }
                   }
                 }
               }
               }
+              
+              if (lastValidPayoutRow >= payoutStartOffset) {
+                i += lastValidPayoutRow;
+              }
             }
-            i += 4;
           }
         }
       }

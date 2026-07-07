@@ -1,31 +1,22 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { ConfigPanel } from './components/ConfigPanel';
 import { SlotConsole } from './components/SlotConsole';
 import { MetricsDashboard } from './components/MetricsDashboard';
 import { useSimulation } from './hooks/useSimulation';
 import { BarChart3, X } from 'lucide-react';
-import type { GameType, GameConfig } from './types';
+import type { GameConfig } from './types';
+import { useMachineStore } from './store/useMachineStore';
+import { useGameStore } from './store/useGameStore';
 
 function App() {
   const { isRunning, progress, currentSpins, currentGrid, result, runSimulation } = useSimulation();
-  const [reelCount, setReelCount] = useState<number>(5);
-  const [rowCounts, setRowCounts] = useState<number[]>(Array(5).fill(3));
-  const [isMetricsOpen, setIsMetricsOpen] = useState<boolean>(false);
-  const [currentStrips, setCurrentStrips] = useState<any[]>([]);
-  const [currentPaytable, setCurrentPaytable] = useState<any[]>([]);
-  const [coin, setCoin] = useState<number>(30);
-  const [bet, setBet] = useState<number>(1);
-  const [gameType, setGameType] = useState<GameType>('waygame');
-  const [customPaylines, setCustomPaylines] = useState<number[][]>([]);
+  
+  const gameType = useMachineStore(state => state.gameType);
+  const coin = useMachineStore(state => state.coin);
+  const bet = useMachineStore(state => state.bet);
 
-  const handleReelCountChange = (newCount: number) => {
-    setReelCount(newCount);
-    setRowCounts(prev => {
-      if (newCount > prev.length) return [...prev, ...Array(newCount - prev.length).fill(3)];
-      if (newCount < prev.length) return prev.slice(0, newCount);
-      return prev;
-    });
-  };
+  const customPaylines = useGameStore(state => state.customPaylines);
+  const [isMetricsOpen, setIsMetricsOpen] = useState<boolean>(false);
 
   const handleTestSpin = useCallback((strips: any[], paytable: any[], spins?: number, rows?: number[], paylines?: number[][]) => {
     const config: GameConfig = {
@@ -38,11 +29,6 @@ function App() {
     };
     runSimulation(strips, paytable, spins, rows, config, coin, bet);
   }, [runSimulation, gameType, customPaylines, coin, bet]);
-
-  const handleConfigSync = useCallback((strips: any[], paytable: any[]) => {
-    setCurrentStrips(strips);
-    setCurrentPaytable(paytable);
-  }, []);
 
   return (
     <div className="w-screen h-screen flex flex-col bg-dashboard-bg overflow-hidden text-dashboard-text-primary">
@@ -70,41 +56,14 @@ function App() {
         {/* Left: ConfigPanel */}
         <div className={`w-full h-full transition-all duration-300 ${gameType === 'payanywhere_set2' || gameType === 'linegame_set2' ? 'md:w-[360px] shrink-0' : 'md:w-[35%]'}`}>
           <ConfigPanel 
-            isRunning={isRunning} 
-            coin={coin}
-            onCoinChange={setCoin}
-            bet={bet}
-            onBetChange={setBet}
-            gameType={gameType}
-            onGameTypeChange={setGameType}
             onTestSpin={handleTestSpin}
-            onConfigSync={handleConfigSync}
-            reelCount={reelCount}
-            onReelCountChange={handleReelCountChange}
-            rowCounts={rowCounts}
-            onRowCountsChange={setRowCounts}
-            customPaylines={customPaylines}
-            onPaylinesChange={setCustomPaylines}
           />
         </div>
 
         {/* Center: SlotConsole */}
         <div className="w-full flex-1 h-full min-w-0">
           <SlotConsole 
-            isRunning={isRunning}
-            progress={progress}
-            currentSpins={currentSpins}
             currentGrid={currentGrid}
-            totalSpins={result ? result.totalSpins : (isRunning ? Math.max(currentSpins, 1000) : 1000)}
-            reelCount={reelCount}
-            rowCounts={rowCounts}
-            onRowCountsChange={setRowCounts}
-            currentStrips={currentStrips}
-            currentPaytable={currentPaytable}
-            coin={coin}
-            bet={bet}
-            gameType={gameType}
-            customPaylines={customPaylines}
           />
         </div>
       </div>
@@ -128,7 +87,6 @@ function App() {
             <div className="flex-1 overflow-hidden relative bg-[#0a192f]">
               <MetricsDashboard 
                 result={result}
-                isRunning={isRunning}
                 progress={progress}
                 currentSpins={currentSpins}
                 totalSpins={result ? result.totalSpins : (isRunning ? Math.max(currentSpins, 100000) : 100000)}
@@ -144,7 +102,6 @@ function App() {
                   };
                   runSimulation(currentStrips, currentPaytable, 100000, rowCounts, config, coin, bet);
                 }}
-                reelCount={reelCount}
               />
             </div>
           </div>
