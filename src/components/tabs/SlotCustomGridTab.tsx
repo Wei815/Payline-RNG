@@ -316,51 +316,53 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
         <h2 className="text-sm font-bold text-dashboard-text-secondary border-b border-gray-700/50 pb-2">方塊調色盤 (Palette)</h2>
         
         {/* Special Symbol Multiplier Config */}
-        <div className="bg-[#112240] p-3 rounded-md border border-gray-700/50">
-          <span className="text-xs text-dashboard-accent font-bold mb-2 block">特殊設定預設倍數:</span>
-          <select 
-            value={selectedMultiplier}
-            onChange={e => setSelectedMultiplier(Number(e.target.value))}
-            className="w-full bg-[#0a192f] border border-dashboard-accent/30 text-white rounded px-2 py-1 text-sm outline-none focus:border-dashboard-accent cursor-pointer mb-3"
-          >
-            {[2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 50, 100, 250, 500].map(m => (
-              <option key={m} value={m}>{m}X</option>
-            ))}
-          </select>
+        {gameType === 'linegame_set2' && (
+          <div className="bg-[#112240] p-3 rounded-md border border-gray-700/50">
+            <span className="text-xs text-dashboard-accent font-bold mb-2 block">特殊設定預設倍數:</span>
+            <select 
+              value={selectedMultiplier}
+              onChange={e => setSelectedMultiplier(Number(e.target.value))}
+              className="w-full bg-[#0a192f] border border-dashboard-accent/30 text-white rounded px-2 py-1 text-sm outline-none focus:border-dashboard-accent cursor-pointer mb-3"
+            >
+              {[2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 50, 100, 250, 500].map(m => (
+                <option key={m} value={m}>{m}X</option>
+              ))}
+            </select>
 
-          <button
-            onClick={() => setIsGoldFrameMode(!isGoldFrameMode)}
-            className={`w-full py-1.5 px-2 rounded text-xs font-bold transition-all border flex justify-center items-center gap-1 ${
-              isGoldFrameMode 
-                ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500 ring-1 ring-yellow-400' 
-                : 'bg-[#0a192f] text-gray-400 border-gray-600 hover:border-gray-400'
-            }`}
-          >
-            👑 金框編輯模式 {isGoldFrameMode ? '(ON)' : '(OFF)'}
-          </button>
+            <button
+              onClick={() => setIsGoldFrameMode(!isGoldFrameMode)}
+              className={`w-full py-1.5 px-2 rounded text-xs font-bold transition-all border flex justify-center items-center gap-1 ${
+                isGoldFrameMode 
+                  ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500 ring-1 ring-yellow-400' 
+                  : 'bg-[#0a192f] text-gray-400 border-gray-600 hover:border-gray-400'
+              }`}
+            >
+              👑 金框編輯模式 {isGoldFrameMode ? '(ON)' : '(OFF)'}
+            </button>
 
-          <span className="text-xs text-red-400 font-bold mb-2 block mt-4">大獎設定:</span>
-          <select 
-            value={selectedJackpot}
-            onChange={e => setSelectedJackpot(e.target.value as any)}
-            className="w-full bg-[#0a192f] border border-red-500/30 text-white rounded px-2 py-1 text-sm outline-none focus:border-red-500 cursor-pointer mb-3"
-          >
-            <option value="MINI">MINI (25x)</option>
-            <option value="MAJOR">MAJOR (100x)</option>
-            <option value="MEGA">MEGA (500x)</option>
-            <option value="MAXWIN">MAXWIN (20000x)</option>
-          </select>
-          <button
-            onClick={() => setIsJackpotMode(!isJackpotMode)}
-            className={`w-full py-1.5 px-2 rounded text-xs font-bold transition-all border flex justify-center items-center gap-1 ${
-              isJackpotMode 
-                ? 'bg-red-500/20 text-red-400 border-red-500 ring-1 ring-red-400' 
-                : 'bg-[#0a192f] text-gray-400 border-gray-600 hover:border-gray-400'
-            }`}
-          >
-            🎯 大獎編輯模式 {isJackpotMode ? '(ON)' : '(OFF)'}
-          </button>
-        </div>
+            <span className="text-xs text-red-400 font-bold mb-2 block mt-4">大獎設定:</span>
+            <select 
+              value={selectedJackpot}
+              onChange={e => setSelectedJackpot(e.target.value as any)}
+              className="w-full bg-[#0a192f] border border-red-500/30 text-white rounded px-2 py-1 text-sm outline-none focus:border-red-500 cursor-pointer mb-3"
+            >
+              <option value="MINI">MINI (25x)</option>
+              <option value="MAJOR">MAJOR (100x)</option>
+              <option value="MEGA">MEGA (500x)</option>
+              <option value="MAXWIN">MAXWIN (20000x)</option>
+            </select>
+            <button
+              onClick={() => setIsJackpotMode(!isJackpotMode)}
+              className={`w-full py-1.5 px-2 rounded text-xs font-bold transition-all border flex justify-center items-center gap-1 ${
+                isJackpotMode 
+                  ? 'bg-red-500/20 text-red-400 border-red-500 ring-1 ring-red-400' 
+                  : 'bg-[#0a192f] text-gray-400 border-gray-600 hover:border-gray-400'
+              }`}
+            >
+              🎯 大獎編輯模式 {isJackpotMode ? '(ON)' : '(OFF)'}
+            </button>
+          </div>
+        )}
 
         {/* MathID & Visibility Toggles */}
         <div className="flex flex-col gap-2">

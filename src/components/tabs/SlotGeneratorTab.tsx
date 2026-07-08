@@ -960,6 +960,10 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                     onChange={(e) => {
                       const checked = e.target.checked;
                       setSpecialSymbolConfig(prev => ({ ...prev, s1Enabled: checked, s2Enabled: checked }));
+                      if (!checked) {
+                        setClovers({});
+                        setIsCloverMode(false);
+                      }
                     }} />
                 )}
                 <span className="text-base font-bold text-purple-400">{gameType === 'linegame_set2' ? '啟用金框' : '啟用 Scatter (S1/S2)'}</span>
@@ -1028,17 +1032,15 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
               </div>
             )}
 
-            <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-red-500/20 mt-2">
-              <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">
-                {gameType === 'linegame_set2' && (
-                  <>
-                    <input type="checkbox" className="accent-red-500 w-5 h-5" checked={showJackpotEditor}
-                      onChange={(e) => setShowJackpotEditor(e.target.checked)} />
-                    <span className="text-base font-bold text-red-400">啟用大獎 (Jackpot)</span>
-                  </>
-                )}
-              </label>
-            </div>
+            {gameType === 'linegame_set2' && (
+              <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-red-500/20 mt-2">
+                <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">
+                  <input type="checkbox" className="accent-red-500 w-5 h-5" checked={showJackpotEditor}
+                    onChange={(e) => setShowJackpotEditor(e.target.checked)} />
+                  <span className="text-base font-bold text-red-400">啟用大獎 (Jackpot)</span>
+                </label>
+              </div>
+            )}
 
             {gameType === 'linegame_set2' && showJackpotEditor && (
               <div className="mt-2 flex flex-col gap-3">
@@ -1121,20 +1123,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                           ))}
                         </select>
                       </div>
-                      <button
-                        onClick={() => {
-                          const next = !isCloverMode;
-                          setIsCloverMode(next);
-                          if (next) { setIsGoldFrameMode(false); setIsJackpotMode(false); }
-                        }}
-                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all border flex justify-center items-center gap-1 ${
-                          isCloverMode 
-                            ? 'bg-purple-500/20 text-purple-400 border-purple-500 ring-1 ring-purple-400' 
-                            : 'bg-[#112240] text-gray-400 border-gray-600 hover:border-gray-400'
-                        }`}
-                      >
-                        S1 編輯模式 {isCloverMode ? '(ON)' : '(OFF)'}
-                      </button>
+
                     </div>
                   </div>
                 )}
@@ -1167,6 +1156,10 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                       onChange={(e) => {
                         const checked = e.target.checked;
                         setSpecialSymbolConfig(prev => ({ ...prev, s1Enabled: checked, s1Count: 0 }));
+                        if (!checked) {
+                          setClovers({});
+                          setIsCloverMode(false);
+                        }
                       }} />
                   ) : (
                     <input type="checkbox" className="accent-dashboard-accent w-5 h-5" checked={specialSymbolConfig.multipliersEnabled}
