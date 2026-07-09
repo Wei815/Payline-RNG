@@ -39,6 +39,8 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   const [selectedMultiplier, setSelectedMultiplier] = useState<number>(250);
   const [selectedPaletteSymbol, setSelectedPaletteSymbol] = useState<string | null>(null);
 
+  const [rngInput, setRngInput] = useState('');
+
   // --- Compute ---
   // MathID reverse lookup for base RNG generation
   const symbolToMathId = useMemo(() => {
@@ -49,6 +51,19 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
         if (ids.length > 0) {
           map[r.symbolId] = ids[0]; // Use the first available MathID
         }
+      }
+    });
+    return map;
+  }, [currentPaytable]);
+
+  const mathIdToSymbol = useMemo(() => {
+    const map: Record<number, string> = {};
+    currentPaytable.forEach(r => {
+      if (r.mathId !== undefined) {
+        const ids = String(r.mathId).split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+        ids.forEach(id => {
+          map[id] = r.symbolId;
+        });
       }
     });
     return map;
@@ -126,6 +141,21 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     }
     return arr.length > 0 ? `[${arr.join(',')}]` : '';
   }, [jackpots]);
+
+  // Multiplier ClassID String
+  const multiplierClassIdStr = useMemo(() => {
+    const classIdsArray: number[] = [];
+    gridSymbols.forEach(col => {
+      col.forEach(cell => {
+        if (cell.includes('_') && cell.match(/^[F|L][1-4]_/)) {
+          const val = parseInt(cell.split('_')[1].replace('X', ''), 10);
+          if (!isNaN(val)) classIdsArray.push(val);
+        }
+      });
+    });
+    if (classIdsArray.length === 0) return '';
+    return `[${classIdsArray.join(',')}],`;
+  }, [gridSymbols]);
 
   // Handle Drag & Drops Generation
   const dropRng = useMemo(() => {
@@ -288,6 +318,27 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     setGridSymbols(newGrid);
   };
 
+  const handleLoadRng = () => {
+    const match = rngInput.match(/-?\d+/g);
+    if (!match) return;
+    const ids = match.map(s => parseInt(s, 10));
+    if (ids.length === 0) return;
+    
+    let idIndex = 0;
+    const newGrid = gridSymbols.map((col) => 
+      col.map((cell) => {
+        if (idIndex < ids.length) {
+          const val = ids[idIndex++];
+          const sym = mathIdToSymbol[val];
+          return sym ? sym : '-';
+        }
+        return cell;
+      })
+    );
+    setGridSymbols(newGrid);
+    setRngInput(''); // Clear input after load
+  };
+
   const handleReset = () => {
     setGridSymbols(Array.from({ length: reelCount }, (_, c) => 
       Array(rowCounts[c] || 3).fill('-')
@@ -312,6 +363,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   return (
     <div className="w-full flex flex-col lg:flex-row gap-4 items-stretch justify-center h-full overflow-y-auto">
       {/* Left: Palette & Config */}
+      {!gameType.startsWith('waygame') && (
       <div className="w-full lg:w-72 shrink-0 flex flex-col gap-4 bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 max-h-full overflow-y-auto custom-scrollbar">
         <h2 className="text-sm font-bold text-dashboard-text-secondary border-b border-gray-700/50 pb-2">方塊調色盤 (Palette)</h2>
         
@@ -418,18 +470,37 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
           })}
         </div>
       </div>
+      )}
 
       {/* Center: Grid */}
       <div className="flex-1 min-w-[300px] sm:min-w-[400px] flex flex-col items-center gap-4 bg-[#0a192f] p-4 sm:p-6 rounded-lg border border-gray-700/50 shadow-inner overflow-x-auto">
-        <div className="flex items-center justify-between w-full border-b border-gray-700/50 pb-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full border-b border-gray-700/50 pb-2 gap-2">
           <span className="text-sm font-bold text-dashboard-text-secondary">編輯盤面區 (自由拖曳)</span>
-          <button 
-            onClick={handleReset}
-            className="flex items-center gap-1 text-xs px-2 py-1 bg-red-500/10 text-red-400 border border-red-500/30 rounded hover:bg-red-500 hover:text-white transition-colors"
-          >
-            <RotateCcw size={12} />
-            重置
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              type="text"
+              placeholder="貼上 RNG 陣列 (如 12, 15, ...)"
+              value={rngInput}
+              onChange={(e) => setRngInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleLoadRng();
+              }}
+              className="bg-[#112240] border border-gray-600 text-white text-xs px-2 py-1 rounded w-36 sm:w-48 focus:border-dashboard-accent outline-none font-mono"
+            />
+            <button
+               onClick={handleLoadRng}
+               className="text-xs px-2 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-500 hover:text-white transition-colors whitespace-nowrap font-bold"
+            >
+              載入 RNG
+            </button>
+            <button 
+              onClick={handleReset}
+              className="flex items-center gap-1 text-xs px-2 py-1 bg-red-500/10 text-red-400 border border-red-500/30 rounded hover:bg-red-500 hover:text-white transition-colors whitespace-nowrap"
+            >
+              <RotateCcw size={12} />
+              重置
+            </button>
+          </div>
         </div>
         
         <div 
@@ -594,6 +665,25 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
               <button
                 onClick={() => navigator.clipboard.writeText(dropRng)}
                 className="text-[10px] font-bold bg-[#0a192f] text-[#64ffda] border border-[#64ffda]/50 px-2 py-0.5 rounded hover:bg-[#64ffda] hover:text-[#0a192f] transition-colors cursor-pointer"
+              >
+                COPY
+              </button>
+            </div>
+          </div>
+        )}
+
+        {multiplierClassIdStr && (
+          <div className="flex flex-col gap-2 mt-2">
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-purple-400 font-bold">特殊物件 ClassID</span>
+            </div>
+            <div className="flex items-center justify-between bg-[#112240] px-2 py-1.5 rounded border border-purple-500/30">
+              <code className="text-xs text-purple-400 font-mono truncate w-48" title={multiplierClassIdStr}>
+                {multiplierClassIdStr}
+              </code>
+              <button
+                onClick={() => navigator.clipboard.writeText(multiplierClassIdStr)}
+                className="text-[10px] font-bold bg-[#0a192f] text-purple-400 border border-purple-400/50 px-2 py-0.5 rounded hover:bg-purple-400 hover:text-[#0a192f] transition-colors cursor-pointer"
               >
                 COPY
               </button>

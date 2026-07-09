@@ -945,6 +945,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
       </div>
 
       {/* Right Column: Special Symbol & Multiplier Config */}
+      {!gameType.startsWith('waygame') && (
       <div className="w-full lg:w-[480px] shrink-0 bg-[#0a192f] p-5 rounded-lg border border-gray-700/50 flex flex-col gap-4">
         <span className="text-base font-bold text-dashboard-text-secondary border-b border-gray-700/50 pb-2 mb-1">特殊符號與倍數球配置</span>
         
@@ -1332,6 +1333,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
           </div>
         </div>
       </div>
+      )}
 
     </div>
   );

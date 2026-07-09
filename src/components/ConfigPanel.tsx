@@ -46,7 +46,11 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
   const templateKeys = Object.keys(templateFiles);
   const [selectedTemplate, setSelectedTemplate] = useState<string>(templateKeys.length > 0 ? templateKeys[0] : '預設泛用');
   
-  const [gridData, setGridData] = useState<string[][]>(Array(20).fill(Array(5).fill('')));
+  const [baseGridData, setBaseGridData] = useState<string[][]>(Array(20).fill(Array(5).fill('')));
+  const [freeGridData, setFreeGridData] = useState<string[][]>(Array(20).fill(Array(5).fill('')));
+  const [activeStripTab, setActiveStripTab] = useState<'base' | 'free'>('base');
+  const gridData = activeStripTab === 'base' ? baseGridData : freeGridData;
+  const setGridData = activeStripTab === 'base' ? setBaseGridData : setFreeGridData;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [highlightSymbol, setHighlightSymbol] = useState<string>('');
 
@@ -62,7 +66,12 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
 
   const uniqueSymbols = useMemo(() => {
     const symbols = new Set<string>();
-    gridData.forEach(row => {
+    baseGridData.forEach(row => {
+      row.forEach(cell => {
+        if (cell && cell.trim() !== '') symbols.add(cell.trim());
+      });
+    });
+    freeGridData.forEach(row => {
       row.forEach(cell => {
         if (cell && cell.trim() !== '') symbols.add(cell.trim());
       });
@@ -71,7 +80,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
       if (sym && sym.trim() !== '') symbols.add(sym.trim());
     });
     return Array.from(symbols);
-  }, [gridData, paytableMap]);
+  }, [baseGridData, freeGridData, paytableMap]);
 
   const baseColumns = useMemo(() => {
     const bases = new Set<string>();
@@ -129,7 +138,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
       const b = base.toUpperCase();
       if (/^M\d+$/.test(b)) {
         mNum.push(base);
-      } else if (['A', 'K', 'Q', 'J', 'T', 'TE', 'N', 'NI'].includes(b)) {
+      } else if (['A', 'K', 'Q', 'J', 'T', 'TE', 'N', 'NI', '10', '9'].includes(b)) {
         mLet.push(base);
       } else {
         others.push(base);
@@ -235,8 +244,26 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
             }
             newGrid.push(rowData);
           }
-          setGridData(newGrid);
+          setBaseGridData(newGrid);
+        } else {
+          setBaseGridData([]);
         }
+        
+        if (tmpl.freeStrips && tmpl.freeStrips.length > 0) {
+          const maxRows = Math.max(...tmpl.freeStrips.map(s => s.length));
+          const newGrid: string[][] = [];
+          for (let r = 0; r < maxRows; r++) {
+            const rowData = [];
+            for (let c = 0; c < tmpl.freeStrips.length; c++) {
+              rowData.push(tmpl.freeStrips[c][r] || '');
+            }
+            newGrid.push(rowData);
+          }
+          setFreeGridData(newGrid);
+        } else {
+          setFreeGridData([]);
+        }
+        setActiveStripTab('base');
         
         if (tmpl.paytable) {
           const init: Record<string, PaytableRule> = {};
@@ -350,7 +377,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
     }));
   };
 
-  const updatePaytablePayout = (sym: string, matchKey: keyof PaytableRule['payouts'], value: number) => {
+  const updatePaytablePayout = (sym: string, matchKey: string, value: number) => {
     setPaytableMap(prev => ({
       ...prev,
       [sym]: {
@@ -397,10 +424,32 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
     bgColor: string,
     groupId: string
   ) => {
+    let matchesToRender: number[] = [];
+    if ((groupId === 'mnum' || groupId === 'mlet') && gameType === 'payanywhere_set2') {
+      matchesToRender = [5, 4, 3];
+    } else {
+      let maxMatch = 6;
+      bases.forEach(base => {
+        const sym = getSym(base);
+        if (sym && paytableMap[sym] && paytableMap[sym].payouts) {
+          Object.keys(paytableMap[sym].payouts).forEach(key => {
+            const m = parseInt(key.replace('match', ''), 10);
+            if (!isNaN(m) && m > maxMatch && paytableMap[sym].payouts[key] > 0) {
+              maxMatch = m;
+            }
+          });
+        }
+      });
+      if (maxMatch > 10) maxMatch = 10;
+      for (let i = maxMatch; i >= 3; i--) {
+        matchesToRender.push(i);
+      }
+    }
+
     return (
       <React.Fragment>
         <tr className={bgColor}>
-          <td rowSpan={reelCount} className="border-r border-b border-gray-700 p-2 font-bold text-dashboard-accent text-center bg-[#0f1d35] whitespace-pre-wrap w-24">
+          <td rowSpan={matchesToRender.length + 1} className="border-r border-b border-gray-700 p-2 font-bold text-dashboard-accent text-center bg-[#0f1d35] whitespace-pre-wrap w-24">
             {title}
           </td>
           <td className="border-r border-b border-gray-700 p-1 font-bold text-gray-500 w-16 bg-[#0f1d35]">
@@ -439,19 +488,15 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
         </tr>
 
         {(() => {
-          let matchesToRender: number[] = [];
-          if (groupId === 'mnum' || groupId === 'mlet') {
-            matchesToRender = [5, 4, 3];
-          } else {
-            matchesToRender = [6, 5, 4, 3];
-          }
 
           return matchesToRender.map(match => {
             let labelText = String(match);
-            if (groupId === 'mnum' || groupId === 'mlet') {
+            if ((groupId === 'mnum' || groupId === 'mlet') && gameType === 'payanywhere_set2') {
               if (match === 5) labelText = '12+';
               else if (match === 4) labelText = '10-11';
               else if (match === 3) labelText = '8-9';
+            } else if (match === 10) {
+              labelText = '>=10';
             }
 
           return (
@@ -463,7 +508,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
                 const sym = getSym(base);
                 if (!sym) return <td key={base} className="border-none bg-transparent h-[40px]"></td>;
 
-                const val = paytableMap[sym]?.payouts[`match${match}` as keyof PaytableRule['payouts']] ?? 0;
+                const val = paytableMap[sym]?.payouts[`match${match}`] ?? 0;
                 return (
                   <td key={base} className="border-r border-b border-gray-700 p-0 h-[40px] min-w-[110px] bg-[#0a192f]">
                     <input
@@ -471,7 +516,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
                       min="0"
                       value={val === 0 ? '' : val}
                       placeholder="--"
-                      onChange={(e) => updatePaytablePayout(sym, `match${match}` as keyof PaytableRule['payouts'], parseInt(e.target.value) || 0)}
+                      onChange={(e) => updatePaytablePayout(sym, `match${match}`, parseInt(e.target.value) || 0)}
                       onPaste={(e) => {
                         const pasteData = e.clipboardData.getData('text');
                         const nums = pasteData.trim().split(/[\s,]+/);
@@ -597,12 +642,21 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
                   disabled={isRunning}
                   className="bg-[#0f1d35] border border-gray-700 text-dashboard-accent rounded px-2 py-1 outline-none focus:border-dashboard-accent cursor-pointer text-xs font-bold font-mono"
                 >
-                  <option value="waygame">Way</option>
-                  <option value="megaway">Megaways</option>
-                  <option value="payanywhere">Pay Anywhere</option>
-                  <option value="payanywhere_set2">Pay Anywhere (Set 2)</option>
-                  <option value="linegame">Line</option>
-                  <option value="linegame_set2">Line Game (Set 2)</option>
+                <optgroup label="路徑機台 (Way Game)">
+                  <option value="waygame">Way Game (通用基底)</option>
+                  <option value="waygame_qin">Way Game (秦皇)</option>
+                </optgroup>
+                <optgroup label="Megaway 系統">
+                  <option value="megaway">Megaway (測試中)</option>
+                </optgroup>
+                <optgroup label="隨處支付 (Pay Anywhere)">
+                  <option value="payanywhere">Pay Anywhere (通用基底)</option>
+                  <option value="payanywhere_set2">Pay Anywhere (賽特)</option>
+                </optgroup>
+                <optgroup label="連線機台 (Line Game)">
+                  <option value="linegame">Line Game (通用基底)</option>
+                  <option value="linegame_set2">Line Game (奢華)</option>
+                </optgroup>
                 </select>
               </div>
               <div className="flex items-center gap-1.5">
@@ -662,11 +716,37 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
               </div>
             </div>
 
-            {/* Row 3: Title */}
+            {/* Row 3: Title & Tabs */}
             <div className="flex items-center justify-between gap-2 pt-1 mt-1 border-t border-gray-800/60">
               <label className="text-sm text-dashboard-text-secondary font-bold whitespace-nowrap">
                 {gameType === 'payanywhere_set2' || gameType === 'linegame_set2' ? '參數設定' : 'Reel Strips 表格'}
               </label>
+              {(gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2') && (
+                <div className="flex items-center gap-1 bg-[#112240] p-0.5 rounded border border-gray-700/50">
+                  <button
+                    onClick={() => setActiveStripTab('base')}
+                    disabled={isRunning}
+                    className={`px-3 py-1 text-xs font-bold rounded transition-colors ${
+                      activeStripTab === 'base'
+                        ? 'bg-dashboard-accent text-[#0a192f]'
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    Base Game
+                  </button>
+                  <button
+                    onClick={() => setActiveStripTab('free')}
+                    disabled={isRunning}
+                    className={`px-3 py-1 text-xs font-bold rounded transition-colors ${
+                      activeStripTab === 'free'
+                        ? 'bg-dashboard-accent text-[#0a192f]'
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    Free Game
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

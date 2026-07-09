@@ -27,16 +27,34 @@ export function calculateSVGPaths(
   const gridHeight = maxRows * 80 + (maxRows - 1) * 12;
 
   const getCellCenter = (col: number, row: number) => {
-    const x = col * 92 + 40;
     if (row === -1) {
-      return { x, y: 40 };
+      const topCell = document.getElementById(`cell-${_idPrefix}-top-${col}`);
+      if (topCell && _container) {
+        const rect = topCell.getBoundingClientRect();
+        const containerRect = _container.getBoundingClientRect();
+        return {
+          x: rect.left - containerRect.left + rect.width / 2,
+          y: rect.top - containerRect.top + rect.height / 2
+        };
+      }
+      return { x: col * 92 + 40, y: 40 };
     }
-    const rowsInCol = grid[col].length;
+    const cell = document.getElementById(`cell-${_idPrefix}-${col}-${row}`);
+    if (cell && _container) {
+      const rect = cell.getBoundingClientRect();
+      const containerRect = _container.getBoundingClientRect();
+      return {
+        x: rect.left - containerRect.left + rect.width / 2,
+        y: rect.top - containerRect.top + rect.height / 2
+      };
+    }
+    // Fallback if DOM element not found
+    const rowsInCol = grid[col]?.length || 3;
     const colHeight = rowsInCol * 80 + (rowsInCol - 1) * 12;
     const startY = (gridHeight - colHeight) / 2;
     const yOffset = gameType === 'megaway' ? 84 : 0;
     const y = yOffset + startY + row * 92 + 40;
-    return { x, y };
+    return { x: col * 92 + 40, y };
   };
 
   const wildSymbols = new Set(

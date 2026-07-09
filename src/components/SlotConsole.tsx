@@ -181,7 +181,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
   const lineViewerPayout = useMemo(() => {
     const matchKey = `match${Math.min(5, reelCount)}`;
     const rule = currentPaytable.find(p => p.symbolId === activeLineViewerSymbol);
-    return rule ? (rule.payouts[matchKey as keyof typeof rule.payouts] || 0) : 0;
+    return rule ? (rule.payouts[matchKey] || 0) : 0;
   }, [currentPaytable, reelCount, activeLineViewerSymbol]);
 
   // Reset Generator Grid when target symbol changes

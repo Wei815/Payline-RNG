@@ -16,6 +16,10 @@ function App() {
   const bet = useMachineStore(state => state.bet);
 
   const customPaylines = useGameStore(state => state.customPaylines);
+  const currentStrips = useGameStore(state => state.currentStrips);
+  const currentPaytable = useGameStore(state => state.currentPaytable);
+  const rowCounts = useGameStore(state => state.rowCounts);
+  
   const [isMetricsOpen, setIsMetricsOpen] = useState<boolean>(false);
 
   const handleTestSpin = useCallback((strips: any[], paytable: any[], spins?: number, rows?: number[], paylines?: number[][]) => {
