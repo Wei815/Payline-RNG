@@ -2,8 +2,8 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import type { GameType, PaytableRule, GameConfig } from '../../types';
 import type { SVGPathResult } from '../../utils/svgPaths';
 import { formatAmount } from '../../utils/formatters';
-import { getWinColorClass, calculateSVGPaths, getWinningPositions } from '../../utils/svgPaths';
-import { evaluateGrid } from '../../utils/evaluation';
+import { getWinColorClass, calculateSVGPaths } from '../../utils/svgPaths';
+import { evaluateGrid, getWinningPositions } from '../../utils/evaluation';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
 
 export interface SlotManualTabProps {

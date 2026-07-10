@@ -31,7 +31,7 @@ export async function findRngForCombination(
     anyTarget: number[];
     anyWild: number[];
     none: number[];
-    centerPreferred: Set<number>;
+    preferredIndices: Set<number>;
   }[] = [];
 
   for (let col = 0; col < reelCount; col++) {
@@ -42,13 +42,12 @@ export async function findRngForCombination(
     const anyTarget: number[] = [];
     const anyWild: number[] = [];
     const none: number[] = [];
+    const preferredIndices = new Set<number>();
 
     if (!strip || strip.length === 0) {
-      categories.push({ onlyOneTarget: [], onlyOneWild: [], anyTarget: [], anyWild: [], none: [], centerPreferred: new Set() });
+      categories.push({ onlyOneTarget: [], onlyOneWild: [], anyTarget: [], anyWild: [], none: [], preferredIndices: new Set() });
       continue;
     }
-
-    const centerPreferred = new Set<number>();
 
     for (let i = 0; i < strip.length; i++) {
       const visible: string[] = [];
@@ -58,17 +57,17 @@ export async function findRngForCombination(
 
       const tCount = visible.filter(s => s === targetSymbol).length;
       const wCount = visible.filter(s => wildSymbolSet.has(s)).length;
-      const centerRow = Math.floor(rows / 2);
-      const centerSym = visible[centerRow];
-      const wCenterOnly = wCount === 1 && wildSymbolSet.has(centerSym);
-      const tCenterOnly = tCount === 1 && centerSym === targetSymbol;
+      const preferredRow = 0; 
+      const preferredSym = visible[preferredRow];
+      const wPreferredOnly = wCount === 1 && wildSymbolSet.has(preferredSym);
+      const tPreferredOnly = tCount === 1 && preferredSym === targetSymbol;
 
-      if (tCenterOnly && wCount === 0) {
+      if (tPreferredOnly && wCount === 0) {
         onlyOneTarget.push(i);
-        centerPreferred.add(i);
-      } else if (wCenterOnly && tCount === 0) {
+        preferredIndices.add(i);
+      } else if (wPreferredOnly && tCount === 0) {
         onlyOneWild.push(i);
-        centerPreferred.add(i);
+        preferredIndices.add(i);
       } else if (tCount === 1 && wCount === 0) {
         onlyOneTarget.push(i);
       } else if (tCount === 0 && wCount === 1) {
@@ -80,7 +79,7 @@ export async function findRngForCombination(
       if (tCount > 0) anyTarget.push(i);
       if (wCount > 0) anyWild.push(i);
     }
-    categories.push({ onlyOneTarget, onlyOneWild, anyTarget, anyWild, none, centerPreferred });
+    categories.push({ onlyOneTarget, onlyOneWild, anyTarget, anyWild, none, preferredIndices });
   }
 
   const wildColCombinations: number[][] = [];
@@ -94,9 +93,11 @@ export async function findRngForCombination(
 
   const runSearch = async (allowOtherWins: boolean): Promise<number[] | null> => {
     let bestCandidate: number[] | null = null;
-    let minScore = Infinity;
     let bestDist = Infinity;
     let bestWildColIdx = Infinity;
+
+    let dfsAttempts = 0;
+    const MAX_DFS_ATTEMPTS = 5000;
 
     for (const wildCols of wildColCombinations) {
       const isWildCol = Array(length).fill(false);
@@ -144,7 +145,12 @@ export async function findRngForCombination(
             ways = targetWin.ways;
           }
 
-          const otherWinsCount = evWins.filter(w => w.symbolId !== targetSymbol && !wildSymbolSet.has(w.symbolId) && w.payout > 0).length;
+          const otherWinsCount = evWins.filter(w => {
+            if (w.symbolId === targetSymbol || wildSymbolSet.has(w.symbolId)) return false;
+            if (w.payout > 0) return true;
+            if ((w.symbolId.startsWith('S') || w.symbolId.startsWith('B')) && w.matchCount >= 3) return true;
+            return false;
+          }).length;
 
           if (isMatch) {
             if (!allowOtherWins) {
@@ -152,13 +158,27 @@ export async function findRngForCombination(
                 return [...candidateRng];
               }
             } else {
-              const score = (ways - 1) * 10 + otherWinsCount * 20;
+              let score = (ways - 1) * 10 + otherWinsCount * 20;
 
               let totalDist = 0;
               for (let c = 0; c < reelCount; c++) {
                 const stripLen = currentStrips[c].length;
-                const mid = Math.floor(stripLen / 2);
-                totalDist += Math.abs(candidateRng[c] - mid);
+                const idx = candidateRng[c];
+                const rows = rowCounts[c] || 3;
+                let minD = Infinity;
+                
+                for (let r = 0; r < rows; r++) {
+                  const sym = currentStrips[c][(idx + r) % stripLen];
+                  if (sym === targetSymbol || wildSymbolSet.has(sym)) {
+                    const dist = Math.abs(r - 0);
+                    if (dist < minD) minD = dist;
+                  }
+                }
+                totalDist += (minD === Infinity ? 0 : minD);
+              }
+
+              if (categories[colIndex] && categories[colIndex].preferredIndices.has(candidateRng[colIndex])) {
+                score -= 5;
               }
 
               if (score < minScore) {
@@ -182,6 +202,11 @@ export async function findRngForCombination(
           }
 
           return null;
+        }
+
+        if (!allowOtherWins) {
+          dfsAttempts++;
+          if (dfsAttempts > MAX_DFS_ATTEMPTS) return null;
         }
 
         let candidates: number[] = [];
@@ -212,7 +237,7 @@ export async function findRngForCombination(
 
         const stripLen = currentStrips[colIndex].length;
         const mid = Math.floor(stripLen / 2);
-        const cp = categories[colIndex].centerPreferred;
+        const cp = categories[colIndex].preferredIndices;
         const sortedCandidates = [...candidates].sort((a, b) => {
           const aCenter = cp.has(a) ? 0 : 1;
           const bCenter = cp.has(b) ? 0 : 1;
@@ -220,7 +245,7 @@ export async function findRngForCombination(
           return Math.abs(a - mid) - Math.abs(b - mid);
         });
 
-        const limit = Math.min(sortedCandidates.length, 5);
+        const limit = allowOtherWins ? Math.min(sortedCandidates.length, 5) : Math.min(sortedCandidates.length, 25);
         for (let attempt = 0; attempt < limit; attempt++) {
           candidateRng[colIndex] = sortedCandidates[attempt];
           const res = await search(colIndex + 1);

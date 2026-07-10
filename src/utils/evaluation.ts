@@ -115,3 +115,4 @@ export function evaluateGrid(
 
   return results;
 }
+export * from './evaluation/WinningPositions';

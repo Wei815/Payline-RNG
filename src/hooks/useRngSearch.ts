@@ -402,7 +402,12 @@ export function useRngSearch(
             if (!c.rng) return 2;
             return c.isInterfered ? 1 : 0;
           };
-          return getPriority(a) - getPriority(b);
+          const pA = getPriority(a);
+          const pB = getPriority(b);
+          if (pA !== pB) return pA - pB;
+          
+          if (a.length !== b.length) return b.length - a.length;
+          return a.wildCount - b.wildCount;
         });
       }
 

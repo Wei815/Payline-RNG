@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import type { GameType, PaytableRule, GameConfig } from '../../types';
 import { formatAmount } from '../../utils/formatters';
-import { getWinColorClass, getWinningPositions, calculateSVGPaths } from '../../utils/svgPaths';
+import { getWinColorClass, calculateSVGPaths } from '../../utils/svgPaths';
+import { getWinningPositions } from '../../utils/evaluation';
 import type { SVGPathResult } from '../../utils/svgPaths';
 import { evaluateGrid } from '../../utils/evaluation';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
@@ -230,34 +231,49 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
   // Clover states
   const [isCloverMode, setIsCloverMode] = useState(false);
 
-  const goldFrameClassIdStr = useMemo(() => {
+  const combinedClassIdStr = useMemo(() => {
     const arr: number[] = [];
-    const keys = Object.keys(goldFrames).sort((a, b) => {
-      const [ca, ra] = a.split('-').map(Number);
-      const [cb, rb] = b.split('-').map(Number);
-      return ca !== cb ? ca - cb : ra - rb;
-    });
-    for (const key of keys) {
-      const [col, row] = key.split('-').map(Number);
-      arr.push(col, row, goldFrames[key]);
-    }
-    return arr.length > 0 ? `[${arr.join(', ')}]` : '';
-  }, [goldFrames]);
+    
+    // Manual specified mapping for Gold Frames poolIndex
+    const multiplierToPoolIndex: Record<number, number> = {
+      2: 0, 3: 1, 4: 2, 5: 3, 6: 4, 7: 5, 8: 6, 9: 7, 10: 8, 25: 9, 50: 10, 100: 11
+    };
+    
+    const typeToId = { 'MINI': 12, 'MAJOR': 13, 'MEGA': 14, 'MAXWIN': 15 };
 
-  const jackpotClassIdStr = useMemo(() => {
-    const arr: (number | string)[] = [];
-    const keys = Object.keys(jackpots).sort((a, b) => {
+    // Combine all keys
+    const allKeys = Array.from(new Set([...Object.keys(goldFrames), ...Object.keys(jackpots)]));
+    
+    allKeys.sort((a, b) => {
       const [ca, ra] = a.split('-').map(Number);
       const [cb, rb] = b.split('-').map(Number);
       return ca !== cb ? ca - cb : ra - rb;
     });
-    const typeToId = { 'MINI': 1, 'MAJOR': 2, 'MEGA': 3, 'MAXWIN': 4 }; // Or use strings if preferred by backend
-    for (const key of keys) {
+
+    for (const key of allKeys) {
       const [col, row] = key.split('-').map(Number);
-      arr.push(col, row, typeToId[jackpots[key]]);
+      
+      // If a position has both, Jackpot takes precedence (or we could output both, but usually it's one or the other)
+      // Actually let's output both if they exist, but normally they shouldn't overlap in UI due to user behavior
+      if (goldFrames[key] !== undefined && jackpots[key] !== undefined) {
+         // output jackpot then goldFrame? No, just output what exists. Since they share keys, wait.
+         // In UI, they are separate states, so they CAN overlap. Let's output GoldFrame first then Jackpot, or just Jackpot if we assume one per cell.
+         // Let's output both if they both exist (unlikely in realistic QA script but possible in UI).
+      }
+
+      if (goldFrames[key] !== undefined) {
+        const val = goldFrames[key];
+        const poolIndex = multiplierToPoolIndex[val] !== undefined ? multiplierToPoolIndex[val] : 0;
+        arr.push(col, row, poolIndex);
+      }
+      
+      if (jackpots[key] !== undefined) {
+        arr.push(col, row, typeToId[jackpots[key]]);
+      }
     }
+    
     return arr.length > 0 ? `[${arr.join(', ')}]` : '';
-  }, [jackpots]);
+  }, [goldFrames, jackpots]);
 
   const coordsString = useMemo(() => Array.from(winningCoordsOther.keys()).sort().join(','), [winningCoordsOther]);
   useEffect(() => {
@@ -383,7 +399,11 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
             <span className="text-sm font-bold text-dashboard-text-secondary">選擇目標 Symbol:</span>
             <select
               value={selectedSymbol}
-              onChange={(e) => setSelectedSymbol(e.target.value)}
+              onChange={(e) => {
+                setSelectedSymbol(e.target.value);
+                e.target.blur();
+              }}
+              onWheel={(e) => e.currentTarget.blur()}
               className="bg-[#112240] border border-gray-600 text-dashboard-text-primary rounded px-3 py-1.5 outline-none focus:border-dashboard-accent text-sm cursor-pointer font-bold"
             >
               {groupedSymbols.map(group => {
@@ -436,6 +456,10 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                         const dropStr = `[${dropMathIds.slice(0, comb.length).join(',')}],`;
                         finalCopy += dropStr;
                       }
+                      navigator.clipboard.writeText(finalCopy);
+                    } else {
+                      // For other game types, just copy the base RNG indices
+                      const finalCopy = `[${comb.rng.join(',')}],`;
                       navigator.clipboard.writeText(finalCopy);
                     }
                   }
@@ -1011,25 +1035,6 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                 >
                   👑 金框編輯模式 {isGoldFrameMode ? '(ON)' : '(OFF)'}
                 </button>
-
-                {goldFrameClassIdStr && (
-                  <div className="flex flex-col gap-2 mt-1">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-yellow-400 font-bold">金框 ClassID</span>
-                    </div>
-                    <div className="flex items-center justify-between bg-[#0a192f] px-2 py-1.5 rounded border border-yellow-500/30">
-                      <code className="text-xs text-yellow-400 font-mono truncate w-[85%]" title={goldFrameClassIdStr}>
-                        {goldFrameClassIdStr}
-                      </code>
-                      <button
-                        onClick={() => navigator.clipboard.writeText(goldFrameClassIdStr)}
-                        className="text-[10px] font-bold bg-[#112240] text-yellow-400 border border-yellow-400/50 px-2 py-0.5 rounded hover:bg-yellow-400 hover:text-[#0a192f] transition-colors cursor-pointer"
-                      >
-                        COPY
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
@@ -1082,31 +1087,30 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                       : 'bg-[#0a192f] text-gray-400 border-gray-600 hover:border-gray-400'
                   }`}
                 >
-                  🎯 大獎編輯模式 {isJackpotMode ? '(ON)' : '(OFF)'}
                 </button>
-
-                {jackpotClassIdStr && (
-                  <div className="flex flex-col gap-2 mt-1">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-red-400 font-bold">大獎 ClassID</span>
-                    </div>
-                    <div className="flex items-center justify-between bg-[#0a192f] px-2 py-1.5 rounded border border-red-500/30">
-                      <code className="text-xs text-red-400 font-mono truncate w-[85%]" title={jackpotClassIdStr}>
-                        {jackpotClassIdStr}
-                      </code>
-                      <button
-                        onClick={() => navigator.clipboard.writeText(jackpotClassIdStr)}
-                        className="text-[10px] font-bold bg-[#112240] text-red-400 border border-red-400/50 px-2 py-0.5 rounded hover:bg-red-400 hover:text-[#0a192f] transition-colors cursor-pointer"
-                      >
-                        COPY
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
-
+            {gameType === 'linegame_set2' && (
+              <>
+              {combinedClassIdStr && (
+                <div className="flex items-center gap-2 bg-[#112240] px-2 py-1 rounded border border-gray-700/30 w-full justify-between mt-2">
+                  <span className="text-xs text-yellow-400 font-bold shrink-0">ClassIDs:</span>
+                  <div className="flex items-center gap-1 overflow-hidden">
+                    <code className="text-xs text-yellow-400 font-mono truncate w-[85%]" title={combinedClassIdStr}>
+                      {combinedClassIdStr}
+                    </code>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(combinedClassIdStr)}
+                      className="text-[10px] font-bold bg-[#0a192f] text-yellow-400 border border-yellow-400/50 px-1.5 py-0.5 rounded hover:bg-yellow-400 hover:text-[#0a192f] transition-colors shrink-0 cursor-pointer"
+                    >
+                      COPY
+                    </button>
+                  </div>
+                </div>
+              )}
+              </>
+            )}
             
             {gameType !== 'linegame_set2' && (specialSymbolConfig.s1Enabled || specialSymbolConfig.s2Enabled) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
@@ -1149,6 +1153,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
             )}
           </div>
           
+          {(gameType === 'linegame_set2' || gameType === 'payanywhere' || gameType === 'payanywhere_set2') && (
             <div className="flex flex-col gap-3 mt-2 pt-4 border-t border-gray-700/50">
               <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-dashboard-accent/20">
                 <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">
@@ -1331,6 +1336,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
             </div>
             )}
           </div>
+          )}
         </div>
       </div>
       )}

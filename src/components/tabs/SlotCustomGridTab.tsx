@@ -3,7 +3,8 @@ import { Trash2, RotateCcw } from 'lucide-react';
 import type { GameType, PaytableRule, GameConfig } from '../../types';
 import { evaluateGrid } from '../../utils/evaluation';
 import { formatAmount } from '../../utils/formatters';
-import { getWinningPositions, getWinColorClass, calculateSVGPaths } from '../../utils/svgPaths';
+import { getWinColorClass, calculateSVGPaths } from '../../utils/svgPaths';
+import { getWinningPositions } from '../../utils/evaluation';
 import type { SVGPathResult } from '../../utils/svgPaths';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
 
@@ -105,9 +106,61 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, [gridSymbols, wins, currentPaytable, gameType, customPaylines]);
 
-  // Gold Frame ClassID String
-  const goldFrameClassIdStr = useMemo(() => {
-    const keys = Object.keys(goldFrames);
+  const handleTumble = () => {
+    if (wins.length === 0) return;
+    setGridSymbols(prevGrid => {
+      const newGrid = prevGrid.map((col, c) => {
+        const keptSymbols: string[] = [];
+        for (let r = 0; r < col.length; r++) {
+          if (!winningCoords.has(`${c}-${r}`)) {
+            keptSymbols.push(col[r]);
+          }
+        }
+        // Pad top with '-'
+        const needed = col.length - keptSymbols.length;
+        const padded = Array(needed).fill('-');
+        return [...padded, ...keptSymbols];
+      });
+      return newGrid;
+    });
+    // Remove gold frames and jackpots for removed positions, and shift them down
+    setGoldFrames(prev => {
+      const next: Record<string, number> = {};
+      Object.keys(prev).forEach(key => {
+        const [cStr, rStr] = key.split('-');
+        const c = Number(cStr);
+        const r = Number(rStr);
+        if (!winningCoords.has(key)) {
+          // Calculate new row
+          let shiftCount = 0;
+          for (let row = r + 1; row < gridSymbols[c].length; row++) {
+            if (winningCoords.has(`${c}-${row}`)) shiftCount++;
+          }
+          next[`${c}-${r + shiftCount}`] = prev[key];
+        }
+      });
+      return next;
+    });
+    setJackpots(prev => {
+      const next: Record<string, 'MINI'|'MAJOR'|'MEGA'|'MAXWIN'> = {};
+      Object.keys(prev).forEach(key => {
+        const [cStr, rStr] = key.split('-');
+        const c = Number(cStr);
+        const r = Number(rStr);
+        if (!winningCoords.has(key)) {
+          let shiftCount = 0;
+          for (let row = r + 1; row < gridSymbols[c].length; row++) {
+            if (winningCoords.has(`${c}-${row}`)) shiftCount++;
+          }
+          next[`${c}-${r + shiftCount}`] = prev[key];
+        }
+      });
+      return next;
+    });
+  };
+
+  const combinedClassIdStr = useMemo(() => {
+    const keys = Array.from(new Set([...Object.keys(goldFrames), ...Object.keys(jackpots)]));
     if (keys.length === 0) return '';
     const output: number[] = [];
     
@@ -119,28 +172,29 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
       return rowA - rowB;
     });
 
+    // Manual specified mapping for Gold Frames poolIndex
+    const multiplierToPoolIndex: Record<number, number> = {
+      2: 0, 3: 1, 4: 2, 5: 3, 6: 4, 7: 5, 8: 6, 9: 7, 10: 8, 25: 9, 50: 10, 100: 11
+    };
+    
+    const typeToId = { 'MINI': 12, 'MAJOR': 13, 'MEGA': 14, 'MAXWIN': 15 };
+
     keys.forEach(k => {
       const [col, row] = k.split('-').map(Number);
-      output.push(col, row, goldFrames[k]);
+      
+      if (goldFrames[k] !== undefined) {
+        const val = goldFrames[k];
+        const poolIndex = multiplierToPoolIndex[val] !== undefined ? multiplierToPoolIndex[val] : 0;
+        output.push(col, row, poolIndex);
+      }
+      
+      if (jackpots[k] !== undefined) {
+        output.push(col, row, typeToId[jackpots[k]]);
+      }
     });
 
     return `[${output.join(',')}]`;
-  }, [goldFrames]);
-
-  const jackpotClassIdStr = useMemo(() => {
-    const arr: (number | string)[] = [];
-    const keys = Object.keys(jackpots).sort((a, b) => {
-      const [ca, ra] = a.split('-').map(Number);
-      const [cb, rb] = b.split('-').map(Number);
-      return ca !== cb ? ca - cb : ra - rb;
-    });
-    const typeToId = { 'MINI': 1, 'MAJOR': 2, 'MEGA': 3, 'MAXWIN': 4 };
-    for (const key of keys) {
-      const [col, row] = key.split('-').map(Number);
-      arr.push(col, row, typeToId[jackpots[key]]);
-    }
-    return arr.length > 0 ? `[${arr.join(',')}]` : '';
-  }, [jackpots]);
+  }, [goldFrames, jackpots]);
 
   // Multiplier ClassID String
   const multiplierClassIdStr = useMemo(() => {
@@ -343,6 +397,8 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     setGridSymbols(Array.from({ length: reelCount }, (_, c) => 
       Array(rowCounts[c] || 3).fill('-')
     ));
+    setGoldFrames({});
+    setJackpots({});
   };
 
   const allPaletteSymbols = useMemo(() => {
@@ -691,37 +747,18 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
           </div>
         )}
 
-        {goldFrameClassIdStr && (
+        {combinedClassIdStr && (
           <div className="flex flex-col gap-2 mt-2">
             <div className="flex justify-between items-center">
-              <span className="text-xs text-yellow-400 font-bold">金框 ClassID</span>
+              <span className="text-xs text-yellow-400 font-bold">ClassIDs</span>
             </div>
             <div className="flex items-center justify-between bg-[#112240] px-2 py-1.5 rounded border border-yellow-500/30">
-              <code className="text-xs text-yellow-400 font-mono truncate w-48" title={goldFrameClassIdStr}>
-                {goldFrameClassIdStr}
+              <code className="text-xs text-yellow-400 font-mono truncate w-48" title={combinedClassIdStr}>
+                {combinedClassIdStr}
               </code>
               <button
-                onClick={() => navigator.clipboard.writeText(goldFrameClassIdStr)}
+                onClick={() => navigator.clipboard.writeText(combinedClassIdStr)}
                 className="text-[10px] font-bold bg-[#0a192f] text-yellow-400 border border-yellow-400/50 px-2 py-0.5 rounded hover:bg-yellow-400 hover:text-[#0a192f] transition-colors cursor-pointer"
-              >
-                COPY
-              </button>
-            </div>
-          </div>
-        )}
-
-        {jackpotClassIdStr && (
-          <div className="flex flex-col gap-2 mt-2">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-red-400 font-bold">大獎 ClassID</span>
-            </div>
-            <div className="flex items-center justify-between bg-[#112240] px-2 py-1.5 rounded border border-red-500/30">
-              <code className="text-xs text-red-400 font-mono truncate w-48" title={jackpotClassIdStr}>
-                {jackpotClassIdStr}
-              </code>
-              <button
-                onClick={() => navigator.clipboard.writeText(jackpotClassIdStr)}
-                className="text-[10px] font-bold bg-[#0a192f] text-red-400 border border-red-400/50 px-2 py-0.5 rounded hover:bg-red-400 hover:text-[#0a192f] transition-colors cursor-pointer"
               >
                 COPY
               </button>

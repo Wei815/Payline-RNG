@@ -15,7 +15,7 @@ const getTemplateName = (path: string) => {
 };
 
 interface ConfigPanelProps {
-  onTestSpin: (strips: ReelStrips, paytable: PaytableRule[], totalSpins?: number, rowCounts?: number[], paylines?: number[][]) => void;
+  onTestSpin: (strips: ReelStrips, paytable: PaytableRule[], totalSpins?: number, rowCounts?: number[], paylines?: number[][], isFreeGame?: boolean) => void;
 }
 
 export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
@@ -411,7 +411,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
 
       const finalPaytable = uniqueSymbols.map(sym => paytableMap[sym]).filter(r => r && r.isEnabled !== false);
 
-      onTestSpin(parsedStrips, finalPaytable, 50, rowCounts, customPaylines);
+      onTestSpin(parsedStrips, finalPaytable, 50, rowCounts, customPaylines, activeStripTab === 'free');
     } catch (e: any) {
       setError('執行錯誤：' + e.message);
     }

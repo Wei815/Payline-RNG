@@ -23,8 +23,19 @@ export class ScatterStrategy implements EvaluationStrategy {
       }
     }
 
-    const minScatter = gameConfig.specialRules?.scatterMinCount ?? 2;
-    const autoWinCount = gameConfig.specialRules?.scatterAutoWinCount ?? 3;
+    // Determine minimum scatter count from payouts dynamically
+    let dynamicMinScatter = Infinity;
+    let dynamicAutoWinCount = Infinity;
+    for (let i = 2; i <= 20; i++) {
+      const p = rule.payouts[`match${i}` as keyof typeof rule.payouts];
+      if (p !== undefined && p > 0) {
+        if (i < dynamicMinScatter) dynamicMinScatter = i;
+        if (i > dynamicAutoWinCount || dynamicAutoWinCount === Infinity) dynamicAutoWinCount = i;
+      }
+    }
+
+    const minScatter = dynamicMinScatter !== Infinity ? dynamicMinScatter : (gameConfig.specialRules?.scatterMinCount ?? 2);
+    const autoWinCount = dynamicAutoWinCount !== Infinity ? dynamicAutoWinCount : (gameConfig.specialRules?.scatterAutoWinCount ?? 3);
 
     if (scatterCount >= minScatter) {
       const lookupMatch = Math.min(scatterCount, grid.length);

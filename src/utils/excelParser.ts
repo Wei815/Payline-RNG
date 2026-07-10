@@ -109,16 +109,34 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
     for (let i = 0; i < overviewData.length; i++) {
       const row = overviewData[i];
       if (!row) continue;
-      if (row[0] === 'Coin' && result.coin === undefined) {
-        if (overviewData[i+1] && overviewData[i+1][0] !== undefined) {
-          result.coin = parseFloat(overviewData[i+1][0]);
+      
+      const coinIdx = row.findIndex((cell: any) => String(cell).trim() === 'Coin');
+      if (coinIdx !== -1 && result.coin === undefined) {
+        if (overviewData[i+1] && overviewData[i+1][coinIdx] !== undefined) {
+          result.coin = parseFloat(overviewData[i+1][coinIdx]);
           result.bet = result.coin;
         }
       }
-      if (row[0] === 'Reel Size') {
+
+      const wayIdx = row.findIndex((cell: any) => String(cell).trim() === 'Way');
+      if (wayIdx !== -1 && result.gameType === undefined) {
+        if (overviewData[i+1] && overviewData[i+1][wayIdx] !== undefined) {
+           const wayStr = String(overviewData[i+1][wayIdx]);
+           if (wayStr.includes('4096') || parseInt(wayStr) === 4096) {
+             result.gameType = 'waygame_qin';
+           } else if (parseInt(wayStr) > 0) {
+             result.gameType = 'waygame';
+           }
+        }
+      }
+      
+      const reelSizeIdx = row.findIndex((cell: any) => String(cell).trim() === 'Reel Size');
+      if (reelSizeIdx !== -1) {
         const sizes: number[] = [];
-        for (let c = 1; c <= 5; c++) {
-          if (row[c] !== undefined) sizes.push(parseInt(row[c]));
+        for (let c = reelSizeIdx + 1; c < row.length; c++) {
+          if (row[c] !== undefined && row[c] !== null && String(row[c]).trim() !== '') {
+            sizes.push(parseInt(row[c]));
+          }
         }
         if (sizes.length > 0) {
           result.rowCounts = sizes;
@@ -313,7 +331,7 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
           }
         }
         // 2. Old Format: The row right after Base\Free: or multiple blocks of payouts
-        else if (!hasExplicitMathId && (!row[0] || String(row[0]).trim() === '') && row.length > 1) {
+        else if ((!row[0] || String(row[0]).trim() === '') && row.length > 1) {
           // Find the first column that has a header symbol
           let headerStartCol = -1;
           for (let c = 1; c < row.length; c++) {
@@ -410,9 +428,15 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
                   };
                 }
 
-                for (let r = payoutStartOffset; r < payoutStartOffset + 5; r++) {
+                for (let r = payoutStartOffset; r < payoutStartOffset + 8; r++) {
                   if (overviewData[i+r]) {
                     const matchCountStr = String(overviewData[i+r][0] || overviewData[i+r][headerStartCol - 1] || '').trim();
+                    
+                    // Stop if we hit another header row
+                    if (!matchCountStr.includes('+') && !matchCountStr.includes('-') && isNaN(parseInt(matchCountStr))) {
+                      break;
+                    }
+
                     if (matchCountStr) {
                       let matchKey: keyof PaytableRule['payouts'] | null = null;
                       

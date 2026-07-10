@@ -1,5 +1,5 @@
 import type { PaytableRule, ReelStrips, SymbolMetric, GameConfig } from '../types';
-import { evaluateGrid } from '../utils/evaluation';
+import { evaluateGrid, getWinningPositions } from '../utils/evaluation';
 
 export type WorkerMessageData = {
   strips: ReelStrips;
@@ -9,6 +9,7 @@ export type WorkerMessageData = {
   gameConfig: GameConfig;
   coin: number;
   bet: number;
+  isFreeGame?: boolean;
 };
 
 export type WorkerResponse = {
@@ -21,7 +22,7 @@ export type WorkerResponse = {
 };
 
 self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
-  const { strips, paytable, totalSpins, rowCounts, gameConfig, coin, bet } = e.data;
+  const { strips, paytable, totalSpins, rowCounts, gameConfig, coin, bet, isFreeGame } = e.data;
   
   const symbolMetrics: Record<string, SymbolMetric> = {};
   paytable.forEach(rule => {
@@ -66,21 +67,30 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
   let lastReportTime = performance.now();
 
   for (let i = 0; i < totalSpins; i++) {
-    // Overwrite the pre-allocated grid
+    // Keep track of the top-most draw index for each column (used for tumbling)
+    const drawIndices: number[] = new Array(maxCols);
+    
+    // Generate initial grid from continuous strips
     for (let colIndex = 0; colIndex < strips.length; colIndex++) {
       const strip = strips[colIndex];
       const rows = rowCounts[colIndex] || 3;
       let writeIdx = 0;
 
-      for (let r = 0; r < rows; r++) {
-        if (!strip || strip.length === 0) {
+      if (!strip || strip.length === 0) {
+        for (let r = 0; r < rows; r++) {
           grid[colIndex][writeIdx++] = 'WILD';
-        } else {
-          grid[colIndex][writeIdx++] = strip[Math.floor(Math.random() * strip.length)];
+        }
+        drawIndices[colIndex] = 0; // fallback
+      } else {
+        const startIndex = Math.floor(Math.random() * strip.length);
+        drawIndices[colIndex] = startIndex - 1; // The next symbol to draw is above the startIndex
+        
+        for (let r = 0; r < rows; r++) {
+          grid[colIndex][writeIdx++] = strip[(startIndex + r) % strip.length];
         }
       }
       
-      // Megaways top row
+      // Megaways top row (usually drawn randomly or from a separate strip, keeping random for now)
       if (gameConfig.gameType === 'megaway' && colIndex >= 1 && colIndex <= 4) {
         if (!strip || strip.length === 0) {
           grid[colIndex][writeIdx++] = 'WX';
@@ -90,33 +100,90 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
       }
     }
 
-    const wins = evaluateGrid(grid, paytable, gameConfig, effectivePaylines);
-    
     let spinWin = 0;
-    for (let wIdx = 0; wIdx < wins.length; wIdx++) {
-      const win = wins[wIdx];
-      spinWin += win.totalWin;
+    let keepCascading = true;
 
-      const metric = symbolMetrics[win.symbolId];
-      if (metric) {
-        metric.totalPayout += win.totalWin;
+    while (keepCascading) {
+      const wins = evaluateGrid(grid, paytable, gameConfig, effectivePaylines);
+      
+      if (wins.length === 0) {
+        keepCascading = false;
+        break;
+      }
+      
+      let cascadeWin = 0;
+      for (let wIdx = 0; wIdx < wins.length; wIdx++) {
+        const win = wins[wIdx];
+        cascadeWin += win.totalWin;
 
-        if (gameConfig.gameType === 'payanywhere' || gameConfig.gameType === 'payanywhere_set2') {
-          if (win.matchCount >= 8 && win.matchCount <= 9) {
-            metric.hits3++;
-          } else if (win.matchCount >= 10 && win.matchCount <= 11) {
-            metric.hits4++;
-          } else if (win.matchCount >= 12) {
-            metric.hits5++;
+        const metric = symbolMetrics[win.symbolId];
+        if (metric) {
+          metric.totalPayout += win.totalWin;
+
+          if (gameConfig.gameType === 'payanywhere' || gameConfig.gameType === 'payanywhere_set2') {
+            if (win.matchCount >= 8 && win.matchCount <= 9) {
+              metric.hits3++;
+            } else if (win.matchCount >= 10 && win.matchCount <= 11) {
+              metric.hits4++;
+            } else if (win.matchCount >= 12) {
+              metric.hits5++;
+            }
+          } else {
+            const matches = Math.min(win.matchCount, 6);
+            if (matches === 2) metric.hits2++;
+            else if (matches === 3) metric.hits3++;
+            else if (matches === 4) metric.hits4++;
+            else if (matches === 5) metric.hits5++;
+            else if (matches === 6) metric.hits6 = (metric.hits6 || 0) + 1;
           }
-        } else {
-          const matches = Math.min(win.matchCount, 6);
-          if (matches === 2) metric.hits2++;
-          else if (matches === 3) metric.hits3++;
-          else if (matches === 4) metric.hits4++;
-          else if (matches === 5) metric.hits5++;
-          else if (matches === 6) metric.hits6 = (metric.hits6 || 0) + 1;
         }
+      }
+
+      spinWin += cascadeWin;
+
+      // Handle Cascading logic (Tumbling)
+      if (gameConfig.gameType === 'waygame_qin' && cascadeWin > 0) {
+        // Find which coordinates were eliminated
+        const winningCoordsMap = getWinningPositions(grid, wins, paytable, gameConfig.gameType, undefined, effectivePaylines);
+        
+        for (let colIndex = 0; colIndex < grid.length; colIndex++) {
+          const strip = strips[colIndex];
+          if (!strip || strip.length === 0) continue;
+          
+          // Get eliminated rows in this column
+          const rows = rowCounts[colIndex] || 3;
+          let eliminatedRows = [];
+          for (let r = 0; r < rows; r++) {
+            if (winningCoordsMap.has(`${colIndex}-${r}`)) {
+              // If it's a Free Game and the symbol is S1, do NOT eliminate it
+              if (isFreeGame && grid[colIndex][r] === 'S1') {
+                continue;
+              }
+              // Make sure to ignore 999 which is just the highlight marker for S1
+              const winIndices = winningCoordsMap.get(`${colIndex}-${r}`);
+              const hasRealWin = winIndices && winIndices.some(idx => idx !== 999);
+              if (hasRealWin) {
+                eliminatedRows.push(r);
+              }
+            }
+          }
+          
+          // Sort eliminated rows from bottom to top (e.g. 2, 1, 0)
+          eliminatedRows.sort((a, b) => b - a);
+          
+          // Replace eliminated symbols by drawing from above (drawIndex--)
+          for (const r of eliminatedRows) {
+            // Calculate wrapped index safely for negative values
+            const len = strip.length;
+            const actualDrawIndex = (((drawIndices[colIndex] % len) + len) % len);
+            
+            grid[colIndex][r] = strip[actualDrawIndex];
+            drawIndices[colIndex]--;
+          }
+        }
+      } else {
+        // No cascading mechanic for other games currently, or no win to trigger it
+        keepCascading = false;
       }
     }
 

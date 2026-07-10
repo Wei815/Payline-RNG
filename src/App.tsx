@@ -22,7 +22,7 @@ function App() {
   
   const [isMetricsOpen, setIsMetricsOpen] = useState<boolean>(false);
 
-  const handleTestSpin = useCallback((strips: any[], paytable: any[], spins?: number, rows?: number[], paylines?: number[][]) => {
+  const handleTestSpin = useCallback((strips: any[], paytable: any[], spins?: number, rows?: number[], paylines?: number[][], isFreeGame?: boolean) => {
     const config: GameConfig = {
       gameType,
       paylines: paylines || customPaylines,
@@ -31,7 +31,7 @@ function App() {
         derivativeSymbols: { 'B1': ['B2'] }
       }
     };
-    runSimulation(strips, paytable, spins, rows, config, coin, bet);
+    runSimulation(strips, paytable, spins, rows, config, coin, bet, isFreeGame);
   }, [runSimulation, gameType, customPaylines, coin, bet]);
 
   return (
@@ -104,7 +104,8 @@ function App() {
                       derivativeSymbols: { 'B1': ['B2'] }
                     }
                   };
-                  runSimulation(currentStrips, currentPaytable, 100000, rowCounts, config, coin, bet);
+                  // We don't have activeStripTab here, so we assume Base Game if run from Dashboard directly
+                  runSimulation(currentStrips, currentPaytable, 100000, rowCounts, config, coin, bet, false);
                 }}
               />
             </div>

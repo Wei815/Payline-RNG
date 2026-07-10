@@ -28,7 +28,8 @@ export const useSimulation = () => {
     rowCounts: number[] = [],
     gameConfig: GameConfig,
     coin: number = 1,
-    bet: number = 1
+    bet: number = 1,
+    isFreeGame?: boolean
   ) => {
     if (isRunning && workerRef.current) {
       workerRef.current.terminate();
@@ -68,7 +69,8 @@ export const useSimulation = () => {
       rowCounts,
       gameConfig,
       coin,
-      bet
+      bet,
+      isFreeGame
     };
 
     workerRef.current.postMessage(message);

@@ -173,10 +173,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
     if (lineViewerSymbolState && !symbols.includes(lineViewerSymbolState)) {
       setLineViewerSymbolState('');
     }
-    if (symbols.length > 0 && !symbols.includes(selectedSymbol)) {
-      setSelectedSymbol(symbols[0]);
-    }
-  }, [symbols, lineViewerSymbolState, selectedSymbol]);
+  }, [symbols, lineViewerSymbolState]);
 
   const lineViewerPayout = useMemo(() => {
     const matchKey = `match${Math.min(5, reelCount)}`;
@@ -313,6 +310,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
             <SlotCustomGridTab
               reelCount={reelCount}
               rowCounts={rowCounts}
+              currentStrips={currentStrips}
               currentPaytable={currentPaytable}
               groupedSymbols={groupedSymbols}
               gameType={gameType}
