@@ -412,7 +412,7 @@ export function useRngSearch(
           const pB = getPriority(b);
           if (pA !== pB) return pA - pB;
           
-          if (a.length !== b.length) return b.length - a.length;
+          if (a.length !== b.length) return a.length - b.length;
           return a.wildCount - b.wildCount;
         });
       }

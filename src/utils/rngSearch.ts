@@ -94,8 +94,7 @@ export async function findRngForCombination(
     let bestDist = Infinity;
     let bestWildColIdx = Infinity;
 
-    let dfsAttempts = 0;
-    const MAX_DFS_ATTEMPTS = 5000;
+    const MAX_RANDOM_ATTEMPTS = allowOtherWins ? 1000 : 3000;
 
     for (const wildCols of wildColCombinations) {
       const isWildCol = Array(length).fill(false);
@@ -103,127 +102,18 @@ export async function findRngForCombination(
 
       const currentWildColIdx = wildCols[0] !== undefined ? wildCols[0] : Infinity;
 
-      const candidateRng = Array(reelCount).fill(0);
-      let testCount = 0;
-
-      const search = async (colIndex: number): Promise<number[] | null> => {
-        testCount++;
-        if (testCount % 1000 === 0) {
-          await new Promise(resolve => setTimeout(resolve, 0));
-        }
-        if (testCount > 50000) return null;
-
-        if (colIndex === reelCount) {
-          const testGrid = Array.from({ length: reelCount }, (_, cIdx) => {
-            const r = rowCounts[cIdx] || 3;
-            const s = currentStrips[cIdx];
-            const start = candidateRng[cIdx];
-            return Array.from({ length: r }).map((_, ri) => s[(start + ri) % s.length]);
-          });
-
-          let evalGrid = testGrid;
-          if (gameType === 'megaway') {
-            evalGrid = testGrid.map((col, colIdx) => {
-              if (colIdx >= 1 && colIdx <= 4 && topTrackerOther) {
-                const topSym = (length < 5 && colIdx >= length)
-                  ? '-'
-                  : (topTrackerOther[colIdx - 1] || 'WX');
-                return [...col, topSym];
-              }
-              return col;
-            });
-          }
-
-          const evWins = evaluateGrid(evalGrid, currentPaytable, gameType, customPaylines, true);
-          const targetWin = evWins.find(w => w.symbolId === targetSymbol);
-          let isMatch = false;
-          let ways = 1;
-          if (targetWin) {
-            isMatch = (targetWin.matchCount >= length);
-            ways = targetWin.ways;
-          }
-
-          const otherWinsCount = evWins.filter(w => {
-            if (w.symbolId === targetSymbol || wildSymbolSet.has(w.symbolId)) return false;
-            if (w.payout > 0) return true;
-            if ((w.symbolId.startsWith('S') || w.symbolId.startsWith('B')) && w.matchCount >= 3) return true;
-            return false;
-          }).length;
-
-          if (isMatch) {
-            if (!allowOtherWins) {
-              if (otherWinsCount === 0 && ways === 1) {
-                return [...candidateRng];
-              }
-            } else {
-              let score = (ways - 1) * 10 + otherWinsCount * 20;
-
-              let totalDist = 0;
-              for (let c = 0; c < reelCount; c++) {
-                const stripLen = currentStrips[c].length;
-                const idx = candidateRng[c];
-                const rows = rowCounts[c] || 3;
-                let minD = Infinity;
-                
-                for (let r = 0; r < rows; r++) {
-                  const sym = currentStrips[c][(idx + r) % stripLen];
-                  if (sym === targetSymbol || wildSymbolSet.has(sym)) {
-                    const dist = Math.abs(r - 0);
-                    if (dist < minD) minD = dist;
-                  }
-                }
-                totalDist += (minD === Infinity ? 0 : minD);
-              }
-
-              if (categories[colIndex] && categories[colIndex].preferredIndices.has(candidateRng[colIndex])) {
-                score -= 5;
-              }
-
-              // Add totalDist to the score so it heavily prefers symbols on row 0!
-              // Since otherWinsCount is * 20, a totalDist of 5 is still less impactful than 1 other win.
-              score += totalDist;
-
-              if (score < minScore) {
-                minScore = score;
-                bestCandidate = [...candidateRng];
-                bestDist = totalDist;
-                bestWildColIdx = currentWildColIdx;
-              } else if (score === minScore) {
-                if (currentWildColIdx < bestWildColIdx) {
-                  bestCandidate = [...candidateRng];
-                  bestDist = totalDist;
-                  bestWildColIdx = currentWildColIdx;
-                } else if (currentWildColIdx === bestWildColIdx) {
-                  if (totalDist < bestDist) {
-                    bestCandidate = [...candidateRng];
-                    bestDist = totalDist;
-                  }
-                }
-              }
-            }
-          }
-
-          return null;
-        }
-
-        if (!allowOtherWins) {
-          dfsAttempts++;
-          if (dfsAttempts > MAX_DFS_ATTEMPTS) return null;
-        }
-
+      // Precompute candidates for each column
+      const validCandidates: number[][] = [];
+      let hasEmptyCandidate = false;
+      for (let colIndex = 0; colIndex < reelCount; colIndex++) {
         let candidates: number[] = [];
         if (colIndex < length) {
           if (isWildCol[colIndex]) {
             candidates = categories[colIndex].onlyOneWild;
-            if (candidates.length === 0) {
-              candidates = categories[colIndex].anyWild;
-            }
-            if (candidates.length === 0) return null;
+            if (candidates.length === 0) candidates = categories[colIndex].anyWild;
           } else {
             candidates = categories[colIndex].onlyOneTarget;
-            if (allowOtherWins && candidates.length === 0) {
-              candidates = categories[colIndex].anyTarget;
-            }
+            if (allowOtherWins && candidates.length === 0) candidates = categories[colIndex].anyTarget;
           }
         } else {
           candidates = categories[colIndex].none;
@@ -233,31 +123,154 @@ export async function findRngForCombination(
           if (allowOtherWins) {
             candidates = Array.from({ length: currentStrips[colIndex].length }, (_, idx) => idx);
           } else {
-            return null;
+            hasEmptyCandidate = true;
+            break;
+          }
+        }
+        validCandidates.push(candidates);
+      }
+
+      if (hasEmptyCandidate) continue;
+
+      let testCount = 0;
+      const candidateRng = Array(reelCount).fill(0);
+
+      while (testCount < MAX_RANDOM_ATTEMPTS) {
+        testCount++;
+        if (testCount % 500 === 0) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+
+        const visibleSymbols = new Set<string>();
+
+        for (let c = 0; c < reelCount; c++) {
+          let cands = validCandidates[c];
+
+          // Smart heuristic from QA: If Reel 0 and Reel 1/2 don't share symbols, connections are impossible!
+          if (!allowOtherWins && c > 0 && c <= 2 && (gameType.startsWith('way') || gameType.startsWith('line') || gameType === 'megaway')) {
+             const safeCands = cands.filter(idx => {
+                const strip = currentStrips[c];
+                const rows = rowCounts[c] || 3;
+                for (let r = 0; r < rows; r++) {
+                   const sym = strip[(idx + r) % strip.length];
+                   if (sym !== targetSymbol && !wildSymbolSet.has(sym) && visibleSymbols.has(sym)) return false;
+                }
+                return true;
+             });
+             // Fallback to all candidates if safeCands is empty to prevent infinite loops
+             if (safeCands.length > 0) cands = safeCands;
+          }
+
+          const pref = cands.filter(x => categories[c].preferredIndices.has(x));
+          let chosenIdx = 0;
+          if (pref.length > 0 && Math.random() < 0.8) {
+            chosenIdx = pref[Math.floor(Math.random() * pref.length)];
+          } else {
+            chosenIdx = cands[Math.floor(Math.random() * cands.length)];
+          }
+          candidateRng[c] = chosenIdx;
+
+          // Add symbols of the first reel to visibleSymbols to filter the next reels
+          if (!allowOtherWins && c === 0) {
+             const strip = currentStrips[c];
+             const rows = rowCounts[c] || 3;
+             for (let r = 0; r < rows; r++) {
+                visibleSymbols.add(strip[(chosenIdx + r) % strip.length]);
+             }
           }
         }
 
-        const stripLen = currentStrips[colIndex].length;
-        const mid = Math.floor(stripLen / 2);
-        const cp = categories[colIndex].preferredIndices;
-        const sortedCandidates = [...candidates].sort((a, b) => {
-          const aCenter = cp.has(a) ? 0 : 1;
-          const bCenter = cp.has(b) ? 0 : 1;
-          if (aCenter !== bCenter) return aCenter - bCenter;
-          return Math.abs(a - mid) - Math.abs(b - mid);
+        const testGrid = Array.from({ length: reelCount }, (_, cIdx) => {
+          const r = rowCounts[cIdx] || 3;
+          const s = currentStrips[cIdx];
+          const start = candidateRng[cIdx];
+          return Array.from({ length: r }).map((_, ri) => s[(start + ri) % s.length]);
         });
 
-        const limit = allowOtherWins ? Math.min(sortedCandidates.length, 5) : Math.min(sortedCandidates.length, 25);
-        for (let attempt = 0; attempt < limit; attempt++) {
-          candidateRng[colIndex] = sortedCandidates[attempt];
-          const res = await search(colIndex + 1);
-          if (res && !allowOtherWins) return res;
+        let evalGrid = testGrid;
+        if (gameType === 'megaway') {
+          evalGrid = testGrid.map((col, colIdx) => {
+            if (colIdx >= 1 && colIdx <= 4 && topTrackerOther) {
+              const topSym = (length < 5 && colIdx >= length)
+                ? '-'
+                : (topTrackerOther[colIdx - 1] || 'WX');
+              return [...col, topSym];
+            }
+            return col;
+          });
         }
-        return null;
-      };
 
-      const res = await search(0);
-      if (res && !allowOtherWins) return res;
+        const evWins = evaluateGrid(evalGrid, currentPaytable, gameType, customPaylines, true);
+        const targetWin = evWins.find(w => w.symbolId === targetSymbol);
+        let isMatch = false;
+        let ways = 1;
+        if (targetWin) {
+          isMatch = (targetWin.matchCount >= length);
+          ways = targetWin.ways;
+        }
+
+        if (gameType === 'waygame_qin') {
+          if (evWins.some(w => w.symbolId === 'B1' && w.matchCount >= 5)) {
+            if (targetSymbol !== 'B1' || length < 5) {
+              isMatch = false;
+            }
+          }
+        }
+
+        if (!isMatch) continue;
+
+        const otherWinsCount = evWins.filter(w => {
+          if (w.symbolId === targetSymbol || wildSymbolSet.has(w.symbolId)) return false;
+          if (w.payout > 0) return true;
+          if ((w.symbolId.startsWith('S') || w.symbolId.startsWith('B')) && w.matchCount >= 3) return true;
+          return false;
+        }).length;
+
+        if (!allowOtherWins) {
+          if (otherWinsCount === 0 && ways === 1) {
+            return [...candidateRng];
+          }
+        } else {
+          let score = (ways - 1) * 10 + otherWinsCount * 20;
+
+          let totalDist = 0;
+          for (let c = 0; c < reelCount; c++) {
+            const stripLen = currentStrips[c].length;
+            const idx = candidateRng[c];
+            const rows = rowCounts[c] || 3;
+            let minD = Infinity;
+            
+            for (let r = 0; r < rows; r++) {
+              const sym = currentStrips[c][(idx + r) % stripLen];
+              if (sym === targetSymbol || wildSymbolSet.has(sym)) {
+                const dist = Math.abs(r - 0);
+                if (dist < minD) minD = dist;
+              }
+            }
+            totalDist += (minD === Infinity ? 0 : minD);
+          }
+
+          score += totalDist;
+
+          if (score < minScore) {
+            minScore = score;
+            bestCandidate = [...candidateRng];
+            bestDist = totalDist;
+            bestWildColIdx = currentWildColIdx;
+          } else if (score === minScore) {
+            if (currentWildColIdx < bestWildColIdx) {
+              bestCandidate = [...candidateRng];
+              bestDist = totalDist;
+              bestWildColIdx = currentWildColIdx;
+            } else if (currentWildColIdx === bestWildColIdx) {
+              if (totalDist < bestDist) {
+                bestCandidate = [...candidateRng];
+                bestDist = totalDist;
+              }
+            }
+          }
+        }
+      }
     }
 
     return allowOtherWins ? bestCandidate : null;

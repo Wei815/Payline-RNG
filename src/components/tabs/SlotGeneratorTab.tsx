@@ -231,6 +231,9 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
   // Clover states
   const [isCloverMode, setIsCloverMode] = useState(false);
 
+  // Copy feedback state
+  const [isCopiedAll, setIsCopiedAll] = useState(false);
+
   const combinedClassIdStr = useMemo(() => {
     const arr: number[] = [];
     
@@ -428,9 +431,37 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
 
         <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 shadow-inner">
           <div className="flex justify-between items-center border-b border-gray-700/50 pb-2 mb-3">
-            <span className="text-sm text-dashboard-text-secondary font-bold pl-1">
-              連線組合清單 (點擊自動套用 RNG 盤面)
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-dashboard-text-secondary font-bold pl-1">
+                連線組合清單 (點擊自動套用 RNG 盤面)
+              </span>
+              <button
+                disabled={isSearching || combinations.length === 0}
+                onClick={() => {
+                  const textToCopy = [...combinations]
+                    .filter(c => c.rng)
+                    .sort((a, b) => {
+                      const aHasWild = a.wildCount > 0 ? 1 : 0;
+                      const bHasWild = b.wildCount > 0 ? 1 : 0;
+                      if (aHasWild !== bHasWild) return aHasWild - bHasWild;
+                      if (a.length !== b.length) return a.length - b.length;
+                      return a.wildCount - b.wildCount;
+                    })
+                    .map(c => `[${c.rng?.join(',')}],`)
+                    .join('\n');
+                  navigator.clipboard.writeText(textToCopy);
+                  setIsCopiedAll(true);
+                  setTimeout(() => setIsCopiedAll(false), 2000);
+                }}
+                className={`px-2 py-1 text-xs font-bold rounded border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isCopiedAll 
+                    ? 'bg-green-500/20 text-green-400 border-green-500/50' 
+                    : 'bg-[#64ffda]/10 hover:bg-[#64ffda]/20 text-[#64ffda] border-[#64ffda]/30'
+                }`}
+              >
+                {isCopiedAll ? '✅ 已複製！' : '📋 複製全部腳本'}
+              </button>
+            </div>
             {isSearching && (
               <span className="text-xs text-yellow-400 font-mono animate-pulse">搜尋可能配置中...</span>
             )}
@@ -741,7 +772,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
 
                     let customBg = '';
                     let displaySymbol = symbol;
-                    if (symbol === 'S1') {
+                    if (symbol === 'S1' && gameType === 'linegame_set2') {
                       displaySymbol = '🍀';
                     }
                     if (symbol.includes('_') && symbol.match(/^[F|L][1-4]_/)) {
