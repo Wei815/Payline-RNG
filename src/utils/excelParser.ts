@@ -485,11 +485,21 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
       });
   }
 
+  if (!result.reelCount) {
+    if (result.rowCounts && result.rowCounts.length > 0) {
+      result.reelCount = result.rowCounts.length;
+    } else if (result.strips && result.strips.length > 0) {
+      result.reelCount = result.strips.length;
+    }
+  }
+
   if (!result.gameType) {
     if (file.name.includes('決戰賽特')) {
       result.gameType = 'payanywhere_set2';
     } else if (file.name.includes('秦皇')) {
       result.gameType = 'waygame_qin';
+      result.reelCount = 6;
+      result.rowCounts = [4, 4, 4, 4, 4, 4];
     } else if (file.name.includes('奢華')) {
       result.gameType = 'linegame_set2';
     } else if (!result.paylines || result.paylines.length === 0) {

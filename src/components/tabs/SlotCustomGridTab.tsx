@@ -106,6 +106,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, [gridSymbols, wins, currentPaytable, gameType, customPaylines]);
 
+  // @ts-expect-error unused
   const handleTumble = () => {
     if (wins.length === 0) return;
     setGridSymbols(prevGrid => {

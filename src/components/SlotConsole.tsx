@@ -310,7 +310,6 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
             <SlotCustomGridTab
               reelCount={reelCount}
               rowCounts={rowCounts}
-              currentStrips={currentStrips}
               currentPaytable={currentPaytable}
               groupedSymbols={groupedSymbols}
               gameType={gameType}

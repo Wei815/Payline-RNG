@@ -59,16 +59,13 @@ export async function findRngForCombination(
       const wCount = visible.filter(s => wildSymbolSet.has(s)).length;
       const preferredRow = 0; 
       const preferredSym = visible[preferredRow];
-      const wPreferredOnly = wCount === 1 && wildSymbolSet.has(preferredSym);
-      const tPreferredOnly = tCount === 1 && preferredSym === targetSymbol;
+      const wPreferred = wildSymbolSet.has(preferredSym);
+      const tPreferred = preferredSym === targetSymbol;
 
-      if (tPreferredOnly && wCount === 0) {
-        onlyOneTarget.push(i);
-        preferredIndices.add(i);
-      } else if (wPreferredOnly && tCount === 0) {
-        onlyOneWild.push(i);
-        preferredIndices.add(i);
-      } else if (tCount === 1 && wCount === 0) {
+      if (tPreferred) preferredIndices.add(i);
+      if (wPreferred) preferredIndices.add(i);
+
+      if (tCount === 1 && wCount === 0) {
         onlyOneTarget.push(i);
       } else if (tCount === 0 && wCount === 1) {
         onlyOneWild.push(i);
@@ -93,6 +90,7 @@ export async function findRngForCombination(
 
   const runSearch = async (allowOtherWins: boolean): Promise<number[] | null> => {
     let bestCandidate: number[] | null = null;
+    let minScore = Infinity;
     let bestDist = Infinity;
     let bestWildColIdx = Infinity;
 
@@ -180,6 +178,10 @@ export async function findRngForCombination(
               if (categories[colIndex] && categories[colIndex].preferredIndices.has(candidateRng[colIndex])) {
                 score -= 5;
               }
+
+              // Add totalDist to the score so it heavily prefers symbols on row 0!
+              // Since otherWinsCount is * 20, a totalDist of 5 is still less impactful than 1 other win.
+              score += totalDist;
 
               if (score < minScore) {
                 minScore = score;

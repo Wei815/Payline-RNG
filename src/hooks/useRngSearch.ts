@@ -39,7 +39,8 @@ export function useRngSearch(
       if (gameType === 'payanywhere_set2') {
         // --- PAY ANYWHERE SET 2 GENERATOR ---
         // Target counts: 7 to 13
-        const totalGridCells = rowCounts.reduce((sum, c) => sum + c, 0);
+        let totalGridCells = 0;
+        for (let c = 0; c < reelCount; c++) totalGridCells += (rowCounts[c] || 3);
         // We generate 60 items: 30 for the initial grid, 30 for the drops
         const requiredTotal = totalGridCells * 2;
         
@@ -158,6 +159,9 @@ export function useRngSearch(
               (newCombs[newCombs.length - 1] as any).dropMathIds = dropMathIds;
             });
           } else {
+            let requiredTotal = 0;
+            for (let c = 0; c < reelCount; c++) requiredTotal += (rowCounts[c] || 3);
+
             for (let N = 7; N <= 13; N++) {
               const grid: string[] = Array(requiredTotal).fill('-');
               
@@ -168,7 +172,9 @@ export function useRngSearch(
                 for (let c = 0; c < reelCount; c++) {
                   const colRows = rowCounts[c] || 3;
                   if (r < colRows) {
-                    placementOrder.push(c * colRows + r);
+                    let offset = 0;
+                    for (let k = 0; k < c; k++) offset += (rowCounts[k] || 3);
+                    placementOrder.push(offset + r);
                   }
                 }
               }
