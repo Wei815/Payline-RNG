@@ -49,7 +49,9 @@ export async function findRngForCombination(
       continue;
     }
 
-    for (let i = 0; i < strip.length; i++) {
+    const maxIdx = strip.length - rows;
+    // Start at 2 to reserve space for drops, end at maxIdx to prevent wrap around
+    for (let i = 2; i <= maxIdx; i++) {
       const visible: string[] = [];
       for (let r = 0; r < rows; r++) {
         visible.push(strip[(i + r) % strip.length]);
@@ -121,7 +123,8 @@ export async function findRngForCombination(
 
         if (candidates.length === 0) {
           if (allowOtherWins) {
-            candidates = Array.from({ length: currentStrips[colIndex].length }, (_, idx) => idx);
+            const maxSafeIdx = currentStrips[colIndex].length - (rowCounts[colIndex] || 3);
+            candidates = Array.from({ length: maxSafeIdx - 1 }, (_, idx) => idx + 2);
           } else {
             hasEmptyCandidate = true;
             break;
