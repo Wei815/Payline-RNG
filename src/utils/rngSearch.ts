@@ -1,5 +1,5 @@
 import type { PaytableRule, GameType } from '../types';
-import { evaluateGrid } from './evaluation';
+import { evaluateGrid, getWinningPositions } from './evaluation';
 
 export async function findRngForCombination(
   targetSymbol: string,
@@ -11,7 +11,8 @@ export async function findRngForCombination(
   reelCount: number,
   gameType: GameType,
   topTrackerOther?: string[],
-  customPaylines?: number[][]
+  customPaylines?: number[][],
+  isFreeGame: boolean = false
 ): Promise<{ rng: number[] | null; isInterfered: boolean }> {
   const wildSymbolSet = new Set<string>();
   currentPaytable.filter(p => p.isWild).forEach(p => wildSymbolSet.add(p.symbolId));
@@ -215,6 +216,71 @@ export async function findRngForCombination(
         if (gameType === 'waygame_qin') {
           if (evWins.some(w => w.symbolId === 'B1' && w.matchCount >= 5)) {
             if (targetSymbol !== 'B1' || length < 5) {
+              isMatch = false;
+            }
+          }
+
+          if (isFreeGame && evalGrid.some(col => col.includes('S1'))) {
+            isMatch = false;
+          }
+
+          if (isMatch && allowOtherWins) {
+            let currentGrid = testGrid.map(col => [...col]);
+            let drawIndices = [...candidateRng].map(idx => idx - 1);
+            let simWins = [...evWins];
+            let cascadeSafe = true;
+            let cascadeCount = 0;
+
+            while (cascadeCount < 10) {
+              const cascadeWins = simWins.filter(w => w.payout > 0 || ((w.symbolId === 'B1' || w.symbolId === 'S1') && w.matchCount >= 3));
+              if (cascadeWins.length === 0) break;
+
+              const winningCoordsMap = getWinningPositions(currentGrid, cascadeWins, currentPaytable, gameType);
+              let hasElimination = false;
+
+              for (let c = 0; c < reelCount; c++) {
+                const strip = currentStrips[c];
+                const rows = rowCounts[c] || 3;
+                const eliminatedRows: number[] = [];
+                for (let r = 0; r < rows; r++) {
+                  if (winningCoordsMap.has(`${c}-${r}`)) {
+                    const winIndices = winningCoordsMap.get(`${c}-${r}`);
+                    if (winIndices && winIndices.some(idx => idx !== 999)) {
+                      eliminatedRows.push(r);
+                    }
+                  }
+                }
+
+                if (eliminatedRows.length > 0) {
+                  hasElimination = true;
+                  eliminatedRows.sort((a, b) => b - a);
+                  for (const r of eliminatedRows) {
+                    const len = strip.length;
+                    const drawIdx = (((drawIndices[c] % len) + len) % len);
+                    currentGrid[c][r] = strip[drawIdx];
+                    drawIndices[c]--;
+                  }
+                }
+              }
+
+              if (!hasElimination) break;
+
+              simWins = evaluateGrid(currentGrid, currentPaytable, gameType, customPaylines, true);
+              if (simWins.some(w => w.symbolId === 'B1' && w.matchCount >= 5)) {
+                if (targetSymbol !== 'B1' || length < 5) {
+                  cascadeSafe = false;
+                  break;
+                }
+              }
+
+              if (isFreeGame && currentGrid.some(col => col.includes('S1'))) {
+                cascadeSafe = false;
+                break;
+              }
+              cascadeCount++;
+            }
+
+            if (!cascadeSafe) {
               isMatch = false;
             }
           }

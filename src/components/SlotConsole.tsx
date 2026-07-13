@@ -44,6 +44,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
   const setTopTrackerOther = useGameStore(state => state.setTopTrackerOther);
   const activeTab = useGameStore(state => state.activeTab);
   const setActiveTab = useGameStore(state => state.setActiveTab);
+  const isFreeGame = useGameStore(state => state.isFreeGame);
 
   const betMultiplier = bet / coin;
   const [lineViewerSymbolState, setLineViewerSymbolState] = useState<string>('');
@@ -264,17 +265,34 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
         {activeTab === 'other' && (
           <div className="w-full">
             <SlotGeneratorTab 
-              reelCount={reelCount} rowCounts={rowCounts} onRowCountsChange={setRowCounts}
-              manualIndicesOther={manualIndicesOther} setManualIndicesOther={setManualIndicesOther}
-              topTrackerOther={topTrackerOther} setTopTrackerOther={setTopTrackerOther}
-              gameType={gameType} betMultiplier={betMultiplier}
-              selectedSymbol={selectedSymbol} setSelectedSymbol={setSelectedSymbol}
-              groupedSymbols={groupedSymbols} parsePasteRng={parsePasteRng} isRunning={isRunning}
-              specialSymbolConfig={specialSymbolConfig} setSpecialSymbolConfig={setSpecialSymbolConfig}
-              goldFrames={goldFrames} setGoldFrames={setGoldFrames}
-              jackpots={jackpots} setJackpots={setJackpots}
-              clovers={clovers} setClovers={setClovers}
-              currentStrips={currentStrips} currentGrid={currentGrid} currentPaytable={currentPaytable} customPaylines={customPaylines} bet={bet}
+              reelCount={reelCount}
+              rowCounts={rowCounts}
+              onRowCountsChange={setRowCounts}
+              manualIndicesOther={manualIndicesOther}
+              setManualIndicesOther={setManualIndicesOther}
+              topTrackerOther={topTrackerOther}
+              setTopTrackerOther={setTopTrackerOther}
+              gameType={gameType}
+              betMultiplier={1}
+              selectedSymbol={selectedSymbol}
+              setSelectedSymbol={setSelectedSymbol}
+              groupedSymbols={groupedSymbols}
+              parsePasteRng={parsePasteRng}
+              isRunning={false}
+              specialSymbolConfig={specialSymbolConfig}
+              setSpecialSymbolConfig={setSpecialSymbolConfig}
+              goldFrames={goldFrames}
+              setGoldFrames={setGoldFrames}
+              jackpots={jackpots}
+              setJackpots={setJackpots}
+              clovers={clovers}
+              setClovers={setClovers}
+              currentStrips={currentStrips}
+              currentGrid={currentGrid}
+              currentPaytable={currentPaytable}
+              customPaylines={customPaylines}
+              bet={bet}
+              isFreeGame={isFreeGame}
             />
           </div>
         )}

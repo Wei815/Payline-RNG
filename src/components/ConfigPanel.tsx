@@ -35,6 +35,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
   const setCustomPaylines = useGameStore(state => state.setCustomPaylines);
   const setCurrentStrips = useGameStore(state => state.setCurrentStrips);
   const setCurrentPaytable = useGameStore(state => state.setCurrentPaytable);
+  const setIsFreeGame = useGameStore(state => state.setIsFreeGame);
 
   const onReelCountChange = setReelCount;
   const onRowCountsChange = setRowCounts;
@@ -49,6 +50,11 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
   const [baseGridData, setBaseGridData] = useState<string[][]>(Array(20).fill(Array(5).fill('')));
   const [freeGridData, setFreeGridData] = useState<string[][]>(Array(20).fill(Array(5).fill('')));
   const [activeStripTab, setActiveStripTab] = useState<'base' | 'free'>('base');
+  
+  useEffect(() => {
+    setIsFreeGame(activeStripTab === 'free');
+  }, [activeStripTab, setIsFreeGame]);
+
   const gridData = activeStripTab === 'base' ? baseGridData : freeGridData;
   const setGridData = activeStripTab === 'base' ? setBaseGridData : setFreeGridData;
   const [isModalOpen, setIsModalOpen] = useState(false);

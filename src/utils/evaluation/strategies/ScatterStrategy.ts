@@ -38,11 +38,18 @@ export class ScatterStrategy implements EvaluationStrategy {
     const autoWinCount = dynamicAutoWinCount !== Infinity ? dynamicAutoWinCount : (gameConfig.specialRules?.scatterAutoWinCount ?? 3);
 
     if (scatterCount >= minScatter) {
-      const lookupMatch = Math.min(scatterCount, grid.length);
-      const payout = rule.payouts[`match${lookupMatch}` as keyof typeof rule.payouts] || 0;
+      let payout = 0;
+      for (let i = scatterCount; i >= 1; i--) {
+        const p = rule.payouts[`match${i}` as keyof typeof rule.payouts];
+        if (p !== undefined && p > 0) {
+          payout = p;
+          break;
+        }
+      }
+
       if (payout > 0 || scatterCount >= autoWinCount || includeZeroPayout) {
         let totalWin = payout;
-        if (sym === 'B1' || sym === 'B2') {
+        if (sym === 'S1' || sym === 'S2' || sym === 'B1' || sym === 'B2') {
           totalWin = payout * (gameConfig.effectiveBet || 1);
         }
         return [{ symbolId: sym, matchCount: scatterCount, ways: 1, payout, totalWin }];

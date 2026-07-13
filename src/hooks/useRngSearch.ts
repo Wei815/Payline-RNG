@@ -11,7 +11,8 @@ export function useRngSearch(
   gameType: GameType,
   topTrackerOther: string[],
   specialSymbolConfig: import('../types').SpecialSymbolConfig,
-  customPaylines?: number[][]
+  customPaylines?: number[][],
+  isFreeGame: boolean = false
 ) {
   const [combinations, setCombinations] = useState<{
     name: string;
@@ -391,7 +392,8 @@ export function useRngSearch(
               reelCount,
               gameType,
               topTrackerOther,
-              customPaylines
+              customPaylines,
+              isFreeGame
             );
 
             newCombs.push({

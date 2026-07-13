@@ -440,9 +440,9 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
                     if (matchCountStr) {
                       let matchKey: keyof PaytableRule['payouts'] | null = null;
                       
-                      // 1. Direct numbers (2, 3, 4, 5, 6)
-                      const matchCount = parseInt(matchCountStr);
-                      if (!isNaN(matchCount) && matchCount >= 2 && matchCount <= 6 && !matchCountStr.includes('-') && !matchCountStr.includes('+')) {
+                      // 1. Direct numbers and >= patterns (2, 3... 20, >=10)
+                      let matchCount = parseInt(matchCountStr.replace(/[^0-9]/g, ''));
+                      if (!isNaN(matchCount) && matchCount >= 2 && matchCount <= 30 && !matchCountStr.includes('-')) {
                         matchKey = `match${matchCount}` as keyof PaytableRule['payouts'];
                       }
                       // 2. Ranges for payanywhere_set2

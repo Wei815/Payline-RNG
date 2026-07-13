@@ -18,6 +18,7 @@ export interface GameState {
   topTracker: string[];
   topTrackerOther: string[];
   activeTab: 'manual' | 'other' | 'lines' | 'customGrid';
+  isFreeGame: boolean;
   
   setCurrentStrips: (strips: ReelStrips) => void;
   setCurrentPaytable: (paytable: PaytableRule[]) => void;
@@ -35,6 +36,7 @@ export interface GameState {
   setTopTracker: (tracker: string[]) => void;
   setTopTrackerOther: (tracker: string[]) => void;
   setActiveTab: (tab: 'manual' | 'other' | 'lines' | 'customGrid') => void;
+  setIsFreeGame: (val: boolean) => void;
 
   resetGameSpecifics: () => void;
 }
@@ -63,6 +65,7 @@ export const useGameStore = create<GameState>((set) => ({
   topTracker: Array(4).fill('WX'),
   topTrackerOther: Array(4).fill('WX'),
   activeTab: 'manual',
+  isFreeGame: false,
 
   setCurrentStrips: (strips) => set({ currentStrips: strips }),
   setCurrentPaytable: (paytable) => set({ currentPaytable: paytable }),
@@ -80,6 +83,7 @@ export const useGameStore = create<GameState>((set) => ({
   setTopTracker: (tracker) => set({ topTracker: tracker }),
   setTopTrackerOther: (tracker) => set({ topTrackerOther: tracker }),
   setActiveTab: (tab) => set({ activeTab: tab }),
+  setIsFreeGame: (val) => set({ isFreeGame: val }),
 
   resetGameSpecifics: () => set({
     goldFrames: {},

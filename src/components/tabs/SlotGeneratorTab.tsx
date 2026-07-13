@@ -36,6 +36,7 @@ export interface SlotGeneratorTabProps {
   currentPaytable: PaytableRule[];
   customPaylines?: number[][];
   bet: number;
+  isFreeGame: boolean;
 }
 
 export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
@@ -46,12 +47,12 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
   groupedSymbols, parsePasteRng, isRunning,
   specialSymbolConfig, setSpecialSymbolConfig,
   goldFrames, setGoldFrames, jackpots, setJackpots, clovers, setClovers,
-  currentStrips, currentGrid, currentPaytable, customPaylines, bet
+  currentStrips, currentGrid, currentPaytable, customPaylines, bet, isFreeGame
 }) => {
   const gridContainerRefOther = useRef<HTMLDivElement>(null);
   const [linePathsOther, setLinePathsOther] = useState<SVGPathResult[]>([]);
   const { isSearching, combinations } = useRngSearch(
-    selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther, specialSymbolConfig, customPaylines
+    selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther, specialSymbolConfig, customPaylines, isFreeGame
   );
 
   const displayGridOther = useMemo(() => {
