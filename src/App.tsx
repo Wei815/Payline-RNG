@@ -28,11 +28,26 @@ function App() {
       paylines: paylines || customPaylines,
       effectiveBet: bet,
       specialRules: {
-        derivativeSymbols: { 'B1': ['B2'] }
+        derivativeSymbols: { 'B1': ['B2'] },
+        unremovableSymbols: ['S1']
       }
     };
     runSimulation(strips, paytable, spins, rows, config, coin, bet, isFreeGame);
   }, [runSimulation, gameType, customPaylines, coin, bet]);
+
+  const handleDashboardRunSimulation = useCallback(() => {
+    const config: GameConfig = {
+      gameType,
+      paylines: customPaylines,
+      effectiveBet: bet,
+      specialRules: {
+        derivativeSymbols: { 'B1': ['B2'] },
+        unremovableSymbols: ['S1']
+      }
+    };
+    // We don't have activeStripTab here, so we assume Base Game if run from Dashboard directly
+    runSimulation(currentStrips, currentPaytable, 100000, rowCounts, config, coin, bet, false);
+  }, [runSimulation, gameType, customPaylines, bet, currentStrips, currentPaytable, rowCounts, coin]);
 
   return (
     <div className="w-screen h-screen flex flex-col bg-dashboard-bg overflow-hidden text-dashboard-text-primary">
@@ -95,18 +110,7 @@ function App() {
                 currentSpins={currentSpins}
                 totalSpins={result ? result.totalSpins : (isRunning ? Math.max(currentSpins, 100000) : 100000)}
                 hasData={currentStrips.length > 0 && currentStrips.every(strip => strip.length > 0)}
-                onRunSimulation={() => {
-                  const config: GameConfig = {
-                    gameType,
-                    paylines: customPaylines,
-                    effectiveBet: bet,
-                    specialRules: {
-                      derivativeSymbols: { 'B1': ['B2'] }
-                    }
-                  };
-                  // We don't have activeStripTab here, so we assume Base Game if run from Dashboard directly
-                  runSimulation(currentStrips, currentPaytable, 100000, rowCounts, config, coin, bet, false);
-                }}
+                onRunSimulation={handleDashboardRunSimulation}
               />
             </div>
           </div>

@@ -13,7 +13,7 @@ export async function findRngForCombination(
   topTrackerOther?: string[],
   customPaylines?: number[][],
   isFreeGame: boolean = false
-): Promise<{ rng: number[] | null; isInterfered: boolean }> {
+): Promise<{ rng: number[] | null; isInterfered: boolean; hasS1Drop?: boolean }> {
   const wildSymbolSet = new Set<string>();
   currentPaytable.filter(p => p.isWild).forEach(p => wildSymbolSet.add(p.symbolId));
   wildSymbolSet.add('WILD');
@@ -91,11 +91,12 @@ export async function findRngForCombination(
     }
   }
 
-  const runSearch = async (allowOtherWins: boolean): Promise<number[] | null> => {
+  const runSearch = async (allowOtherWins: boolean): Promise<{ rng: number[] | null; hasS1Drop?: boolean } | null> => {
     let bestCandidate: number[] | null = null;
     let minScore = Infinity;
     let bestDist = Infinity;
     let bestWildColIdx = Infinity;
+    let bestHasS1Drop = false;
 
     const MAX_RANDOM_ATTEMPTS = allowOtherWins ? 1000 : 3000;
 
@@ -213,6 +214,7 @@ export async function findRngForCombination(
           ways = targetWin.ways;
         }
 
+        let hasS1DropFlag = false;
         if (gameType === 'waygame_qin') {
           if (evWins.some(w => w.symbolId === 'B1' && w.matchCount >= 5)) {
             if (targetSymbol !== 'B1' || length < 5) {
@@ -220,8 +222,9 @@ export async function findRngForCombination(
             }
           }
 
-          if (isFreeGame && evalGrid.some(col => col.includes('S1'))) {
-            isMatch = false;
+          if (isFreeGame && testGrid.some(col => col.includes('S1'))) {
+            hasS1DropFlag = true;
+            if (!allowOtherWins) isMatch = false;
           }
 
           if (isMatch) {
@@ -244,6 +247,7 @@ export async function findRngForCombination(
                 const eliminatedRows: number[] = [];
                 for (let r = 0; r < rows; r++) {
                   if (winningCoordsMap.has(`${c}-${r}`)) {
+                    if (isFreeGame && currentGrid[c][r] === 'S1') continue;
                     const winIndices = winningCoordsMap.get(`${c}-${r}`);
                     if (winIndices && winIndices.some(idx => idx !== 999)) {
                       eliminatedRows.push(r);
@@ -272,12 +276,12 @@ export async function findRngForCombination(
                   break;
                 }
               }
-
-              if (isFreeGame && currentGrid.some(col => col.includes('S1'))) {
-                cascadeSafe = false;
-                break;
-              }
               cascadeCount++;
+            }
+
+            if (isFreeGame && currentGrid.some(col => col.includes('S1'))) {
+              hasS1DropFlag = true;
+              if (!allowOtherWins) cascadeSafe = false;
             }
 
             if (!cascadeSafe) {
@@ -296,11 +300,11 @@ export async function findRngForCombination(
         }).length;
 
         if (!allowOtherWins) {
-          if (otherWinsCount === 0 && ways === 1) {
-            return [...candidateRng];
+          if (otherWinsCount === 0 && ways === 1 && !hasS1DropFlag) {
+            return { rng: [...candidateRng], hasS1Drop: false };
           }
         } else {
-          let score = (ways - 1) * 10 + otherWinsCount * 20;
+          let score = (ways - 1) * 10 + otherWinsCount * 20 + (hasS1DropFlag ? 1000 : 0);
 
           let totalDist = 0;
           for (let c = 0; c < reelCount; c++) {
@@ -326,15 +330,18 @@ export async function findRngForCombination(
             bestCandidate = [...candidateRng];
             bestDist = totalDist;
             bestWildColIdx = currentWildColIdx;
+            bestHasS1Drop = hasS1DropFlag;
           } else if (score === minScore) {
             if (currentWildColIdx < bestWildColIdx) {
               bestCandidate = [...candidateRng];
               bestDist = totalDist;
               bestWildColIdx = currentWildColIdx;
+              bestHasS1Drop = hasS1DropFlag;
             } else if (currentWildColIdx === bestWildColIdx) {
               if (totalDist < bestDist) {
                 bestCandidate = [...candidateRng];
                 bestDist = totalDist;
+                bestHasS1Drop = hasS1DropFlag;
               }
             }
           }
@@ -342,17 +349,20 @@ export async function findRngForCombination(
       }
     }
 
-    return allowOtherWins ? bestCandidate : null;
+    if (bestCandidate) {
+      return { rng: bestCandidate, hasS1Drop: bestHasS1Drop };
+    }
+    return null;
   };
 
   const strictResult = await runSearch(false);
   if (strictResult) {
-    return { rng: strictResult, isInterfered: false };
+    return { rng: strictResult.rng, isInterfered: false, hasS1Drop: strictResult.hasS1Drop };
   }
 
   const fallbackResult = await runSearch(true);
-  if (fallbackResult) {
-    const testGrid = fallbackResult.map((start, cIdx) => {
+  if (fallbackResult && fallbackResult.rng) {
+    const testGrid = fallbackResult.rng.map((start, cIdx) => {
       const r = rowCounts[cIdx] || 3;
       const s = currentStrips[cIdx];
       return Array.from({ length: r }).map((_, ri) => s[(start + ri) % s.length]);
@@ -374,7 +384,7 @@ export async function findRngForCombination(
     const evWins = evaluateGrid(evalGrid, currentPaytable, gameType, customPaylines, true);
     const otherWinsCount = evWins.filter(w => w.symbolId !== targetSymbol && !wildSymbolSet.has(w.symbolId) && w.payout > 0).length;
 
-    return { rng: fallbackResult, isInterfered: otherWinsCount > 0 };
+    return { rng: fallbackResult.rng, isInterfered: otherWinsCount > 0, hasS1Drop: fallbackResult.hasS1Drop };
   }
 
   return { rng: null, isInterfered: false };

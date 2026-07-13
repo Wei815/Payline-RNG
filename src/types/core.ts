@@ -25,5 +25,6 @@ export interface GameConfig {
     payAnywhereThresholds?: { match3: number; match4: number; match5: number };
     scatterMinCount?: number;
     scatterAutoWinCount?: number;
+    unremovableSymbols?: string[];
   };
 }

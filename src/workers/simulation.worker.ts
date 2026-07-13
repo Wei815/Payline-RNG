@@ -66,9 +66,11 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
   const REPORT_INTERVAL_MS = 200;
   let lastReportTime = performance.now();
 
+  // Pre-allocate arrays to avoid GC overhead in the main loop
+  const drawIndices: number[] = new Array(maxCols);
+
   for (let i = 0; i < totalSpins; i++) {
     // Keep track of the top-most draw index for each column (used for tumbling)
-    const drawIndices: number[] = new Array(maxCols);
     
     // Generate initial grid from continuous strips
     for (let colIndex = 0; colIndex < strips.length; colIndex++) {
@@ -152,33 +154,26 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
           
           // Get eliminated rows in this column
           const rows = rowCounts[colIndex] || 3;
-          let eliminatedRows = [];
-          for (let r = 0; r < rows; r++) {
+
+          // Process from bottom to top (rows - 1 down to 0) to replace eliminated symbols directly
+          for (let r = rows - 1; r >= 0; r--) {
             if (winningCoordsMap.has(`${colIndex}-${r}`)) {
-              // If it's a Free Game and the symbol is S1, do NOT eliminate it
-              if (isFreeGame && grid[colIndex][r] === 'S1') {
+              // If it's a Free Game and the symbol is unremovable, do NOT eliminate it
+              const unremovable = gameConfig.specialRules?.unremovableSymbols || [];
+              if (isFreeGame && unremovable.includes(grid[colIndex][r])) {
                 continue;
               }
-              // Make sure to ignore 999 which is just the highlight marker for S1
+              // Make sure to ignore 999 which is just the highlight marker for unremovable symbols
               const winIndices = winningCoordsMap.get(`${colIndex}-${r}`);
               const hasRealWin = winIndices && winIndices.some(idx => idx !== 999);
               if (hasRealWin) {
-                eliminatedRows.push(r);
+                const len = strip.length;
+                const actualDrawIndex = (((drawIndices[colIndex] % len) + len) % len);
+                
+                grid[colIndex][r] = strip[actualDrawIndex];
+                drawIndices[colIndex]--;
               }
             }
-          }
-          
-          // Sort eliminated rows from bottom to top (e.g. 2, 1, 0)
-          eliminatedRows.sort((a, b) => b - a);
-          
-          // Replace eliminated symbols by drawing from above (drawIndex--)
-          for (const r of eliminatedRows) {
-            // Calculate wrapped index safely for negative values
-            const len = strip.length;
-            const actualDrawIndex = (((drawIndices[colIndex] % len) + len) % len);
-            
-            grid[colIndex][r] = strip[actualDrawIndex];
-            drawIndices[colIndex]--;
           }
         }
       } else {

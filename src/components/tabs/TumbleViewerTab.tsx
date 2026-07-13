@@ -5,6 +5,8 @@ import { getWinColorClass } from '../../utils/svgPaths';
 import { getWinningPositions } from '../../utils/evaluation';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
 import type { GameType, PaytableRule } from '../../types';
+import { useGameStore } from '../../store/useGameStore';
+import { SpecialSymbols } from '../../constants/GameConstants';
 
 const MULTIPLIER_LEVELS = [2, 3, 4, 6, 8, 10, 12, 15, 18, 25, 55, 65, 80, 100, 150, 200, 250, 500];
 
@@ -21,6 +23,7 @@ export interface TumbleViewerTabProps {
 export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
   reelCount, rowCounts, currentPaytable, gameType, betMultiplier
 }) => {
+  const isFreeGame = useGameStore(state => state.isFreeGame);
   const totalCells = rowCounts.reduce((acc, curr) => acc + curr, 0);
 
   // 建立反向查詢表：MathID -> SymbolID
@@ -154,8 +157,11 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
 
       // 收集未被消除的符號，並進行 L 球升級
       for (let r = 0; r < rowsForThisCol; r++) {
-        if (!winningCoords.has(`${c}-${r}`)) {
-          let keptStr = String(currentGridIds[c][r]);
+        let keptStr = String(currentGridIds[c][r]);
+        const symId = currentGridSymbols[c][r];
+        const isUnremovable = isFreeGame && symId === SpecialSymbols.S1;
+
+        if (!winningCoords.has(`${c}-${r}`) || isUnremovable) {
           
           // L 球升級邏輯
           if (upgradeCount > 0 && keptStr.includes('_')) {

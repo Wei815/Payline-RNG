@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import type { PaytableRule, GameType } from '../types';
-import { findRngForCombination } from '../utils/rngSearch';
+import { useState, useEffect } from "react";
+import type { PaytableRule, GameType } from "../types";
+import { findRngForCombination } from "../utils/rngSearch";
 
 export function useRngSearch(
   selectedSymbol: string,
@@ -10,17 +10,20 @@ export function useRngSearch(
   currentPaytable: PaytableRule[],
   gameType: GameType,
   topTrackerOther: string[],
-  specialSymbolConfig: import('../types').SpecialSymbolConfig,
+  specialSymbolConfig: import("../types").SpecialSymbolConfig,
   customPaylines?: number[][],
-  isFreeGame: boolean = false
+  isFreeGame: boolean = false,
 ) {
-  const [combinations, setCombinations] = useState<{
-    name: string;
-    length: number;
-    wildCount: number;
-    rng: any[] | null;
-    isInterfered: boolean;
-  }[]>([]);
+  const [combinations, setCombinations] = useState<
+    {
+      name: string;
+      length: number;
+      wildCount: number;
+      rng: any[] | null;
+      isInterfered: boolean;
+      hasS1Drop?: boolean;
+    }[]
+  >([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
 
   useEffect(() => {
@@ -28,7 +31,12 @@ export function useRngSearch(
       setTimeout(() => setCombinations([]), 0);
       return;
     }
-    if (gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2' && (currentStrips.length === 0 || currentStrips.every(s => !s || s.length === 0))) {
+    if (
+      gameType !== "payanywhere_set2" &&
+      gameType !== "linegame_set2" &&
+      (currentStrips.length === 0 ||
+        currentStrips.every((s) => !s || s.length === 0))
+    ) {
       setTimeout(() => setCombinations([]), 0);
       return;
     }
@@ -37,32 +45,44 @@ export function useRngSearch(
     const timer = setTimeout(async () => {
       const newCombs: typeof combinations = [];
 
-      if (gameType === 'payanywhere_set2') {
+      if (gameType === "payanywhere_set2") {
         // --- PAY ANYWHERE SET 2 GENERATOR ---
         // Target counts: 7 to 13
         let totalGridCells = 0;
-        for (let c = 0; c < reelCount; c++) totalGridCells += (rowCounts[c] || 3);
+        for (let c = 0; c < reelCount; c++) totalGridCells += rowCounts[c] || 3;
         // We generate 60 items: 30 for the initial grid, 30 for the drops
         const requiredTotal = totalGridCells * 2;
-        
+
         // Get all available regular symbols (not target, not scatters) to fill the grid without wins
-        const excludeSymbols = selectedSymbol === 'B1/B2' 
-          ? ['B1', 'B2', 'WX', 'NI', 'F1', 'F2', 'F3', 'F4', 'L1', 'L2'] 
-          : [selectedSymbol, 'WX', 'NI', 'F1', 'F2', 'F3', 'F4', 'L1', 'L2'];
-        const nonScatters = currentPaytable.filter(p => p.isEnabled !== false && !p.isScatter && !excludeSymbols.includes(p.symbolId)).map(p => p.symbolId);
-        
+        const excludeSymbols =
+          selectedSymbol === "B1/B2"
+            ? ["B1", "B2", "WX", "NI", "F1", "F2", "F3", "F4", "L1", "L2"]
+            : [selectedSymbol, "WX", "NI", "F1", "F2", "F3", "F4", "L1", "L2"];
+        const nonScatters = currentPaytable
+          .filter(
+            (p) =>
+              p.isEnabled !== false &&
+              !p.isScatter &&
+              !excludeSymbols.includes(p.symbolId),
+          )
+          .map((p) => p.symbolId);
+
         // Ensure nonScatters has symbols
         if (nonScatters.length > 0) {
-          if (selectedSymbol === 'B1/B2') {
+          if (selectedSymbol === "B1/B2") {
             const b1b2Targets = [
-              { b1: 3, b2: 0 }, { b1: 2, b2: 1 },
-              { b1: 4, b2: 0 }, { b1: 3, b2: 1 },
-              { b1: 5, b2: 0 }, { b1: 4, b2: 1 },
-              { b1: 6, b2: 0 }, { b1: 5, b2: 1 }
+              { b1: 3, b2: 0 },
+              { b1: 2, b2: 1 },
+              { b1: 4, b2: 0 },
+              { b1: 3, b2: 1 },
+              { b1: 5, b2: 0 },
+              { b1: 4, b2: 1 },
+              { b1: 6, b2: 0 },
+              { b1: 5, b2: 1 },
             ];
 
-            b1b2Targets.forEach(target => {
-              const grid: string[] = Array(requiredTotal).fill('-');
+            b1b2Targets.forEach((target) => {
+              const grid: string[] = Array(requiredTotal).fill("-");
               const placementOrder: number[] = [];
               const maxR = Math.max(...rowCounts);
               for (let r = 0; r < maxR; r++) {
@@ -75,34 +95,50 @@ export function useRngSearch(
               }
 
               for (let i = 0; i < target.b1; i++) {
-                if (placementOrder[i] !== undefined) grid[placementOrder[i]] = 'B1';
+                if (placementOrder[i] !== undefined)
+                  grid[placementOrder[i]] = "B1";
               }
               for (let i = 0; i < target.b2; i++) {
-                if (placementOrder[target.b1 + i] !== undefined) grid[placementOrder[target.b1 + i]] = 'B2';
+                if (placementOrder[target.b1 + i] !== undefined)
+                  grid[placementOrder[target.b1 + i]] = "B2";
               }
 
               let nsIdx = 0;
-              
+
               const specialSymbolsToPlace: string[] = [];
-              if (specialSymbolConfig.s1Enabled && specialSymbolConfig.s1Count > 0) {
-                for(let i=0; i<specialSymbolConfig.s1Count; i++) specialSymbolsToPlace.push('S1');
+              if (
+                specialSymbolConfig.s1Enabled &&
+                specialSymbolConfig.s1Count > 0
+              ) {
+                for (let i = 0; i < specialSymbolConfig.s1Count; i++)
+                  specialSymbolsToPlace.push("S1");
               }
-              if (specialSymbolConfig.s2Enabled && specialSymbolConfig.s2Count > 0) {
-                for(let i=0; i<specialSymbolConfig.s2Count; i++) specialSymbolsToPlace.push('S2');
+              if (
+                specialSymbolConfig.s2Enabled &&
+                specialSymbolConfig.s2Count > 0
+              ) {
+                for (let i = 0; i < specialSymbolConfig.s2Count; i++)
+                  specialSymbolsToPlace.push("S2");
               }
               if (specialSymbolConfig.multipliersEnabled) {
-                Object.entries(specialSymbolConfig.multiplierCounts).forEach(([key, count]) => {
-                  for(let i=0; i<count; i++) specialSymbolsToPlace.push(key); // e.g. "F1_2X"
-                });
+                Object.entries(specialSymbolConfig.multiplierCounts).forEach(
+                  ([key, count]) => {
+                    for (let i = 0; i < count; i++)
+                      specialSymbolsToPlace.push(key); // e.g. "F1_2X"
+                  },
+                );
               }
               if (specialSymbolConfig.luckyBallsEnabled) {
-                Object.entries(specialSymbolConfig.luckyCounts).forEach(([key, count]) => {
-                  for(let i=0; i<count; i++) specialSymbolsToPlace.push(key); // e.g. "L1_2X"
-                });
+                Object.entries(specialSymbolConfig.luckyCounts).forEach(
+                  ([key, count]) => {
+                    for (let i = 0; i < count; i++)
+                      specialSymbolsToPlace.push(key); // e.g. "L1_2X"
+                  },
+                );
               }
 
               for (let i = 0; i < requiredTotal; i++) {
-                if (grid[i] === '-') {
+                if (grid[i] === "-") {
                   if (specialSymbolsToPlace.length > 0) {
                     grid[i] = specialSymbolsToPlace.shift()!;
                   } else {
@@ -113,9 +149,11 @@ export function useRngSearch(
               }
 
               const mathIdMap: Record<string, string> = {};
-              currentPaytable.forEach(p => {
+              currentPaytable.forEach((p) => {
                 if (p.mathId !== undefined) {
-                  const ids = String(p.mathId).split(',').map(s => s.trim());
+                  const ids = String(p.mathId)
+                    .split(",")
+                    .map((s) => s.trim());
                   mathIdMap[p.symbolId] = ids[0];
                 }
               });
@@ -126,18 +164,20 @@ export function useRngSearch(
                 const colRows = rowCounts[c] || 3;
                 const colArr = [];
                 for (let r = 0; r < colRows; r++) {
-                  colArr.push(mathIdMap[grid[cellPointer]] || grid[cellPointer]);
+                  colArr.push(
+                    mathIdMap[grid[cellPointer]] || grid[cellPointer],
+                  );
                   cellPointer++;
                 }
-                columnStrings.push(colArr.join(','));
+                columnStrings.push(colArr.join(","));
               }
 
-              const fullMathIds = grid.map(s => {
+              const fullMathIds = grid.map((s) => {
                 if (mathIdMap[s]) return mathIdMap[s];
-                if (s.includes('_') && s.match(/^[F|L][1-4]_/)) {
-                  if (s.startsWith('F')) return '15';
-                  if (s.startsWith('L')) return '19';
-                  const base = s.split('_')[0];
+                if (s.includes("_") && s.match(/^[F|L][1-4]_/)) {
+                  if (s.startsWith("F")) return "15";
+                  if (s.startsWith("L")) return "19";
+                  const base = s.split("_")[0];
                   return mathIdMap[base] || base;
                 }
                 return s;
@@ -145,27 +185,29 @@ export function useRngSearch(
 
               const dropMathIds = [];
               for (let i = 0; i < 50; i++) {
-                const sym = nonScatters[Math.floor(Math.random() * nonScatters.length)];
+                const sym =
+                  nonScatters[Math.floor(Math.random() * nonScatters.length)];
                 dropMathIds.push(mathIdMap[sym] || sym);
               }
 
               newCombs.push({
-                name: `B1*${target.b1}${target.b2 > 0 ? '+B2' : ''}`,
+                name: `B1*${target.b1}${target.b2 > 0 ? "+B2" : ""}`,
                 length: target.b1 + target.b2,
                 wildCount: 0,
                 rng: columnStrings as any,
-                isInterfered: false
+                isInterfered: false,
               });
               (newCombs[newCombs.length - 1] as any).fullMathIds = fullMathIds;
               (newCombs[newCombs.length - 1] as any).dropMathIds = dropMathIds;
             });
           } else {
             let requiredTotal = 0;
-            for (let c = 0; c < reelCount; c++) requiredTotal += (rowCounts[c] || 3);
+            for (let c = 0; c < reelCount; c++)
+              requiredTotal += rowCounts[c] || 3;
 
             for (let N = 7; N <= 13; N++) {
-              const grid: string[] = Array(requiredTotal).fill('-');
-              
+              const grid: string[] = Array(requiredTotal).fill("-");
+
               // Generate placement order (top rows first, filling across columns)
               const placementOrder: number[] = [];
               const maxR = Math.max(...rowCounts);
@@ -174,12 +216,12 @@ export function useRngSearch(
                   const colRows = rowCounts[c] || 3;
                   if (r < colRows) {
                     let offset = 0;
-                    for (let k = 0; k < c; k++) offset += (rowCounts[k] || 3);
+                    for (let k = 0; k < c; k++) offset += rowCounts[k] || 3;
                     placementOrder.push(offset + r);
                   }
                 }
               }
-              
+
               // Distribute N target symbols deterministically
               for (let i = 0; i < N; i++) {
                 const idx = placementOrder[i];
@@ -192,25 +234,41 @@ export function useRngSearch(
               // Distribute evenly so no symbol exceeds 7.
               let nsIdx = 0;
               const specialSymbolsToPlace: string[] = [];
-              if (specialSymbolConfig.s1Enabled && specialSymbolConfig.s1Count > 0 && selectedSymbol !== 'S1') {
-                for(let i=0; i<specialSymbolConfig.s1Count; i++) specialSymbolsToPlace.push('S1');
+              if (
+                specialSymbolConfig.s1Enabled &&
+                specialSymbolConfig.s1Count > 0 &&
+                selectedSymbol !== "S1"
+              ) {
+                for (let i = 0; i < specialSymbolConfig.s1Count; i++)
+                  specialSymbolsToPlace.push("S1");
               }
-              if (specialSymbolConfig.s2Enabled && specialSymbolConfig.s2Count > 0 && selectedSymbol !== 'S2') {
-                for(let i=0; i<specialSymbolConfig.s2Count; i++) specialSymbolsToPlace.push('S2');
+              if (
+                specialSymbolConfig.s2Enabled &&
+                specialSymbolConfig.s2Count > 0 &&
+                selectedSymbol !== "S2"
+              ) {
+                for (let i = 0; i < specialSymbolConfig.s2Count; i++)
+                  specialSymbolsToPlace.push("S2");
               }
               if (specialSymbolConfig.multipliersEnabled) {
-                Object.entries(specialSymbolConfig.multiplierCounts).forEach(([key, count]) => {
-                  for(let i=0; i<count; i++) specialSymbolsToPlace.push(key);
-                });
+                Object.entries(specialSymbolConfig.multiplierCounts).forEach(
+                  ([key, count]) => {
+                    for (let i = 0; i < count; i++)
+                      specialSymbolsToPlace.push(key);
+                  },
+                );
               }
               if (specialSymbolConfig.luckyBallsEnabled) {
-                Object.entries(specialSymbolConfig.luckyCounts).forEach(([key, count]) => {
-                  for(let i=0; i<count; i++) specialSymbolsToPlace.push(key);
-                });
+                Object.entries(specialSymbolConfig.luckyCounts).forEach(
+                  ([key, count]) => {
+                    for (let i = 0; i < count; i++)
+                      specialSymbolsToPlace.push(key);
+                  },
+                );
               }
 
               for (let i = 0; i < requiredTotal; i++) {
-                if (grid[i] === '-') {
+                if (grid[i] === "-") {
                   if (specialSymbolsToPlace.length > 0) {
                     grid[i] = specialSymbolsToPlace.shift()!;
                   } else {
@@ -222,10 +280,12 @@ export function useRngSearch(
 
               // Convert symbols to their MathIDs
               const mathIdMap: Record<string, string> = {};
-              currentPaytable.forEach(p => {
+              currentPaytable.forEach((p) => {
                 if (p.mathId !== undefined) {
                   // Take the first MathID if there are multiple (e.g., F1: 15,16,17,18)
-                  const ids = String(p.mathId).split(',').map(s => s.trim());
+                  const ids = String(p.mathId)
+                    .split(",")
+                    .map((s) => s.trim());
                   mathIdMap[p.symbolId] = ids[0];
                 }
               });
@@ -237,20 +297,22 @@ export function useRngSearch(
                 const colRows = rowCounts[c] || 3;
                 const colArr = [];
                 for (let r = 0; r < colRows; r++) {
-                  colArr.push(mathIdMap[grid[cellPointer]] || grid[cellPointer]);
+                  colArr.push(
+                    mathIdMap[grid[cellPointer]] || grid[cellPointer],
+                  );
                   cellPointer++;
                 }
-                columnStrings.push(colArr.join(','));
+                columnStrings.push(colArr.join(","));
               }
 
               // Also attach the full 60-array MathIDs for the clipboard copying in SlotGeneratorTab
               // We use a custom object format in rng array for this specific case
-              const fullMathIds = grid.map(s => {
+              const fullMathIds = grid.map((s) => {
                 if (mathIdMap[s]) return mathIdMap[s];
-                if (s.includes('_') && s.match(/^[F|L][1-4]_/)) {
-                  if (s.startsWith('F')) return '15';
-                  if (s.startsWith('L')) return '19';
-                  const base = s.split('_')[0];
+                if (s.includes("_") && s.match(/^[F|L][1-4]_/)) {
+                  if (s.startsWith("F")) return "15";
+                  if (s.startsWith("L")) return "19";
+                  const base = s.split("_")[0];
                   return mathIdMap[base] || base;
                 }
                 return s;
@@ -258,18 +320,23 @@ export function useRngSearch(
 
               const dropMathIds = [];
               for (let i = 0; i < 50; i++) {
-                const sym = nonScatters[Math.floor(Math.random() * nonScatters.length)];
+                const sym =
+                  nonScatters[Math.floor(Math.random() * nonScatters.length)];
                 dropMathIds.push(mathIdMap[sym] || sym);
               }
 
               newCombs.push({
-                name: (gameType === 'payanywhere_set2' || gameType === 'linegame_set2')
-                  ? (N < 8 ? `無贏分 (1)\n${selectedSymbol} 個數 ${N}` : `有贏分 (1)\n${selectedSymbol} 個數 ${N}`) 
-                  : `${selectedSymbol} * ${N} 連線`,
+                name:
+                  gameType === "payanywhere_set2" ||
+                  gameType === "linegame_set2"
+                    ? N < 8
+                      ? `無贏分 (1)\n${selectedSymbol} 個數 ${N}`
+                      : `有贏分 (1)\n${selectedSymbol} 個數 ${N}`
+                    : `${selectedSymbol} * ${N} 連線`,
                 length: N,
                 wildCount: 0,
                 rng: columnStrings as any, // Visual columns
-                isInterfered: false
+                isInterfered: false,
               });
               // Attach the arrays to the comb object dynamically
               (newCombs[newCombs.length - 1] as any).fullMathIds = fullMathIds;
@@ -277,55 +344,92 @@ export function useRngSearch(
             }
           }
         }
-      } else if (gameType === 'linegame_set2') {
+      } else if (gameType === "linegame_set2") {
         // --- LINE GAME SET 2 GENERATOR ---
-        const excludeSymbols = [selectedSymbol, 'WX', 'NI', 'F1', 'F2', 'F3', 'F4', 'L1', 'L2'];
-        const nonScatters = currentPaytable.filter(p => p.isEnabled !== false && !p.isScatter && !excludeSymbols.includes(p.symbolId)).map(p => p.symbolId);
-        const isSelScatter = currentPaytable.some(p => p.symbolId === selectedSymbol && p.isScatter);
+        const excludeSymbols = [
+          selectedSymbol,
+          "WX",
+          "NI",
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "L1",
+          "L2",
+        ];
+        const nonScatters = currentPaytable
+          .filter(
+            (p) =>
+              p.isEnabled !== false &&
+              !p.isScatter &&
+              !excludeSymbols.includes(p.symbolId),
+          )
+          .map((p) => p.symbolId);
+        const isSelScatter = currentPaytable.some(
+          (p) => p.symbolId === selectedSymbol && p.isScatter,
+        );
 
         if (nonScatters.length > 0) {
-          const linesToUse = customPaylines && customPaylines.length > 0 ? customPaylines : [Array(reelCount).fill(0)];
-          const targetLengths = [3, 4, 5, 6].filter(l => l <= reelCount);
+          const linesToUse =
+            customPaylines && customPaylines.length > 0
+              ? customPaylines
+              : [Array(reelCount).fill(0)];
+          const targetLengths = [3, 4, 5, 6].filter((l) => l <= reelCount);
 
           const mathIdMap: Record<string, string> = {};
-          currentPaytable.forEach(p => {
+          currentPaytable.forEach((p) => {
             if (p.mathId !== undefined) {
-              const ids = String(p.mathId).split(',').map(s => s.trim());
+              const ids = String(p.mathId)
+                .split(",")
+                .map((s) => s.trim());
               mathIdMap[p.symbolId] = ids[0];
             }
           });
 
-          targetLengths.forEach(len => {
+          targetLengths.forEach((len) => {
             const line = linesToUse[0];
-            
-            const grid: string[][] = Array.from({ length: reelCount }, (_, c) => Array(rowCounts[c] || 3).fill('-'));
-            
+
+            const grid: string[][] = Array.from({ length: reelCount }, (_, c) =>
+              Array(rowCounts[c] || 3).fill("-"),
+            );
+
             for (let c = 0; c < len; c++) {
               grid[c][line[c]] = selectedSymbol;
             }
 
-            const flatGrid: {c: number, r: number, val: string}[] = [];
+            const flatGrid: { c: number; r: number; val: string }[] = [];
             for (let c = 0; c < reelCount; c++) {
               for (let r = 0; r < (rowCounts[c] || 3); r++) {
-                flatGrid.push({c, r, val: grid[c][r]});
+                flatGrid.push({ c, r, val: grid[c][r] });
               }
             }
 
             const specialSymbolsToPlace: string[] = [];
-            if (specialSymbolConfig.s1Enabled && specialSymbolConfig.s1Count > 0) {
-              for(let i=0; i<specialSymbolConfig.s1Count; i++) specialSymbolsToPlace.push('S1');
+            if (
+              specialSymbolConfig.s1Enabled &&
+              specialSymbolConfig.s1Count > 0
+            ) {
+              for (let i = 0; i < specialSymbolConfig.s1Count; i++)
+                specialSymbolsToPlace.push("S1");
             }
-            if (specialSymbolConfig.s2Enabled && specialSymbolConfig.s2Count > 0) {
-              for(let i=0; i<specialSymbolConfig.s2Count; i++) specialSymbolsToPlace.push('S2');
+            if (
+              specialSymbolConfig.s2Enabled &&
+              specialSymbolConfig.s2Count > 0
+            ) {
+              for (let i = 0; i < specialSymbolConfig.s2Count; i++)
+                specialSymbolsToPlace.push("S2");
             }
             if (specialSymbolConfig.multipliersEnabled) {
-              Object.entries(specialSymbolConfig.multiplierCounts).forEach(([key, count]) => {
-                for(let i=0; i<count; i++) specialSymbolsToPlace.push(key);
-              });
+              Object.entries(specialSymbolConfig.multiplierCounts).forEach(
+                ([key, count]) => {
+                  for (let i = 0; i < count; i++)
+                    specialSymbolsToPlace.push(key);
+                },
+              );
             }
 
             let nsIdx = 0;
-            const emptySpots = flatGrid.filter(cell => cell.val === '-');
+            const emptySpots = flatGrid.filter((cell) => cell.val === "-");
             emptySpots.sort(() => Math.random() - 0.5);
 
             for (let i = 0; i < emptySpots.length; i++) {
@@ -342,47 +446,58 @@ export function useRngSearch(
             for (let c = 0; c < reelCount; c++) {
               const colArr: string[] = [];
               for (let r = 0; r < (rowCounts[c] || 3); r++) {
-                const cell = flatGrid.find(cell => cell.c === c && cell.r === r)!;
+                const cell = flatGrid.find(
+                  (cell) => cell.c === c && cell.r === r,
+                )!;
                 let s = cell.val;
                 let mathId = mathIdMap[s] || s;
-                if (s.includes('_') && s.match(/^[F|L][1-4]_/)) {
-                  if (s.startsWith('F')) mathId = '15';
-                  else if (s.startsWith('L')) mathId = '19';
+                if (s.includes("_") && s.match(/^[F|L][1-4]_/)) {
+                  if (s.startsWith("F")) mathId = "15";
+                  else if (s.startsWith("L")) mathId = "19";
                   else {
-                    const base = s.split('_')[0];
+                    const base = s.split("_")[0];
                     mathId = mathIdMap[base] || base;
                   }
                 }
                 fullMathIds.push(mathId);
                 colArr.push(mathId);
               }
-              columnStrings.push(colArr.join(','));
+              columnStrings.push(colArr.join(","));
             }
 
             newCombs.push({
-              name: isSelScatter ? `${selectedSymbol} * ${len} 個 (任意位置)` : `${selectedSymbol} * ${len} 連線 (Line 1)`,
+              name: isSelScatter
+                ? `${selectedSymbol} * ${len} 個 (任意位置)`
+                : `${selectedSymbol} * ${len} 連線 (Line 1)`,
               length: len,
               wildCount: 0,
               rng: columnStrings,
               isInterfered: false,
-              fullMathIds: fullMathIds
+              fullMathIds: fullMathIds,
             } as any);
           });
         }
       } else {
         // --- STANDARD RNG SEARCH ---
-        const isSelScatter = currentPaytable.some(p => p.symbolId === selectedSymbol && p.isScatter);
+        const isSelScatter = currentPaytable.some(
+          (p) => p.symbolId === selectedSymbol && p.isScatter,
+        );
         for (let L = 2; L <= reelCount; L++) {
           const maxWild = Math.min(1, L - 1);
           for (let W = 0; W <= maxWild; W++) {
-            let name = '';
+            let name = "";
             if (isSelScatter) {
-              name = W === 0 ? `${selectedSymbol} * ${L} 個 (任意位置)` : `${selectedSymbol} * ${L - W} + WX (任意位置)`;
+              name =
+                W === 0
+                  ? `${selectedSymbol} * ${L} 個 (任意位置)`
+                  : `${selectedSymbol} * ${L - W} + WX (任意位置)`;
             } else {
-              name = W === 0 ? `${selectedSymbol} * ${L} 連線` : `${selectedSymbol} * ${L - W} + WX`;
+              name =
+                W === 0
+                  ? `${selectedSymbol} * ${L} 連線`
+                  : `${selectedSymbol} * ${L - W} + WX`;
             }
-
-            const { rng, isInterfered } = await findRngForCombination(
+            const { rng, isInterfered, hasS1Drop } = await findRngForCombination(
               selectedSymbol,
               L,
               W,
@@ -393,27 +508,28 @@ export function useRngSearch(
               gameType,
               topTrackerOther,
               customPaylines,
-              isFreeGame
+              isFreeGame,
             );
 
             newCombs.push({
-              name,
+              name: name,
               length: L,
               wildCount: W,
-              rng,
-              isInterfered
+              rng: rng,
+              isInterfered: isInterfered,
+              hasS1Drop: hasS1Drop,
             });
           }
         }
         newCombs.sort((a, b) => {
-          const getPriority = (c: typeof combinations[0]) => {
+          const getPriority = (c: (typeof combinations)[0]) => {
             if (!c.rng) return 2;
             return c.isInterfered ? 1 : 0;
           };
           const pA = getPriority(a);
           const pB = getPriority(b);
           if (pA !== pB) return pA - pB;
-          
+
           if (a.length !== b.length) return a.length - b.length;
           return a.wildCount - b.wildCount;
         });
@@ -424,7 +540,17 @@ export function useRngSearch(
     }, 50);
 
     return () => clearTimeout(timer);
-  }, [selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther, specialSymbolConfig, customPaylines]);
+  }, [
+    selectedSymbol,
+    reelCount,
+    rowCounts,
+    currentStrips,
+    currentPaytable,
+    gameType,
+    topTrackerOther,
+    specialSymbolConfig,
+    customPaylines,
+  ]);
 
   return { isSearching, combinations };
 }

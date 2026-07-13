@@ -499,7 +499,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                 className={`flex justify-between items-center gap-2 px-3 py-2 rounded border text-left transition-all ${
                   selectedCombIndex === idx ? 'ring-1 ring-[#64ffda] ' : ''
                 }${comb.rng
-                    ? comb.isInterfered
+                    ? (comb.isInterfered || (comb as any).hasS1Drop)
                       ? 'bg-[#112240] border-orange-500/40 hover:border-orange-500 text-dashboard-text-primary cursor-pointer'
                       : 'bg-[#112240] border-gray-700/50 hover:border-dashboard-accent hover:bg-[#112240]/80 text-dashboard-text-primary cursor-pointer'
                     : 'bg-[#112240]/10 border-gray-800/50 text-gray-600 cursor-not-allowed'
@@ -507,7 +507,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
               >
                 <span className="text-xs font-bold whitespace-pre-line shrink-0">{comb.name}</span>
                 {comb.rng ? (
-                  <div className={`text-xs font-mono border bg-[#0a192f] px-1.5 py-0.5 rounded min-w-0 flex-1 truncate text-right ${comb.isInterfered
+                  <div className={`text-xs font-mono border bg-[#0a192f] px-1.5 py-0.5 rounded min-w-0 flex-1 truncate text-right ${(comb.isInterfered || (comb as any).hasS1Drop)
                       ? 'text-orange-400 border-orange-500/30'
                       : 'text-[#64ffda] border-[#64ffda]/30'
                     }`}>
@@ -527,8 +527,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                         )}
                       </div>
                     ) : (
-                      <span className="truncate block" title={`RNG: ${selectedCombIndex === idx && isManualEdited ? currentRngString : `[${comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''}`}>
-                        {`RNG: ${selectedCombIndex === idx && isManualEdited ? currentRngString : `[${comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''}`}
+                      <span className="truncate block" title={`RNG: ${selectedCombIndex === idx && isManualEdited ? currentRngString : `[${comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}>
+                        {`RNG: ${selectedCombIndex === idx && isManualEdited ? currentRngString : `[${comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}
                       </span>
                     )}
                   </div>

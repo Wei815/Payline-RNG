@@ -45,4 +45,14 @@
   .animate-sync-pulse-2 {
     animation: sync-pulse-2 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
+  
+  @keyframes lineFlow {
+    to {
+      stroke-dashoffset: -32;
+    }
+  }
+  .winning-line-flow {
+    stroke-dasharray: 14 6;
+    animation: lineFlow 1.1s linear infinite;
+  }
 }
