@@ -224,7 +224,7 @@ export async function findRngForCombination(
             isMatch = false;
           }
 
-          if (isMatch && allowOtherWins) {
+          if (isMatch) {
             let currentGrid = testGrid.map(col => [...col]);
             let drawIndices = [...candidateRng].map(idx => idx - 1);
             let simWins = [...evWins];
