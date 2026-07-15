@@ -68,11 +68,8 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {(customPaylines && customPaylines.length > 0 ? customPaylines : defaultPaylines).map((line, lineIdx) => {
-            const maxRowVal = Math.max(...line);
-            const displayRows = Math.max(3, maxRowVal + 1);
 
-            // 計算該線路對應的 RNG 起點 (尋找最乾淨盤面)
-            const { rng, actualTotalWin, mathIdRng } = (() => {
+            const { rng, actualTotalWin, mathIdRng, dropMathIds } = (() => {
               if (gameType === 'linegame_set2') {
                 const grid: string[][] = Array.from({ length: reelCount }, (_, c) => Array(rowCounts[c] || 3).fill('-'));
                 for (let c = 0; c < line.length; c++) {
@@ -110,7 +107,14 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                   columnStrings.push(colArr.join(','));
                 }
 
-                return { rng: null, actualTotalWin: lineViewerPayout, mathIdRng: columnStrings };
+                const dropMathIds: string[] = [];
+                for (let i = 0; i < line.length; i++) {
+                  const sym = nonScatters[nsIdx % nonScatters.length];
+                  dropMathIds.push(mathIdMap[sym] || sym);
+                  nsIdx++;
+                }
+
+                return { rng: null, actualTotalWin: lineViewerPayout, mathIdRng: columnStrings, dropMathIds };
               }
 
               const candidatesPerReel: number[][] = [];
@@ -125,7 +129,7 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                     }
                   }
                 }
-                if (candidates.length === 0) return { rng: null, actualTotalWin: 0, mathIdRng: null };
+                if (candidates.length === 0) return { rng: null, actualTotalWin: 0, mathIdRng: null, dropMathIds: undefined };
                 candidatesPerReel.push(candidates);
               }
 
@@ -188,11 +192,12 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                 return {
                   rng: fallbackRng,
                   actualTotalWin: evWins.reduce((sum, w) => sum + w.totalWin, 0),
-                  mathIdRng: null
+                  mathIdRng: null,
+                  dropMathIds: undefined
                 };
               }
 
-              return { rng: bestRng, actualTotalWin: bestTotalWin, mathIdRng: null };
+              return { rng: bestRng, actualTotalWin: bestTotalWin, mathIdRng: null, dropMathIds: undefined };
             })();
 
             return (
@@ -203,9 +208,11 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                 </div>
 
                 <div className="flex gap-1.5 bg-[#112240]/30 p-2 rounded-md border border-gray-800/50">
-                  {line.map((activeRow, colIdx) => (
+                  {line.map((activeRow, colIdx) => {
+                    const colRows = rowCounts[colIdx] || 3;
+                    return (
                     <div key={colIdx} className="flex flex-col gap-1.5">
-                      {Array.from({ length: displayRows }).map((_, rowIdx) => {
+                      {Array.from({ length: colRows }).map((_, rowIdx) => {
                         const isActive = rowIdx === activeRow;
                         let displaySym = '';
                         let isWild = false;
@@ -240,7 +247,7 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                         );
                       })}
                     </div>
-                  ))}
+                  )})}
                 </div>
 
                 <div className="flex flex-col items-center gap-2 w-full">
@@ -255,6 +262,9 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                           setManualIndices(mathIdRng);
                           setManualIndicesOther(mathIdRng);
                           text = `[${mathIdRng.join(',')}],`;
+                          if (dropMathIds) {
+                            text += `[${dropMathIds.join(',')}],`;
+                          }
                         } else if (rng) {
                           const strRng = rng.map(String);
                           setManualIndices(strRng);
@@ -267,14 +277,27 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                         setCopiedIndex(lineIdx);
                         setTimeout(() => setCopiedIndex(null), 1000);
                       }}
-                      className={`text-xs font-mono border px-2 py-1 rounded cursor-pointer transition-all w-full text-center ${
+                      className={`text-xs font-mono border px-2 py-1.5 rounded cursor-pointer transition-all w-full flex flex-col items-center justify-center gap-0.5 ${
                         copiedIndex === lineIdx
-                          ? 'bg-[#64ffda] text-[#0a192f] border-[#64ffda] font-bold'
-                          : 'bg-[#0a192f] border-dashboard-accent/30 hover:border-dashboard-accent text-dashboard-accent hover:bg-dashboard-accent hover:text-[#0a192f]'
+                          ? 'bg-[#112240] border-[#64ffda]/50'
+                          : 'bg-[#112240] border-gray-700/50 hover:border-dashboard-accent hover:bg-[#112240]/80 text-dashboard-text-primary'
                       }`}
                       title="點擊自動套用此 RNG 數組至盤面並複製至剪貼簿"
                     >
-                      {copiedIndex === lineIdx ? 'COPIED!' : (mathIdRng ? `RNG: [${mathIdRng.join(',').slice(0,10)}...],` : `RNG: [${rng?.join(',')}],`)}
+                      {copiedIndex === lineIdx ? (
+                        <div className="w-full text-center text-[#64ffda] font-bold py-1">COPIED!</div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center gap-0.5 w-full">
+                          <span className="text-[#64ffda] leading-tight truncate max-w-full text-center" title={mathIdRng ? `[${mathIdRng.join(',')}]` : `[${rng?.join(',')}]`}>
+                            {mathIdRng ? `[${mathIdRng.join(',').slice(0, 20)}...],` : `[${rng?.join(',')}],`}
+                          </span>
+                          {dropMathIds && (
+                            <span className="text-[#64ffda] leading-tight opacity-75 truncate max-w-full text-center">
+                              [{dropMathIds.join(',')}], (自動複製)
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </button>
                   ) : (
                     <span className="text-xs text-red-500 font-bold">無可行 RNG</span>

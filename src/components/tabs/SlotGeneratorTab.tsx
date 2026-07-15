@@ -51,8 +51,16 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
 }) => {
   const gridContainerRefOther = useRef<HTMLDivElement>(null);
   const [linePathsOther, setLinePathsOther] = useState<SVGPathResult[]>([]);
+  const [multiplierIntervals, setMultiplierIntervals] = useState<import('../../types').MultiplierInterval[]>([
+    { id: '1', name: 'Big Win', min: 20, max: 50 },
+    { id: '2', name: 'Super Win', min: 50, max: 100 },
+    { id: '3', name: 'Mega Win', min: 100, max: 300 },
+    { id: '4', name: 'Ultra Win', min: 300, max: 1000 },
+    { id: '5', name: 'Legend Win', min: 1000, max: null },
+  ]);
+
   const { isSearching, combinations } = useRngSearch(
-    selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther, specialSymbolConfig, customPaylines, isFreeGame
+    selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther, specialSymbolConfig, customPaylines, isFreeGame, bet, multiplierIntervals
   );
 
   const displayGridOther = useMemo(() => {
@@ -423,12 +431,120 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                   </optgroup>
                 );
               })}
+              <optgroup label="特殊搜尋" className="bg-[#0a192f] text-orange-400 font-bold text-xs">
+                <option value="COMBO" className="bg-[#112240] text-dashboard-text-primary font-normal text-sm">
+                  COMBO (連續消除)
+                </option>
+                <option value="WIN_MULTIPLIER" className="bg-[#112240] text-dashboard-text-primary font-normal text-sm">
+                  大獎區間 (Win Multipliers)
+                </option>
+              </optgroup>
             </select>
           </div>
           <span className="text-xs text-dashboard-text-secondary">
             自動列出該符號在當前滾輪表之無干擾單一連線配置
           </span>
         </div>
+
+        {selectedSymbol === 'WIN_MULTIPLIER' && (
+          <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 shadow-inner">
+            <div className="flex justify-between items-center border-b border-gray-700/50 pb-2 mb-3">
+              <span className="text-sm text-dashboard-text-secondary font-bold pl-1">
+                大獎區間設定 (倍率 = 總贏分 / BET)
+              </span>
+              <button
+                onClick={() => {
+                  setMultiplierIntervals(prev => [
+                    ...prev,
+                    { id: Date.now().toString(), name: 'New Win', min: 0, max: null }
+                  ]);
+                }}
+                className="px-2 py-1 text-xs font-bold rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 hover:bg-purple-500/30 transition-colors"
+              >
+                + 新增區間
+              </button>
+            </div>
+            
+            <div className="flex flex-col gap-2 max-h-[250px] overflow-y-auto pr-1 mb-3">
+              {multiplierIntervals.map((interval, index) => (
+                <div key={interval.id} className="flex items-center gap-2 bg-[#112240] p-2 rounded border border-gray-700/50">
+                  <input
+                    type="text"
+                    value={interval.name}
+                    onChange={(e) => {
+                      const newIntervals = [...multiplierIntervals];
+                      newIntervals[index].name = e.target.value;
+                      setMultiplierIntervals(newIntervals);
+                    }}
+                    placeholder="區間名稱"
+                    className="flex-1 bg-[#0a192f] border border-gray-600 text-dashboard-text-primary rounded px-2 py-1 outline-none focus:border-dashboard-accent text-sm"
+                  />
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-400">Min:</span>
+                    <input
+                      type="number"
+                      value={interval.min}
+                      onChange={(e) => {
+                        const newIntervals = [...multiplierIntervals];
+                        newIntervals[index].min = Number(e.target.value);
+                        setMultiplierIntervals(newIntervals);
+                      }}
+                      className="w-16 bg-[#0a192f] border border-gray-600 text-dashboard-text-primary rounded px-2 py-1 outline-none focus:border-dashboard-accent text-sm"
+                    />
+                  </div>
+                  <span className="text-xs text-gray-400">~</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-400">Max:</span>
+                    <input
+                      type="number"
+                      value={interval.max === null ? '' : interval.max}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const newIntervals = [...multiplierIntervals];
+                        newIntervals[index].max = val === '' ? null : Number(val);
+                        setMultiplierIntervals(newIntervals);
+                      }}
+                      placeholder="∞"
+                      className="w-16 bg-[#0a192f] border border-gray-600 text-dashboard-text-primary rounded px-2 py-1 outline-none focus:border-dashboard-accent text-sm"
+                    />
+                  </div>
+                  <button
+                    onClick={() => {
+                      const newIntervals = [...multiplierIntervals];
+                      newIntervals.splice(index, 1);
+                      setMultiplierIntervals(newIntervals);
+                    }}
+                    className="ml-1 p-1 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              disabled={isSearching || multiplierIntervals.length === 0}
+              onClick={() => {
+                // To re-trigger search, we can just momentarily clear and re-set selectedSymbol
+                setSelectedSymbol('');
+                setTimeout(() => setSelectedSymbol('WIN_MULTIPLIER'), 0);
+              }}
+              className="w-full py-2 bg-dashboard-accent/20 text-dashboard-accent border border-dashboard-accent/50 rounded font-bold text-sm hover:bg-dashboard-accent/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isSearching ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-dashboard-accent" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  搜尋大獎區間中... (最多 150,000 次試轉)
+                </>
+              ) : (
+                '產生對應大獎 RNG'
+              )}
+            </button>
+          </div>
+        )}
 
         <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 shadow-inner">
           <div className="flex justify-between items-center border-b border-gray-700/50 pb-2 mb-3">
@@ -448,7 +564,19 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                       if (a.length !== b.length) return a.length - b.length;
                       return a.wildCount - b.wildCount;
                     })
-                    .map(c => `[${c.rng?.join(',')}],`)
+                    .map(c => {
+                      if (gameType === 'payanywhere_set2' || gameType === 'linegame_set2') {
+                        let finalCopy = (c as any).fullMathIds ? `[${(c as any).fullMathIds.slice(0, 30).join(',')}],` : `[${c.rng?.join(',')}],`;
+                        if (gameType === 'payanywhere_set2' && (c as any).fullMathIds && c.length >= 8) {
+                          const dropMathIds = (c as any).dropMathIds || [];
+                          const dropCount = c.length;
+                          const dropStr = `[${dropMathIds.slice(0, dropCount).join(',')}],`;
+                          finalCopy += dropStr;
+                        }
+                        return finalCopy;
+                      }
+                      return `[${c.rng?.join(',')}],`;
+                    })
                     .join('\n');
                   navigator.clipboard.writeText(textToCopy);
                   setIsCopiedAll(true);
@@ -478,14 +606,15 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                   if (comb.rng) {
                     setManualIndicesOther(comb.rng.map((val: any) => String(val)));
                     setIsManualEdited(false);
-                    if (gameType === 'payanywhere_set2') {
+                    if (gameType === 'payanywhere_set2' || gameType === 'linegame_set2') {
                       const initStr = isManualEdited && selectedCombIndex === idx 
                         ? currentRngString 
                         : ((comb as any).fullMathIds ? `[${(comb as any).fullMathIds.slice(0, 30).join(',')}],` : '');
                       let finalCopy = initStr;
-                      if ((comb as any).fullMathIds && comb.length >= 8) {
+                      if ((comb as any).fullMathIds && comb.length >= (gameType === 'linegame_set2' ? 3 : 8)) {
                         const dropMathIds = (comb as any).dropMathIds || [];
-                        const dropStr = `[${dropMathIds.slice(0, comb.length).join(',')}],`;
+                        const dropCount = comb.length;
+                        const dropStr = `[${dropMathIds.slice(0, dropCount).join(',')}],`;
                         finalCopy += dropStr;
                       }
                       navigator.clipboard.writeText(finalCopy);
@@ -511,20 +640,20 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                       ? 'text-orange-400 border-orange-500/30'
                       : 'text-[#64ffda] border-[#64ffda]/30'
                     }`}>
-                    {gameType === 'payanywhere_set2' ? (
+                    {gameType === 'payanywhere_set2' || gameType === 'linegame_set2' ? (
                       <div className="flex flex-col gap-0.5 mt-0.5 w-full">
                         <span className="text-[#64ffda] leading-tight truncate block" title={selectedCombIndex === idx && isManualEdited ? currentRngString : `[${(comb as any).fullMathIds?.slice(0, 30).join(',')}]`}>
                           {selectedCombIndex === idx && isManualEdited ? currentRngString : `[${(comb as any).fullMathIds?.slice(0, 30).join(',')}],`}
                         </span>
-                        {comb.length >= 8 ? (
+                        {gameType === 'payanywhere_set2' && (comb as any).dropMathIds && (comb as any).dropMathIds.length > 0 ? (
                           <span className="text-[#64ffda] leading-tight opacity-75 truncate block" title={`[${((comb as any).dropMathIds || []).slice(0, comb.length).join(',')}]`}>
                             [{((comb as any).dropMathIds || []).slice(0, comb.length).join(',')}], (自動複製)
                           </span>
-                        ) : (
+                        ) : gameType === 'payanywhere_set2' ? (
                           <span className="text-gray-400 leading-tight opacity-75 text-[10px] truncate block">
                             無消除 (自動複製)
                           </span>
-                        )}
+                        ) : null}
                       </div>
                     ) : (
                       <span className="truncate block" title={`RNG: ${selectedCombIndex === idx && isManualEdited ? currentRngString : `[${comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}>
@@ -1119,6 +1248,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                       : 'bg-[#0a192f] text-gray-400 border-gray-600 hover:border-gray-400'
                   }`}
                 >
+                  🎯 大獎編輯模式 {isJackpotMode ? '(ON)' : '(OFF)'}
                 </button>
               </div>
             )}

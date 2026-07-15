@@ -28,3 +28,10 @@ export interface GameConfig {
     unremovableSymbols?: string[];
   };
 }
+
+export interface MultiplierInterval {
+  id: string;
+  name: string;
+  min: number; // inclusive
+  max: number | null; // exclusive (if null, then Infinity)
+}

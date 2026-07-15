@@ -25,23 +25,30 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
     const paylines: number[][] = [];
     
     let colOffset = 2; // Default for old format
-    if (lineData.length > 1) {
-      const headerRow = lineData[1] || lineData[0];
-      if (headerRow[0] === 'No.' && headerRow[1] === 'R1') {
-        colOffset = 1;
-      }
+    let headerRow = lineData[0];
+    if (lineData.length > 1 && (lineData[1][0] === 'No.' || lineData[1][1] === 'R1')) {
+      headerRow = lineData[1];
     }
+    
+    if (headerRow[0] === 'No.' && headerRow[1] === 'R1') {
+      colOffset = 1;
+    }
+
+    let lineReelCount = 0;
+    while (headerRow[colOffset + lineReelCount] && String(headerRow[colOffset + lineReelCount]).trim().toUpperCase() === `R${lineReelCount + 1}`) {
+      lineReelCount++;
+    }
+    if (lineReelCount === 0) lineReelCount = 5; // fallback
 
     for (let i = 1; i < lineData.length; i++) {
       const row = lineData[i];
-      if (row && row.length >= colOffset + 5 && row[0] !== undefined && !isNaN(Number(row[0]))) {
-        paylines.push([
-          Number(row[colOffset]), 
-          Number(row[colOffset + 1]), 
-          Number(row[colOffset + 2]), 
-          Number(row[colOffset + 3]), 
-          Number(row[colOffset + 4])
-        ]);
+      if (row && row[0] !== undefined && String(row[0]).trim() !== '' && !isNaN(Number(row[0]))) {
+        const line = [];
+        for (let c = 0; c < lineReelCount; c++) {
+          const val = row[colOffset + c];
+          line.push(val !== undefined && String(val).trim() !== '' ? Number(val) : -1);
+        }
+        paylines.push(line);
       }
     }
     if (paylines.length > 0) {

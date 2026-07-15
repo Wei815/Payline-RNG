@@ -214,6 +214,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
 
   // Handle Drag & Drops Generation
   const dropRng = useMemo(() => {
+    if (gameType === 'linegame_set2' || gameType === 'linegame') return '';
     if (winningCoords.size === 0) return '';
     
     // Calculate current symbol counts to avoid secondary wins
@@ -235,8 +236,8 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     let uniqueWinCoordsCount = winningCoords.size;
 
     for (let i = 0; i < uniqueWinCoordsCount; i++) {
-      // Find a safe symbol that won't reach 8 count (for payanywhere)
-      let safeRule = availableRules.find(r => (currentCounts[r.symbolId] || 0) < 6);
+      let safeRule;
+      safeRule = availableRules.find(r => (currentCounts[r.symbolId] || 0) < 6);
       if (!safeRule) safeRule = availableRules[0]; // Fallback
 
       if (safeRule) {
@@ -694,78 +695,37 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
         <h2 className="text-sm font-bold text-dashboard-text-secondary border-b border-gray-700/50 pb-2">RNG 輸出結果</h2>
         
         <div className="flex flex-col gap-2">
-          <span className="text-xs text-gray-400 font-bold">初始盤面 RNG:</span>
-          <div className="flex items-center justify-between bg-[#112240] px-2 py-1.5 rounded border border-gray-700/50">
-            <code className="text-xs text-yellow-400 font-mono truncate w-48" title={baseRngStr}>
-              {baseRngStr}
-            </code>
-            <button
-              onClick={() => navigator.clipboard.writeText(baseRngStr)}
-              className="text-[10px] font-bold bg-[#0a192f] text-yellow-400 border border-yellow-400/50 px-2 py-0.5 rounded hover:bg-yellow-400 hover:text-[#0a192f] transition-colors cursor-pointer"
-            >
-              COPY
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              let text = `${baseRngStr}`;
+              if (winningCoords.size > 0 && dropRng) text += `${dropRng}`;
+              if (multiplierClassIdStr) text += `${multiplierClassIdStr}`;
+              if (combinedClassIdStr) text += `${combinedClassIdStr}`;
+              navigator.clipboard.writeText(text);
+            }}
+            className="w-full flex flex-col items-center justify-center gap-0.5 bg-[#112240] border border-gray-700/50 hover:border-dashboard-accent hover:bg-[#112240]/80 rounded p-2.5 cursor-pointer transition-all"
+            title="點擊自動複製完整腳本"
+          >
+             <span className="text-[#64ffda] text-xs font-mono leading-tight truncate max-w-full text-center" title={baseRngStr}>
+               {baseRngStr.length > 30 ? baseRngStr.slice(0, 30) + '...],' : baseRngStr}
+             </span>
+             {winningCoords.size > 0 && dropRng && (
+               <span className="text-[#64ffda] text-xs font-mono leading-tight opacity-75 truncate max-w-full text-center" title={dropRng}>
+                 {dropRng.length > 30 ? dropRng.slice(0, 30) + '...], (自動複製)' : dropRng.replace('],', '], (自動複製)')}
+               </span>
+             )}
+             {multiplierClassIdStr && (
+               <span className="text-purple-400 text-[10px] font-mono leading-tight opacity-75 truncate max-w-full text-center" title={multiplierClassIdStr}>
+                 {multiplierClassIdStr.length > 30 ? multiplierClassIdStr.slice(0, 30) + '...' : multiplierClassIdStr} (ClassID)
+               </span>
+             )}
+             {combinedClassIdStr && (
+               <span className="text-yellow-400 text-[10px] font-mono leading-tight opacity-75 truncate max-w-full text-center" title={combinedClassIdStr}>
+                 {combinedClassIdStr.length > 30 ? combinedClassIdStr.slice(0, 30) + '...' : combinedClassIdStr} (ClassID)
+               </span>
+             )}
+          </button>
         </div>
-
-        {winningCoords.size > 0 && gameType !== 'linegame_set2' && (
-          <div className="flex flex-col gap-2 mt-2">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-orange-400 font-bold">消除數: {winningCoords.size}</span>
-              <span className="text-[10px] text-gray-500 bg-[#112240] px-1 rounded border border-gray-700">防二次消除</span>
-            </div>
-            <span className="text-xs text-gray-400 font-bold">遞補 RNG:</span>
-            <div className="flex items-center justify-between bg-[#112240] px-2 py-1.5 rounded border border-orange-500/30">
-              <code className="text-xs text-[#64ffda] font-mono truncate w-48" title={dropRng}>
-                {dropRng}
-              </code>
-              <button
-                onClick={() => navigator.clipboard.writeText(dropRng)}
-                className="text-[10px] font-bold bg-[#0a192f] text-[#64ffda] border border-[#64ffda]/50 px-2 py-0.5 rounded hover:bg-[#64ffda] hover:text-[#0a192f] transition-colors cursor-pointer"
-              >
-                COPY
-              </button>
-            </div>
-          </div>
-        )}
-
-        {multiplierClassIdStr && (
-          <div className="flex flex-col gap-2 mt-2">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-purple-400 font-bold">特殊物件 ClassID</span>
-            </div>
-            <div className="flex items-center justify-between bg-[#112240] px-2 py-1.5 rounded border border-purple-500/30">
-              <code className="text-xs text-purple-400 font-mono truncate w-48" title={multiplierClassIdStr}>
-                {multiplierClassIdStr}
-              </code>
-              <button
-                onClick={() => navigator.clipboard.writeText(multiplierClassIdStr)}
-                className="text-[10px] font-bold bg-[#0a192f] text-purple-400 border border-purple-400/50 px-2 py-0.5 rounded hover:bg-purple-400 hover:text-[#0a192f] transition-colors cursor-pointer"
-              >
-                COPY
-              </button>
-            </div>
-          </div>
-        )}
-
-        {combinedClassIdStr && (
-          <div className="flex flex-col gap-2 mt-2">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-yellow-400 font-bold">ClassIDs</span>
-            </div>
-            <div className="flex items-center justify-between bg-[#112240] px-2 py-1.5 rounded border border-yellow-500/30">
-              <code className="text-xs text-yellow-400 font-mono truncate w-48" title={combinedClassIdStr}>
-                {combinedClassIdStr}
-              </code>
-              <button
-                onClick={() => navigator.clipboard.writeText(combinedClassIdStr)}
-                className="text-[10px] font-bold bg-[#0a192f] text-yellow-400 border border-yellow-400/50 px-2 py-0.5 rounded hover:bg-yellow-400 hover:text-[#0a192f] transition-colors cursor-pointer"
-              >
-                COPY
-              </button>
-            </div>
-          </div>
-        )}
 
         <div className="mt-2 pt-4 border-t border-gray-700/50 flex flex-col gap-2">
           <span className="text-xs text-dashboard-text-secondary font-bold mb-1">目前連線狀況</span>
