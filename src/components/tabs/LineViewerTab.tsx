@@ -30,46 +30,13 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
   customPaylines, defaultPaylines, setManualIndices, setManualIndicesOther,
   copiedIndex, setCopiedIndex, currentPaytable, gameType
 }) => {
-  return (
-    <>
-      <div className="flex-1 flex flex-col gap-6">
-        <div className="flex justify-between items-center bg-[#0a192f] p-4 rounded-lg border border-gray-700/50">
-          <div className="flex flex-col gap-2.5">
-            <span className="text-sm text-dashboard-text-secondary font-bold">自訂線路展示樣式</span>
-            <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="text-xs">選擇展示符號：</span>
-                <select
-                  value={activeLineViewerSymbol}
-                  onChange={(e) => setLineViewerSymbolState(e.target.value)}
-                  className="bg-[#112240] border border-gray-700 text-yellow-400 rounded px-2.5 py-1 outline-none focus:border-yellow-500 text-xs font-mono font-bold cursor-pointer"
-                >
-                  {symbols.map(sym => (
-                    <option key={sym} value={sym}>{sym}</option>
-                  ))}
-                </select>
-              </div>
-              <label className="flex items-center gap-2 cursor-pointer hover:text-dashboard-accent transition-colors font-bold select-none text-dashboard-text-secondary text-xs">
-                <input
-                  type="checkbox"
-                  checked={useWxInLines}
-                  onChange={(e) => setUseWxInLines(e.target.checked)}
-                  className="accent-dashboard-accent w-3.5 h-3.5 cursor-pointer"
-                />
-                是否可用 WX
-              </label>
-              <span className="ml-2 font-mono text-xs text-gray-400">
-                (五連線贏分: <span className="text-dashboard-accent font-bold">{formatAmount(lineViewerPayout * betMultiplier)}</span>)
-              </span>
-            </div>
-          </div>
-          <span className="text-xs text-dashboard-text-secondary font-mono">共計 {customPaylines && customPaylines.length > 0 ? customPaylines.length : defaultPaylines.length} 條線路</span>
-        </div>
+  const [isCopiedAll, setIsCopiedAll] = React.useState(false);
+  
+  const linesToRender = customPaylines && customPaylines.length > 0 ? customPaylines : defaultPaylines;
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {(customPaylines && customPaylines.length > 0 ? customPaylines : defaultPaylines).map((line, lineIdx) => {
-
-            const { rng, actualTotalWin, mathIdRng, dropMathIds } = (() => {
+  const computedLines = React.useMemo(() => {
+    return linesToRender.map((line, lineIdx) => {
+      const { rng, actualTotalWin, mathIdRng } = (() => {
               if (gameType === 'linegame_set2') {
                 const grid: string[][] = Array.from({ length: reelCount }, (_, c) => Array(rowCounts[c] || 3).fill('-'));
                 for (let c = 0; c < line.length; c++) {
@@ -107,14 +74,9 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                   columnStrings.push(colArr.join(','));
                 }
 
-                const dropMathIds: string[] = [];
-                for (let i = 0; i < line.length; i++) {
-                  const sym = nonScatters[nsIdx % nonScatters.length];
-                  dropMathIds.push(mathIdMap[sym] || sym);
-                  nsIdx++;
-                }
+                
 
-                return { rng: null, actualTotalWin: lineViewerPayout, mathIdRng: columnStrings, dropMathIds };
+                return { rng: null, actualTotalWin: lineViewerPayout, mathIdRng: columnStrings };
               }
 
               const candidatesPerReel: number[][] = [];
@@ -129,7 +91,7 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                     }
                   }
                 }
-                if (candidates.length === 0) return { rng: null, actualTotalWin: 0, mathIdRng: null, dropMathIds: undefined };
+                if (candidates.length === 0) return { rng: null, actualTotalWin: 0, mathIdRng: null };
                 candidatesPerReel.push(candidates);
               }
 
@@ -192,15 +154,80 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                 return {
                   rng: fallbackRng,
                   actualTotalWin: evWins.reduce((sum, w) => sum + w.totalWin, 0),
-                  mathIdRng: null,
-                  dropMathIds: undefined
+                  mathIdRng: null
                 };
               }
 
-              return { rng: bestRng, actualTotalWin: bestTotalWin, mathIdRng: null, dropMathIds: undefined };
+              return { rng: bestRng, actualTotalWin: bestTotalWin, mathIdRng: null };
             })();
 
-            return (
+            
+      return { line, lineIdx, rng, actualTotalWin, mathIdRng };
+    });
+  }, [linesToRender, gameType, reelCount, rowCounts, activeLineViewerSymbol, currentPaytable, currentStrips, useWxInLines, lineViewerPayout, customPaylines]);
+  
+  return (
+    <>
+      <div className="flex-1 flex flex-col gap-6">
+        <div className="flex justify-between items-center bg-[#0a192f] p-4 rounded-lg border border-gray-700/50">
+          <div className="flex flex-col gap-2.5">
+            <span className="text-sm text-dashboard-text-secondary font-bold">自訂線路展示樣式</span>
+            <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-xs">選擇展示符號：</span>
+                <select
+                  value={activeLineViewerSymbol}
+                  onChange={(e) => setLineViewerSymbolState(e.target.value)}
+                  className="bg-[#112240] border border-gray-700 text-yellow-400 rounded px-2.5 py-1 outline-none focus:border-yellow-500 text-xs font-mono font-bold cursor-pointer"
+                >
+                  {symbols.map(sym => (
+                    <option key={sym} value={sym}>{sym}</option>
+                  ))}
+                </select>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer hover:text-dashboard-accent transition-colors font-bold select-none text-dashboard-text-secondary text-xs">
+                <input
+                  type="checkbox"
+                  checked={useWxInLines}
+                  onChange={(e) => setUseWxInLines(e.target.checked)}
+                  className="accent-dashboard-accent w-3.5 h-3.5 cursor-pointer"
+                />
+                是否可用 WX
+              </label>
+              <span className="ml-2 font-mono text-xs text-gray-400">
+                (五連線贏分: <span className="text-dashboard-accent font-bold">{formatAmount(lineViewerPayout * betMultiplier)}</span>)
+              </span>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-dashboard-text-secondary font-mono">共計 {customPaylines && customPaylines.length > 0 ? customPaylines.length : defaultPaylines.length} 條線路</span>
+            <button
+              onClick={() => {
+                const textToCopy = computedLines.map(c => {
+                  if (c.mathIdRng) return `[${c.mathIdRng.join(',')}]`;
+                  if (c.rng) return `[${c.rng.join(',')}]`;
+                  return '';
+                }).filter(Boolean).map(c => c + ',').join('\n');
+                navigator.clipboard.writeText(textToCopy);
+                setIsCopiedAll(true);
+                setTimeout(() => setIsCopiedAll(false), 2000);
+              }}
+              className={`px-2 py-1 text-xs font-bold rounded border transition-colors ${
+                isCopiedAll 
+                  ? 'bg-green-500/20 text-green-400 border-green-500/50' 
+                  : 'bg-[#64ffda]/10 hover:bg-[#64ffda]/20 text-[#64ffda] border-[#64ffda]/30'
+              }`}
+            >
+              {isCopiedAll ? '✅ 已複製全部！' : '📋 複製全部腳本'}
+            </button>
+          </div>
+
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {computedLines.map(({ line, lineIdx, rng, actualTotalWin, mathIdRng }) => {
+return (
               <div key={lineIdx} className="bg-[#0a192f] border border-gray-700/50 rounded-lg p-3 flex flex-col items-center gap-3 hover:border-dashboard-accent/50 transition-colors">
                 <div className="flex justify-between w-full text-xs font-mono border-b border-gray-800 pb-1.5">
                   <span className="text-dashboard-accent font-bold">Line {lineIdx + 1}</span>
@@ -262,9 +289,6 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                           setManualIndices(mathIdRng);
                           setManualIndicesOther(mathIdRng);
                           text = `[${mathIdRng.join(',')}],`;
-                          if (dropMathIds) {
-                            text += `[${dropMathIds.join(',')}],`;
-                          }
                         } else if (rng) {
                           const strRng = rng.map(String);
                           setManualIndices(strRng);
@@ -291,11 +315,7 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                           <span className="text-[#64ffda] leading-tight truncate max-w-full text-center" title={mathIdRng ? `[${mathIdRng.join(',')}]` : `[${rng?.join(',')}]`}>
                             {mathIdRng ? `[${mathIdRng.join(',').slice(0, 20)}...],` : `[${rng?.join(',')}],`}
                           </span>
-                          {dropMathIds && (
-                            <span className="text-[#64ffda] leading-tight opacity-75 truncate max-w-full text-center">
-                              [{dropMathIds.join(',')}], (自動複製)
-                            </span>
-                          )}
+                          
                         </div>
                       )}
                     </button>
