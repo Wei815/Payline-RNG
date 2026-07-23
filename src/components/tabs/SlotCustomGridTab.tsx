@@ -37,7 +37,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   });
 
   const [hiddenPaletteSymbols, setHiddenPaletteSymbols] = useState<Set<string>>(new Set());
-  const [selectedMultiplier, setSelectedMultiplier] = useState<number>(250);
+  const [selectedMultiplier, setSelectedMultiplier] = useState<number>(2);
   const [selectedPaletteSymbol, setSelectedPaletteSymbol] = useState<string | null>(null);
 
   const [rngInput, setRngInput] = useState('');
@@ -434,7 +434,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
               onChange={e => setSelectedMultiplier(Number(e.target.value))}
               className="w-full bg-[#0a192f] border border-dashboard-accent/30 text-white rounded px-2 py-1 text-sm outline-none focus:border-dashboard-accent cursor-pointer mb-3"
             >
-              {[2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 50, 100, 250, 500].map(m => (
+              {[2, 3, 4, 5, 6, 7, 8, 9, 10, 25, 50, 100].map(m => (
                 <option key={m} value={m}>{m}X</option>
               ))}
             </select>
@@ -695,36 +695,50 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
         <h2 className="text-sm font-bold text-dashboard-text-secondary border-b border-gray-700/50 pb-2">RNG 輸出結果</h2>
         
         <div className="flex flex-col gap-2">
+          {/* RNG Button */}
           <button
             onClick={() => {
               let text = `${baseRngStr}`;
               if (winningCoords.size > 0 && dropRng) text += `${dropRng}`;
-              if (multiplierClassIdStr) text += `${multiplierClassIdStr}`;
-              if (combinedClassIdStr) text += `${combinedClassIdStr}`;
               navigator.clipboard.writeText(text);
             }}
-            className="w-full flex flex-col items-center justify-center gap-0.5 bg-[#112240] border border-gray-700/50 hover:border-dashboard-accent hover:bg-[#112240]/80 rounded p-2.5 cursor-pointer transition-all"
-            title="點擊自動複製完整腳本"
+            className="w-full flex flex-col items-center justify-center gap-0.5 bg-[#112240] border border-gray-700/50 hover:border-[#64ffda] hover:bg-[#112240]/80 rounded p-2.5 cursor-pointer transition-all"
+            title="點擊自動複製 RNG 腳本"
           >
              <span className="text-[#64ffda] text-xs font-mono leading-tight truncate max-w-full text-center" title={baseRngStr}>
-               {baseRngStr.length > 30 ? baseRngStr.slice(0, 30) + '...],' : baseRngStr}
+               {baseRngStr.length > 30 ? baseRngStr.slice(0, 30) + '...],' : baseRngStr} (RNG)
              </span>
              {winningCoords.size > 0 && dropRng && (
                <span className="text-[#64ffda] text-xs font-mono leading-tight opacity-75 truncate max-w-full text-center" title={dropRng}>
                  {dropRng.length > 30 ? dropRng.slice(0, 30) + '...], (自動複製)' : dropRng.replace('],', '], (自動複製)')}
                </span>
              )}
-             {multiplierClassIdStr && (
-               <span className="text-purple-400 text-[10px] font-mono leading-tight opacity-75 truncate max-w-full text-center" title={multiplierClassIdStr}>
-                 {multiplierClassIdStr.length > 30 ? multiplierClassIdStr.slice(0, 30) + '...' : multiplierClassIdStr} (ClassID)
-               </span>
-             )}
-             {combinedClassIdStr && (
-               <span className="text-yellow-400 text-[10px] font-mono leading-tight opacity-75 truncate max-w-full text-center" title={combinedClassIdStr}>
-                 {combinedClassIdStr.length > 30 ? combinedClassIdStr.slice(0, 30) + '...' : combinedClassIdStr} (ClassID)
-               </span>
-             )}
           </button>
+
+          {/* ClassID Button */}
+          {(multiplierClassIdStr || combinedClassIdStr) && (
+            <button
+              onClick={() => {
+                let text = '';
+                if (multiplierClassIdStr) text += `${multiplierClassIdStr}`;
+                if (combinedClassIdStr) text += `${combinedClassIdStr}`;
+                navigator.clipboard.writeText(text);
+              }}
+              className="w-full flex flex-col items-center justify-center gap-0.5 bg-[#112240] border border-gray-700/50 hover:border-yellow-400 hover:bg-[#112240]/80 rounded p-2.5 cursor-pointer transition-all mt-1"
+              title="點擊自動複製 ClassID"
+            >
+               {multiplierClassIdStr && (
+                 <span className="text-purple-400 text-[10px] font-mono leading-tight opacity-75 truncate max-w-full text-center" title={multiplierClassIdStr}>
+                   {multiplierClassIdStr.length > 30 ? multiplierClassIdStr.slice(0, 30) + '...' : multiplierClassIdStr} (ClassID)
+                 </span>
+               )}
+               {combinedClassIdStr && (
+                 <span className="text-yellow-400 text-[10px] font-mono leading-tight opacity-75 truncate max-w-full text-center" title={combinedClassIdStr}>
+                   {combinedClassIdStr.length > 30 ? combinedClassIdStr.slice(0, 30) + '...' : combinedClassIdStr} (ClassID)
+                 </span>
+               )}
+            </button>
+          )}
         </div>
 
         <div className="mt-2 pt-4 border-t border-gray-700/50 flex flex-col gap-2">

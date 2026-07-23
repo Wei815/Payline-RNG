@@ -19,10 +19,11 @@ export class LineGameStrategy implements EvaluationStrategy {
         }
         
         const cell = grid[colIdx][targetRow];
-        let isMatch = cell === sym || (!rule.isWild && wildSymbols.has(cell));
+        const baseCell = cell.split('_')[0];
+        let isMatch = cell === sym || baseCell === sym || (!rule.isWild && wildSymbols.has(baseCell));
         
         if (!isMatch && derivatives) {
-           if (derivatives.includes(cell)) {
+           if (derivatives.includes(baseCell)) {
              isMatch = true;
            }
         }
@@ -50,8 +51,14 @@ export class LineGameStrategy implements EvaluationStrategy {
           for (let c = 0; c < matchCount; c++) {
             const r = line[c];
             const posKey = `${c}-${r}`;
+            const cell = grid[c][r];
             if (gameConfig.goldFrames && gameConfig.goldFrames[posKey]) {
               goldFrameMultipliers += gameConfig.goldFrames[posKey];
+            }
+            if (cell.includes('_') && cell.match(/^[F|L][1-4]_/)) {
+              const valStr = cell.split('_')[1];
+              const num = parseInt(valStr.replace('X', ''), 10);
+              if (!isNaN(num)) goldFrameMultipliers += num;
             }
             if (gameConfig.jackpots && gameConfig.jackpots[posKey]) {
               const jp = gameConfig.jackpots[posKey];

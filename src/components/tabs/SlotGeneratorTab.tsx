@@ -230,7 +230,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
   // Gold Frame states
   const [showGoldFrameEditor, setShowGoldFrameEditor] = useState(false);
   const [isGoldFrameMode, setIsGoldFrameMode] = useState(false);
-  const [selectedGoldMultiplier, setSelectedGoldMultiplier] = useState<number>(250);
+  const [selectedGoldMultiplier, setSelectedGoldMultiplier] = useState<number>(2);
 
   // Jackpot states
   const [showJackpotEditor, setShowJackpotEditor] = useState(false);
@@ -1167,7 +1167,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                       className="bg-[#0a192f] border border-dashboard-accent/30 text-white rounded px-2 py-1 text-sm outline-none focus:border-dashboard-accent cursor-pointer"
                     >
                       <option value={0}>🧽 橡皮擦 (刪除)</option>
-                      {[2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 25, 50, 100, 250, 500].map(m => (
+                      {[2, 3, 4, 5, 6, 7, 8, 9, 10, 25, 50, 100].map(m => (
                         <option key={m} value={m}>{m}X</option>
                       ))}
                     </select>
