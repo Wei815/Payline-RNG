@@ -3,10 +3,12 @@ import { Trash2, RotateCcw } from 'lucide-react';
 import type { GameType, PaytableRule, GameConfig } from '../../types';
 import { evaluateGrid } from '../../utils/evaluation';
 import { formatAmount } from '../../utils/formatters';
-import { getWinColorClass, calculateSVGPaths } from '../../utils/svgPaths';
+import { calculateSVGPaths } from '../../utils/svgPaths';
 import { getWinningPositions } from '../../utils/evaluation';
 import type { SVGPathResult } from '../../utils/svgPaths';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
+import { SlotGridDisplay } from '../SlotGridDisplay';
+import { useGameStore } from '../../store/useGameStore';
 
 export interface SlotCustomGridTabProps {
   reelCount: number;
@@ -29,12 +31,8 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   const [isJackpotMode, setIsJackpotMode] = useState(false);
   const [jackpots, setJackpots] = useState<Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>>({});
   const [selectedJackpot, setSelectedJackpot] = useState<'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>('MINI');
-  const [gridSymbols, setGridSymbols] = useState<string[][]>(() => {
-    // Initialize with a default symbol, e.g., the lowest value symbol or just '-'
-    return Array.from({ length: reelCount }, (_, c) => 
-      Array(rowCounts[c] || 3).fill('-')
-    );
-  });
+  const gridSymbols = useGameStore(state => state.customGridData);
+  const setGridSymbols = useGameStore(state => state.setCustomGridData);
 
   const [hiddenPaletteSymbols, setHiddenPaletteSymbols] = useState<Set<string>>(new Set());
   const [selectedMultiplier, setSelectedMultiplier] = useState<number>(2);
@@ -599,73 +597,34 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
             </svg>
           )}
 
-          {gridSymbols.map((col, colIndex) => (
-            <div key={colIndex} className="flex flex-col gap-3">
-              {col.map((symbol, rowIndex) => {
-                const winIndices = winningCoords.get(`${colIndex}-${rowIndex}`);
-                const isWinning = !!winIndices;
-                const winColorClass = isWinning ? getWinColorClass(winIndices) : '';
-                const goldMultiplier = goldFrames[`${colIndex}-${rowIndex}`];
-                const hasGoldFrame = goldMultiplier !== undefined;
-                
-                const jackpotValue = jackpots[`${colIndex}-${rowIndex}`];
-                const hasJackpot = jackpotValue !== undefined;
-                
-                let displaySymbol = symbol;
-                let customBg = '';
-                
-                if (symbol.includes('_') && symbol.match(/^[F|L][1-4]_/)) {
-                  const [ballId, val] = symbol.split('_');
-                  displaySymbol = val;
-                  const numVal = parseInt(val.replace('X', ''), 10);
-                  const balls = ballId.startsWith('F') ? MULTIPLIER_BALLS : LUCKY_BALLS;
-                  const ball = balls.find(b => b.values.includes(numVal)) || balls.find(b => b.id === ballId);
-                  if (ball) customBg = `bg-[#0a192f] border ${ball.border} ${ball.color}`;
-                }
-
-                return (
-                  <div
-                    id={`cell-custom-${colIndex}-${rowIndex}`}
-                    key={`${colIndex}-${rowIndex}`}
-                    draggable
-                    onClick={() => handleCellClick(colIndex, rowIndex)}
-                    onDragStart={(e) => handleDragStart(e, symbol, false, colIndex, rowIndex)}
-                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
-                    onDrop={(e) => handleDrop(e, colIndex, rowIndex)}
-                    className={`
-                      w-16 h-16 sm:w-20 sm:h-20 rounded-lg flex items-center justify-center text-xl font-bold
-                      shadow-lg transform relative cursor-pointer active:scale-95 transition-all duration-200 shrink-0
-                      ${customBg ? customBg :
-                        symbol === '-' ? 'bg-[#0a192f] text-gray-700 border-2 border-gray-800 border-dashed hover:border-dashboard-accent' :
-                        symbol === 'WILD' || symbol.startsWith('W') || symbol === 'WX' ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border border-yellow-300' :
-                        symbol === 'SCATTER' ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border border-pink-300' :
-                        'bg-[#112240] text-dashboard-text-primary border border-dashboard-accent/30'}
-                      ${isWinning ? `ring-2 z-10 scale-105 ${winColorClass}` : ''}
-                      ${hasGoldFrame && !isWinning ? `ring-2 ring-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.6)]` : ''}
-                      ${hasJackpot && !isWinning ? `ring-2 ring-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]` : ''}
-                    `}
-                  >
-                    <div className="flex flex-col items-center justify-center pointer-events-none w-full h-full relative">
-                      <span>{displaySymbol}</span>
-                      {symbol.match(/^[F|L][1-4]_/) && (
-                         <span className="text-[10px] text-gray-500 font-mono mt-1 leading-none">{symbol.split('_')[0]}</span>
-                      )}
-                      {hasGoldFrame && (
-                        <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-[#0a192f] text-[10px] font-black px-1 rounded-sm shadow border border-yellow-600 z-10">
-                          {goldMultiplier}
-                        </div>
-                      )}
-                      {hasJackpot && (
-                        <div className="absolute -bottom-1 left-0 right-0 mx-1 bg-red-500 text-white text-[9px] font-black px-1 rounded-sm shadow border border-red-700 z-10 truncate text-center">
-                          {jackpotValue}
-                        </div>
-                      )}
-                    </div>
+          <SlotGridDisplay
+            gridMode="custom"
+            gridSymbols={gridSymbols}
+            winningCoords={winningCoords}
+            onCellClick={handleCellClick}
+            onDragStart={(e, symbol, colIndex, rowIndex) => handleDragStart(e, symbol, false, colIndex, rowIndex)}
+            onDrop={handleDrop}
+            goldFrames={goldFrames}
+            jackpots={jackpots}
+            renderCellInner={(symbol, _colIndex, _rowIndex, displaySymbol, hasGoldFrame, goldMultiplier, hasJackpot, jackpotValue) => (
+              <div className="flex flex-col items-center justify-center pointer-events-none w-full h-full relative">
+                <span>{displaySymbol}</span>
+                {symbol.match(/^[F|L][1-4]_/) && (
+                   <span className="text-[10px] text-gray-500 font-mono mt-1 leading-none">{symbol.split('_')[0]}</span>
+                )}
+                {hasGoldFrame && (
+                  <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-[#0a192f] text-[10px] font-black px-1 rounded-sm shadow border border-yellow-600 z-10">
+                    {goldMultiplier}
                   </div>
-                );
-              })}
-            </div>
-          ))}
+                )}
+                {hasJackpot && (
+                  <div className="absolute -bottom-1 left-0 right-0 mx-1 bg-red-500 text-white text-[9px] font-black px-1 rounded-sm shadow border border-red-700 z-10 truncate text-center">
+                    {jackpotValue}
+                  </div>
+                )}
+              </div>
+            )}
+          />
         </div>
 
         {/* Trash Can Dropzone */}

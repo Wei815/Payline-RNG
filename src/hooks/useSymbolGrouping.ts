@@ -2,6 +2,10 @@ import { useMemo } from 'react';
 import type { PaytableRule } from '../types';
 import { GameTypes, SpecialSymbols, SymbolGroupOrder, SymbolCategories } from '../constants/GameConstants';
 
+const SymbolGroupOrderMap = new Map<string, number>(
+  SymbolGroupOrder.map((sym, idx) => [sym, idx])
+);
+
 interface SymbolGroup {
   id: string;
   title: string;
@@ -50,8 +54,8 @@ export function useSymbolGrouping(
 
     const getOrderScore = (sym: string): number => {
       const base = getBase(sym);
-      const idx = SymbolGroupOrder.indexOf(base as any);
-      return idx === -1 ? 999 : idx;
+      const idx = SymbolGroupOrderMap.get(base);
+      return idx !== undefined ? idx : 999;
     };
 
     const sorted = symList.sort((a, b) => getOrderScore(a) - getOrderScore(b));

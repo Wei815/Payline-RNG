@@ -4,7 +4,10 @@ import { SlotConsole } from './components/SlotConsole';
 import { MetricsDashboard } from './components/MetricsDashboard';
 import { useSimulation } from './hooks/useSimulation';
 import { BarChart3, X } from 'lucide-react';
-import type { GameConfig } from './types';
+import { WelcomeScreen } from './components/WelcomeScreen';
+import { Sidebar } from './components/Sidebar';
+import { JiraLinkGenerator } from './components/tools/JiraLinkGenerator';
+import type { GameConfig, GameType } from './types';
 import { useMachineStore } from './store/useMachineStore';
 import { useGameStore } from './store/useGameStore';
 
@@ -19,8 +22,29 @@ function App() {
   const currentStrips = useGameStore(state => state.currentStrips);
   const currentPaytable = useGameStore(state => state.currentPaytable);
   const rowCounts = useGameStore(state => state.rowCounts);
+  const isProjectLoaded = useGameStore(state => state.isProjectLoaded);
+  
+  const setLoadTemplateTrigger = useMachineStore(state => state.setLoadTemplateTrigger);
+  const setGameType = useMachineStore(state => state.setGameType);
+  const activeModalTool = useMachineStore(state => state.activeModalTool);
+  const setActiveModalTool = useMachineStore(state => state.setActiveModalTool);
   
   const [isMetricsOpen, setIsMetricsOpen] = useState<boolean>(false);
+
+  const handleSelectTemplate = useCallback((templateName: string) => {
+    const engineMap: Record<string, GameType> = {
+      'Line Game': 'linegame',
+      'Way Game': 'waygame',
+      'Pay Anywhere': 'payanywhere',
+      'Megaway': 'megaway'
+    };
+    if (engineMap[templateName]) {
+      setGameType(engineMap[templateName]);
+      setLoadTemplateTrigger('預設泛用');
+    } else {
+      setLoadTemplateTrigger(templateName);
+    }
+  }, [setGameType, setLoadTemplateTrigger]);
 
   const handleTestSpin = useCallback((strips: any[], paytable: any[], spins?: number, rows?: number[], paylines?: number[][], isFreeGame?: boolean) => {
     const config: GameConfig = {
@@ -50,9 +74,12 @@ function App() {
   }, [runSimulation, gameType, customPaylines, bet, currentStrips, currentPaytable, rowCounts, coin]);
 
   return (
-    <div className="w-screen h-screen flex flex-col bg-dashboard-bg overflow-hidden text-dashboard-text-primary">
-      {/* Header */}
-      <div className="absolute top-0 left-0 w-full h-14 bg-[#0f1d35] border-b border-gray-800 flex items-center justify-between px-6 z-40 shadow-md">
+    <div className="w-screen h-screen flex bg-dashboard-bg overflow-hidden text-dashboard-text-primary">
+      <Sidebar />
+      
+      <div className="flex-1 flex flex-col min-w-0 h-full relative">
+        {/* Header */}
+        <div className="w-full h-14 bg-[#0f1d35] border-b border-gray-800 flex items-center justify-between px-6 shrink-0 shadow-md z-40">
         <div className="flex items-center gap-2">
           <h1 className="text-xl font-bold tracking-widest text-dashboard-text-primary flex items-center gap-2">
             <span className="text-dashboard-accent">RNG</span> PAY
@@ -68,23 +95,33 @@ function App() {
           <BarChart3 size={16} />
           <span>RTP 測試報告</span>
         </button>
-      </div>
+        </div>
 
-      {/* Main Grid Layout - pt-14 to offset header */}
-      <div className="flex-1 w-full flex flex-col md:flex-row pt-14 min-h-0">
-        {/* Left: ConfigPanel */}
-        <div className={`w-full h-full transition-all duration-300 ${gameType === 'payanywhere_set2' || gameType === 'linegame_set2' ? 'md:w-[360px] shrink-0' : 'md:w-[35%]'}`}>
+        {/* Main Grid Layout */}
+        <div className="flex-1 w-full flex flex-col md:flex-row min-h-0">
+          {/* Left: ConfigPanel */}
+        <div 
+          className={`
+            ${!isProjectLoaded ? 'hidden' : 'block'}
+            w-full h-full transition-all duration-300 ${gameType === 'payanywhere_set2' || gameType === 'linegame_set2' ? 'md:w-[360px] shrink-0' : 'md:w-[35%]'}
+          `}
+        >
           <ConfigPanel 
             onTestSpin={handleTestSpin}
           />
         </div>
 
-        {/* Center: SlotConsole */}
+        {/* Center: SlotConsole or WelcomeScreen */}
         <div className="w-full flex-1 h-full min-w-0">
-          <SlotConsole 
-            currentGrid={currentGrid}
-          />
+          {!isProjectLoaded ? (
+            <WelcomeScreen onSelectTemplate={handleSelectTemplate} />
+          ) : (
+            <SlotConsole 
+              currentGrid={currentGrid}
+            />
+          )}
         </div>
+      </div>
       </div>
 
       {/* Metrics Modal */}
@@ -115,6 +152,11 @@ function App() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Tools Modals */}
+      {activeModalTool === 'jira' && (
+        <JiraLinkGenerator onClose={() => setActiveModalTool(null)} />
       )}
     </div>
   );

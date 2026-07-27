@@ -144,7 +144,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
       spinWin += cascadeWin;
 
       // Handle Cascading logic (Tumbling)
-      if (gameConfig.gameType === 'waygame_qin' && cascadeWin > 0) {
+      if ((gameConfig.gameType === 'waygame_qin' || gameConfig.gameType === 'payanywhere_set2') && cascadeWin > 0) {
         // Find which coordinates were eliminated
         const winningCoordsMap = getWinningPositions(grid, wins, paytable, gameConfig.gameType, undefined, effectivePaylines);
         

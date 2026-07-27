@@ -36,6 +36,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
   const setCurrentStrips = useGameStore(state => state.setCurrentStrips);
   const setCurrentPaytable = useGameStore(state => state.setCurrentPaytable);
   const setIsFreeGame = useGameStore(state => state.setIsFreeGame);
+  const setIsProjectLoaded = useGameStore(state => state.setIsProjectLoaded);
 
   const onReelCountChange = setReelCount;
   const onRowCountsChange = setRowCounts;
@@ -211,21 +212,28 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
     }
   }, [gridData, paytableMap, uniqueSymbols, reelCount, setCurrentStrips, setCurrentPaytable]);
 
-  const handleLoadDefaults = async () => {
-    if (selectedTemplate === '預設泛用') {
+  const loadTemplateTrigger = useMachineStore(state => state.loadTemplateTrigger);
+  const setLoadTemplateTrigger = useMachineStore(state => state.setLoadTemplateTrigger);
+  const uploadedTemplateFile = useMachineStore(state => state.uploadedTemplateFile);
+  const setUploadedTemplateFile = useMachineStore(state => state.setUploadedTemplateFile);
+
+  const handleLoadDefaults = async (overrideTemplate?: string | React.MouseEvent) => {
+    const targetTemplate = typeof overrideTemplate === 'string' ? overrideTemplate : selectedTemplate;
+    if (targetTemplate === '預設泛用') {
       handlePasteText(defaultExcelStripsString, reelCount);
       const init: Record<string, PaytableRule> = {};
       defaultPaytable.forEach(rule => init[rule.symbolId] = rule);
       setPaytableMap(init);
       onPaylinesChange(defaultPaylines);
       setError(null);
+      setIsProjectLoaded(true);
     } else {
       try {
-        const url = templateFiles[selectedTemplate] || selectedTemplate;
+        const url = templateFiles[targetTemplate] || targetTemplate;
         const res = await fetch(url);
         if (!res.ok) throw new Error('Network response was not ok');
         const blob = await res.blob();
-        const filename = selectedTemplate.split('/').pop() || 'template.xlsx';
+        const filename = targetTemplate.split('/').pop() || 'template.xlsx';
         const file = new File([blob], filename, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         
         const { parseExcelData } = await import('../utils/excelParser');
@@ -277,11 +285,92 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
           setPaytableMap(init);
         }
         setError(null);
+        setIsProjectLoaded(true);
       } catch (err) {
         setError('載入範本失敗: ' + (err as Error).message);
       }
     }
   };
+
+  useEffect(() => {
+    if (loadTemplateTrigger) {
+      let targetPath = loadTemplateTrigger;
+      if (loadTemplateTrigger !== '預設泛用') {
+        const found = Object.keys(templateFiles).find(path => getTemplateName(path) === loadTemplateTrigger || path.includes(loadTemplateTrigger));
+        if (found) {
+          targetPath = found;
+        }
+      }
+      setSelectedTemplate(targetPath);
+      // Let React batch updates and execute the load
+      setTimeout(() => {
+        handleLoadDefaults(targetPath);
+      }, 0);
+      setLoadTemplateTrigger(null);
+    }
+  }, [loadTemplateTrigger, setLoadTemplateTrigger]);
+
+  useEffect(() => {
+    if (uploadedTemplateFile) {
+      const processFile = async () => {
+        try {
+          const { parseExcelData } = await import('../utils/excelParser');
+          const parsed = await parseExcelData(uploadedTemplateFile);
+          
+          if (parsed.gameType) onGameTypeChange(parsed.gameType);
+          if (parsed.coin) onCoinChange(parsed.coin);
+          if (parsed.bet) onBetChange(parsed.bet);
+          if (parsed.reelCount) onReelCountChange(parsed.reelCount);
+          if (parsed.rowCounts) onRowCountsChange(parsed.rowCounts);
+          if (parsed.paylines) onPaylinesChange(parsed.paylines);
+          
+          if (parsed.strips && parsed.strips.length > 0) {
+            const maxRows = Math.max(...parsed.strips.map(s => s.length));
+            const newGrid: string[][] = [];
+            for (let r = 0; r < maxRows; r++) {
+              const rowData = [];
+              for (let c = 0; c < parsed.strips.length; c++) {
+                rowData.push(parsed.strips[c][r] || '');
+              }
+              newGrid.push(rowData);
+            }
+            setBaseGridData(newGrid);
+          } else {
+            setBaseGridData([]);
+          }
+          
+          if (parsed.freeStrips && parsed.freeStrips.length > 0) {
+            const maxRows = Math.max(...parsed.freeStrips.map(s => s.length));
+            const newGrid: string[][] = [];
+            for (let r = 0; r < maxRows; r++) {
+              const rowData = [];
+              for (let c = 0; c < parsed.freeStrips.length; c++) {
+                rowData.push(parsed.freeStrips[c][r] || '');
+              }
+              newGrid.push(rowData);
+            }
+            setFreeGridData(newGrid);
+          } else {
+            setFreeGridData([]);
+          }
+          setActiveStripTab('base');
+          
+          if (parsed.paytable) {
+            const init: Record<string, PaytableRule> = {};
+            parsed.paytable.forEach(rule => init[rule.symbolId] = rule);
+            setPaytableMap(init);
+          }
+          
+          setError(null);
+          setIsProjectLoaded(true);
+        } catch (err) {
+          setError('Failed to parse Excel file: ' + (err as Error).message);
+        }
+        setUploadedTemplateFile(null);
+      };
+      processFile();
+    }
+  }, [uploadedTemplateFile, setUploadedTemplateFile]);
 
   const handlePasteText = (text: string, currentReelCount: number) => {
     const lines = text.trim().split(/\r?\n/);
@@ -411,7 +500,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
       }
 
       const emptyReels = parsedStrips.findIndex(strip => strip.length === 0);
-      if (emptyReels !== -1) {
+      if (emptyReels !== -1 && gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2') {
         throw new Error(`R${emptyReels + 1} 沒有任何資料，請檢查表格內容。`);
       }
 
@@ -943,7 +1032,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
 
       <button
         onClick={handleTestSpin}
-        disabled={isRunning || isGridEmpty}
+        disabled={isRunning || (isGridEmpty && gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2')}
         className="mt-auto w-full py-3 flex items-center justify-center gap-2 bg-[#112240] border border-dashboard-accent text-dashboard-accent font-bold rounded-lg hover:bg-dashboard-accent hover:text-[#0a192f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isRunning ? (

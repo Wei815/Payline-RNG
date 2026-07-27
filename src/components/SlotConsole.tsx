@@ -9,12 +9,13 @@ export interface SlotConsoleProps {
 
 import { useShallow } from 'zustand/react/shallow';
 import { parsePasteRng } from '../utils/formatters';
-import { SlotManualTab } from './tabs/SlotManualTab';
-import { SlotGeneratorTab } from './tabs/SlotGeneratorTab';
-import { LineViewerTab } from './tabs/LineViewerTab';
-import { TumbleViewerTab } from './tabs/TumbleViewerTab';
-import { SlotCustomGridTab } from './tabs/SlotCustomGridTab';
 import { useSymbolGrouping } from '../hooks/useSymbolGrouping';
+
+const SlotManualTab = React.lazy(() => import('./tabs/SlotManualTab').then(m => ({ default: m.SlotManualTab })));
+const SlotGeneratorTab = React.lazy(() => import('./tabs/SlotGeneratorTab').then(m => ({ default: m.SlotGeneratorTab })));
+const LineViewerTab = React.lazy(() => import('./tabs/LineViewerTab').then(m => ({ default: m.LineViewerTab })));
+const TumbleViewerTab = React.lazy(() => import('./tabs/TumbleViewerTab').then(m => ({ default: m.TumbleViewerTab })));
+const SlotCustomGridTab = React.lazy(() => import('./tabs/SlotCustomGridTab').then(m => ({ default: m.SlotCustomGridTab })));
 
 export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
   const { isRunning, bet, coin, gameType } = useMachineStore(useShallow(state => ({
@@ -184,6 +185,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
 
       {/* Content Area */}
       <div className="flex-1 min-h-0 bg-[#112240]/10 border-x border-b border-gray-700/30 rounded-b-xl overflow-y-auto custom-scrollbar p-6 flex flex-col">
+        <React.Suspense fallback={<div>Loading...</div>}>
         {activeTab === 'manual' && (
           <SlotManualTab 
             reelCount={reelCount} rowCounts={rowCounts} onRowCountsChange={setRowCounts}
@@ -269,6 +271,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
             />
           </div>
         )}
+        </React.Suspense>
       </div>
     </div>
   );

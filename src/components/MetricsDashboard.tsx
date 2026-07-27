@@ -15,7 +15,7 @@ interface MetricsDashboardProps {
 export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({ result, progress, currentSpins, totalSpins, hasData, onRunSimulation }) => {
   const { isRunning } = useMachineStore();
   const { reelCount } = useGameStore();
-  const matchesToShow = Array.from({ length: reelCount - 1 }, (_, i) => reelCount - i);
+  const matchesToShow = React.useMemo(() => Array.from({ length: reelCount - 1 }, (_, i) => reelCount - i), [reelCount]);
 
   return (
     <div className="h-full flex flex-col bg-[#0a192f] p-6 overflow-hidden">

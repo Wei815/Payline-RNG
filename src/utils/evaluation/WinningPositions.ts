@@ -35,27 +35,18 @@ export function getWinningPositions(
   );
   wildSymbols.add('WILD'); wildSymbols.add('W'); wildSymbols.add('WX');
 
+  const scatterPayAnywhereWins: { w: number; symbolId: string }[] = [];
+  const scatterPayAnywhereSet = new Set<string>();
+
   for (let w = 0; w < wins.length; w++) {
     const win = wins[w];
     const isScatter = currentPaytable.some(p => p.symbolId === win.symbolId && p.isScatter);
     const isPayAnywhere = gameType === 'payanywhere' || gameType === 'payanywhere_set2';
 
     if (isScatter || isPayAnywhere) {
-      for (let col = 0; col < grid.length; col++) {
-        for (let row = 0; row < grid[col].length; row++) {
-          const cell = grid[col][row];
-          if (cell === win.symbolId || wildSymbols.has(cell) || (win.symbolId === 'B1' && cell === 'B2')) {
-            addCoord(`${col}-${row}`, w);
-          }
-        }
-      }
-      if (gameType === 'megaway' && topTracker) {
-        topTracker.forEach((cell, idx) => {
-          if (cell === win.symbolId || wildSymbols.has(cell) || (win.symbolId === 'B1' && cell === 'B2')) {
-            addCoord(`top-${idx}`, w);
-          }
-        });
-      }
+      scatterPayAnywhereWins.push({ w, symbolId: win.symbolId });
+      scatterPayAnywhereSet.add(win.symbolId);
+      if (win.symbolId === 'B1') scatterPayAnywhereSet.add('B2');
     } else if (gameType === 'linegame' || gameType === 'linegame_set2') {
       if (win.lineIndex !== undefined) {
         const line = customPaylines && customPaylines.length > 0 ? customPaylines[win.lineIndex] : defaultPaylines[win.lineIndex];
@@ -83,6 +74,32 @@ export function getWinningPositions(
           }
         }
       }
+    }
+  }
+
+  if (scatterPayAnywhereWins.length > 0) {
+    for (let col = 0; col < grid.length; col++) {
+      for (let row = 0; row < grid[col].length; row++) {
+        const cell = grid[col][row];
+        if (scatterPayAnywhereSet.has(cell) || wildSymbols.has(cell)) {
+          for (const sw of scatterPayAnywhereWins) {
+            if (cell === sw.symbolId || wildSymbols.has(cell) || (sw.symbolId === 'B1' && cell === 'B2')) {
+              addCoord(`${col}-${row}`, sw.w);
+            }
+          }
+        }
+      }
+    }
+    if (gameType === 'megaway' && topTracker) {
+      topTracker.forEach((cell, idx) => {
+        if (scatterPayAnywhereSet.has(cell) || wildSymbols.has(cell)) {
+          for (const sw of scatterPayAnywhereWins) {
+            if (cell === sw.symbolId || wildSymbols.has(cell) || (sw.symbolId === 'B1' && cell === 'B2')) {
+              addCoord(`top-${idx}`, sw.w);
+            }
+          }
+        }
+      });
     }
   }
 

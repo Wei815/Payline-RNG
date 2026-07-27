@@ -14,7 +14,7 @@ export class LineGameStrategy implements EvaluationStrategy {
       let matchCount = 0;
       for (let colIdx = 0; colIdx < grid.length; colIdx++) {
         const targetRow = line[colIdx];
-        if (targetRow === undefined || targetRow >= grid[colIdx].length) {
+        if (targetRow === undefined || targetRow < 0 || targetRow >= grid[colIdx].length) {
           break;
         }
         
