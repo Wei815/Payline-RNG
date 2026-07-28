@@ -406,9 +406,9 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
   return (
     <div className="w-full flex flex-col lg:flex-row gap-6 items-start justify-center">
       <div className="flex-1 flex flex-col items-center justify-center gap-6 w-full lg:max-w-3xl">
-        <div className="flex items-center justify-between bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 w-full max-w-3xl">
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-bold text-dashboard-text-secondary">選擇目標 Symbol:</span>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 w-full max-w-3xl gap-4">
+          <div className="flex items-center gap-3 shrink-0">
+            <span className="text-sm font-bold text-dashboard-text-secondary whitespace-nowrap">選擇目標 Symbol:</span>
             <select
               value={selectedSymbol}
               onChange={(e) => {
@@ -441,14 +441,14 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
               </optgroup>
             </select>
           </div>
-          <span className="text-xs text-dashboard-text-secondary">
+          <span className="text-xs text-dashboard-text-secondary sm:text-right leading-relaxed">
             自動列出該符號在當前滾輪表之無干擾單一連線配置
           </span>
         </div>
 
         {selectedSymbol === 'WIN_MULTIPLIER' && (
           <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 shadow-inner">
-            <div className="flex justify-between items-center border-b border-gray-700/50 pb-2 mb-3">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-700/50 pb-2 mb-3 gap-2">
               <span className="text-sm text-dashboard-text-secondary font-bold pl-1">
                 大獎區間設定 (倍率 = 總贏分 / BET)
               </span>
@@ -547,8 +547,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
         )}
 
         <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 shadow-inner">
-          <div className="flex justify-between items-center border-b border-gray-700/50 pb-2 mb-3">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-700/50 pb-2 mb-3 gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm text-dashboard-text-secondary font-bold pl-1">
                 連線組合清單 (點擊自動套用 RNG 盤面)
               </span>
@@ -675,7 +675,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
         </div>
 
         <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-3 rounded-lg border border-gray-700/50 shadow-inner gap-3">
-          <div className="flex justify-between items-start border-b border-gray-700/50 pb-3">
+          <div className="flex flex-col sm:flex-row justify-between items-start border-b border-gray-700/50 pb-3 gap-3">
             <div className="flex flex-col gap-2 shrink-0 min-w-[200px]">
               <span className="text-sm text-dashboard-text-secondary font-bold pl-1">Reel Settings (單一連線測試)</span>
               <input

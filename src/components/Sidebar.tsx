@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Play, FileBox, Calculator, FileCheck2, Menu, Link as LinkIcon } from 'lucide-react';
+import { Home, Play, FileBox, Calculator, FileCheck2, Menu, Link as LinkIcon, FileSpreadsheet } from 'lucide-react';
 import { useGameStore } from '../store/useGameStore';
 import { useMachineStore } from '../store/useMachineStore';
 import type { GameType } from '../types';
@@ -91,6 +91,8 @@ export const Sidebar: React.FC = () => {
 
         {menuSection('小工具 (Tools)', [
           { name: 'JIRA 出測 BUG 備註工具', icon: <LinkIcon size={16} />, action: () => useMachineStore.getState().setActiveModalTool('jira') },
+          { name: '測試腳本暫存庫', icon: <FileBox size={16} />, action: () => useMachineStore.getState().setActiveModalTool('snippet') },
+          { name: 'Jira CSV 報表轉換器', icon: <FileSpreadsheet size={16} />, action: () => useMachineStore.getState().setActiveModalTool('jiraReport') },
           { name: 'RTP 計算機 (待開發)', icon: <Calculator size={16} />, disabled: true },
           { name: 'RNG 腳本驗證 (待開發)', icon: <FileCheck2 size={16} />, disabled: true },
         ])}

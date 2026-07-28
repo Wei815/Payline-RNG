@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Trash2, RotateCcw } from 'lucide-react';
 import type { GameType, PaytableRule, GameConfig } from '../../types';
+import { useGameStore, extractSpecialConfigFromGrid } from '../../store/useGameStore';
 import { evaluateGrid } from '../../utils/evaluation';
 import { formatAmount } from '../../utils/formatters';
 import { calculateSVGPaths } from '../../utils/svgPaths';
@@ -8,7 +9,7 @@ import { getWinningPositions } from '../../utils/evaluation';
 import type { SVGPathResult } from '../../utils/svgPaths';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
 import { SlotGridDisplay } from '../SlotGridDisplay';
-import { useGameStore } from '../../store/useGameStore';
+import { useSnippetStore } from '../../store/useSnippetStore';
 
 export interface SlotCustomGridTabProps {
   reelCount: number;
@@ -27,9 +28,13 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const [linePaths, setLinePaths] = useState<SVGPathResult[]>([]);
   const [isGoldFrameMode, setIsGoldFrameMode] = useState(false);
-  const [goldFrames, setGoldFrames] = useState<Record<string, number>>({});
+  const goldFrames = useGameStore(state => state.goldFrames);
+  const setGoldFrames = useGameStore(state => state.setGoldFrames);
   const [isJackpotMode, setIsJackpotMode] = useState(false);
-  const [jackpots, setJackpots] = useState<Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>>({});
+  const jackpots = useGameStore(state => state.jackpots);
+  const setJackpots = useGameStore(state => state.setJackpots);
+  const specialSymbolConfig = useGameStore(state => state.specialSymbolConfig);
+  const setSpecialSymbolConfig = useGameStore(state => state.setSpecialSymbolConfig);
   const [selectedJackpot, setSelectedJackpot] = useState<'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>('MINI');
   const gridSymbols = useGameStore(state => state.customGridData);
   const setGridSymbols = useGameStore(state => state.setCustomGridData);
@@ -39,6 +44,18 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   const [selectedPaletteSymbol, setSelectedPaletteSymbol] = useState<string | null>(null);
 
   const [rngInput, setRngInput] = useState('');
+  const [classIdInput, setClassIdInput] = useState('');
+  
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [promptTitle, setPromptTitle] = useState('');
+
+  const customGridData = useGameStore(state => state.customGridData);
+  
+  useEffect(() => {
+    if (customGridData && customGridData.length > 0 && customGridData[0].length > 0) {
+      setGridSymbols(customGridData);
+    }
+  }, [customGridData]);
 
   // --- Compute ---
   // MathID reverse lookup for base RNG generation
@@ -373,24 +390,68 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   };
 
   const handleLoadRng = () => {
-    const match = rngInput.match(/-?\d+/g);
-    if (!match) return;
-    const ids = match.map(s => parseInt(s, 10));
+    const matchRng = rngInput.match(/-?\d+/g);
+    if (!matchRng) return;
+    const ids = matchRng.map(s => parseInt(s, 10));
     if (ids.length === 0) return;
     
+    const matchClass = classIdInput.match(/-?\d+/g);
+    const classIds = matchClass ? matchClass.map(s => parseInt(s, 10)) : [];
+    
+    const isCoordinateClassId = gameType === 'linegame_set2' || gameType === 'linegame';
+    const newGoldFrames: Record<string, number> = {};
+    const newJackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'> = {};
+
+    if (isCoordinateClassId && classIds.length > 0) {
+      const poolIndexToMultiplier: Record<number, number> = {
+        0: 2, 1: 3, 2: 4, 3: 5, 4: 6, 5: 7, 6: 8, 7: 9, 8: 10, 9: 25, 10: 50, 11: 100
+      };
+      const idToType: Record<number, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'> = {
+        12: 'MINI', 13: 'MAJOR', 14: 'MEGA', 15: 'MAXWIN'
+      };
+
+      for (let i = 0; i < classIds.length; i += 3) {
+        const c = classIds[i];
+        const r = classIds[i+1];
+        const v = classIds[i+2];
+        if (v !== undefined) {
+          const key = `${c}-${r}`;
+          if (v >= 0 && v <= 11) {
+            newGoldFrames[key] = poolIndexToMultiplier[v];
+          } else if (v >= 12 && v <= 15) {
+            newJackpots[key] = idToType[v];
+          }
+        }
+      }
+      setGoldFrames(newGoldFrames);
+      setJackpots(newJackpots);
+    }
+
     let idIndex = 0;
+    let classIndex = 0;
     const newGrid = gridSymbols.map((col) => 
       col.map((cell) => {
         if (idIndex < ids.length) {
           const val = ids[idIndex++];
-          const sym = mathIdToSymbol[val];
+          let sym = mathIdToSymbol[val];
+          if (sym && !isCoordinateClassId && sym.match(/^[F|L][1-4]/)) {
+            const mult = classIds[classIndex++];
+            if (mult !== undefined) {
+              sym = `${sym}_${mult}X`;
+            }
+          }
           return sym ? sym : '-';
         }
         return cell;
       })
     );
+    
+    const newSpecialConfig = extractSpecialConfigFromGrid(newGrid, specialSymbolConfig, gameType);
+    setSpecialSymbolConfig(newSpecialConfig);
+    
     setGridSymbols(newGrid);
     setRngInput(''); // Clear input after load
+    setClassIdInput('');
   };
 
   const handleReset = () => {
@@ -535,13 +596,23 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
           <div className="flex items-center gap-2 flex-wrap">
             <input
               type="text"
-              placeholder="貼上 RNG 陣列 (如 12, 15, ...)"
+              placeholder="貼上 RNG 陣列"
               value={rngInput}
               onChange={(e) => setRngInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleLoadRng();
               }}
-              className="bg-[#112240] border border-gray-600 text-white text-xs px-2 py-1 rounded w-36 sm:w-48 focus:border-dashboard-accent outline-none font-mono"
+              className="bg-[#112240] border border-gray-600 text-white text-xs px-2 py-1 rounded w-32 sm:w-40 focus:border-dashboard-accent outline-none font-mono"
+            />
+            <input
+              type="text"
+              placeholder="貼上 ClassID 陣列"
+              value={classIdInput}
+              onChange={(e) => setClassIdInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleLoadRng();
+              }}
+              className="bg-[#112240] border border-gray-600 text-white text-xs px-2 py-1 rounded w-32 sm:w-40 focus:border-dashboard-accent outline-none font-mono"
             />
             <button
                onClick={handleLoadRng}
@@ -698,6 +769,17 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
                )}
             </button>
           )}
+
+          {/* Save to Snippet Button */}
+          <button
+            onClick={() => {
+              setShowPrompt(true);
+              setPromptTitle('');
+            }}
+            className="w-full flex items-center justify-center gap-2 bg-[#1a365d] border border-blue-500/50 hover:border-blue-400 hover:bg-[#2a4365] rounded p-2.5 cursor-pointer transition-all mt-2"
+          >
+            <span className="text-blue-300 text-sm font-bold">💾 儲存至測試腳本庫</span>
+          </button>
         </div>
 
         <div className="mt-2 pt-4 border-t border-gray-700/50 flex flex-col gap-2">
@@ -751,6 +833,124 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
         </div>
 
       </div>
+      {/* Custom Prompt Modal */}
+      {showPrompt && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0a192f] border border-gray-700 w-full max-w-sm rounded-lg p-5 shadow-2xl">
+            <h3 className="text-dashboard-text-primary font-bold mb-4">請輸入測試腳本名稱 (Title):</h3>
+            <input 
+              type="text" 
+              autoFocus
+              value={promptTitle}
+              onChange={e => setPromptTitle(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  if (promptTitle.trim() === '') return;
+                  setShowPrompt(false);
+                  
+                  let rngData: number[][] = [];
+                  let classIdData: number[][] = [];
+                  let luckySelectData: number[][] = [];
+                  let selectionData: number[][] = [];
+    
+                  try {
+                    if (baseRngStr) {
+                      let r = baseRngStr.replace(/,$/, '');
+                      rngData = [JSON.parse(r)];
+                    }
+                  } catch (e) {
+                    console.error("Failed to parse RNG", e);
+                  }
+    
+                  try {
+                    const classStr = multiplierClassIdStr || combinedClassIdStr;
+                    if (classStr) {
+                      let c = classStr.replace(/,$/, '');
+                      classIdData = [JSON.parse(c)];
+                    }
+                  } catch (e) {
+                    console.error("Failed to parse ClassID", e);
+                  }
+    
+                  useSnippetStore.getState().addSnippet({
+                    id: Date.now().toString(),
+                    title: promptTitle.trim(),
+                    gameType,
+                    projectName: useGameStore.getState().projectName,
+                    qaData: {
+                      QA: [
+                        {
+                          RNGs: rngData,
+                          ClassIDs: classIdData,
+                          LuckySelects: luckySelectData,
+                          Selection: selectionData
+                        }
+                      ]
+                    },
+                    createdAt: Date.now()
+                  });
+                }
+              }}
+              className="w-full bg-[#112240] border border-gray-600 rounded px-3 py-2 text-white outline-none focus:border-dashboard-accent mb-4"
+            />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setShowPrompt(false)} className="px-3 py-1.5 rounded text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">取消</button>
+              <button 
+                onClick={() => {
+                  if (promptTitle.trim() === '') return;
+                  setShowPrompt(false);
+                  
+                  let rngData: number[][] = [];
+                  let classIdData: number[][] = [];
+                  let luckySelectData: number[][] = [];
+                  let selectionData: number[][] = [];
+    
+                  try {
+                    if (baseRngStr) {
+                      let r = baseRngStr.replace(/,$/, '');
+                      rngData = [JSON.parse(r)];
+                    }
+                  } catch (e) {
+                    console.error("Failed to parse RNG", e);
+                  }
+    
+                  try {
+                    const classStr = multiplierClassIdStr || combinedClassIdStr;
+                    if (classStr) {
+                      let c = classStr.replace(/,$/, '');
+                      classIdData = [JSON.parse(c)];
+                    }
+                  } catch (e) {
+                    console.error("Failed to parse ClassID", e);
+                  }
+    
+                  useSnippetStore.getState().addSnippet({
+                    id: Date.now().toString(),
+                    title: promptTitle.trim(),
+                    gameType,
+                    projectName: useGameStore.getState().projectName,
+                    qaData: {
+                      QA: [
+                        {
+                          RNGs: rngData,
+                          ClassIDs: classIdData,
+                          LuckySelects: luckySelectData,
+                          Selection: selectionData
+                        }
+                      ]
+                    },
+                    createdAt: Date.now()
+                  });
+                }} 
+                disabled={!promptTitle.trim()}
+                className="px-3 py-1.5 rounded text-sm bg-dashboard-accent text-[#0a192f] font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                確定
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

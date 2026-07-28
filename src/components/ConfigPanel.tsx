@@ -212,12 +212,35 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
     }
   }, [gridData, paytableMap, uniqueSymbols, reelCount, setCurrentStrips, setCurrentPaytable]);
 
+  // Robust snippet loading: wait until currentPaytable is populated
+  const pendingSnippet = useGameStore(state => state.pendingSnippet);
+  const setPendingSnippet = useGameStore(state => state.setPendingSnippet);
+  const currentPaytable = useGameStore(state => state.currentPaytable);
+  const applySnippet = useGameStore(state => state.applySnippet);
+
+  useEffect(() => {
+    if (pendingSnippet && currentPaytable && currentPaytable.length > 0) {
+      const storeProject = useGameStore.getState().projectName;
+      const targetProject = pendingSnippet.projectName || pendingSnippet.gameType;
+      
+      if (storeProject && targetProject && storeProject !== targetProject) {
+        return;
+      }
+
+      applySnippet(pendingSnippet);
+      setPendingSnippet(null);
+    }
+  }, [pendingSnippet, currentPaytable, applySnippet, setPendingSnippet]);
+
   const loadTemplateTrigger = useMachineStore(state => state.loadTemplateTrigger);
   const setLoadTemplateTrigger = useMachineStore(state => state.setLoadTemplateTrigger);
   const uploadedTemplateFile = useMachineStore(state => state.uploadedTemplateFile);
   const setUploadedTemplateFile = useMachineStore(state => state.setUploadedTemplateFile);
 
   const handleLoadDefaults = async (overrideTemplate?: string | React.MouseEvent) => {
+    setIsProjectLoaded(false);
+    useGameStore.getState().setCurrentPaytable([]);
+    
     const targetTemplate = typeof overrideTemplate === 'string' ? overrideTemplate : selectedTemplate;
     if (targetTemplate === '預設泛用') {
       handlePasteText(defaultExcelStripsString, reelCount);
@@ -227,6 +250,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
       onPaylinesChange(defaultPaylines);
       setError(null);
       setIsProjectLoaded(true);
+      useGameStore.getState().setProjectName('預設泛用');
     } else {
       try {
         const url = templateFiles[targetTemplate] || targetTemplate;
@@ -286,6 +310,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
         }
         setError(null);
         setIsProjectLoaded(true);
+        useGameStore.getState().setProjectName(filename.replace('.xlsx', ''));
       } catch (err) {
         setError('載入範本失敗: ' + (err as Error).message);
       }
@@ -674,6 +699,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
                 
+                useGameStore.getState().setCurrentPaytable([]);
                 try {
                   const { parseExcelData } = await import('../utils/excelParser');
                   const parsed = await parseExcelData(file);
@@ -705,6 +731,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
                   }
                   
                   setError(null);
+                  setIsProjectLoaded(true);
+                  useGameStore.getState().setProjectName(file.name.replace(/\.[^/.]+$/, ""));
                 } catch (err) {
                   setError('Failed to parse Excel file: ' + (err as Error).message);
                 }

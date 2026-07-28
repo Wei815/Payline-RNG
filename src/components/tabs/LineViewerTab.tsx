@@ -169,7 +169,7 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
   return (
     <>
       <div className="flex-1 flex flex-col gap-6">
-        <div className="flex justify-between items-center bg-[#0a192f] p-4 rounded-lg border border-gray-700/50">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-[#0a192f] p-4 rounded-lg border border-gray-700/50">
           <div className="flex flex-col gap-2.5">
             <span className="text-sm text-dashboard-text-secondary font-bold">自訂線路展示樣式</span>
             <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">

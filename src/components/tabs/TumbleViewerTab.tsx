@@ -52,6 +52,8 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
   const [remainingLuckySelects, setRemainingLuckySelects] = useState<number[]>([]); // 剩餘的 LuckySelects
   const [currentGridIds, setCurrentGridIds] = useState<string[][]>([]); // 目前盤面的 MathID 陣列 (包含倍數如 "15_2X")
   
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
   const [accumulatedWin, setAccumulatedWin] = useState<number>(0);
   const [tumbleCount, setTumbleCount] = useState<number>(0);
 
@@ -73,7 +75,8 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
                                    .filter(n => !isNaN(n));
 
     if (ids.length < totalCells) {
-      alert(`請至少輸入 ${totalCells} 個數字來填滿盤面！目前只有 ${ids.length} 個。`);
+      setToastMessage(`請至少輸入 ${totalCells} 個數字來填滿盤面！目前只有 ${ids.length} 個。`);
+      setTimeout(() => setToastMessage(null), 3000);
       return;
     }
 
@@ -208,7 +211,8 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
     }
 
     if (sequenceDepleted) {
-      alert("補位數字用盡！已補上 0 (未知符號)。請準備更長的輸入陣列。");
+      setToastMessage("補位數字用盡！已補上 0 (未知符號)。請準備更長的輸入陣列。");
+      setTimeout(() => setToastMessage(null), 3000);
     }
 
     setCurrentGridIds(newGridIds);
@@ -409,6 +413,15 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
         </div>
       </div>
 
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 fade-in duration-300">
+          <div className="bg-red-900/90 border border-red-500/50 text-red-100 px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 backdrop-blur-md">
+            <span className="text-xl">⚠️</span>
+            <span className="font-bold">{toastMessage}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

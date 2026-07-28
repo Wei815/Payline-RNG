@@ -7,6 +7,8 @@ import { BarChart3, X } from 'lucide-react';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { Sidebar } from './components/Sidebar';
 import { JiraLinkGenerator } from './components/tools/JiraLinkGenerator';
+import { SnippetLibrary } from './components/tools/SnippetLibrary';
+import { JiraReportGenerator } from './components/tools/JiraReportGenerator';
 import type { GameConfig, GameType } from './types';
 import { useMachineStore } from './store/useMachineStore';
 import { useGameStore } from './store/useGameStore';
@@ -157,6 +159,12 @@ function App() {
       {/* Tools Modals */}
       {activeModalTool === 'jira' && (
         <JiraLinkGenerator onClose={() => setActiveModalTool(null)} />
+      )}
+      {activeModalTool === 'snippet' && (
+        <SnippetLibrary onClose={() => setActiveModalTool(null)} />
+      )}
+      {activeModalTool === 'jiraReport' && (
+        <JiraReportGenerator onClose={() => setActiveModalTool(null)} />
       )}
     </div>
   );

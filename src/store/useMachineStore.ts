@@ -16,6 +16,10 @@ export interface MachineState {
   setLoadTemplateTrigger: (trigger: string | null) => void;
   setUploadedTemplateFile: (file: File | null) => void;
   setActiveModalTool: (tool: string | null) => void;
+  jiraReportData: string[][] | null;
+  jiraReportFileName: string | null;
+  setJiraReportData: (data: string[][] | null) => void;
+  setJiraReportFileName: (name: string | null) => void;
 }
 
 export const useMachineStore = create<MachineState>((set) => ({
@@ -33,4 +37,8 @@ export const useMachineStore = create<MachineState>((set) => ({
   setLoadTemplateTrigger: (trigger) => set({ loadTemplateTrigger: trigger }),
   setUploadedTemplateFile: (file) => set({ uploadedTemplateFile: file }),
   setActiveModalTool: (tool) => set({ activeModalTool: tool }),
+  jiraReportData: null,
+  jiraReportFileName: null,
+  setJiraReportData: (data) => set({ jiraReportData: data }),
+  setJiraReportFileName: (name) => set({ jiraReportFileName: name }),
 }));
