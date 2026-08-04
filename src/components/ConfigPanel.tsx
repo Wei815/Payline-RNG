@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Play, Database, Table, Edit3, X } from 'lucide-react';
+import { Database, Table, Edit3, X } from 'lucide-react';
 import type { ReelStrips, PaytableRule, GameType } from '../types';
 import { defaultPaytable, defaultExcelStripsString } from '../mocks/defaultData';
 import { defaultPaylines } from '../utils/evaluation';
@@ -15,10 +15,10 @@ const getTemplateName = (path: string) => {
 };
 
 interface ConfigPanelProps {
-  onTestSpin: (strips: ReelStrips, paytable: PaytableRule[], totalSpins?: number, rowCounts?: number[], paylines?: number[][], isFreeGame?: boolean) => void;
+  onTestSpin?: (strips: ReelStrips, paytable: PaytableRule[], totalSpins?: number, rowCounts?: number[], paylines?: number[][], isFreeGame?: boolean) => void;
 }
 
-export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
+export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
   const isRunning = useMachineStore(state => state.isRunning);
   const coin = useMachineStore(state => state.coin);
   const setCoin = useMachineStore(state => state.setCoin);
@@ -29,7 +29,6 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
 
   const reelCount = useGameStore(state => state.reelCount);
   const setReelCount = useGameStore(state => state.setReelCount);
-  const rowCounts = useGameStore(state => state.rowCounts);
   const setRowCounts = useGameStore(state => state.setRowCounts);
   const customPaylines = useGameStore(state => state.customPaylines);
   const setCustomPaylines = useGameStore(state => state.setCustomPaylines);
@@ -510,6 +509,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
     }));
   };
 
+  /* 暫時隱藏單次試轉功能 (待後續開發開放)
   const handleTestSpin = () => {
     try {
       setError(null);
@@ -531,11 +531,14 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
 
       const finalPaytable = uniqueSymbols.map(sym => paytableMap[sym]).filter(r => r && r.isEnabled !== false);
 
-      onTestSpin(parsedStrips, finalPaytable, 50, rowCounts, customPaylines, activeStripTab === 'free');
+      if (onTestSpin) {
+        onTestSpin(parsedStrips, finalPaytable, 50, rowCounts, customPaylines, activeStripTab === 'free');
+      }
     } catch (e: any) {
       setError('執行錯誤：' + e.message);
     }
   };
+  */
 
   const renderRowGroup = (
     bases: string[],
@@ -1058,6 +1061,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
         </div>
       )}
 
+      {/* 暫時隱藏單次試轉功能 (待後續開發開放)
       <button
         onClick={handleTestSpin}
         disabled={isRunning || (isGridEmpty && gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2')}
@@ -1077,6 +1081,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({ onTestSpin }) => {
           </>
         )}
       </button>
+      */}
 
       {/* Paytable Editor Modal */}
       {isModalOpen && (

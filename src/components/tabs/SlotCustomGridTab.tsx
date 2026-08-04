@@ -19,20 +19,21 @@ export interface SlotCustomGridTabProps {
   gameType: GameType;
   betMultiplier: number;
   customPaylines?: number[][];
+  bet: number;
 }
 
 export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
-  reelCount, rowCounts, currentPaytable, groupedSymbols, gameType, betMultiplier, customPaylines
+  reelCount, rowCounts, currentPaytable, groupedSymbols, gameType, betMultiplier, customPaylines, bet
 }) => {
   // --- States ---
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const [linePaths, setLinePaths] = useState<SVGPathResult[]>([]);
   const [isGoldFrameMode, setIsGoldFrameMode] = useState(false);
-  const goldFrames = useGameStore(state => state.goldFrames);
-  const setGoldFrames = useGameStore(state => state.setGoldFrames);
+  const goldFrames = useGameStore(state => state.customGridGoldFrames);
+  const setGoldFrames = useGameStore(state => state.setCustomGridGoldFrames);
   const [isJackpotMode, setIsJackpotMode] = useState(false);
-  const jackpots = useGameStore(state => state.jackpots);
-  const setJackpots = useGameStore(state => state.setJackpots);
+  const jackpots = useGameStore(state => state.customGridJackpots);
+  const setJackpots = useGameStore(state => state.setCustomGridJackpots);
   const specialSymbolConfig = useGameStore(state => state.specialSymbolConfig);
   const setSpecialSymbolConfig = useGameStore(state => state.setSpecialSymbolConfig);
   const [selectedJackpot, setSelectedJackpot] = useState<'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>('MINI');
@@ -86,19 +87,20 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   }, [currentPaytable]);
 
   // Evaluate the grid
-  const { wins, winningCoords } = useMemo(() => {
+  const { wins, winningCoords, effectiveBet } = useMemo(() => {
+    const effectiveBetValue = bet; // Use the actual total bet
     const config: GameConfig = {
       gameType,
       paylines: customPaylines || [],
-      effectiveBet: betMultiplier * 30, // Rough assumption for config
+      effectiveBet: effectiveBetValue,
       goldFrames,
       jackpots,
       specialRules: { derivativeSymbols: { 'B1': ['B2'] } }
     };
     const wins = evaluateGrid(gridSymbols, currentPaytable, config, undefined, true);
     const winningCoords = getWinningPositions(gridSymbols, wins, currentPaytable, gameType, undefined, customPaylines);
-    return { wins, winningCoords };
-  }, [gridSymbols, currentPaytable, gameType, customPaylines, betMultiplier]);
+    return { wins, winningCoords, effectiveBet: effectiveBetValue };
+  }, [gridSymbols, currentPaytable, gameType, customPaylines, betMultiplier, goldFrames, jackpots, bet]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -352,9 +354,10 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   };
 
   const handleCellClick = (colIndex: number, rowIndex: number) => {
+    const key = `${colIndex}-${rowIndex}`;
+    
     if (isGoldFrameMode) {
       setGoldFrames(prev => {
-        const key = `${colIndex}-${rowIndex}`;
         const next = { ...prev };
         if (next[key] === selectedMultiplier) {
           delete next[key];
@@ -363,18 +366,31 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
         }
         return next;
       });
+      // Remove jackpot at the same cell to prevent overlap
+      setJackpots(prev => {
+        if (!prev[key]) return prev;
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
       return;
     }
     
     if (isJackpotMode) {
       setJackpots(prev => {
-        const key = `${colIndex}-${rowIndex}`;
         const next = { ...prev };
         if (next[key] === selectedJackpot) {
           delete next[key];
         } else {
           next[key] = selectedJackpot;
         }
+        return next;
+      });
+      // Remove gold frame at the same cell to prevent overlap
+      setGoldFrames(prev => {
+        if (!prev[key]) return prev;
+        const next = { ...prev };
+        delete next[key];
         return next;
       });
       return;
@@ -499,7 +515,14 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
             </select>
 
             <button
-              onClick={() => setIsGoldFrameMode(!isGoldFrameMode)}
+              onClick={() => {
+                const next = !isGoldFrameMode;
+                if (next && gameType === 'linegame_set2') {
+                  setIsJackpotMode(false);
+                  setSelectedPaletteSymbol(null);
+                }
+                setIsGoldFrameMode(next);
+              }}
               className={`w-full py-1.5 px-2 rounded text-xs font-bold transition-all border flex justify-center items-center gap-1 ${
                 isGoldFrameMode 
                   ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500 ring-1 ring-yellow-400' 
@@ -521,7 +544,14 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
               <option value="MAXWIN">MAXWIN (20000x)</option>
             </select>
             <button
-              onClick={() => setIsJackpotMode(!isJackpotMode)}
+              onClick={() => {
+                const next = !isJackpotMode;
+                if (next && gameType === 'linegame_set2') {
+                  setIsGoldFrameMode(false);
+                  setSelectedPaletteSymbol(null);
+                }
+                setIsJackpotMode(next);
+              }}
               className={`w-full py-1.5 px-2 rounded text-xs font-bold transition-all border flex justify-center items-center gap-1 ${
                 isJackpotMode 
                   ? 'bg-red-500/20 text-red-400 border-red-500 ring-1 ring-red-400' 
@@ -567,7 +597,14 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
                 <div
                   key={symId}
                   draggable
-                  onClick={() => setSelectedPaletteSymbol(prev => prev === symId ? null : symId)}
+                  onClick={() => {
+                    const next = selectedPaletteSymbol === symId ? null : symId;
+                    if (next !== null && gameType === 'linegame_set2') {
+                      setIsGoldFrameMode(false);
+                      setIsJackpotMode(false);
+                    }
+                    setSelectedPaletteSymbol(next);
+                  }}
                   onDragStart={(e) => handleDragStart(e, symId, true)}
                   className={`
                     w-12 h-12 rounded flex items-center justify-center font-bold text-sm cursor-pointer shadow-md transition-all active:scale-95
@@ -787,10 +824,10 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
           {wins.length > 0 ? wins.filter(w => w.totalWin > 0 || w.matchCount > 0).map((w, idx) => (
             <div key={idx} className="flex flex-col px-3 py-2 bg-[#112240] rounded border border-dashboard-accent/30">
               <span className="text-xs font-mono font-bold text-yellow-400">
-                {w.symbolId} 連線 {w.matchCount}
+                {w.symbolId} {w.matchCount > 0 && `連線 ${w.matchCount}`}
               </span>
               <span className="text-[10px] font-mono text-gray-300 mt-0.5">
-                payout: {w.payout} = <span className="font-bold text-dashboard-accent">{formatAmount(w.totalWin * betMultiplier)}</span>
+                {w.isJackpot ? `${w.ways} × ${w.payout} × ${effectiveBet}` : `payout: ${w.payout}${w.multiplier ? ` × ${w.multiplier}` : ''}`} = <span className="font-bold text-dashboard-accent">{formatAmount(w.isJackpot ? w.totalWin : w.totalWin * betMultiplier)}</span>
               </span>
             </div>
           )) : (
@@ -808,7 +845,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
               });
             });
             const finalMultiplier = globalMultiplier > 0 ? globalMultiplier : 1;
-            const baseTotalWin = wins.reduce((sum, w) => sum + w.totalWin, 0) * betMultiplier;
+            const baseTotalWin = wins.reduce((sum, w) => sum + (w.isJackpot ? w.totalWin : w.totalWin * betMultiplier), 0);
             const grandTotalWin = baseTotalWin * finalMultiplier;
             
             return (

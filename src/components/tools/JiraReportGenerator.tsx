@@ -371,7 +371,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
               </div>
             </div>
             {/* Visual Table Preview */}
-            <div className="w-full flex-1 min-h-[400px] bg-white border border-gray-700 rounded-lg p-1 overflow-auto">
+            <div className={`w-full flex-1 min-h-[400px] border rounded-lg overflow-auto ${jiraReportData && jiraReportData.length > 0 ? 'bg-white border-gray-700 p-1' : 'bg-[#0a192f]/50 border-gray-700 border-dashed flex flex-col items-center justify-center p-8'}`}>
               {jiraReportData && jiraReportData.length > 0 ? (
                 <table className="w-full text-black border-collapse border border-gray-300">
                   <thead className="bg-gray-100">
@@ -403,9 +403,11 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                   </tbody>
                 </table>
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm bg-[#0a192f] rounded-lg">
-                  轉換結果將顯示於此...
-                </div>
+                <>
+                  <div className="text-5xl mb-4 opacity-40">📊</div>
+                  <div className="text-gray-400 text-lg font-bold mb-2 tracking-wider">尚未上傳任何資料</div>
+                  <div className="text-gray-500 text-sm">請點選左上方「上傳 Jira CSV」按鈕匯入您的報表</div>
+                </>
               )}
             </div>
           </div>
@@ -415,43 +417,47 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
       {/* MR Modal */}
       {showMrModal && (
         <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
-          <div className="bg-[#0a192f] w-full max-w-4xl min-h-[600px] rounded-xl shadow-2xl border border-purple-500/50 flex flex-col overflow-hidden max-h-[85vh]">
+          <div className="bg-[#0a192f] w-full max-w-6xl min-h-[700px] rounded-xl shadow-2xl border border-purple-500/50 flex flex-col overflow-hidden max-h-[90vh]">
             <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-[#112240]">
               <h2 className="text-lg font-bold text-purple-300">產生 MR 表單</h2>
               <button onClick={() => setShowMrModal(false)} className="p-2 hover:bg-white/10 rounded-lg text-gray-400">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-5 flex-1 overflow-hidden flex gap-6">
-              <div className="w-2/5 flex flex-col gap-3 border-r border-gray-700 pr-4 h-full">
-                <div className="flex justify-between items-center">
+            <div className="p-6 h-[600px] flex gap-8">
+              <div className="w-2/5 flex flex-col gap-4 border-r border-gray-700 pr-6 h-full overflow-hidden">
+                <div className="flex justify-between items-center shrink-0">
                   <span className="text-white font-bold">選擇專案</span>
                   <div className="flex gap-2">
                     <button className="text-xs bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 px-2 py-1 rounded transition-colors" onClick={() => setMrSelectedProjects((jiraReportData || []).filter(r => r.slice(1).some(c => c !== '')).map(r => r[0]))}>全選</button>
                     <button className="text-xs bg-gray-500/20 hover:bg-gray-500/40 text-gray-300 px-2 py-1 rounded transition-colors" onClick={() => setMrSelectedProjects([])}>全不選</button>
                   </div>
                 </div>
-                <div className="flex flex-col gap-2 overflow-y-auto flex-1 pr-2">
+                <div className="flex flex-col gap-2 overflow-y-auto flex-1 pr-2 min-h-0">
                   {(jiraReportData || []).filter(r => r.slice(1).some(c => c !== '')).map(row => (
-                    <label key={row[0]} className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer hover:text-white">
+                    <label key={row[0]} className="flex items-start gap-2 text-sm text-gray-300 cursor-pointer hover:text-white py-1">
                       <input type="checkbox" checked={mrSelectedProjects.includes(row[0])} onChange={(e) => {
                         if (e.target.checked) setMrSelectedProjects([...mrSelectedProjects, row[0]]);
                         else setMrSelectedProjects(mrSelectedProjects.filter(p => p !== row[0]));
-                      }} className="rounded bg-gray-800 border-gray-600 text-purple-500 focus:ring-purple-500" />
-                      {row[0].split('\n')[0]}
+                      }} className="rounded bg-gray-800 border-gray-600 text-purple-500 focus:ring-purple-500 mt-1" />
+                      <div className="flex flex-col">
+                        {row[0].split('\n').map((text, i) => (
+                          <span key={i} className={i === 1 ? "text-gray-400 text-xs mt-0.5" : ""}>{text}</span>
+                        ))}
+                      </div>
                     </label>
                   ))}
                 </div>
               </div>
-              <div className="w-3/5 flex flex-col gap-3 h-full">
-                <div className="flex justify-between items-center">
+              <div className="w-3/5 flex flex-col gap-4 h-full overflow-hidden">
+                <div className="flex justify-between items-center shrink-0">
                   <span className="text-white font-bold">預覽 MR 表單</span>
                   <button onClick={handleMrCopy} className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm font-bold rounded-lg transition-colors shadow-lg">
                     <Copy className="w-4 h-4" />
                     {mrCopySuccess ? '✅ 已複製' : '📋 複製內容'}
                   </button>
                 </div>
-                <div className="flex-1 w-full min-h-[450px] bg-[#050b14] text-sm p-4 rounded-lg border border-gray-700 overflow-y-auto font-mono">
+                <div className="flex-1 w-full min-h-0 bg-[#050b14] text-sm p-4 rounded-lg border border-gray-700 overflow-y-auto font-mono">
                   {mrSelectedProjects.map((proj) => {
                     const row = jiraReportData?.find(r => r[0] === proj);
                     if (!row) return null;

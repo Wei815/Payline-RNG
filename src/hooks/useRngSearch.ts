@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import type { PaytableRule, GameType } from "../types";
 import { findRngForCombination, findRngForCombos, findRngForMultiplierIntervals } from "../utils/rngSearch";
+import { evaluateGrid, defaultPaylines } from "../utils/evaluation";
 
 export function useRngSearch(
   selectedSymbol: string,
@@ -28,9 +29,13 @@ export function useRngSearch(
   >([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
 
+  const specialSymbolConfigStr = JSON.stringify(specialSymbolConfig);
+  const multiplierIntervalsStr = JSON.stringify(multiplierIntervals);
+
   useEffect(() => {
     if (!selectedSymbol) {
-      setTimeout(() => setCombinations([]), 0);
+      setCombinations([]);
+      setIsSearching(false);
       return;
     }
     if (
@@ -39,11 +44,16 @@ export function useRngSearch(
       (currentStrips.length === 0 ||
         currentStrips.every((s) => !s || s.length === 0))
     ) {
-      setTimeout(() => setCombinations([]), 0);
+      setCombinations([]);
+      setIsSearching(false);
       return;
     }
 
-    setTimeout(() => setIsSearching(true), 0);
+    const isInstantGenerator = gameType === "linegame_set2" || gameType === "payanywhere_set2";
+    if (!isInstantGenerator) {
+      setIsSearching(true);
+    }
+
     const timer = setTimeout(async () => {
       const newCombs: typeof combinations = [];
 
@@ -77,6 +87,242 @@ export function useRngSearch(
       }
 
       if (selectedSymbol === 'WIN_MULTIPLIER') {
+        if (!multiplierIntervals || multiplierIntervals.length === 0) {
+          setCombinations([]);
+          setIsSearching(false);
+          return;
+        }
+        if (gameType === 'linegame_set2') {
+          const mathIdMap: Record<string, string> = {};
+          currentPaytable.forEach((p) => {
+            if (p.mathId !== undefined) {
+              const ids = String(p.mathId)
+                .split(",")
+                .map((s) => s.trim());
+              mathIdMap[p.symbolId] = ids[0];
+            }
+          });
+
+          const excludeSymbols = [
+            "W", "W1", "W2", "WX", "WILD", "B1", "B2", "S1", "S2", "NI",
+            "F1", "F2", "F3", "F4", "L1", "L2",
+          ];
+          const nonScatters = currentPaytable
+            .filter(
+              (p) =>
+                p.isEnabled !== false &&
+                !p.isScatter &&
+                !excludeSymbols.includes(p.symbolId),
+            )
+            .map((p) => p.symbolId);
+
+          const linesToUse =
+            customPaylines && customPaylines.length > 0
+              ? customPaylines
+              : defaultPaylines;
+
+          const multiplierToPoolIndex: Record<number, number> = {
+            2: 0, 3: 1, 4: 2, 5: 3, 6: 4, 7: 5, 8: 6, 9: 7, 10: 8, 25: 9, 50: 10, 100: 11
+          };
+          const typeToId: Record<string, number> = { 'MINI': 12, 'MAJOR': 13, 'MEGA': 14, 'MAXWIN': 15 };
+
+          // Build possible single-row hit definitions
+          const possibleRowHits: { sym: string; len: number }[] = [{ sym: '', len: 0 }];
+          for (const sym of nonScatters) {
+            const rule = currentPaytable.find((p) => p.symbolId === sym);
+            if (!rule || !rule.payouts) continue;
+            for (let l = 3; l <= reelCount; l++) {
+              const pVal = Number(rule.payouts[`match${l}` as keyof typeof rule.payouts] || 0);
+              if (pVal > 0) {
+                possibleRowHits.push({ sym, len: l });
+              }
+            }
+          }
+
+          // Evaluate candidate grid
+          const evaluateCandidate = (
+            hit0: { sym: string; len: number },
+            hit1: { sym: string; len: number },
+            hit2: { sym: string; len: number },
+            goldFrames: Record<string, number> = {},
+            jackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'> = {}
+          ) => {
+            const grid: string[][] = Array.from({ length: reelCount }, (_, c) =>
+              Array(rowCounts[c] || 3).fill("-")
+            );
+            if (hit0.len > 0) {
+              for (let c = 0; c < hit0.len; c++) grid[c][0] = hit0.sym;
+            }
+            if (hit1.len > 0) {
+              for (let c = 0; c < hit1.len; c++) grid[c][1] = hit1.sym;
+            }
+            if (hit2.len > 0) {
+              for (let c = 0; c < hit2.len; c++) grid[c][2] = hit2.sym;
+            }
+
+            const dummyPool = nonScatters.filter(
+              (s) => s !== hit0.sym && s !== hit1.sym && s !== hit2.sym
+            );
+            let dIdx = 0;
+            for (let c = 0; c < reelCount; c++) {
+              for (let r = 0; r < (rowCounts[c] || 3); r++) {
+                if (grid[c][r] === "-") {
+                  grid[c][r] = dummyPool[dIdx % dummyPool.length] || "J";
+                  dIdx++;
+                }
+              }
+            }
+
+            const wins = evaluateGrid(grid, currentPaytable, {
+              gameType: "linegame_set2",
+              paylines: linesToUse,
+              effectiveBet: bet,
+              goldFrames,
+              jackpots,
+            });
+
+            const totalWin = wins.reduce((sum, w) => sum + w.totalWin, 0);
+            return { grid, totalWin, wins, goldFrames, jackpots };
+          };
+
+          for (const interval of multiplierIntervals) {
+            const isNearWin = interval.min === 0 || interval.name.includes('接近大獎');
+            const targetMin = interval.min * bet;
+            const targetMax = interval.max !== null ? interval.max * bet : Infinity;
+            const targetMid = interval.max !== null ? ((interval.min + interval.max) / 2) * bet : interval.min * 1.5 * bet;
+
+            let bestCandidate: ReturnType<typeof evaluateCandidate> | null = null;
+            let bestScore = -Infinity;
+
+            // Phase 1: Pure symbol search (multi-row combinations, no gold frames, no jackpots)
+            for (const hit1 of possibleRowHits) {
+              for (const hit0 of possibleRowHits) {
+                for (const hit2 of possibleRowHits) {
+                  if (hit1.len === 0 && hit0.len === 0 && hit2.len === 0) continue;
+                  const cand = evaluateCandidate(hit0, hit1, hit2);
+                  const ratio = cand.totalWin / bet;
+
+                  if (isNearWin) {
+                    // We want ratio < 10, maximized as close to 10 as possible
+                    if (cand.totalWin > 0 && ratio < 10) {
+                      if (ratio > bestScore) {
+                        bestScore = ratio;
+                        bestCandidate = cand;
+                      }
+                    }
+                  } else {
+                    if (cand.totalWin >= targetMin && cand.totalWin < targetMax) {
+                      const dist = -Math.abs(cand.totalWin - targetMid);
+                      if (dist > bestScore) {
+                        bestScore = dist;
+                        bestCandidate = cand;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+            // Phase 2: If no pure line candidate was found (e.g. for higher intervals like EPIC WIN or SUPER MEGA WIN)
+            if (!bestCandidate) {
+              const testFrames: Record<string, number>[] = [
+                {},
+                { '1-1': 2 },
+                { '1-1': 3 },
+                { '1-1': 5 },
+                { '1-1': 10 },
+              ];
+              const testJackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>[] = [
+                {},
+                { '2-1': 'MINI' },
+                { '2-1': 'MAJOR' },
+                { '2-1': 'MEGA' },
+              ];
+
+              for (const jpHolder of testJackpots) {
+                for (const gfHolder of testFrames) {
+                  if (Object.keys(jpHolder).length === 0 && Object.keys(gfHolder).length === 0) continue;
+
+                  for (const hit1 of possibleRowHits) {
+                    for (const hit0 of possibleRowHits) {
+                      if (hit1.len === 0 && hit0.len === 0) continue;
+                      const cand = evaluateCandidate(hit0, hit1, { sym: '', len: 0 }, gfHolder, jpHolder);
+                      const ratio = cand.totalWin / bet;
+
+                      if (isNearWin) {
+                        if (cand.totalWin > 0 && ratio < 10) {
+                          if (ratio > bestScore) {
+                            bestScore = ratio;
+                            bestCandidate = cand;
+                          }
+                        }
+                      } else {
+                        if (cand.totalWin >= targetMin && cand.totalWin < targetMax) {
+                          const dist = -Math.abs(cand.totalWin - targetMid);
+                          if (dist > bestScore) {
+                            bestScore = dist;
+                            bestCandidate = cand;
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+            // Fallback safety
+            if (!bestCandidate) {
+              bestCandidate = evaluateCandidate({ sym: '', len: 0 }, { sym: nonScatters[0] || 'M1', len: 3 }, { sym: '', len: 0 });
+            }
+
+            const fullMathIds: string[] = [];
+            const columnStrings: string[] = [];
+            for (let c = 0; c < reelCount; c++) {
+              const colArr: string[] = [];
+              for (let r = 0; r < (rowCounts[c] || 3); r++) {
+                const s = bestCandidate.grid[c][r];
+                const mathId = mathIdMap[s] || s;
+                fullMathIds.push(mathId);
+                colArr.push(mathId);
+              }
+              columnStrings.push(colArr.join(","));
+            }
+
+            const classArr: number[] = [];
+            Object.entries(bestCandidate.goldFrames).forEach(([key, val]) => {
+              const [col, row] = key.split('-').map(Number);
+              const poolIdx = multiplierToPoolIndex[val] ?? 0;
+              classArr.push(col, row, poolIdx);
+            });
+            Object.entries(bestCandidate.jackpots).forEach(([key, val]) => {
+              const [col, row] = key.split('-').map(Number);
+              classArr.push(col, row, typeToId[val]);
+            });
+            const classStr = classArr.length > 0 ? `[${classArr.join(', ')}]` : '';
+
+            const maxMatch = bestCandidate.wins.length > 0 ? Math.max(...bestCandidate.wins.map(w => w.matchCount)) : 3;
+
+            newCombs.push({
+              name: interval.name,
+              length: maxMatch,
+              wildCount: 0,
+              rng: columnStrings,
+              isInterfered: false,
+              hasS1Drop: false,
+              fullMathIds: fullMathIds,
+              goldFrames: bestCandidate.goldFrames,
+              jackpots: bestCandidate.jackpots,
+              clovers: {},
+              classStr: classStr,
+            } as any);
+          }
+
+          setCombinations(newCombs);
+          setIsSearching(false);
+          return;
+        }
+
         const results = await findRngForMultiplierIntervals(
           multiplierIntervals,
           bet,
@@ -573,6 +819,10 @@ export function useRngSearch(
                 rng: columnStrings,
                 isInterfered: false,
                 fullMathIds: fullMathIds,
+                goldFrames: {},
+                jackpots: {},
+                clovers: {},
+                classStr: '',
               } as any);
             }
           });
@@ -582,6 +832,13 @@ export function useRngSearch(
         const isSelScatter = currentPaytable.some(
           (p) => p.symbolId === selectedSymbol && p.isScatter,
         );
+        const searchTasks: {
+          name: string;
+          length: number;
+          wildCount: number;
+          promise: Promise<{ rng: number[] | null; isInterfered: boolean; hasS1Drop?: boolean }>;
+        }[] = [];
+
         for (let L = startLen; L <= reelCount; L++) {
           const maxWild = Math.min(1, L - 1);
           for (let W = 0; W <= maxWild; W++) {
@@ -597,30 +854,41 @@ export function useRngSearch(
                   ? `${selectedSymbol} * ${L} 連線`
                   : `${selectedSymbol} * ${L - W} + WX`;
             }
-            const { rng, isInterfered, hasS1Drop } = await findRngForCombination(
-              selectedSymbol,
-              L,
-              W,
-              currentStrips,
-              rowCounts,
-              currentPaytable,
-              reelCount,
-              gameType,
-              topTrackerOther,
-              customPaylines,
-              isFreeGame,
-            );
-
-            newCombs.push({
-              name: name,
+            searchTasks.push({
+              name,
               length: L,
               wildCount: W,
-              rng: rng,
-              isInterfered: isInterfered,
-              hasS1Drop: hasS1Drop,
+              promise: findRngForCombination(
+                selectedSymbol,
+                L,
+                W,
+                currentStrips,
+                rowCounts,
+                currentPaytable,
+                reelCount,
+                gameType,
+                topTrackerOther,
+                customPaylines,
+                isFreeGame,
+              ),
             });
           }
         }
+
+        const results = await Promise.all(searchTasks.map((t) => t.promise));
+        for (let i = 0; i < searchTasks.length; i++) {
+          const task = searchTasks[i];
+          const res = results[i];
+          newCombs.push({
+            name: task.name,
+            length: task.length,
+            wildCount: task.wildCount,
+            rng: res.rng,
+            isInterfered: res.isInterfered,
+            hasS1Drop: res.hasS1Drop,
+          });
+        }
+
         newCombs.sort((a, b) => {
           const getPriority = (c: (typeof combinations)[0]) => {
             if (!c.rng) return 2;
@@ -648,8 +916,11 @@ export function useRngSearch(
     currentPaytable,
     gameType,
     topTrackerOther,
-    specialSymbolConfig,
+    specialSymbolConfigStr,
     customPaylines,
+    multiplierIntervalsStr,
+    bet,
+    isFreeGame,
   ]);
 
   return { isSearching, combinations };

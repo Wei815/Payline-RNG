@@ -45,9 +45,8 @@ export class LineGameStrategy implements EvaluationStrategy {
           }
 
           let goldFrameMultipliers = 0;
-          let jackpotBonus = 0;
 
-          // Check gold frames and jackpots along the matched symbols
+          // Check gold frames along the matched symbols
           for (let c = 0; c < matchCount; c++) {
             const r = line[c];
             const posKey = `${c}-${r}`;
@@ -60,21 +59,12 @@ export class LineGameStrategy implements EvaluationStrategy {
               const num = parseInt(valStr.replace('X', ''), 10);
               if (!isNaN(num)) goldFrameMultipliers += num;
             }
-            if (gameConfig.jackpots && gameConfig.jackpots[posKey]) {
-              const jp = gameConfig.jackpots[posKey];
-              const bet = gameConfig.effectiveBet || 1;
-              if (jp === 'MINI') jackpotBonus += bet * 25;
-              else if (jp === 'MAJOR') jackpotBonus += bet * 100;
-              else if (jp === 'MEGA') jackpotBonus += bet * 500;
-              else if (jp === 'MAXWIN') jackpotBonus += bet * 20000;
-            }
           }
 
+          // 贏分線如果經過金框，贏分乘上倍數 (多個則倍數相加)
           if (goldFrameMultipliers > 0) {
             totalWin = totalWin * goldFrameMultipliers;
           }
-          
-          totalWin += jackpotBonus;
 
           results.push({
             symbolId: sym,
@@ -82,7 +72,8 @@ export class LineGameStrategy implements EvaluationStrategy {
             ways: 1,
             payout,
             totalWin,
-            lineIndex: lineIdx
+            lineIndex: lineIdx,
+            multiplier: goldFrameMultipliers > 0 ? goldFrameMultipliers : undefined
           });
         }
       }

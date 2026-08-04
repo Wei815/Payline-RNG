@@ -260,14 +260,10 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
         )}
         {activeTab === 'customGrid' && (
           <div className="w-full flex-1 flex flex-col min-h-0">
-            <SlotCustomGridTab
-              reelCount={reelCount}
-              rowCounts={rowCounts}
-              currentPaytable={currentPaytable}
-              groupedSymbols={groupedSymbols}
-              gameType={gameType}
-              betMultiplier={betMultiplier}
-              customPaylines={customPaylines}
+            <SlotCustomGridTab 
+              reelCount={reelCount} rowCounts={rowCounts} currentPaytable={currentPaytable}
+              groupedSymbols={groupedSymbols} gameType={gameType} betMultiplier={betMultiplier} customPaylines={customPaylines}
+              bet={bet}
             />
           </div>
         )}

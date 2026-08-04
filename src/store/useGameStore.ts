@@ -14,6 +14,9 @@ export interface GameState {
   jackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>;
   clovers: Record<string, boolean>;
   customGridData: string[][];
+  customGridGoldFrames: Record<string, number>;
+  customGridJackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>;
+  customGridClovers: Record<string, boolean>;
 
   manualIndices: string[];
   manualIndicesOther: string[];
@@ -36,6 +39,9 @@ export interface GameState {
   setJackpots: (jackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'> | ((prev: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>) => Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>)) => void;
   setClovers: (clovers: Record<string, boolean> | ((prev: Record<string, boolean>) => Record<string, boolean>)) => void;
   setCustomGridData: (grid: string[][] | ((prev: string[][]) => string[][])) => void;
+  setCustomGridGoldFrames: (frames: Record<string, number> | ((prev: Record<string, number>) => Record<string, number>)) => void;
+  setCustomGridJackpots: (jackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'> | ((prev: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>) => Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>)) => void;
+  setCustomGridClovers: (clovers: Record<string, boolean> | ((prev: Record<string, boolean>) => Record<string, boolean>)) => void;
   
   setManualIndices: (indices: string[]) => void;
   setManualIndicesOther: (indices: string[]) => void;
@@ -117,6 +123,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   jackpots: {},
   clovers: {},
   customGridData: [],
+  customGridGoldFrames: {},
+  customGridJackpots: {},
+  customGridClovers: {},
 
   manualIndices: ['1', '1', '1', '1', '1'],
   manualIndicesOther: Array(5).fill(''),
@@ -151,6 +160,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   })),
   setCustomGridData: (grid) => set((state) => ({
     customGridData: typeof grid === 'function' ? grid(state.customGridData) : grid
+  })),
+  setCustomGridGoldFrames: (frames) => set((state) => ({ customGridGoldFrames: typeof frames === 'function' ? frames(state.customGridGoldFrames) : frames })),
+  setCustomGridJackpots: (jackpots) => set((state) => ({
+    customGridJackpots: typeof jackpots === 'function' ? jackpots(state.customGridJackpots) : jackpots
+  })),
+  setCustomGridClovers: (clovers) => set((state) => ({
+    customGridClovers: typeof clovers === 'function' ? clovers(state.customGridClovers) : clovers
   })),
   
   setManualIndices: (indices) => set({ manualIndices: indices }),

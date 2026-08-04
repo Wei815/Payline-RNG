@@ -90,6 +90,7 @@ function App() {
             v1.0 Simulation Engine
           </span>
         </div>
+        {/* 暫時隱藏 RTP 測試報告按鈕 (待後續開發開放)
         <button 
           onClick={() => setIsMetricsOpen(true)}
           className="flex items-center gap-2 px-4 py-1.5 bg-[#112240] border border-dashboard-accent text-dashboard-accent rounded-lg hover:bg-dashboard-accent hover:text-[#0a192f] transition-all font-bold text-sm"
@@ -97,6 +98,7 @@ function App() {
           <BarChart3 size={16} />
           <span>RTP 測試報告</span>
         </button>
+        */}
         </div>
 
         {/* Main Grid Layout */}
