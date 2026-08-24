@@ -87,7 +87,10 @@ export function useRngSearch(
       }
 
       if (selectedSymbol === 'WIN_MULTIPLIER') {
-        if (!multiplierIntervals || multiplierIntervals.length === 0) {
+        const validIntervals = (multiplierIntervals || []).filter(
+          iv => iv.min >= 0 && (iv.max === null || (iv.max >= 0 && iv.max >= iv.min))
+        );
+        if (validIntervals.length === 0) {
           setCombinations([]);
           setIsSearching(false);
           return;
@@ -185,7 +188,7 @@ export function useRngSearch(
             return { grid, totalWin, wins, goldFrames, jackpots };
           };
 
-          for (const interval of multiplierIntervals) {
+          for (const interval of validIntervals) {
             const isNearWin = interval.min === 0 || interval.name.includes('接近大獎');
             const targetMin = interval.min * bet;
             const targetMax = interval.max !== null ? interval.max * bet : Infinity;

@@ -54,15 +54,15 @@ const statusMap: Record<string, string> = {
   '未解決問題': '未解決',
   '重啟問題': '未解決',
   '處理中': '未解決',
-  '待辦': '代辦',
+  '待辦': '待辦',
   '觀察中': '觀察中',
   '已解決': '後續安排進測(已解決)'
 };
 
-const COLUMNS = ['專案', '未解決', '代辦', '待優化', '觀察中', '後續安排進測(已解決)'];
+const COLUMNS = ['專案', '未解決', '待辦', '待優化', '觀察中', '後續安排進測(已解決)'];
 
 export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClose }) => {
-  const { jiraReportData = [], jiraReportFileName, setJiraReportData, setJiraReportFileName } = useMachineStore();
+  const { jiraReportData = [], jiraReportFileName, setJiraReportData, setJiraReportFileName, jiraIssuesByProject, setJiraIssuesByProject } = useMachineStore();
   const [copySuccess, setCopySuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   
@@ -71,11 +71,17 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
   const [mrSelectedProjects, setMrSelectedProjects] = useState<string[]>([]);
   const [mrCopySuccess, setMrCopySuccess] = useState(false);
   
+  // Project Details Modal states
+  const [selectedProjectDetails, setSelectedProjectDetails] = useState<string | null>(null);
+  const [reporterFilter, setReporterFilter] = useState('All');
+  const [assigneeFilter, setAssigneeFilter] = useState('All');
+  
   const handleConvert = (csvText: string) => {
     setCopySuccess(false);
     setErrorMsg('');
     if (!csvText.trim()) {
       setJiraReportData([]);
+      setJiraIssuesByProject(null);
       return;
     }
 
@@ -129,6 +135,10 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
       h.toLowerCase().includes('status') || h.includes('狀態')
     );
     
+    const summaryIndex = headers.findIndex(h => h.toLowerCase().includes('summary') || h.includes('摘要'));
+    const assigneeIndex = headers.findIndex(h => h.toLowerCase().includes('assignee') || h.includes('受託人'));
+    const reporterIndex = headers.findIndex(h => h.toLowerCase().includes('reporter') || h.includes('報告者') || h.includes('回報者'));
+    
     if (issueKeyIndex === -1 || statusIndex === -1) {
       setErrorMsg(`找不到必備欄位 (Issue key: ${issueKeyIndex !== -1 ? '✅' : '❌'}, Status: ${statusIndex !== -1 ? '✅' : '❌'})。請確認匯出的 CSV 是否包含這兩個欄位。`);
       return;
@@ -137,6 +147,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
     const dataLines = parsedLines.slice(1).filter(arr => arr.length > Math.max(issueKeyIndex, statusIndex));
     
     const group: Record<string, Record<string, string[]>> = {};
+    const issuesByProj: Record<string, any[]> = {};
 
     dataLines.forEach(row => {
       const issueKey = row[issueKeyIndex];
@@ -153,6 +164,16 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
       if (!group[projectName][mappedStatus]) group[projectName][mappedStatus] = [];
       
       group[projectName][mappedStatus].push(issueKey);
+
+      if (!issuesByProj[projectName]) issuesByProj[projectName] = [];
+      issuesByProj[projectName].push({
+        issueKey,
+        status: mappedStatus,
+        summary: summaryIndex !== -1 ? row[summaryIndex] : '',
+        assignee: assigneeIndex !== -1 ? row[assigneeIndex] : '',
+        reporter: reporterIndex !== -1 ? row[reporterIndex] : '',
+        projectName,
+      });
     });
 
     // Sort the issues from smallest to largest number
@@ -188,6 +209,17 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
     });
     
     setJiraReportData(finalRows);
+    
+    // Sort the detailed issues for the modal view from smallest to largest number
+    Object.keys(issuesByProj).forEach(proj => {
+      issuesByProj[proj].sort((a, b) => {
+        const numA = parseInt(a.issueKey.split('-')[1]) || 0;
+        const numB = parseInt(b.issueKey.split('-')[1]) || 0;
+        return numA - numB;
+      });
+    });
+    
+    setJiraIssuesByProject(issuesByProj);
   };
 
   const generateTableHtml = () => {
@@ -203,7 +235,12 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
     (jiraReportData || []).forEach(row => {
       html += '<tr>';
       row.forEach((cell, idx) => {
-        const cellContent = cell.replace(/\n/g, '<br/>');
+        let cellContent = cell.replace(/\n/g, '<br/>');
+        if (idx !== 0) {
+          // Replace Jira ticket IDs with hyperlinks (support alphanumeric project keys like RSGCCNY3)
+          cellContent = cellContent.replace(/([A-Z][A-Z0-9]+-\d+)/g, '<a href="https://auforce.atlassian.net/browse/$1" target="_blank" style="color: #1155cc; text-decoration: underline;">$1</a>');
+        }
+        
         if (idx === 0) {
           html += `<td align="left" valign="middle" style="border: 1px solid #000000; font-size: 15pt; font-weight: bold; text-align: left; vertical-align: middle; padding: 6px;"><b>${cellContent}</b></td>`;
         } else {
@@ -277,7 +314,10 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
           hasData = true;
         }
       }
-      return hasData ? text.trim() : '';
+      if (!hasData) {
+        text += '無\n';
+      }
+      return text.trim();
     }).filter(t => t !== '').join('\n\n');
   };
 
@@ -348,6 +388,17 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => {
+                    setSelectedProjectDetails('ALL');
+                    setReporterFilter('All');
+                    setAssigneeFilter('All');
+                  }}
+                  disabled={!jiraReportData || jiraReportData.length === 0}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-bold rounded-lg transition-colors shadow-lg"
+                >
+                  👁️ 查看所有專案細項
+                </button>
+                <button
+                  onClick={() => {
                     setMrSelectedProjects([]);
                     setShowMrModal(true);
                   }}
@@ -392,7 +443,33 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                           }>
                             {cell.split('\n').map((line, i) => (
                               <React.Fragment key={i}>
-                                {line}
+                                {cIdx === 0 ? (
+                                  <span 
+                                    className="cursor-pointer text-indigo-600 hover:text-indigo-800 hover:underline transition-colors"
+                                    onClick={() => {
+                                      setSelectedProjectDetails(cell);
+                                      setReporterFilter('All');
+                                      setAssigneeFilter('All');
+                                    }}
+                                  >
+                                    {line}
+                                  </span>
+                                ) : line.split(/([A-Z][A-Z0-9]+-\d+)/g).map((part, pIdx) => {
+                                  if (/^[A-Z][A-Z0-9]+-\d+$/.test(part)) {
+                                    return (
+                                      <a 
+                                        key={pIdx} 
+                                        href={`https://auforce.atlassian.net/browse/${part}`} 
+                                        target="_blank" 
+                                        rel="noreferrer" 
+                                        className="text-blue-600 hover:text-blue-800 hover:underline"
+                                      >
+                                        {part}
+                                      </a>
+                                    );
+                                  }
+                                  return part;
+                                })}
                                 {i < cell.split('\n').length - 1 && <br />}
                               </React.Fragment>
                             ))}
@@ -429,12 +506,12 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                 <div className="flex justify-between items-center shrink-0">
                   <span className="text-white font-bold">選擇專案</span>
                   <div className="flex gap-2">
-                    <button className="text-xs bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 px-2 py-1 rounded transition-colors" onClick={() => setMrSelectedProjects((jiraReportData || []).filter(r => r.slice(1).some(c => c !== '')).map(r => r[0]))}>全選</button>
+                    <button className="text-xs bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 px-2 py-1 rounded transition-colors" onClick={() => setMrSelectedProjects((jiraReportData || []).map(r => r[0]))}>全選</button>
                     <button className="text-xs bg-gray-500/20 hover:bg-gray-500/40 text-gray-300 px-2 py-1 rounded transition-colors" onClick={() => setMrSelectedProjects([])}>全不選</button>
                   </div>
                 </div>
                 <div className="flex flex-col gap-2 overflow-y-auto flex-1 pr-2 min-h-0">
-                  {(jiraReportData || []).filter(r => r.slice(1).some(c => c !== '')).map(row => (
+                  {(jiraReportData || []).map(row => (
                     <label key={row[0]} className="flex items-start gap-2 text-sm text-gray-300 cursor-pointer hover:text-white py-1">
                       <input type="checkbox" checked={mrSelectedProjects.includes(row[0])} onChange={(e) => {
                         if (e.target.checked) setMrSelectedProjects([...mrSelectedProjects, row[0]]);
@@ -468,7 +545,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                         hasData = true;
                         let colorClass = 'text-blue-400';
                         if (COLUMNS[i] === '未解決') colorClass = 'text-red-400';
-                        else if (COLUMNS[i] === '代辦') colorClass = 'text-orange-400';
+                        else if (COLUMNS[i] === '待辦') colorClass = 'text-orange-400';
                         else if (COLUMNS[i] === '待優化') colorClass = 'text-yellow-400';
                         else if (COLUMNS[i] === '觀察中') colorClass = 'text-teal-400';
                         else if (COLUMNS[i].includes('已解決')) colorClass = 'text-green-400';
@@ -481,13 +558,14 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                         );
                       }
                     }
-                    if (!hasData) return null;
                     return (
                       <div key={proj} className="mb-6 last:mb-0">
                         <div className="text-purple-300 font-bold mb-1">
                           {proj.split('\n').map((line, idx) => <div key={idx}>{line}</div>)}
                         </div>
-                        {items}
+                        {hasData ? items : (
+                          <div className="text-gray-400 whitespace-pre-wrap leading-relaxed mt-1">無</div>
+                        )}
                       </div>
                     );
                   })}
@@ -502,6 +580,164 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
           </div>
         </div>
       )}
+
+      {/* Project Details Modal */}
+      {selectedProjectDetails && (() => {
+        let projectIssues: any[] = [];
+        let modalTitle = '';
+        if (selectedProjectDetails === 'ALL') {
+          modalTitle = '所有專案議題狀態';
+          projectIssues = Object.values(jiraIssuesByProject || {}).flat();
+          projectIssues.sort((a, b) => {
+            const numA = parseInt(a.issueKey.split('-')[1]) || 0;
+            const numB = parseInt(b.issueKey.split('-')[1]) || 0;
+            return numA - numB;
+          });
+        } else {
+          modalTitle = `專案議題狀態 - ${selectedProjectDetails.split('\n')[0]}`;
+          projectIssues = jiraIssuesByProject?.[selectedProjectDetails] || [];
+        }
+
+        const uniqueReporters = Array.from(new Set(projectIssues.map(issue => issue.reporter))).filter(name => name && name !== '未知');
+        const uniqueAssignees = Array.from(new Set(projectIssues.map(issue => issue.assignee))).filter(name => name && name !== '未指派');
+
+        return (
+        <div className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4">
+          <div className="bg-[#0a192f] w-full max-w-5xl min-h-[600px] rounded-xl shadow-2xl border border-blue-500/50 flex flex-col overflow-hidden max-h-[90vh]">
+            <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-[#112240]">
+              <div className="flex items-center gap-4">
+                <h2 className="text-lg font-bold text-blue-300">
+                  {modalTitle}
+                </h2>
+                <div className="flex items-center gap-2">
+                  {uniqueReporters.length > 0 && (
+                    <select 
+                      value={reporterFilter}
+                      onChange={(e) => setReporterFilter(e.target.value)}
+                      className="bg-[#0a192f] text-sm text-purple-300 border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-purple-500"
+                    >
+                      <option value="All">所有回報者</option>
+                      {uniqueReporters.map(name => (
+                        <option key={name as string} value={name as string}>{name as string}</option>
+                      ))}
+                    </select>
+                  )}
+                  {uniqueAssignees.length > 0 && (
+                    <select 
+                      value={assigneeFilter}
+                      onChange={(e) => setAssigneeFilter(e.target.value)}
+                      className="bg-[#0a192f] text-sm text-cyan-300 border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value="All">所有受託人</option>
+                      {uniqueAssignees.map(name => (
+                        <option key={name as string} value={name as string}>{name as string}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </div>
+              <button onClick={() => setSelectedProjectDetails(null)} className="p-2 hover:bg-white/10 rounded-lg text-gray-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 flex-1 overflow-auto">
+              {(() => {
+                const projectsToRender = selectedProjectDetails === 'ALL' 
+                  ? Object.keys(jiraIssuesByProject || {})
+                  : [selectedProjectDetails];
+
+                const renderedProjects = projectsToRender.map(proj => {
+                  const pIssues = jiraIssuesByProject?.[proj] || [];
+                  
+                  const filteredPIssues = pIssues.filter(issue => 
+                    (reporterFilter === 'All' || issue.reporter === reporterFilter) &&
+                    (assigneeFilter === 'All' || issue.assignee === assigneeFilter)
+                  );
+
+                  if (filteredPIssues.length === 0) return null;
+
+                  return (
+                    <div key={proj} className="flex flex-col gap-6">
+                      {selectedProjectDetails === 'ALL' && (
+                        <div className="text-2xl font-bold text-indigo-400 border-l-4 border-indigo-500 pl-3">
+                          {proj.split('\n')[0]}
+                        </div>
+                      )}
+                      <div className="flex flex-col gap-8">
+                        {COLUMNS.slice(1).map(statusColumn => {
+                          const issuesInStatus = filteredPIssues.filter(issue => issue.status === statusColumn);
+                          if (issuesInStatus.length === 0) return null;
+                          
+                          let statusColor = 'text-blue-300 border-blue-500/30';
+                          if (statusColumn === '未解決') statusColor = 'text-red-400 border-red-500/30';
+                          else if (statusColumn === '待辦') statusColor = 'text-orange-400 border-orange-500/30';
+                          else if (statusColumn === '待優化') statusColor = 'text-yellow-400 border-yellow-500/30';
+                          else if (statusColumn === '觀察中') statusColor = 'text-teal-400 border-teal-500/30';
+                          else if (statusColumn.includes('已解決')) statusColor = 'text-green-400 border-green-500/30';
+
+                          return (
+                            <div key={statusColumn} className="flex flex-col gap-4">
+                              <div className={`text-lg font-bold border-b-2 pb-2 ${statusColor}`}>
+                                {statusColumn}
+                              </div>
+                              <div className="flex flex-col gap-3">
+                                {issuesInStatus.map((issue, idx) => (
+                                  <div key={idx} className="bg-[#112240] rounded-lg p-3 border border-gray-700 shadow-md flex flex-col sm:flex-row sm:items-center gap-3">
+                                    <a 
+                                      href={`https://auforce.atlassian.net/browse/${issue.issueKey}`} 
+                                      target="_blank" 
+                                      rel="noreferrer"
+                                      className="text-blue-400 font-bold hover:underline flex items-center gap-1 text-base shrink-0 w-[140px]"
+                                    >
+                                      <ExternalLink className="w-3.5 h-3.5" />
+                                      <span className="truncate" title={issue.issueKey}>{issue.issueKey}</span>
+                                    </a>
+                                    <div className="hidden sm:block w-px h-8 bg-gray-700 shrink-0"></div>
+                                    <div className="text-white font-medium text-sm leading-relaxed flex-1">
+                                      {issue.summary || '無摘要'}
+                                    </div>
+                                    <div className="hidden sm:block w-px h-8 bg-gray-700 shrink-0"></div>
+                                    <div className="flex items-center gap-4 text-xs bg-[#0a192f] p-2 px-4 rounded-lg border border-gray-800 shrink-0">
+                                      <div className="flex flex-col gap-1 w-[80px]">
+                                        <span className="text-gray-500">回報者</span>
+                                        <span className="text-purple-300 font-medium truncate" title={issue.reporter || '未知'}>{issue.reporter || '未知'}</span>
+                                      </div>
+                                      <div className="w-px h-6 bg-gray-700 shrink-0"></div>
+                                      <div className="flex flex-col gap-1 w-[80px]">
+                                        <span className="text-gray-500">受託人</span>
+                                        <span className="text-cyan-300 font-medium truncate" title={issue.assignee || '未指派'}>{issue.assignee || '未指派'}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                }).filter(Boolean);
+
+                if (renderedProjects.length === 0) {
+                  return (
+                    <div className="text-gray-500 h-full flex items-center justify-center">
+                      沒有符合條件的議題資料
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="flex flex-col gap-16">
+                    {renderedProjects}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+        );
+      })()}
     </div>
   );
 };

@@ -1,6 +1,15 @@
 import { create } from 'zustand';
 import type { GameType } from '../types';
 
+export interface JiraIssueDetail {
+  issueKey: string;
+  summary: string;
+  assignee: string;
+  reporter: string;
+  status: string;
+  projectName: string;
+}
+
 export interface MachineState {
   gameType: GameType;
   bet: number;
@@ -18,8 +27,10 @@ export interface MachineState {
   setActiveModalTool: (tool: string | null) => void;
   jiraReportData: string[][] | null;
   jiraReportFileName: string | null;
+  jiraIssuesByProject: Record<string, JiraIssueDetail[]> | null;
   setJiraReportData: (data: string[][] | null) => void;
   setJiraReportFileName: (name: string | null) => void;
+  setJiraIssuesByProject: (data: Record<string, JiraIssueDetail[]> | null) => void;
 }
 
 export const useMachineStore = create<MachineState>((set) => ({
@@ -39,6 +50,8 @@ export const useMachineStore = create<MachineState>((set) => ({
   setActiveModalTool: (tool) => set({ activeModalTool: tool }),
   jiraReportData: null,
   jiraReportFileName: null,
+  jiraIssuesByProject: null,
   setJiraReportData: (data) => set({ jiraReportData: data }),
   setJiraReportFileName: (name) => set({ jiraReportFileName: name }),
+  setJiraIssuesByProject: (data) => set({ jiraIssuesByProject: data }),
 }));
