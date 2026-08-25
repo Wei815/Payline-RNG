@@ -75,6 +75,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
   const [selectedProjectDetails, setSelectedProjectDetails] = useState<string | null>(null);
   const [reporterFilter, setReporterFilter] = useState('All');
   const [assigneeFilter, setAssigneeFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
   
   const handleConvert = (csvText: string) => {
     setCopySuccess(false);
@@ -391,6 +392,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                     setSelectedProjectDetails('ALL');
                     setReporterFilter('All');
                     setAssigneeFilter('All');
+                    setStatusFilter('All');
                   }}
                   disabled={!jiraReportData || jiraReportData.length === 0}
                   className="flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-bold rounded-lg transition-colors shadow-lg"
@@ -450,6 +452,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                                       setSelectedProjectDetails(cell);
                                       setReporterFilter('All');
                                       setAssigneeFilter('All');
+                                      setStatusFilter('All');
                                     }}
                                   >
                                     {line}
@@ -600,6 +603,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
 
         const uniqueReporters = Array.from(new Set(projectIssues.map(issue => issue.reporter))).filter(name => name && name !== '未知');
         const uniqueAssignees = Array.from(new Set(projectIssues.map(issue => issue.assignee))).filter(name => name && name !== '未指派');
+        const uniqueStatuses = Array.from(new Set(projectIssues.map(issue => issue.status))).filter(status => status);
 
         return (
         <div className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4">
@@ -610,6 +614,18 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                   {modalTitle}
                 </h2>
                 <div className="flex items-center gap-2">
+                  {uniqueStatuses.length > 0 && (
+                    <select 
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="bg-[#0a192f] text-sm text-green-300 border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-green-500"
+                    >
+                      <option value="All">所有狀態</option>
+                      {uniqueStatuses.map(status => (
+                        <option key={status as string} value={status as string}>{status as string}</option>
+                      ))}
+                    </select>
+                  )}
                   {uniqueReporters.length > 0 && (
                     <select 
                       value={reporterFilter}
@@ -651,7 +667,8 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                   
                   const filteredPIssues = pIssues.filter(issue => 
                     (reporterFilter === 'All' || issue.reporter === reporterFilter) &&
-                    (assigneeFilter === 'All' || issue.assignee === assigneeFilter)
+                    (assigneeFilter === 'All' || issue.assignee === assigneeFilter) &&
+                    (statusFilter === 'All' || issue.status === statusFilter)
                   );
 
                   if (filteredPIssues.length === 0) return null;
