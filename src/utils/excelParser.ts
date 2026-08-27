@@ -2,7 +2,7 @@ import * as xlsx from 'xlsx';
 import type { PaytableRule } from '../types';
 
 export interface ExcelParsedData {
-  gameType?: 'waygame' | 'linegame' | 'payanywhere' | 'linegame_set2' | 'payanywhere_set2' | 'waygame_qin';
+  gameType?: 'waygame' | 'linegame' | 'payanywhere' | 'linegame_set2' | 'payanywhere_set2' | 'waygame_qin' | 'waygame_elephant';
   coin?: number;
   bet?: number;
   paylines?: number[][];
@@ -159,7 +159,11 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
            if (wayStr.includes('4096') || parseInt(wayStr) === 4096) {
              result.gameType = 'waygame_qin';
            } else if (parseInt(wayStr) > 0) {
-             result.gameType = 'waygame';
+             if (file.name.includes('家') || file.name.includes('象')) {
+               result.gameType = 'waygame_elephant';
+             } else {
+               result.gameType = 'waygame';
+             }
            }
         }
       }
@@ -552,7 +556,7 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
     } else if (file.name.includes('奢華')) {
       result.gameType = 'linegame_set2';
     } else if (file.name.includes('家') || file.name.includes('象')) {
-      result.gameType = 'waygame';
+      result.gameType = 'waygame_elephant';
     } else if (!result.paylines || result.paylines.length === 0) {
       result.gameType = 'payanywhere';
     } else {

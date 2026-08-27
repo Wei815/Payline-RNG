@@ -31,7 +31,7 @@ export function useRngSearch(
   >([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
 
-  const specialSymbolConfigStr = JSON.stringify(specialSymbolConfig);
+
   const multiplierIntervalsStr = JSON.stringify(multiplierIntervals);
 
   useEffect(() => {
@@ -897,18 +897,7 @@ export function useRngSearch(
           });
         }
 
-        newCombs.sort((a, b) => {
-          const getPriority = (c: (typeof combinations)[0]) => {
-            if (!c.rng) return 2;
-            return c.isInterfered ? 1 : 0;
-          };
-          const pA = getPriority(a);
-          const pB = getPriority(b);
-          if (pA !== pB) return pA - pB;
 
-          if (a.length !== b.length) return a.length - b.length;
-          return a.wildCount - b.wildCount;
-        });
       }
 
       setCombinations(newCombs);
