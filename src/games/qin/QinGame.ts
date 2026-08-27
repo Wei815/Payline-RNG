@@ -17,9 +17,7 @@ export class QinGame extends BaseWayGame {
   }
 
   getDefaultReelStrips(): ReelStrips {
-    return {
-      0: [], 1: [], 2: [], 3: [], 4: [], 5: []
-    };
+    return [[], [], [], [], [], []];
   }
 
   // Override cascade to implement Gold -> WX rule

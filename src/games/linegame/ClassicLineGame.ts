@@ -17,8 +17,6 @@ export class ClassicLineGame extends BaseLineGame {
   }
 
   getDefaultReelStrips(): ReelStrips {
-    return {
-      0: [], 1: [], 2: [], 3: [], 4: []
-    };
+    return [[], [], [], [], []];
   }
 }

@@ -17,8 +17,6 @@ export class MermaidGame extends BaseWayGame {
   }
 
   getDefaultReelStrips(): ReelStrips {
-    return {
-      0: [], 1: [], 2: [], 3: [], 4: []
-    };
+    return [[], [], [], [], []];
   }
 }
