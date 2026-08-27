@@ -6,4 +6,6 @@ export interface PaytableRule {
   isScatter: boolean;
   mathId?: string | number;
   isEnabled?: boolean;
+  isGold?: boolean;
+  baseSymbol?: string;
 }

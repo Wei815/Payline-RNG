@@ -1,6 +1,7 @@
 export type GameType = 'waygame' | 'megaway' | 'payanywhere' | 'payanywhere_set2' | 'waygame_qin' | 'linegame' | 'linegame_set2';
 
 export type ReelStrips = string[][];
+export type ReelStripsList = ReelStrips[];
 
 export interface SpecialSymbolConfig {
   s1Enabled: boolean;

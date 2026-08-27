@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { useGameStore } from '../../store/useGameStore';
 import type { GameType, PaytableRule, GameConfig } from '../../types';
 import type { SVGPathResult } from '../../utils/svgPaths';
 import { formatAmount } from '../../utils/formatters';
@@ -36,6 +37,12 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
   const [noWinCollapsed, setNoWinCollapsed] = useState(false);
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const [linePaths, setLinePaths] = useState<SVGPathResult[]>([]);
+  const activeStripId = useGameStore(state => state.activeStripId);
+  const setActiveStripId = useGameStore(state => state.setActiveStripId);
+  const currentStripSets = useGameStore(state => state.currentStripSets);
+  const currentFreeStripSets = useGameStore(state => state.currentFreeStripSets);
+  const isFreeGame = useGameStore(state => state.isFreeGame);
+  const stripSets = isFreeGame ? currentFreeStripSets : currentStripSets;
 
   const displayGrid = useMemo(() => Array.from({ length: reelCount }, (_, colIndex) => {
     const rowsForThisCol = rowCounts[colIndex] || 3;
@@ -173,6 +180,20 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
           <div className="flex justify-between items-center border-b border-gray-700/50 pb-2">
             <div className="flex items-center gap-3">
               <span className="text-sm text-dashboard-text-secondary font-bold pl-2">Reel Settings</span>
+              {stripSets && stripSets.length > 1 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-dashboard-text-primary">滾輪表:</span>
+                  <select
+                    value={activeStripId}
+                    onChange={(e) => setActiveStripId(Number(e.target.value))}
+                    className="bg-[#112240] border border-gray-600 text-dashboard-text-primary rounded px-2 py-0.5 outline-none focus:border-dashboard-accent text-xs"
+                  >
+                    {stripSets.map((_, idx) => (
+                      <option key={idx} value={idx}>Strip ID {idx}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <input
                 type="text"
                 placeholder="貼上 RNG 數組..."
@@ -181,7 +202,15 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                   const val = e.target.value;
                   if (val) {
                     const parsed = parsePasteRng(val, reelCount);
-                    if (parsed) setManualIndices(parsed);
+                    if (parsed) {
+                      if (parsed.length > reelCount && stripSets && stripSets.length > 1) {
+                        const stripId = Number(parsed[reelCount]);
+                        if (!isNaN(stripId) && stripId >= 0 && stripId < stripSets.length) {
+                          setActiveStripId(stripId);
+                        }
+                      }
+                      setManualIndices(parsed.slice(0, reelCount));
+                    }
                     e.target.value = '';
                   }
                 }}
@@ -191,11 +220,11 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
             <div className="flex items-center gap-2 bg-[#112240] px-2 py-1 rounded border border-gray-700/30">
               <span className="text-xs text-gray-400 font-bold">RNG:</span>
               <code className="text-xs text-yellow-400 font-mono">
-                [{manualIndices.map(i => i === '' ? '0' : i).join(',')}],
+                [{[...manualIndices.map(i => i === '' ? '0' : i), ...(stripSets && stripSets.length > 1 ? [activeStripId] : [])].join(',')}],
               </code>
               <button
                 onClick={() => {
-                  const text = `[${manualIndices.map(i => i === '' ? '0' : i).join(',')}],`;
+                  const text = `[${[...manualIndices.map(i => i === '' ? '0' : i), ...(stripSets && stripSets.length > 1 ? [activeStripId] : [])].join(',')}],`;
                   navigator.clipboard.writeText(text);
                 }}
                 className="text-xs font-bold bg-[#0a192f] text-dashboard-accent border border-dashboard-accent/50 px-2 py-0.5 rounded hover:bg-dashboard-accent hover:text-[#0a192f] transition-colors ml-1 cursor-pointer"

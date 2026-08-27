@@ -1,9 +1,12 @@
 import { create } from 'zustand';
-import type { PaytableRule, ReelStrips, SpecialSymbolConfig } from '../types';
+import type { PaytableRule, ReelStrips, ReelStripsList, SpecialSymbolConfig } from '../types';
 import { useMachineStore } from './useMachineStore';
 
 export interface GameState {
   currentStrips: ReelStrips;
+  currentStripSets: ReelStripsList;
+  currentFreeStripSets: ReelStripsList;
+  activeStripId: number;
   currentPaytable: PaytableRule[];
   currentGrid: string[][];
   rowCounts: number[];
@@ -29,6 +32,9 @@ export interface GameState {
   pendingSnippet: any;
   
   setCurrentStrips: (strips: ReelStrips) => void;
+  setCurrentStripSets: (stripSets: ReelStripsList) => void;
+  setCurrentFreeStripSets: (freeStripSets: ReelStripsList) => void;
+  setActiveStripId: (id: number) => void;
   setCurrentPaytable: (paytable: PaytableRule[]) => void;
   setCurrentGrid: (grid: string[][]) => void;
   setRowCounts: (counts: number[]) => void;
@@ -113,6 +119,9 @@ export const extractSpecialConfigFromGrid = (grid: string[][], baseConfig: Speci
 
 export const useGameStore = create<GameState>((set, get) => ({
   currentStrips: [],
+  currentStripSets: [],
+  currentFreeStripSets: [],
+  activeStripId: 0,
   currentPaytable: [],
   currentGrid: [],
   rowCounts: [3, 3, 3, 3, 3],
@@ -138,6 +147,16 @@ export const useGameStore = create<GameState>((set, get) => ({
   pendingSnippet: null,
 
   setCurrentStrips: (strips) => set({ currentStrips: strips }),
+  setCurrentStripSets: (stripSets) => set({ currentStripSets: stripSets }),
+  setCurrentFreeStripSets: (freeStripSets) => set({ currentFreeStripSets: freeStripSets }),
+  setActiveStripId: (id) => set((state) => {
+    const isFree = state.isFreeGame;
+    const sets = isFree ? state.currentFreeStripSets : state.currentStripSets;
+    if (sets && sets.length > id) {
+      return { activeStripId: id, currentStrips: sets[id] };
+    }
+    return { activeStripId: id };
+  }),
   setCurrentPaytable: (paytable) => set({ currentPaytable: paytable }),
   setCurrentGrid: (grid) => set({ currentGrid: grid }),
   setRowCounts: (counts) => set((state) => {
@@ -258,6 +277,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   resetGameSpecifics: () => set({
+    currentStripSets: [],
+    currentFreeStripSets: [],
+    activeStripId: 0,
     goldFrames: {},
     jackpots: {},
     specialSymbolConfig: defaultSpecialSymbolConfig,
@@ -270,6 +292,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   clearProject: () => set({
     isProjectLoaded: false,
     currentStrips: [],
+    currentStripSets: [],
+    currentFreeStripSets: [],
+    activeStripId: 0,
     currentPaytable: [],
     currentGrid: []
   })

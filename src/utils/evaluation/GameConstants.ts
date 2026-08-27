@@ -19,3 +19,21 @@ export const LUCKY_BALLS = [
   { id: 'L3', name: 'L3 (紫色)', color: 'text-purple-400', border: 'border-purple-500/50', values: [55, 65, 80] },
   { id: 'L4', name: 'L4 (紅色)', color: 'text-red-400', border: 'border-red-500/50', values: [100, 150, 200, 250, 500] }
 ];
+
+export function getBaseSymbol(symbol: string): string {
+  if (!symbol || symbol.length < 2 || !symbol.startsWith('G')) return symbol;
+  
+  if (symbol === 'GA') return 'A';
+  if (symbol === 'GK') return 'K';
+  if (symbol === 'GQ') return 'Q';
+  if (symbol === 'GJ') return 'J';
+  if (symbol === 'G10') return '10';
+  if (symbol === 'G9') return '9';
+  
+  return symbol.replace('G', 'M'); // G1 -> M1
+}
+
+export function isGoldSymbol(symbol: string): boolean {
+  if (!symbol) return false;
+  return symbol.startsWith('G') && symbol !== 'G';
+}

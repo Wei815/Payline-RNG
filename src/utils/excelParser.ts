@@ -8,6 +8,8 @@ export interface ExcelParsedData {
   paylines?: number[][];
   strips?: string[][];
   freeStrips?: string[][];
+  stripSets?: string[][][];
+  freeStripSets?: string[][][];
   paytable?: PaytableRule[];
   reelCount?: number;
   rowCounts?: number[];
@@ -62,52 +64,77 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
   }
 
   // 2. Base and Free Strips
-  function extractStrips(sheetName: string): string[][] | undefined {
+  function extractStrips(sheetName: string): string[][][] | undefined {
     if (!workbook.Sheets[sheetName]) return undefined;
     const data = xlsx.utils.sheet_to_json<any[]>(workbook.Sheets[sheetName], { header: 1 });
     
     // Find header row with 'R1'
     let headerRowIdx = -1;
-    let r1ColIdx = -1;
     for (let i = 0; i < Math.min(20, data.length); i++) {
       const row = data[i];
       if (!row) continue;
       const colIdx = row.findIndex((cell: any) => String(cell).trim() === 'R1');
       if (colIdx !== -1) {
         headerRowIdx = i;
-        r1ColIdx = colIdx;
         break;
       }
     }
 
-    if (headerRowIdx === -1 || r1ColIdx === -1) return undefined;
+    if (headerRowIdx === -1) return undefined;
     
-    // Determine how many reels by checking R1, R2, R3...
     const headerRow = data[headerRowIdx];
-    let reelCountFound = 0;
-    while (String(headerRow[r1ColIdx + reelCountFound]).trim() === `R${reelCountFound + 1}`) {
-      reelCountFound++;
-    }
-
-    const strips: string[][] = Array.from({ length: reelCountFound }, () => []);
     
-    for (let i = headerRowIdx + 1; i < data.length; i++) {
-      const row = data[i];
-      if (!row) continue;
-      for (let c = 0; c < reelCountFound; c++) {
-        const sym = row[r1ColIdx + c];
-        if (sym !== undefined && sym !== null && sym !== '') {
-          strips[c].push(String(sym).trim());
-        }
+    // Find all 'R1' columns in the header row
+    const r1ColIndices: number[] = [];
+    for (let i = 0; i < headerRow.length; i++) {
+      if (String(headerRow[i]).trim() === 'R1') {
+        r1ColIndices.push(i);
       }
     }
     
-    const filtered = strips.filter(s => s.length > 0);
-    return filtered.length > 0 ? filtered : undefined;
+    const allStrips: string[][][] = [];
+    
+    for (const r1ColIdx of r1ColIndices) {
+      // Determine how many reels by checking R1, R2, R3...
+      let reelCountFound = 0;
+      while (String(headerRow[r1ColIdx + reelCountFound]).trim() === `R${reelCountFound + 1}`) {
+        reelCountFound++;
+      }
+
+      const strips: string[][] = Array.from({ length: reelCountFound }, () => []);
+      
+      for (let i = headerRowIdx + 1; i < data.length; i++) {
+        const row = data[i];
+        if (!row) continue;
+        for (let c = 0; c < reelCountFound; c++) {
+          const sym = row[r1ColIdx + c];
+          if (sym !== undefined && sym !== null && sym !== '') {
+            strips[c].push(String(sym).trim());
+          }
+        }
+      }
+      
+      const filtered = strips.filter(s => s.length > 0);
+      if (filtered.length > 0) {
+        allStrips.push(filtered);
+      }
+    }
+    
+    return allStrips.length > 0 ? allStrips : undefined;
   }
   
-  result.strips = extractStrips('Base');
-  result.freeStrips = extractStrips('Free');
+  const baseStripSets = extractStrips('Base');
+  const freeStripSets = extractStrips('Free');
+  
+  if (baseStripSets) {
+    result.stripSets = baseStripSets;
+    result.strips = baseStripSets[0];
+  }
+  
+  if (freeStripSets) {
+    result.freeStripSets = freeStripSets;
+    result.freeStrips = freeStripSets[0];
+  }
 
   // 3. Overview (Coin, Line, Reel sizes, Paytable)
   if (workbook.Sheets['Overview']) {
@@ -253,28 +280,43 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
                 
                 const sharedMatchStr = String(overviewData[i+r][symbolIdCol] || '').trim();
                 
-                let isSelfContainedColumn = false;
+                let hasSharedMatchCount = false;
                 for (let rScan = 1; rScan <= 20; rScan++) {
                   if (!overviewData[i+rScan]) continue;
                   const leftLabel = String(overviewData[i+rScan][symbolIdCol] || '').trim();
                   if (leftLabel === 'SymbolID') break;
                   if (leftLabel === 'MathID' || leftLabel === '示意圖') continue;
-                  
-                  const valC = String(overviewData[i+rScan][c] || '').trim();
-                  const valCPlus1 = String(overviewData[i+rScan][c+1] || '').trim();
-                  
-                  if (valC !== '' && valC !== '--' && valC !== '-') {
-                    const matchNum = parseInt(valC.replace(/[^0-9]/g, ''));
-                    if (!isNaN(matchNum) && matchNum >= 2 && matchNum <= 30) {
-                      if (valCPlus1 !== '' && valCPlus1 !== '--' && valCPlus1 !== '-' && !isNaN(parseFloat(valCPlus1))) {
-                        isSelfContainedColumn = true;
-                        break;
+                  const parseLeft = parseInt(leftLabel.replace(/[^0-9]/g, ''));
+                  if (!isNaN(parseLeft) && parseLeft >= 2 && parseLeft <= 30) {
+                    hasSharedMatchCount = true;
+                    break;
+                  }
+                }
+
+                let isSelfContainedColumn = false;
+                if (!hasSharedMatchCount) {
+                  for (let rScan = 1; rScan <= 20; rScan++) {
+                    if (!overviewData[i+rScan]) continue;
+                    const leftLabel = String(overviewData[i+rScan][symbolIdCol] || '').trim();
+                    if (leftLabel === 'SymbolID') break;
+                    if (leftLabel === 'MathID' || leftLabel === '示意圖') continue;
+                    
+                    const valC = String(overviewData[i+rScan][c] || '').trim();
+                    const valCPlus1 = String(overviewData[i+rScan][c+1] || '').trim();
+                    
+                    if (valC !== '' && valC !== '--' && valC !== '-') {
+                      const matchNum = parseInt(valC.replace(/[^0-9]/g, ''));
+                      if (!isNaN(matchNum) && matchNum >= 2 && matchNum <= 30) {
+                        if (valCPlus1 !== '' && valCPlus1 !== '--' && valCPlus1 !== '-' && !isNaN(parseFloat(valCPlus1))) {
+                          isSelfContainedColumn = true;
+                          break;
+                        }
                       }
                     }
-                  }
-                  
-                  if (valC === '--' || valC === '-' || (!isNaN(parseFloat(valC)) && parseFloat(valC) > 30)) {
-                    break;
+                    
+                    if (valC === '--' || valC === '-' || (!isNaN(parseFloat(valC)) && parseFloat(valC) > 30)) {
+                      break;
+                    }
                   }
                 }
 
@@ -509,6 +551,8 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
       result.rowCounts = [4, 4, 4, 4, 4, 4];
     } else if (file.name.includes('奢華')) {
       result.gameType = 'linegame_set2';
+    } else if (file.name.includes('家') || file.name.includes('象')) {
+      result.gameType = 'waygame';
     } else if (!result.paylines || result.paylines.length === 0) {
       result.gameType = 'payanywhere';
     } else {

@@ -40,7 +40,7 @@ export function useSymbolGrouping(
       });
     }
 
-    const symList = Array.from(allSyms);
+    const symList = Array.from(allSyms).filter(sym => !/^G[1-9A-Z]/.test(sym));
 
     const getBase = (sym: string): string => {
       const s = sym.toUpperCase();

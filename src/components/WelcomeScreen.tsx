@@ -76,7 +76,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectTemplate }
                 }}
               />
 
-              {['人魚傳說', '決戰賽特2', '秦皇傳說', '奢華'].map((template) => (
+              {['人魚傳說', '決戰賽特2', '秦皇傳說', '奢華', '皇家金象'].map((template) => (
                 <div 
                   key={template}
                   onClick={() => onSelectTemplate(template)}

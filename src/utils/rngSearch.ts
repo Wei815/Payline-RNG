@@ -11,6 +11,11 @@ function createTimeSlicer(intervalMs: number = 16) {
   };
 }
 
+// 輔助：判斷是否為黃金符號（G開頭且後面跟著數字或字母）
+function isGoldSymbol(sym: string): boolean {
+  return /^G[1-9A-Z]/.test(sym);
+}
+
 export async function findRngForCombination(
   targetSymbol: string,
   length: number,
@@ -22,8 +27,35 @@ export async function findRngForCombination(
   gameType: GameType,
   topTrackerOther?: string[],
   customPaylines?: number[][],
-  isFreeGame: boolean = false
-): Promise<{ rng: number[] | null; isInterfered: boolean; hasS1Drop?: boolean }> {
+  isFreeGame: boolean = false,
+  stripSets?: Record<string, string[][]>,
+  requireGoldCascade: boolean = false
+): Promise<{ rng: number[] | null; isInterfered: boolean; hasS1Drop?: boolean; stripId?: number }> {
+  
+  if (stripSets && Object.keys(stripSets).length > 0) {
+    const stripIds = Object.keys(stripSets).map(Number);
+    stripIds.sort(() => Math.random() - 0.5);
+    let bestInterferred: { rng: number[] | null; isInterfered: boolean; hasS1Drop?: boolean; stripId?: number } | null = null;
+
+    for (const sid of stripIds) {
+      const res = await findRngForCombination(
+        targetSymbol, length, wildCount, stripSets[sid], rowCounts,
+        currentPaytable, reelCount, gameType, topTrackerOther, customPaylines,
+        isFreeGame, undefined, requireGoldCascade
+      );
+      if (res.rng) {
+        if (!res.isInterfered) {
+          return { ...res, rng: [...res.rng, sid], stripId: sid };
+        } else {
+          if (!bestInterferred) {
+            bestInterferred = { ...res, rng: res.rng ? [...res.rng, sid] : null, stripId: sid };
+          }
+        }
+      }
+    }
+    return bestInterferred || { rng: null, isInterfered: false };
+  }
+
   const yieldIfNeeded = createTimeSlicer(16);
   const wildSymbolSet = new Set<string>();
   currentPaytable.filter(p => p.isWild).forEach(p => wildSymbolSet.add(p.symbolId));
@@ -37,438 +69,218 @@ export async function findRngForCombination(
     }
   }
 
-  const categories: {
-    onlyOneTarget: number[];
-    onlyOneWild: number[];
-    anyTarget: number[];
-    anyWild: number[];
-    none: number[];
-    preferredIndices: Set<number>;
-  }[] = [];
+  const MAX_RANDOM_ATTEMPTS = 50000;
+  
+  let testCount = 0;
+  const candidateRng = Array(reelCount).fill(0);
 
-  for (let col = 0; col < reelCount; col++) {
-    const strip = currentStrips[col];
-    const rows = rowCounts[col] || 3;
-    const onlyOneTarget: number[] = [];
-    const onlyOneWild: number[] = [];
-    const anyTarget: number[] = [];
-    const anyWild: number[] = [];
-    const none: number[] = [];
-    const preferredIndices = new Set<number>();
-
-    if (!strip || strip.length === 0) {
-      categories.push({ onlyOneTarget: [], onlyOneWild: [], anyTarget: [], anyWild: [], none: [], preferredIndices: new Set() });
-      continue;
-    }
-
-    const maxIdx = strip.length - rows;
-    // Start at 2 to reserve space for drops, end at maxIdx to prevent wrap around
-    for (let i = 2; i <= maxIdx; i++) {
-      const visible: string[] = [];
-      for (let r = 0; r < rows; r++) {
-        visible.push(strip[(i + r) % strip.length]);
-      }
-
-      const tCount = visible.filter(s => s === targetSymbol).length;
-      const wCount = visible.filter(s => wildSymbolSet.has(s)).length;
-      const preferredRow = 0; 
-      const preferredSym = visible[preferredRow];
-      const wPreferred = wildSymbolSet.has(preferredSym);
-      const tPreferred = preferredSym === targetSymbol;
-
-      if (tPreferred) preferredIndices.add(i);
-      if (wPreferred) preferredIndices.add(i);
-
-      if (tCount === 1 && wCount === 0) {
-        onlyOneTarget.push(i);
-      } else if (tCount === 0 && wCount === 1) {
-        onlyOneWild.push(i);
-      } else if (tCount === 0 && wCount === 0) {
-        none.push(i);
-      }
-
-      if (tCount > 0) anyTarget.push(i);
-      if (wCount > 0) anyWild.push(i);
-    }
-    categories.push({ onlyOneTarget, onlyOneWild, anyTarget, anyWild, none, preferredIndices });
-  }
-
-  const wildColCombinations: number[][] = [];
-  if (wildCount === 0) {
-    wildColCombinations.push([]);
-  } else {
-    for (let col = 1; col < length; col++) {
-      wildColCombinations.push([col]);
-    }
-  }
-
-  const runSearch = async (allowOtherWins: boolean): Promise<{ rng: number[] | null; hasS1Drop?: boolean } | null> => {
-    let bestCandidate: number[] | null = null;
-    let minScore = Infinity;
-    let bestDist = Infinity;
-    let bestWildColIdx = Infinity;
-    let bestHasS1Drop = false;
-
-    const MAX_RANDOM_ATTEMPTS = allowOtherWins ? 600 : 1500;
-
-    for (const wildCols of wildColCombinations) {
-      const isWildCol = Array(length).fill(false);
-      for (const c of wildCols) isWildCol[c] = true;
-
-      const currentWildColIdx = wildCols[0] !== undefined ? wildCols[0] : Infinity;
-
-      // Precompute candidates for each column
-      const validCandidates: number[][] = [];
-      let hasEmptyCandidate = false;
-      for (let colIndex = 0; colIndex < reelCount; colIndex++) {
-        let candidates: number[] = [];
-        if (colIndex < length) {
-          if (isWildCol[colIndex]) {
-            candidates = categories[colIndex].onlyOneWild;
-            if (candidates.length === 0) candidates = categories[colIndex].anyWild;
-          } else {
-            candidates = categories[colIndex].onlyOneTarget;
-            if (allowOtherWins && candidates.length === 0) candidates = categories[colIndex].anyTarget;
-          }
-        } else {
-          candidates = categories[colIndex].none;
-        }
-
-        if (candidates.length === 0) {
-          if (allowOtherWins) {
-            const maxSafeIdx = currentStrips[colIndex].length - (rowCounts[colIndex] || 3);
-            candidates = Array.from({ length: maxSafeIdx - 1 }, (_, idx) => idx + 2);
-          } else {
-            hasEmptyCandidate = true;
-            break;
-          }
-        }
-        validCandidates.push(candidates);
-      }
-
-      if (hasEmptyCandidate) continue;
-
-      let testCount = 0;
-      const candidateRng = Array(reelCount).fill(0);
-
-      while (testCount < MAX_RANDOM_ATTEMPTS) {
-        testCount++;
-        if (testCount % 200 === 0) {
-          await yieldIfNeeded();
-        }
-
-        let activeInterferences = new Set<string>();
-        let r0HasWild = false;
-        let r1HasWild = false;
-
-        for (let c = 0; c < reelCount; c++) {
-          let cands = validCandidates[c];
-          // Smart heuristic: prevent 3-of-a-kind interference wins early!
-          if (!allowOtherWins && c === 2) {
-             const safeCands = cands.filter(idx => {
-                const strip = currentStrips[c];
-                const rows = rowCounts[c] || 3;
-                let hasWild = false;
-                let hasOverlap = false;
-                
-                for (let r = 0; r < rows; r++) {
-                   const sym = strip[(idx + r) % strip.length];
-                   if (wildSymbolSet.has(sym)) hasWild = true;
-                   if (activeInterferences.has(sym)) hasOverlap = true;
-                }
-                
-                // If this reel has a Wildcard, it will complete ANY active interference chain
-                if (hasWild && activeInterferences.size > 0) return false;
-                // If this reel contains a symbol that is already in an active chain
-                if (hasOverlap) return false;
-                
-                return true;
-             });
-             
-             // Fallback to all candidates if safeCands is empty to prevent infinite loops
-             if (safeCands.length > 0) cands = safeCands;
-          }
-
-          const pref = cands.filter(x => categories[c].preferredIndices.has(x));
-          let chosenIdx = 0;
-          if (pref.length > 0 && Math.random() < 0.8) {
-            chosenIdx = pref[Math.floor(Math.random() * pref.length)];
-          } else {
-            chosenIdx = cands[Math.floor(Math.random() * cands.length)];
-          }
-          candidateRng[c] = chosenIdx;
-
-          // Update activeInterferences
-          if (!allowOtherWins && c <= 1) {
-             const strip = currentStrips[c];
-             const rows = rowCounts[c] || 3;
-             const currentSyms = new Set<string>();
-             let hasWild = false;
-             for (let r = 0; r < rows; r++) {
-                const sym = strip[(chosenIdx + r) % strip.length];
-                if (wildSymbolSet.has(sym)) hasWild = true;
-                if (sym !== targetSymbol && !wildSymbolSet.has(sym)) {
-                   currentSyms.add(sym);
-                }
-             }
-             
-             if (c === 0) {
-                 activeInterferences = currentSyms;
-                 r0HasWild = hasWild;
-             } else if (c === 1) {
-                 r1HasWild = hasWild;
-                 const newActive = new Set<string>();
-                 
-                 for (const sym of currentSyms) {
-                     if (activeInterferences.has(sym) || r0HasWild) {
-                         newActive.add(sym);
-                     }
-                 }
-                 if (r1HasWild) {
-                     for (const sym of activeInterferences) {
-                         newActive.add(sym);
-                     }
-                 }
-                 
-                 activeInterferences = newActive;
-             }
-          }
-        }
-
-        const testGrid = Array.from({ length: reelCount }, (_, cIdx) => {
-          const r = rowCounts[cIdx] || 3;
-          const s = currentStrips[cIdx];
-          const start = candidateRng[cIdx];
-          return Array.from({ length: r }).map((_, ri) => s[(start + ri) % s.length]);
-        });
-
-        let evalGrid = testGrid;
-        if (gameType === 'megaway') {
-          evalGrid = testGrid.map((col, colIdx) => {
-            if (colIdx >= 1 && colIdx <= 4 && topTrackerOther) {
-              const topSym = (length < 5 && colIdx >= length)
-                ? '-'
-                : (topTrackerOther[colIdx - 1] || 'WX');
-              return [...col, topSym];
-            }
-            return col;
-          });
-        }
-
-        const evWins = evaluateGrid(evalGrid, currentPaytable, gameType, customPaylines, true);
-        const targetWin = evWins.find(w => w.symbolId === targetSymbol);
-        let isMatch = false;
-        let ways = 1;
-        if (targetWin) {
-          isMatch = (targetWin.matchCount >= length);
-          
-          if (isMatch) {
-            const winningCoordsMap = getWinningPositions(evalGrid, [targetWin], currentPaytable, gameType, undefined, customPaylines);
-            const wildReels = new Set<number>();
-            
-            for (const key of winningCoordsMap.keys()) {
-               const [cStr, rStr] = key.split('-');
-               const col = parseInt(cStr, 10);
-               const row = parseInt(rStr, 10);
-               if (wildSymbolSet.has(evalGrid[col][row])) {
-                   wildReels.add(col);
-               }
-            }
-            if (wildReels.size !== wildCount) {
-               isMatch = false;
-            }
-          }
-
-          ways = targetWin.ways;
-        }
-
-        let hasS1DropFlag = false;
-        if (gameType === 'waygame_qin') {
-          if (evWins.some(w => w.symbolId === 'B1' && w.matchCount >= 5)) {
-            if (targetSymbol !== 'B1' || length < 5) {
-              isMatch = false;
-            }
-          }
-
-          if (isFreeGame && testGrid.some(col => col.includes('S1'))) {
-            hasS1DropFlag = true;
-            if (!allowOtherWins) isMatch = false;
-          }
-
-          if (isMatch) {
-            let currentGrid = testGrid.map(col => [...col]);
-            let drawIndices = [...candidateRng].map(idx => idx - 1);
-            let simWins = [...evWins];
-            let cascadeSafe = true;
-            let cascadeCount = 0;
-
-            while (cascadeCount < 10) {
-              const cascadeWins = simWins.filter(w => w.payout > 0);
-              
-              if (cascadeCount > 0 && simWins.some(w => w.symbolId === 'B1' && w.matchCount >= 6)) {
-                isMatch = false; // Invalidate this RNG as it enters Free Game during cascade
-                break;
-              }
-
-              if (cascadeWins.length === 0) break;
-
-              const winningCoordsMap = getWinningPositions(currentGrid, cascadeWins, currentPaytable, gameType);
-              let hasElimination = false;
-
-              for (let c = 0; c < reelCount; c++) {
-                const strip = currentStrips[c];
-                const rows = rowCounts[c] || 3;
-                const eliminatedRows: number[] = [];
-                for (let r = 0; r < rows; r++) {
-                  if (winningCoordsMap.has(`${c}-${r}`)) {
-                    if (isFreeGame && currentGrid[c][r] === 'S1') continue;
-                    const winIndices = winningCoordsMap.get(`${c}-${r}`);
-                    if (winIndices && winIndices.some(idx => idx !== 999)) {
-                      eliminatedRows.push(r);
-                    }
-                  }
-                }
-
-                if (eliminatedRows.length > 0) {
-                  hasElimination = true;
-                  eliminatedRows.sort((a, b) => b - a);
-                  for (const r of eliminatedRows) {
-                    const len = strip.length;
-                    const drawIdx = (((drawIndices[c] % len) + len) % len);
-                    currentGrid[c][r] = strip[drawIdx];
-                    drawIndices[c]--;
-                  }
-                }
-              }
-
-              if (!hasElimination) break;
-
-              simWins = evaluateGrid(currentGrid, currentPaytable, gameType, customPaylines, true);
-              if (simWins.some(w => w.symbolId === 'B1' && w.matchCount >= 5)) {
-                if (targetSymbol !== 'B1' || length < 5) {
-                  cascadeSafe = false;
-                  break;
-                }
-              }
-              cascadeCount++;
-            }
-
-            if (isFreeGame && currentGrid.some(col => col.includes('S1'))) {
-              hasS1DropFlag = true;
-              if (!allowOtherWins) cascadeSafe = false;
-            }
-
-            if (!cascadeSafe) {
-              isMatch = false;
-            }
-          }
-        }
-
-        if (!isMatch) continue;
-
-        const otherWinsCount = evWins.filter(w => {
-          if (w.symbolId === targetSymbol || wildSymbolSet.has(w.symbolId)) return false;
-          if (w.payout > 0) return true;
-          if ((w.symbolId.startsWith('S') || w.symbolId.startsWith('B')) && w.matchCount >= 3) return true;
-          return false;
-        }).length;
-
-        if (!allowOtherWins) {
-          if (otherWinsCount === 0 && ways === 1 && !hasS1DropFlag) {
-            return { rng: [...candidateRng], hasS1Drop: false };
-          }
-        } else {
-          let score = (ways - 1) * 10 + otherWinsCount * 20 + (hasS1DropFlag ? 1000 : 0);
-
-          let totalDist = 0;
-          for (let c = 0; c < reelCount; c++) {
-            const stripLen = currentStrips[c].length;
-            const idx = candidateRng[c];
-            const rows = rowCounts[c] || 3;
-            let minD = Infinity;
-            
-            for (let r = 0; r < rows; r++) {
-              const sym = currentStrips[c][(idx + r) % stripLen];
-              if (sym === targetSymbol || wildSymbolSet.has(sym)) {
-                const dist = Math.abs(r - 0);
-                if (dist < minD) minD = dist;
-              }
-            }
-            totalDist += (minD === Infinity ? 0 : minD);
-          }
-
-          score += totalDist;
-
-          if (score < minScore) {
-            minScore = score;
-            bestCandidate = [...candidateRng];
-            bestDist = totalDist;
-            bestWildColIdx = currentWildColIdx;
-            bestHasS1Drop = hasS1DropFlag;
-          } else if (score === minScore) {
-            if (currentWildColIdx < bestWildColIdx) {
-              bestCandidate = [...candidateRng];
-              bestDist = totalDist;
-              bestWildColIdx = currentWildColIdx;
-              bestHasS1Drop = hasS1DropFlag;
-            } else if (currentWildColIdx === bestWildColIdx) {
-              if (totalDist < bestDist) {
-                bestCandidate = [...candidateRng];
-                bestDist = totalDist;
-                bestHasS1Drop = hasS1DropFlag;
-              }
-            }
-          }
-        }
-      }
-    }
-
-    if (bestCandidate) {
-      return { rng: bestCandidate, hasS1Drop: bestHasS1Drop };
-    }
-    return null;
-  };
-
-  const strictResult = await runSearch(false);
-  if (strictResult) {
-    return { rng: strictResult.rng, isInterfered: false, hasS1Drop: strictResult.hasS1Drop };
-  }
-
-  const fallbackResult = await runSearch(true);
-  if (fallbackResult && fallbackResult.rng) {
-    const testGrid = fallbackResult.rng.map((start, cIdx) => {
+  const getGridFromRng = (rng: number[], strips: string[][]) => {
+    return Array.from({ length: reelCount }, (_, cIdx) => {
       const r = rowCounts[cIdx] || 3;
-      const s = currentStrips[cIdx];
+      const s = strips[cIdx];
+      const start = rng[cIdx];
       return Array.from({ length: r }).map((_, ri) => s[(start + ri) % s.length]);
     });
+  };
 
-    let evalGrid = testGrid;
-    if (gameType === 'megaway' && topTrackerOther) {
-      evalGrid = testGrid.map((col, colIdx) => {
-        if (colIdx >= 1 && colIdx <= 4) {
-          const topSym = (length < 5 && colIdx >= length)
-            ? '-'
-            : (topTrackerOther[colIdx - 1] || 'WX');
+  const getEvalGrid = (grid: string[][]) => {
+    if (gameType === 'megaway') {
+      return grid.map((col, colIdx) => {
+        if (colIdx >= 1 && colIdx <= 4 && topTrackerOther) {
+          const topSym = (length < 5 && colIdx >= length) ? '-' : (topTrackerOther[colIdx - 1] || 'WX');
           return [...col, topSym];
         }
         return col;
       });
     }
+    return grid;
+  };
 
-    const evWins = evaluateGrid(evalGrid, currentPaytable, gameType, customPaylines, true);
-    const otherWinsCount = evWins.filter(w => w.symbolId !== targetSymbol && !wildSymbolSet.has(w.symbolId) && w.payout > 0).length;
-    const targetWin = evWins.find(w => w.symbolId === targetSymbol);
-    const ways = targetWin ? targetWin.ways : 1;
+  let bestCandidateRng: number[] | null = null;
+  let minInterferenceCount = Infinity;
+  let bestTargetPresence = Infinity;
 
-    return {
-      rng: fallbackResult.rng,
-      isInterfered: otherWinsCount > 0 || ways > 1,
-      hasS1Drop: fallbackResult.hasS1Drop
-    };
+  while (testCount < MAX_RANDOM_ATTEMPTS) {
+    testCount++;
+    if (testCount % 200 === 0) {
+      await yieldIfNeeded();
+    }
+
+    let skipDraw = false;
+    for (let c = 0; c < reelCount; c++) {
+      const len = currentStrips[c]?.length || 1;
+      const rows = rowCounts[c] || 3;
+      const maxIdx = len > rows + 2 ? len - rows : 0;
+      let chosenIdx = 0;
+      if (maxIdx <= 2) {
+        chosenIdx = Math.floor(Math.random() * len);
+      } else {
+        chosenIdx = Math.floor(Math.random() * (maxIdx - 2 + 1)) + 2;
+      }
+      candidateRng[c] = chosenIdx;
+      
+      let hasB1 = false;
+      for (let r = 0; r < rows; r++) {
+         if (currentStrips[c][(chosenIdx + r) % len] === 'B1') {
+             hasB1 = true;
+         }
+      }
+      if (hasB1) {
+          skipDraw = true;
+          break;
+      }
+    }
+    
+    if (skipDraw) continue;
+
+    const initialGrid = getGridFromRng(candidateRng, currentStrips);
+    const initialEvalGrid = getEvalGrid(initialGrid);
+    const initialWins = evaluateGrid(initialEvalGrid, currentPaytable, gameType, customPaylines, true);
+    
+    if (requireGoldCascade) {
+       // Mode B
+       const initialTargetWin = initialWins.find(w => w.symbolId === targetSymbol);
+       if (initialTargetWin && initialTargetWin.matchCount >= length) {
+           continue; 
+       }
+       
+       let hasGoldWin = false;
+       const winningCoordsMap = getWinningPositions(initialEvalGrid, initialWins, currentPaytable, gameType, undefined, customPaylines);
+       
+       const eliminatedRowsMap: Record<number, number[]> = {};
+       let initialTargetPresence = 0;
+       
+       // Count gold wins. We want a gold win, but we ALSO want to penalize non-gold wins in the initial grid to make it "cleaner".
+       let nonGoldWinCount = 0;
+       
+       for (const win of initialWins) {
+          if (win.payout > 0) {
+             let thisWinHasGold = false;
+             // Check if this specific win uses a gold symbol
+             const winPositions = getWinningPositions(initialEvalGrid, [win], currentPaytable, gameType, undefined, customPaylines);
+             for (let c = 0; c < reelCount; c++) {
+                 if (winPositions.has(`${c}-0`) || winPositions.has(`${c}-1`) || winPositions.has(`${c}-2`) || winPositions.has(`${c}-3`) || winPositions.has(`${c}-4`) || winPositions.has(`${c}-5`)) {
+                     const rows = rowCounts[c] || 3;
+                     for (let r = 0; r < rows; r++) {
+                         if (winPositions.has(`${c}-${r}`) && isGoldSymbol(initialEvalGrid[c][r])) {
+                             thisWinHasGold = true;
+                         }
+                     }
+                 }
+             }
+             if (!thisWinHasGold) {
+                nonGoldWinCount++;
+             }
+          }
+       }
+
+       for (let c = 0; c < reelCount; c++) {
+           const rows = rowCounts[c] || 3;
+           eliminatedRowsMap[c] = [];
+           for (let r = 0; r < rows; r++) {
+               if (winningCoordsMap.has(`${c}-${r}`)) {
+                   const winIndices = winningCoordsMap.get(`${c}-${r}`);
+                   if (winIndices && winIndices.some(idx => idx !== 999)) {
+                       eliminatedRowsMap[c].push(r);
+                       if (isGoldSymbol(initialEvalGrid[c][r])) {
+                           hasGoldWin = true;
+                       }
+                   }
+               }
+               // Try to keep initial grid free of target symbol to avoid the "M1+M1+M3" look
+               if (initialEvalGrid[c][r] === targetSymbol) {
+                   initialTargetPresence++;
+               }
+           }
+       }
+       
+       if (!hasGoldWin) continue; 
+       
+       let nextGrid = initialGrid.map(col => [...col]);
+       let drawIndices = [...candidateRng].map(idx => idx - 1);
+       
+       for (let c = 0; c < reelCount; c++) {
+           const strip = currentStrips[c];
+           const eliminatedRows = eliminatedRowsMap[c];
+           if (eliminatedRows.length > 0) {
+               eliminatedRows.sort((a, b) => b - a);
+               for (const r of eliminatedRows) {
+                   if (isGoldSymbol(nextGrid[c][r])) {
+                       nextGrid[c][r] = 'WX';
+                   } else {
+                       const len = strip.length;
+                       const drawIdx = (((drawIndices[c] % len) + len) % len);
+                       nextGrid[c][r] = strip[drawIdx];
+                       drawIndices[c]--;
+                   }
+               }
+           }
+       }
+       
+       const nextEvalGrid = getEvalGrid(nextGrid);
+       const nextWins = evaluateGrid(nextEvalGrid, currentPaytable, gameType, customPaylines, true);
+       const targetWin = nextWins.find(w => w.symbolId === targetSymbol);
+       
+       if (targetWin && targetWin.matchCount === length && (gameType.includes('waygame') || targetWin.ways === 1)) {
+           const nextOtherWinsCount = nextWins.filter(w => w.symbolId !== targetSymbol && !wildSymbolSet.has(w.symbolId) && w.payout > 0).length;
+           
+           // Total interference is the extra wins on first grid PLUS extra wins on second grid
+           const totalInterference = nonGoldWinCount + nextOtherWinsCount;
+
+           if (totalInterference === 0 && initialTargetPresence === 0) {
+               return { rng: [...candidateRng], isInterfered: false };
+           }
+
+           if (totalInterference < minInterferenceCount || (totalInterference === minInterferenceCount && initialTargetPresence < bestTargetPresence)) {
+               minInterferenceCount = totalInterference;
+               bestTargetPresence = initialTargetPresence;
+               bestCandidateRng = [...candidateRng];
+           }
+       }
+       
+    } else {
+       // Mode A
+       const targetWin = initialWins.find(w => w.symbolId === targetSymbol);
+       if (targetWin && targetWin.matchCount === length && (gameType.includes('waygame') || targetWin.ways === 1)) {
+           const winningCoordsMap = getWinningPositions(initialEvalGrid, [targetWin], currentPaytable, gameType, undefined, customPaylines);
+           const wildReels = new Set<number>();
+           let hasGoldInWin = false;
+           for (const key of winningCoordsMap.keys()) {
+               const [cStr, rStr] = key.split('-');
+               const col = parseInt(cStr, 10);
+               const row = parseInt(rStr, 10);
+               const sym = initialEvalGrid[col][row];
+               if (wildSymbolSet.has(sym)) {
+                   wildReels.add(col);
+               }
+               if (isGoldSymbol(sym)) {
+                   hasGoldInWin = true;
+               }
+           }
+           
+           if (!hasGoldInWin && wildReels.size === wildCount) {
+               const otherWinsCount = initialWins.filter(w => w.symbolId !== targetSymbol && !wildSymbolSet.has(w.symbolId) && w.payout > 0).length;
+               
+               if (otherWinsCount === 0) {
+                   return { rng: [...candidateRng], isInterfered: false };
+               }
+
+               if (otherWinsCount < minInterferenceCount) {
+                   minInterferenceCount = otherWinsCount;
+                   bestCandidateRng = [...candidateRng];
+               }
+           }
+       }
+    }
+  }
+
+  if (bestCandidateRng) {
+      return { rng: bestCandidateRng, isInterfered: minInterferenceCount > 0 };
   }
 
   return { rng: null, isInterfered: false };
 }
+
 
 export async function findRngForCombos(
   currentStrips: string[][],
@@ -478,7 +290,8 @@ export async function findRngForCombos(
   gameType: GameType,
   topTrackerOther?: string[],
   customPaylines?: number[][],
-  isFreeGame: boolean = false
+  isFreeGame: boolean = false,
+  _stripSets?: Record<string, string[][]>
 ): Promise<(number[] | null)[]> {
   // Line games do not cascade
   if (gameType === 'linegame' || gameType === 'linegame_set2') {
@@ -561,6 +374,9 @@ export async function findRngForCombos(
               const drawIdx = (((drawIndices[c] % len) + len) % len);
               currentGrid[c][0] = strip[drawIdx];
               drawIndices[c]--;
+            } else if (isGoldSymbol(currentGrid[c][r])) {
+              // 黃金符號消除後原地轉為 WX
+              currentGrid[c][r] = 'WX';
             } else {
               const len = strip.length;
               const drawIdx = (((drawIndices[c] % len) + len) % len);
@@ -598,7 +414,8 @@ export async function findRngForMultiplierIntervals(
   gameType: GameType,
   topTrackerOther?: string[],
   customPaylines?: number[][],
-  isFreeGame: boolean = false
+  isFreeGame: boolean = false,
+  _stripSets?: Record<string, string[][]>
 ): Promise<Record<string, number[]>> {
   const results: Record<string, number[]> = {};
   const targets = new Set(intervals.map(i => i.id));
@@ -698,8 +515,15 @@ export async function findRngForMultiplierIntervals(
         const cascadeWins = simWins.filter(w => w.payout > 0);
         
         let cascadePayout = 0;
+        let cascadeMultiplier = 1;
+        if (gameType === 'waygame' || gameType === 'waygame_qin') {
+          // Waygame cascade multiplier: 1, 2, 4, 8, ... (free game starts at 8)
+          cascadeMultiplier = isFreeGame
+            ? Math.pow(2, Math.min(3 + cascadeCount, 10))
+            : Math.pow(2, Math.min(cascadeCount, 10));
+        }
         for (const w of cascadeWins) cascadePayout += (w.totalWin || w.payout || 0);
-        totalPayout += cascadePayout;
+        totalPayout += cascadePayout * cascadeMultiplier;
 
         const b1Win = simWins.find(w => w.symbolId === 'B1');
         if (b1Win) b1Count = Math.max(b1Count, b1Win.matchCount);
@@ -735,6 +559,9 @@ export async function findRngForMultiplierIntervals(
                 const drawIdx = (((drawIndices[c] % len) + len) % len);
                 currentGrid[c][0] = strip[drawIdx];
                 drawIndices[c]--;
+              } else if (isGoldSymbol(currentGrid[c][r])) {
+                // 黃金符號消除後原地轉為 WX
+                currentGrid[c][r] = 'WX';
               } else {
                 const len = strip.length;
                 const drawIdx = (((drawIndices[c] % len) + len) % len);

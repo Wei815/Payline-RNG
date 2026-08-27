@@ -1,3 +1,4 @@
+import { getBaseSymbol } from '../GameConstants';
 import type { PaytableRule } from '../../../types';
 import type { WinResult } from '../../evaluation';
 import type { EvaluationContext, EvaluationStrategy } from './EvaluationStrategy';
@@ -13,11 +14,11 @@ export class WayGameStrategy implements EvaluationStrategy {
       const col = grid[colIndex];
       let countInCol = 0;
       for (const cell of col) {
-        let isMatch = cell === sym || (!rule.isWild && wildSymbols.has(cell));
+        let isMatch = getBaseSymbol(cell) === getBaseSymbol(sym) || (!rule.isWild && wildSymbols.has(getBaseSymbol(cell)));
         
         if (!isMatch && gameConfig.specialRules?.derivativeSymbols?.[sym]) {
            const derivatives = gameConfig.specialRules.derivativeSymbols[sym];
-           if (derivatives.includes(cell)) {
+           if (derivatives.includes(getBaseSymbol(cell))) {
              isMatch = true;
            }
         }

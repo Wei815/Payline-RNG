@@ -104,6 +104,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
 
     let spinWin = 0;
     let keepCascading = true;
+    let cascadeCount = 0;
 
     while (keepCascading) {
       const wins = evaluateGrid(grid, paytable, gameConfig, effectivePaylines);
@@ -113,14 +114,22 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
         break;
       }
       
+      let tumbleMultiplier = 1;
+      if (gameConfig.gameType === 'waygame') {
+        tumbleMultiplier = isFreeGame 
+          ? Math.min(1024, 8 * Math.pow(2, cascadeCount)) 
+          : Math.min(1024, 1 * Math.pow(2, cascadeCount));
+      }
+      
       let cascadeWin = 0;
       for (let wIdx = 0; wIdx < wins.length; wIdx++) {
         const win = wins[wIdx];
-        cascadeWin += win.totalWin;
+        const multipliedWin = win.totalWin * tumbleMultiplier;
+        cascadeWin += multipliedWin;
 
         const metric = symbolMetrics[win.symbolId];
         if (metric) {
-          metric.totalPayout += win.totalWin;
+          metric.totalPayout += multipliedWin;
 
           if (gameConfig.gameType === 'payanywhere' || gameConfig.gameType === 'payanywhere_set2') {
             if (win.matchCount >= 8 && win.matchCount <= 9) {
@@ -144,7 +153,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
       spinWin += cascadeWin;
 
       // Handle Cascading logic (Tumbling)
-      if ((gameConfig.gameType === 'waygame_qin' || gameConfig.gameType === 'payanywhere_set2') && cascadeWin > 0) {
+      if ((gameConfig.gameType === 'waygame' || gameConfig.gameType === 'waygame_qin' || gameConfig.gameType === 'payanywhere_set2') && cascadeWin > 0) {
         // Find which coordinates were eliminated
         const winningCoordsMap = getWinningPositions(grid, wins, paytable, gameConfig.gameType, undefined, effectivePaylines);
         
@@ -180,6 +189,8 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
         // No cascading mechanic for other games currently, or no win to trigger it
         keepCascading = false;
       }
+      
+      cascadeCount++;
     }
 
     if (spinWin > 0) {

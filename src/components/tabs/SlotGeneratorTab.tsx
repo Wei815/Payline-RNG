@@ -56,7 +56,7 @@ const DEFAULT_MULTIPLIER_INTERVALS: import('../../types').MultiplierInterval[] =
   { id: '5', name: 'Legend Win', min: 1000, max: null },
 ];
 
-export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
+export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, setActiveStripId,
   reelCount, rowCounts, onRowCountsChange,
   manualIndicesOther, setManualIndicesOther, topTrackerOther, setTopTrackerOther,
   gameType, betMultiplier,
@@ -110,7 +110,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
   }, [intervalErrors]);
 
   const { isSearching, combinations } = useRngSearch(
-    selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther, specialSymbolConfig, customPaylines, isFreeGame, bet, activeSearchIntervals
+    selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther, specialSymbolConfig, customPaylines, isFreeGame, bet, activeSearchIntervals, stripSets
   );
 
   const displayGridOther = useMemo(() => {
@@ -409,7 +409,14 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
     return formattedRngArray;
   }, [gameType, combinations, selectedCombIndex, isManualEdited, manualIndicesOther, clovers, currentPaytable, rowCounts]);
 
-  const currentRngString = `[${currentFormattedRngArray.join(',')}],`;
+  const currentRngString = (() => {
+    const targetComb = combinations[selectedCombIndex < combinations.length ? selectedCombIndex : 0];
+    if (gameType === 'waygame' || gameType === 'megaway') {
+      const extraId = (targetComb as any)?.stripId !== undefined && !isManualEdited ? Number((targetComb as any).stripId) + 1 : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) + 1 : 1);
+      return `[${[...currentFormattedRngArray, extraId].join(',')}],`;
+    }
+    return `[${currentFormattedRngArray.join(',')}],`;
+  })();
 
   const pulseClass = pulseToggle ? 'animate-sync-pulse-1' : 'animate-sync-pulse-2';
 
@@ -762,7 +769,10 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                       navigator.clipboard.writeText(finalCopy);
                     } else {
                       // For other game types, just copy the base RNG indices
-                      const finalCopy = `[${comb.rng.join(',')}],`;
+                      const finalRng = (gameType === 'waygame' || gameType === 'megaway') 
+                        ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) + 1 : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) + 1 : 1)]
+                        : comb.rng;
+                      const finalCopy = `[${finalRng.join(',')}],`;
                       navigator.clipboard.writeText(finalCopy);
                     }
                   }
@@ -798,8 +808,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
                         ) : null}
                       </div>
                     ) : (
-                      <span className="truncate block" title={`RNG: ${selectedCombIndex === idx && isManualEdited ? currentRngString : `[${comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}>
-                        {`RNG: ${selectedCombIndex === idx && isManualEdited ? currentRngString : `[${comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}
+                      <span className="truncate block" title={`RNG: ${selectedCombIndex === idx && isManualEdited ? currentRngString : `[${(gameType === 'waygame' || gameType === 'megaway') ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) + 1 : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) + 1 : 1)].join(',') : comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}>
+                        {`RNG: ${selectedCombIndex === idx && isManualEdited ? currentRngString : `[${(gameType === 'waygame' || gameType === 'megaway') ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) + 1 : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) + 1 : 1)].join(',') : comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}
                       </span>
                     )}
                   </div>

@@ -39,6 +39,12 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   const [selectedJackpot, setSelectedJackpot] = useState<'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>('MINI');
   const gridSymbols = useGameStore(state => state.customGridData);
   const setGridSymbols = useGameStore(state => state.setCustomGridData);
+  const activeStripId = useGameStore(state => state.activeStripId);
+  const setActiveStripId = useGameStore(state => state.setActiveStripId);
+  const currentStripSets = useGameStore(state => state.currentStripSets);
+  const currentFreeStripSets = useGameStore(state => state.currentFreeStripSets);
+  const currentStrips = useGameStore(state => state.currentStrips);
+  const isFreeGame = useGameStore(state => state.isFreeGame);
 
   const [hiddenPaletteSymbols, setHiddenPaletteSymbols] = useState<Set<string>>(new Set());
   const [selectedMultiplier, setSelectedMultiplier] = useState<number>(2);
@@ -46,6 +52,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
 
   const [rngInput, setRngInput] = useState('');
   const [classIdInput, setClassIdInput] = useState('');
+  const [pastedStripIndices, setPastedStripIndices] = useState<number[] | null>(null);
   
   const [showPrompt, setShowPrompt] = useState(false);
   const [promptTitle, setPromptTitle] = useState('');
@@ -231,7 +238,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
 
   // Handle Drag & Drops Generation
   const dropRng = useMemo(() => {
-    if (gameType === 'linegame_set2' || gameType === 'linegame') return '';
+    if (gameType === 'linegame_set2' || gameType === 'linegame' || gameType.startsWith('waygame')) return '';
     if (winningCoords.size === 0) return '';
     
     // Calculate current symbol counts to avoid secondary wins
@@ -270,6 +277,10 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
 
   // Base RNG String
   const baseRngStr = useMemo(() => {
+    if (pastedStripIndices) {
+      return `[${pastedStripIndices.join(',')}],`;
+    }
+
     const flatIds: number[] = [];
     gridSymbols.forEach(col => {
       col.forEach(sym => {
@@ -284,8 +295,23 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
         flatIds.push(symbolToMathId[baseSym] || 0);
       });
     });
+    
+    // For Golden Elephant (and other waygames), the game server strictly expects a 6+1 format for RNG, so we discard the 30 math IDs.
+    if (gameType.startsWith('waygame')) {
+      const zeroes = Array(reelCount).fill(0);
+      const activeStrips = isFreeGame ? currentFreeStripSets : currentStripSets;
+      if (activeStrips && activeStrips.length > 1) {
+        return `[${[...zeroes, activeStripId].join(',')}],`;
+      }
+      return `[${zeroes.join(',')}],`;
+    }
+
+    const activeStrips = isFreeGame ? currentFreeStripSets : currentStripSets;
+    if (activeStrips && activeStrips.length > 1) {
+      flatIds.push(activeStripId);
+    }
     return `[${flatIds.join(',')}],`;
-  }, [gridSymbols, symbolToMathId]);
+  }, [gridSymbols, symbolToMathId, activeStripId, currentStripSets, currentFreeStripSets, isFreeGame, gameType, reelCount, pastedStripIndices]);
 
   // --- Handlers ---
   const handleDragStart = (e: React.DragEvent, symbolId: string, isFromPalette: boolean, col?: number, row?: number) => {
@@ -326,6 +352,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
       newGrid[targetCol][targetRow] = temp;
     }
 
+    setPastedStripIndices(null);
     setGridSymbols(newGrid);
   };
 
@@ -443,6 +470,38 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
       setJackpots(newJackpots);
     }
 
+
+
+    if (ids.length === reelCount || ids.length === reelCount + 1) {
+      // It's a strip indices array!
+      const activeStrips = isFreeGame ? currentFreeStripSets : currentStripSets;
+      let targetStripId = activeStripId;
+      
+      if (ids.length === reelCount + 1) {
+         targetStripId = ids[reelCount];
+         if (activeStrips && targetStripId >= 0 && targetStripId < activeStrips.length) {
+            setActiveStripId(targetStripId);
+         }
+      }
+      
+      const stripsToUse = activeStrips && activeStrips.length > 1 ? activeStrips[targetStripId] : (isFreeGame && currentFreeStripSets && currentFreeStripSets.length > 0 ? currentFreeStripSets[0] : currentStrips);
+      
+      const stripGrid = Array.from({ length: reelCount }, (_, c) => {
+        const rows = rowCounts[c] || 3;
+        const strip = stripsToUse[c];
+        const startIndex = ids[c];
+        if (!strip || strip.length === 0) return Array(rows).fill('-');
+        return Array.from({ length: rows }, (_, r) => strip[(startIndex + r) % strip.length]);
+      });
+      
+      setGridSymbols(stripGrid);
+      setPastedStripIndices(ids);
+      setRngInput('');
+      setClassIdInput('');
+      return;
+    }
+
+    setPastedStripIndices(null);
     let idIndex = 0;
     let classIndex = 0;
     const newGrid = gridSymbols.map((col) => 
@@ -465,6 +524,8 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     const newSpecialConfig = extractSpecialConfigFromGrid(newGrid, specialSymbolConfig, gameType);
     setSpecialSymbolConfig(newSpecialConfig);
     
+    // redundant expectedCells check removed
+    
     setGridSymbols(newGrid);
     setRngInput(''); // Clear input after load
     setClassIdInput('');
@@ -474,6 +535,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     setGridSymbols(Array.from({ length: reelCount }, (_, c) => 
       Array(rowCounts[c] || 3).fill('-')
     ));
+    setPastedStripIndices(null);
     setGoldFrames({});
     setJackpots({});
   };
@@ -631,6 +693,20 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full border-b border-gray-700/50 pb-2 gap-2">
           <span className="text-sm font-bold text-dashboard-text-secondary">編輯盤面區 (自由拖曳)</span>
           <div className="flex items-center gap-2 flex-wrap">
+            {((isFreeGame ? currentFreeStripSets : currentStripSets) || []).length > 1 && (
+              <div className="flex items-center gap-1 bg-[#112240] px-2 py-1 rounded border border-gray-700/50 mr-2">
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Strip:</span>
+                <select
+                  value={activeStripId}
+                  onChange={(e) => setActiveStripId(Number(e.target.value))}
+                  className="bg-[#0a192f] border border-gray-600 text-dashboard-accent font-bold rounded px-1.5 py-0.5 text-xs outline-none focus:border-dashboard-accent cursor-pointer"
+                >
+                  {(isFreeGame ? currentFreeStripSets : currentStripSets)?.map((_, i) => (
+                    <option key={i} value={i}>ID {i}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <input
               type="text"
               placeholder="貼上 RNG 陣列"

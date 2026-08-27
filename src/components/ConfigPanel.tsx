@@ -36,6 +36,11 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
   const setCurrentPaytable = useGameStore(state => state.setCurrentPaytable);
   const setIsFreeGame = useGameStore(state => state.setIsFreeGame);
   const setIsProjectLoaded = useGameStore(state => state.setIsProjectLoaded);
+  
+  const currentStripSets = useGameStore(state => state.currentStripSets);
+  const currentFreeStripSets = useGameStore(state => state.currentFreeStripSets);
+  const activeStripId = useGameStore(state => state.activeStripId);
+  const setActiveStripId = useGameStore(state => state.setActiveStripId);
 
   const onReelCountChange = setReelCount;
   const onRowCountsChange = setRowCounts;
@@ -57,6 +62,22 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
 
   const gridData = activeStripTab === 'base' ? baseGridData : freeGridData;
   const setGridData = activeStripTab === 'base' ? setBaseGridData : setFreeGridData;
+  
+  const displayStrips = useMemo(() => {
+    const currentSets = activeStripTab === 'base' ? currentStripSets : currentFreeStripSets;
+    if (currentSets && currentSets.length > 0) {
+      const activeStrips = currentSets[activeStripId] || currentSets[0];
+      if (activeStrips && activeStrips.length > 0) {
+        const maxLen = Math.max(...activeStrips.map(s => s ? s.length : 0));
+        return Array.from({ length: maxLen }).map((_, rIdx) =>
+          Array.from({ length: reelCount }).map((_, cIdx) =>
+            activeStrips[cIdx] ? (activeStrips[cIdx][rIdx] || '') : ''
+          )
+        );
+      }
+    }
+    return gridData;
+  }, [activeStripTab, currentStripSets, currentFreeStripSets, activeStripId, gridData, reelCount]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [highlightSymbol, setHighlightSymbol] = useState<string>('');
 
@@ -271,6 +292,13 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
         }
         if (tmpl.paylines) onPaylinesChange(tmpl.paylines);
         
+        if (tmpl.stripSets) {
+          useGameStore.getState().setCurrentStripSets(tmpl.stripSets);
+        }
+        if (tmpl.freeStripSets) {
+          useGameStore.getState().setCurrentFreeStripSets(tmpl.freeStripSets);
+        }
+        
         if (tmpl.strips && tmpl.strips.length > 0) {
           const maxRows = Math.max(...tmpl.strips.map(s => s.length));
           const newGrid: string[][] = [];
@@ -347,6 +375,13 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
           if (parsed.reelCount) onReelCountChange(parsed.reelCount);
           if (parsed.rowCounts) onRowCountsChange(parsed.rowCounts);
           if (parsed.paylines) onPaylinesChange(parsed.paylines);
+          
+          if (parsed.stripSets) {
+            useGameStore.getState().setCurrentStripSets(parsed.stripSets);
+          }
+          if (parsed.freeStripSets) {
+            useGameStore.getState().setCurrentFreeStripSets(parsed.freeStripSets);
+          }
           
           if (parsed.strips && parsed.strips.length > 0) {
             const maxRows = Math.max(...parsed.strips.map(s => s.length));
@@ -714,6 +749,13 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                   if (parsed.rowCounts) onRowCountsChange(parsed.rowCounts);
                   if (parsed.paylines) onPaylinesChange(parsed.paylines);
                   
+                  if (parsed.stripSets) {
+                    useGameStore.getState().setCurrentStripSets(parsed.stripSets);
+                  }
+                  if (parsed.freeStripSets) {
+                    useGameStore.getState().setCurrentFreeStripSets(parsed.freeStripSets);
+                  }
+                  
                   if (parsed.strips && parsed.strips.length > 0) {
                     const maxRows = Math.max(...parsed.strips.map(s => s.length));
                     const newGrid: string[][] = [];
@@ -871,6 +913,22 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                   >
                     Free Game
                   </button>
+
+                  {((activeStripTab === 'base' ? currentStripSets : currentFreeStripSets) || []).length > 1 && (
+                    <div className="flex items-center gap-1 ml-2 border-l border-gray-600 pl-2">
+                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Strip:</span>
+                      <select
+                        value={activeStripId}
+                        onChange={(e) => setActiveStripId(Number(e.target.value))}
+                        disabled={isRunning}
+                        className="bg-[#0a192f] border border-gray-600 text-dashboard-accent font-bold rounded px-1.5 py-0.5 text-xs outline-none focus:border-dashboard-accent cursor-pointer"
+                      >
+                        {(activeStripTab === 'base' ? currentStripSets : currentFreeStripSets)?.map((_, i) => (
+                          <option key={i} value={i}>ID {i}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -948,7 +1006,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               <table className="w-full text-center text-xs font-mono">
                 <tbody className="divide-y divide-gray-800/50">
-                  {gridData.map((row, rowIndex) => (
+                  {displayStrips.map((row, rowIndex) => (
                     <tr key={rowIndex} className="hover:bg-[#112240] transition-colors">
                       <td className="w-12 py-1.5 bg-[#112240] text-gray-500 border-r border-gray-700 select-none">
                         {rowIndex}

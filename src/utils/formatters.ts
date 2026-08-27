@@ -33,8 +33,9 @@ export function parsePasteRng(text: string, count: number, rowCounts?: number[])
     return result;
   }
 
-  const result = Array(count).fill('0');
-  for (let i = 0; i < count; i++) {
+  const resultLength = Math.max(count, nums.length);
+  const result = Array(resultLength).fill('0');
+  for (let i = 0; i < resultLength; i++) {
     result[i] = nums[i] !== undefined ? nums[i] : '0';
   }
 

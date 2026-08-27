@@ -1,6 +1,7 @@
 import type { PaytableRule, GameType } from '../../types';
 import type { WinResult } from '../evaluation';
 import { defaultPaylines } from '../evaluation';
+import { getBaseSymbol } from './GameConstants';
 
 export function getWinningPositions(
   grid: string[][],
@@ -63,13 +64,13 @@ export function getWinningPositions(
       for (let col = 0; col < win.matchCount; col++) {
         for (let row = 0; row < grid[col].length; row++) {
           const cell = grid[col][row];
-          if (cell === win.symbolId || wildSymbols.has(cell) || (win.symbolId === 'B1' && cell === 'B2')) {
+          if (getBaseSymbol(cell) === getBaseSymbol(win.symbolId) || wildSymbols.has(cell) || (win.symbolId === 'B1' && cell === 'B2')) {
             addCoord(`${col}-${row}`, w);
           }
         }
         if (gameType === 'megaway' && col >= 1 && col <= 4 && topTracker) {
           const cell = topTracker[col - 1];
-          if (cell === win.symbolId || wildSymbols.has(cell) || (win.symbolId === 'B1' && cell === 'B2')) {
+          if (getBaseSymbol(cell) === getBaseSymbol(win.symbolId) || wildSymbols.has(cell) || (win.symbolId === 'B1' && cell === 'B2')) {
             addCoord(`top-${col - 1}`, w);
           }
         }
@@ -83,7 +84,7 @@ export function getWinningPositions(
         const cell = grid[col][row];
         if (scatterPayAnywhereSet.has(cell) || wildSymbols.has(cell)) {
           for (const sw of scatterPayAnywhereWins) {
-            if (cell === sw.symbolId || wildSymbols.has(cell) || (sw.symbolId === 'B1' && cell === 'B2')) {
+            if (getBaseSymbol(cell) === getBaseSymbol(sw.symbolId) || wildSymbols.has(cell) || (sw.symbolId === 'B1' && cell === 'B2')) {
               addCoord(`${col}-${row}`, sw.w);
             }
           }
@@ -94,7 +95,7 @@ export function getWinningPositions(
       topTracker.forEach((cell, idx) => {
         if (scatterPayAnywhereSet.has(cell) || wildSymbols.has(cell)) {
           for (const sw of scatterPayAnywhereWins) {
-            if (cell === sw.symbolId || wildSymbols.has(cell) || (sw.symbolId === 'B1' && cell === 'B2')) {
+            if (getBaseSymbol(cell) === getBaseSymbol(sw.symbolId) || wildSymbols.has(cell) || (sw.symbolId === 'B1' && cell === 'B2')) {
               addCoord(`top-${idx}`, sw.w);
             }
           }

@@ -27,7 +27,8 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
 
   const {
     reelCount, rowCounts, setRowCounts,
-    currentStrips, currentPaytable, customPaylines,
+    currentStrips, currentStripSets, currentFreeStripSets, setActiveStripId,
+    currentPaytable, customPaylines,
     specialSymbolConfig, setSpecialSymbolConfig,
     goldFrames, setGoldFrames,
     jackpots, setJackpots,
@@ -43,6 +44,10 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
     rowCounts: state.rowCounts,
     setRowCounts: state.setRowCounts,
     currentStrips: state.currentStrips,
+    currentStripSets: state.currentStripSets,
+    isFreeGame: state.isFreeGame,
+    currentFreeStripSets: state.currentFreeStripSets,
+    setActiveStripId: state.setActiveStripId,
     currentPaytable: state.currentPaytable,
     customPaylines: state.customPaylines,
     specialSymbolConfig: state.specialSymbolConfig,
@@ -63,13 +68,20 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
     setTopTrackerOther: state.setTopTrackerOther,
     activeTab: state.activeTab,
     setActiveTab: state.setActiveTab,
-    isFreeGame: state.isFreeGame
   })));
 
   const betMultiplier = bet / coin;
   const [lineViewerSymbolState, setLineViewerSymbolState] = useState<string>('');
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [useWxInLines, setUseWxInLines] = useState<boolean>(true);
+
+  const formattedStripSets = useMemo(() => {
+    const sets = isFreeGame ? currentFreeStripSets : currentStripSets;
+    if (!sets || sets.length <= 1) return undefined;
+    const rec: Record<string, string[][]> = {};
+    sets.forEach((s, i) => { rec[i] = s; });
+    return rec;
+  }, [isFreeGame, currentFreeStripSets, currentStripSets]);
 
   useEffect(() => {
     if (gameType !== 'linegame' && gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2' && activeTab === 'lines') {
@@ -200,6 +212,9 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
         {activeTab === 'other' && (
           <div className="w-full">
             <SlotGeneratorTab 
+              stripSets={formattedStripSets}
+              setActiveStripId={setActiveStripId}
+
               reelCount={reelCount}
               rowCounts={rowCounts}
               onRowCountsChange={setRowCounts}
@@ -228,6 +243,8 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
               customPaylines={customPaylines}
               bet={bet}
               isFreeGame={isFreeGame}
+              stripSets={formattedStripSets}
+              setActiveStripId={setActiveStripId}
             />
           </div>
         )}

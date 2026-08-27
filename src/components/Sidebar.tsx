@@ -73,6 +73,7 @@ export const Sidebar: React.FC = () => {
           { name: '決戰賽特2', icon: <FileBox size={16} />, action: () => handleSelectTemplate('決戰賽特2') },
           { name: '秦皇傳說', icon: <FileBox size={16} />, action: () => handleSelectTemplate('秦皇傳說') },
           { name: '奢華', icon: <FileBox size={16} />, action: () => handleSelectTemplate('奢華') },
+          { name: '皇家金象', icon: <FileBox size={16} />, action: () => handleSelectTemplate('皇家金象') },
         ])}
 
         <input 

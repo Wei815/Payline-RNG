@@ -15,7 +15,8 @@ export function useRngSearch(
   customPaylines?: number[][],
   isFreeGame: boolean = false,
   bet: number = 1,
-  multiplierIntervals: import("../types").MultiplierInterval[] = []
+  multiplierIntervals: import("../types").MultiplierInterval[] = [],
+  stripSets?: Record<string, string[][]>
 ) {
   const [combinations, setCombinations] = useState<
     {
@@ -25,6 +26,7 @@ export function useRngSearch(
       rng: any[] | null;
       isInterfered: boolean;
       hasS1Drop?: boolean;
+      stripId?: number;
     }[]
   >([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
@@ -873,6 +875,8 @@ export function useRngSearch(
                 topTrackerOther,
                 customPaylines,
                 isFreeGame,
+                stripSets,
+                W > 0  // requireGoldCascade 當需要 WX 時，透過消除黃金符號產生
               ),
             });
           }
@@ -889,6 +893,7 @@ export function useRngSearch(
             rng: res.rng,
             isInterfered: res.isInterfered,
             hasS1Drop: res.hasS1Drop,
+            stripId: (res as any).stripId,
           });
         }
 
@@ -911,19 +916,11 @@ export function useRngSearch(
     }, 50);
 
     return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedSymbol,
-    reelCount,
-    rowCounts,
-    currentStrips,
-    currentPaytable,
-    gameType,
-    topTrackerOther,
-    specialSymbolConfigStr,
-    customPaylines,
     multiplierIntervalsStr,
-    bet,
-    isFreeGame,
+    isFreeGame
   ]);
 
   return { isSearching, combinations };

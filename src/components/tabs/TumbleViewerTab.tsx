@@ -113,6 +113,7 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
   // 把 MathID Grid 轉換為 Symbol Grid
   const currentGridSymbols = useMemo(() => {
     return currentGridIds.map(col => col.map(strId => {
+      if (strId === 'WX') return 'WX';
       if (typeof strId === 'string' && strId.includes('_')) {
         const [baseId, mult] = strId.split('_');
         const sym = reverseMap[parseInt(baseId)] || `?${baseId}`;
@@ -123,13 +124,19 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
   }, [currentGridIds, reverseMap]);
 
   // 當前盤面的贏分結果
-  const { wins, winningCoords, totalWin } = useMemo(() => {
-    if (currentGridSymbols.length === 0) return { wins: [], winningCoords: new Map<string, number[]>(), totalWin: 0 };
+  const { wins, winningCoords, totalWin, currentMultiplier } = useMemo(() => {
+    if (currentGridSymbols.length === 0) return { wins: [], winningCoords: new Map<string, number[]>(), totalWin: 0, currentMultiplier: 1 };
     const evWins = evaluateGrid(currentGridSymbols, currentPaytable, gameType, undefined, true);
     const coords = getWinningPositions(currentGridSymbols, evWins, currentPaytable, gameType);
-    const winSum = evWins.reduce((sum, w) => sum + w.totalWin, 0);
-    return { wins: evWins, winningCoords: coords, totalWin: winSum };
-  }, [currentGridSymbols, currentPaytable, gameType]);
+    
+    let mult = 1;
+    if (gameType === 'waygame') {
+      mult = isFreeGame ? Math.min(1024, 8 * Math.pow(2, tumbleCount)) : Math.min(1024, 1 * Math.pow(2, tumbleCount));
+    }
+    
+    const winSum = evWins.reduce((sum, w) => sum + (w.totalWin * mult), 0);
+    return { wins: evWins, winningCoords: coords, totalWin: winSum, currentMultiplier: mult };
+  }, [currentGridSymbols, currentPaytable, gameType, tumbleCount, isFreeGame]);
 
   const [pulseToggle, setPulseToggle] = useState(false);
   
@@ -180,7 +187,12 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
              }
           }
           
+          
           keptIds.push(keptStr);
+        } else {
+          if ((gameType === 'waygame' || gameType === 'waygame_qin') && symId.startsWith('G') && symId !== 'G') {
+             keptIds.push('WX');
+          }
         }
       }
 
@@ -291,6 +303,7 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
         <div className="flex justify-between items-start shrink-0 relative z-50">
           <div className="flex items-start gap-4 text-sm text-gray-400">
             <span className="pt-0.5">消除次數: <span className="text-white font-bold">{tumbleCount}</span></span>
+            {gameType === 'waygame' && <span className="pt-0.5">當前倍率: <span className="text-purple-400 font-bold">x{currentMultiplier}</span></span>}
             <span className="pt-0.5">單次贏分: <span className="text-yellow-400 font-bold">{formatAmount(totalWin * betMultiplier)}</span></span>
             {(() => {
               let gridMultiplier = 0;
