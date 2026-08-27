@@ -179,9 +179,9 @@ export abstract class AbstractGame implements IGameEnvironment {
     let testCount = 0;
     const candidateRng = Array(reelCount).fill(0);
 
-    let bestCandidateRng: number[] | null = null;
     let minInterferenceCount = Infinity;
     let bestTargetPresence = Infinity;
+    let bestCandidateRng: number[] | null = null;
 
     while (testCount < MAX_RANDOM_ATTEMPTS) {
       testCount++;
@@ -202,99 +202,76 @@ export abstract class AbstractGame implements IGameEnvironment {
         }
         candidateRng[c] = chosenIdx;
 
-      let hasB1 = false;
-      for (let r = 0; r < rows; r++) {
-        if (currentStrips[c][(chosenIdx + r) % len] === "B1") {
-          hasB1 = true;
+        let hasB1 = false;
+        for (let r = 0; r < rows; r++) {
+          if (currentStrips[c][(chosenIdx + r) % len] === "B1") {
+            hasB1 = true;
+          }
+        }
+        if (hasB1) {
+          skipDraw = true;
+          break;
         }
       }
-      if (hasB1) {
-        skipDraw = true;
-        break;
-      }
-    }
 
-    
-    // // 
+      if (skipDraw) continue;
 
-    if (skipDraw) {
-      
-      continue;
-    }
-
-    const initialGrid = this.getGridFromRng(
-      candidateRng,
-      currentStrips,
-      rowCounts,
-      reelCount,
-    );
-    const initialEvalGrid = this.getEvalGrid(
-      initialGrid,
-      gameType,
-      length,
-      topTrackerOther,
-    );
-    const initialWins = this.evaluate(
-      initialEvalGrid,
-      currentPaytable,
-      { gameType, paylines: customPaylines },
-      customPaylines,
-      true,
-    );
-
-    if (requireGoldCascade) {
-      // Mode B
-      
-      
-      
-      
-      }
-
-
-      // 
-      const initialTargetWin = initialWins.find(
-        (w) => w.symbolId === targetSymbol && w.payout > 0,
+      const initialGrid = this.getGridFromRng(
+        candidateRng,
+        currentStrips,
+        rowCounts,
+        reelCount,
       );
-      if (initialTargetWin) { 
-        
-        continue;
-      }
-
-      let hasGoldWin = false;
-      const winningCoordsMap = getWinningPositions(
-        initialEvalGrid,
-        initialWins,
-        currentPaytable,
+      const initialEvalGrid = this.getEvalGrid(
+        initialGrid,
         gameType,
-        undefined,
+        length,
+        topTrackerOther,
+      );
+      const initialWins = this.evaluate(
+        initialEvalGrid,
+        currentPaytable,
+        { gameType, paylines: customPaylines },
         customPaylines,
+        true,
       );
 
-      const eliminatedRowsMap: Record<number, number[]> = {};
-      let initialTargetPresence = 0;
+      if (requireGoldCascade) {
+        // ── Mode B：搜尋「初盤有金色中獎 → 瀑布後出現 targetSymbol」──
 
-      let nonGoldWinCount = 0;
+        // 初盤不能已有 targetSymbol 賠率中獎
+        const initialTargetWin = initialWins.find(
+          (w) => w.symbolId === targetSymbol && w.payout > 0,
+        );
+        if (initialTargetWin) continue;
 
-      for (const win of initialWins) {
-        if (win.payout > 0) {
-          let thisWinHasGold = false;
-          const winPositions = getWinningPositions(
-            initialEvalGrid,
-            [win],
-            currentPaytable,
-            gameType,
-            undefined,
-            customPaylines,
-          );
-          for (let c = 0; c < reelCount; c++) {
-            if (
-              winPositions.has(`${c}-0`) ||
-              winPositions.has(`${c}-1`) ||
-              winPositions.has(`${c}-2`) ||
-              winPositions.has(`${c}-3`) ||
-              winPositions.has(`${c}-4`) ||
-              winPositions.has(`${c}-5`)
-            ) {
+        let hasGoldWin = false;
+        const winningCoordsMap = getWinningPositions(
+          initialEvalGrid,
+          initialWins,
+          currentPaytable,
+          gameType,
+          undefined,
+          customPaylines,
+        );
+
+        const eliminatedRowsMap: Record<number, number[]> = {};
+        let initialTargetPresence = 0;
+        let nonGoldWinCount = 0;
+
+        // 計算哪些中獎沒有金色符號參與（干擾計數）
+        for (const win of initialWins) {
+          if (win.payout > 0) {
+            let thisWinHasGold = false;
+            const winPositions = getWinningPositions(
+              initialEvalGrid,
+              [win],
+              currentPaytable,
+              gameType,
+              undefined,
+              customPaylines,
+            );
+            for (let c = 0; c < reelCount; c++) {
               const rows = rowCounts[c] || 3;
               for (let r = 0; r < rows; r++) {
                 if (
@@ -305,78 +282,75 @@ export abstract class AbstractGame implements IGameEnvironment {
                 }
               }
             }
-          }
-          if (!thisWinHasGold) {
-            nonGoldWinCount++;
+            if (!thisWinHasGold) nonGoldWinCount++;
           }
         }
-      }
 
-      for (let c = 0; c < reelCount; c++) {
-        const rows = rowCounts[c] || 3;
-        eliminatedRowsMap[c] = [];
-        for (let r = 0; r < rows; r++) {
-          if (winningCoordsMap.has(`${c}-${r}`)) {
-            const winIndices = winningCoordsMap.get(`${c}-${r}`);
-            if (winIndices && winIndices.some((idx) => idx !== 999)) {
-              eliminatedRowsMap[c].push(r);
-              if (this.isGoldSymbol(initialEvalGrid[c][r])) {
-                hasGoldWin = true;
+        // 確認哪些格子要被消除，並計算初盤 targetSymbol 的存在量
+        for (let c = 0; c < reelCount; c++) {
+          const rows = rowCounts[c] || 3;
+          eliminatedRowsMap[c] = [];
+          for (let r = 0; r < rows; r++) {
+            if (winningCoordsMap.has(`${c}-${r}`)) {
+              const winIndices = winningCoordsMap.get(`${c}-${r}`);
+              if (winIndices && winIndices.some((idx) => idx !== 999)) {
+                eliminatedRowsMap[c].push(r);
+                if (this.isGoldSymbol(initialEvalGrid[c][r])) {
+                  hasGoldWin = true;
+                }
               }
             }
-          }
-          if (initialEvalGrid[c][r] === targetSymbol) {
-            initialTargetPresence++;
+            if (initialEvalGrid[c][r] === targetSymbol) {
+              initialTargetPresence++;
+            }
           }
         }
-      }
 
-      if (!hasGoldWin) {
-        continue;
-      }
+        // 必須有金色符號被消除，才可能產生 WX
+        if (!hasGoldWin) continue;
 
-      let nextGrid = initialGrid.map((col) => [...col]);
-      let drawIndices = [...candidateRng].map((idx) => idx - 1);
+        // 執行瀑布（由子類別的 applyCascade 處理金色→WX 轉換）
+        let nextGrid = initialGrid.map((col) => [...col]);
+        let drawIndices = [...candidateRng].map((idx) => idx - 1);
 
-      for (let c = 0; c < reelCount; c++) {
-        const strip = currentStrips[c];
-        const eliminatedRows = eliminatedRowsMap[c];
-        if (eliminatedRows.length > 0) {
-          this.applyCascade(
-            nextGrid,
-            c,
-            eliminatedRows,
-            strip,
-            drawIndices,
-            isFreeGame,
-            gameType,
-          );
+        for (let c = 0; c < reelCount; c++) {
+          const strip = currentStrips[c];
+          const eliminatedRows = eliminatedRowsMap[c];
+          if (eliminatedRows.length > 0) {
+            this.applyCascade(
+              nextGrid,
+              c,
+              eliminatedRows,
+              strip,
+              drawIndices,
+              isFreeGame,
+              gameType,
+            );
+          }
         }
-      }
 
-      const nextEvalGrid = this.getEvalGrid(
-        nextGrid,
-        gameType,
-        length,
-        topTrackerOther,
-      );
-      const nextWins = this.evaluate(
-        nextEvalGrid,
-        currentPaytable,
-        { gameType, paylines: customPaylines },
-        customPaylines,
-        true,
-      );
-      const targetWins = nextWins.filter((w) => w.symbolId === targetSymbol);
-      
-      if (
-        targetWins.length === 1 &&
-        targetWins[0].matchCount === length
-      ) {
-        
+        // 評估瀑布後的盤面
+        const nextEvalGrid = this.getEvalGrid(
+          nextGrid,
+          gameType,
+          length,
+          topTrackerOther,
+        );
+        const nextWins = this.evaluate(
+          nextEvalGrid,
+          currentPaytable,
+          { gameType, paylines: customPaylines },
+          customPaylines,
+          true,
+        );
 
+        // 瀑布後必須有且只有 1 個 targetSymbol 中獎，且長度符合
+        const targetWins = nextWins.filter((w) => w.symbolId === targetSymbol);
+        if (targetWins.length !== 1 || targetWins[0].matchCount !== length) continue;
+
+        // 計算中獎位置中有幾個滾輪有 WX（wildCount 必須符合）
         const targetWin = targetWins[0];
-        const winningCoordsMap = getWinningPositions(
+        const nextWinningCoordsMap = getWinningPositions(
           nextEvalGrid,
           [targetWin],
           currentPaytable,
@@ -385,7 +359,7 @@ export abstract class AbstractGame implements IGameEnvironment {
           customPaylines,
         );
         const wildReels = new Set<number>();
-        for (const key of winningCoordsMap.keys()) {
+        for (const key of nextWinningCoordsMap.keys()) {
           const [cStr, rStr] = key.split("-");
           const col = parseInt(cStr, 10);
           const row = parseInt(rStr, 10);
@@ -395,12 +369,9 @@ export abstract class AbstractGame implements IGameEnvironment {
           }
         }
 
-        if (wildReels.size !== wildCount) { 
-          
-            console.log("Target rejected: wildReels.size !== wildCount (size is", wildReels.size, ")");
-          continue;
-        }
+        if (wildReels.size !== wildCount) continue;
 
+        // 干擾評估
         const nextOtherWinsCount = nextWins.filter(
           (w) =>
             w.symbolId !== targetSymbol &&
@@ -411,7 +382,6 @@ export abstract class AbstractGame implements IGameEnvironment {
         const totalInterference = nonGoldWinCount + nextOtherWinsCount;
 
         if (totalInterference === 0 && initialTargetPresence === 0) {
-          
           return { rng: [...candidateRng], isInterfered: false };
         }
 
@@ -420,27 +390,21 @@ export abstract class AbstractGame implements IGameEnvironment {
           (totalInterference === minInterferenceCount &&
             initialTargetPresence < bestTargetPresence)
         ) {
-          
           minInterferenceCount = totalInterference;
           bestTargetPresence = initialTargetPresence;
           bestCandidateRng = [...candidateRng];
         }
-    } else {
 
-      
-      
-      
+      } else {
+        // ── Mode A：搜尋初盤就有 targetSymbol 中獎 ──
 
-      const targetWins = initialWins.filter((w) => w.symbolId === targetSymbol);
+        const targetWins = initialWins.filter((w) => w.symbolId === targetSymbol);
 
-      
-
-      if (
-        targetWins.length === 1 &&
-        targetWins[0].matchCount === length &&
-        (gameType.includes("waygame") || targetWins[0].ways === 1)
-      ) {
-        if (true) {
+        if (
+          targetWins.length === 1 &&
+          targetWins[0].matchCount === length &&
+          (gameType.includes("waygame") || targetWins[0].ways === 1)
+        ) {
           const targetWin = targetWins[0];
           const winningCoordsMap = getWinningPositions(
             initialEvalGrid,
@@ -457,15 +421,10 @@ export abstract class AbstractGame implements IGameEnvironment {
             const col = parseInt(cStr, 10);
             const row = parseInt(rStr, 10);
             const sym = initialEvalGrid[col][row];
-            if (wildSymbolSet.has(sym)) {
-              wildReels.add(col);
-            }
-            if (this.isGoldSymbol(sym)) {
-              hasGoldInWin = true;
-            }
+            if (wildSymbolSet.has(sym)) wildReels.add(col);
+            if (this.isGoldSymbol(sym)) hasGoldInWin = true;
           }
 
-          
           if (!hasGoldInWin && wildReels.size === wildCount) {
             const otherWinsCount = initialWins.filter(
               (w) =>
@@ -494,7 +453,7 @@ export abstract class AbstractGame implements IGameEnvironment {
     return { rng: null, isInterfered: false };
   }
 
-  }
+
   async findRngForCombos(
     currentStrips: string[][],
     rowCounts: number[],

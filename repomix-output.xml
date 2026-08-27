@@ -99,6 +99,8 @@ src/
       index.ts
     qin/
       QinGame.ts
+    royal_elephant/
+      RoyalElephantGame.ts
   hooks/
     useRngSearch.ts
     useSimulation.ts
@@ -163,1092 +165,6 @@ vite.config.ts
 
 <files>
 This section contains the contents of the repository's files.
-
-<file path="src/games/base/AbstractGame.ts">
-import type { GameConfig, PaytableRule, ReelStrips, GameType, MultiplierInterval } from '../../types';
-import type { WinResult } from '../../utils/evaluation';
-import { evaluateGrid, getWinningPositions } from '../../utils/evaluation';
-import type { IGameEnvironment } from './IGameEnvironment';
-
-export abstract class AbstractGame implements IGameEnvironment {
-  abstract readonly id: GameType;
-  abstract readonly name: string;
-
-  abstract getDefaultConfig(): GameConfig;
-  abstract getDefaultPaytable(): PaytableRule[];
-  abstract getDefaultReelStrips(): ReelStrips;
-  abstract evaluate(grid: string[][], paytable: PaytableRule[], config: GameConfig, customPaylines?: number[][], includeZeroPayout?: boolean): WinResult[];
-
-  protected createTimeSlicer(intervalMs: number = 16) {
-    let lastYield = performance.now();
-    return async function yieldIfNeeded() {
-      if (performance.now() - lastYield > intervalMs) {
-        await new Promise(r => setTimeout(r, 0));
-        lastYield = performance.now();
-      }
-    };
-  }
-
-  protected isGoldSymbol(sym: string): boolean {
-    return /^G[1-9A-Z]/.test(sym);
-  }
-
-  // Hook for subclasses to define how symbols drop after a win
-  protected applyCascade(
-    grid: string[][],
-    colIndex: number,
-    eliminatedRows: number[],
-    strip: string[],
-    drawIndices: number[],
-    isFreeGame: boolean,
-    gameType: GameType
-  ): void {
-    // Default cascading logic (normal drop)
-    eliminatedRows.sort((a, b) => b - a);
-    for (const r of eliminatedRows) {
-      const len = strip.length;
-      const drawIdx = (((drawIndices[colIndex] % len) + len) % len);
-      grid[colIndex][r] = strip[drawIdx];
-      drawIndices[colIndex]--;
-    }
-  }
-
-  protected getEvalGrid(grid: string[][], gameType: GameType, length: number, topTrackerOther?: string[]): string[][] {
-    if (gameType === 'megaway') {
-      return grid.map((col, colIdx) => {
-        if (colIdx >= 1 && colIdx <= 4 && topTrackerOther) {
-          const topSym = (length < 5 && colIdx >= length) ? '-' : (topTrackerOther[colIdx - 1] || 'WX');
-          return [...col, topSym];
-        }
-        return col;
-      });
-    }
-    return grid;
-  }
-
-  protected getGridFromRng(rng: number[], strips: string[][], rowCounts: number[], reelCount: number): string[][] {
-    return Array.from({ length: reelCount }, (_, cIdx) => {
-      const r = rowCounts[cIdx] || 3;
-      const s = strips[cIdx];
-      const start = rng[cIdx];
-      return Array.from({ length: r }).map((_, ri) => s[(start + ri) % s.length]);
-    });
-  }
-
-  async findRngForCombination(
-    targetSymbol: string,
-    length: number,
-    wildCount: number,
-    currentStrips: string[][],
-    rowCounts: number[],
-    currentPaytable: PaytableRule[],
-    reelCount: number,
-    gameType: GameType,
-    topTrackerOther?: string[],
-    customPaylines?: number[][],
-    isFreeGame: boolean = false,
-    stripSets?: Record<string, string[][]>,
-    requireGoldCascade: boolean = false
-  ): Promise<{ rng: number[] | null; isInterfered: boolean; hasS1Drop?: boolean; stripId?: number }> {
-    if (stripSets && Object.keys(stripSets).length > 0) {
-      const stripIds = Object.keys(stripSets).map(Number);
-      stripIds.sort(() => Math.random() - 0.5);
-      let bestInterferred: { rng: number[] | null; isInterfered: boolean; hasS1Drop?: boolean; stripId?: number } | null = null;
-  
-      for (const sid of stripIds) {
-        const res = await this.findRngForCombination(
-          targetSymbol, length, wildCount, stripSets[sid], rowCounts,
-          currentPaytable, reelCount, gameType, topTrackerOther, customPaylines,
-          isFreeGame, undefined, requireGoldCascade
-        );
-        if (res.rng) {
-          if (!res.isInterfered) {
-            return { ...res, rng: [...res.rng, sid], stripId: sid };
-          } else {
-            if (!bestInterferred) {
-              bestInterferred = { ...res, rng: res.rng ? [...res.rng, sid] : null, stripId: sid };
-            }
-          }
-        }
-      }
-      return bestInterferred || { rng: null, isInterfered: false };
-    }
-  
-    const yieldIfNeeded = this.createTimeSlicer(16);
-    const wildSymbolSet = new Set<string>();
-    currentPaytable.filter(p => p.isWild).forEach(p => wildSymbolSet.add(p.symbolId));
-    wildSymbolSet.add('WILD');
-    wildSymbolSet.add('W');
-    wildSymbolSet.add('WX');
-    for (const strip of currentStrips) {
-      if (!strip) continue;
-      for (const sym of strip) {
-        if (sym === 'WILD' || sym === 'W' || sym === 'WX') wildSymbolSet.add(sym);
-      }
-    }
-  
-    const MAX_RANDOM_ATTEMPTS = 50000;
-    
-    let testCount = 0;
-    const candidateRng = Array(reelCount).fill(0);
-  
-    let bestCandidateRng: number[] | null = null;
-    let minInterferenceCount = Infinity;
-    let bestTargetPresence = Infinity;
-  
-    while (testCount < MAX_RANDOM_ATTEMPTS) {
-      testCount++;
-      if (testCount % 200 === 0) {
-        await yieldIfNeeded();
-      }
-  
-      let skipDraw = false;
-      for (let c = 0; c < reelCount; c++) {
-        const len = currentStrips[c]?.length || 1;
-        const rows = rowCounts[c] || 3;
-        const maxIdx = len > rows + 2 ? len - rows : 0;
-        let chosenIdx = 0;
-        if (maxIdx <= 2) {
-          chosenIdx = Math.floor(Math.random() * len);
-        } else {
-          chosenIdx = Math.floor(Math.random() * (maxIdx - 2 + 1)) + 2;
-        }
-        candidateRng[c] = chosenIdx;
-        
-        let hasB1 = false;
-        for (let r = 0; r < rows; r++) {
-           if (currentStrips[c][(chosenIdx + r) % len] === 'B1') {
-               hasB1 = true;
-           }
-        }
-        if (hasB1) {
-            skipDraw = true;
-            break;
-        }
-      }
-      
-      if (skipDraw) continue;
-  
-      const initialGrid = this.getGridFromRng(candidateRng, currentStrips, rowCounts, reelCount);
-      const initialEvalGrid = this.getEvalGrid(initialGrid, gameType, length, topTrackerOther);
-      const initialWins = this.evaluate(initialEvalGrid, currentPaytable, { gameType, paylines: customPaylines }, customPaylines, true);
-      
-      if (requireGoldCascade) {
-         // Mode B
-         const initialTargetWin = initialWins.find(w => w.symbolId === targetSymbol);
-         if (initialTargetWin && initialTargetWin.matchCount >= length) {
-             continue; 
-         }
-         
-         let hasGoldWin = false;
-         const winningCoordsMap = getWinningPositions(initialEvalGrid, initialWins, currentPaytable, gameType, undefined, customPaylines);
-         
-         const eliminatedRowsMap: Record<number, number[]> = {};
-         let initialTargetPresence = 0;
-         
-         let nonGoldWinCount = 0;
-         
-         for (const win of initialWins) {
-            if (win.payout > 0) {
-               let thisWinHasGold = false;
-               const winPositions = getWinningPositions(initialEvalGrid, [win], currentPaytable, gameType, undefined, customPaylines);
-               for (let c = 0; c < reelCount; c++) {
-                   if (winPositions.has(`${c}-0`) || winPositions.has(`${c}-1`) || winPositions.has(`${c}-2`) || winPositions.has(`${c}-3`) || winPositions.has(`${c}-4`) || winPositions.has(`${c}-5`)) {
-                       const rows = rowCounts[c] || 3;
-                       for (let r = 0; r < rows; r++) {
-                           if (winPositions.has(`${c}-${r}`) && this.isGoldSymbol(initialEvalGrid[c][r])) {
-                               thisWinHasGold = true;
-                           }
-                       }
-                   }
-               }
-               if (!thisWinHasGold) {
-                  nonGoldWinCount++;
-               }
-            }
-         }
-  
-         for (let c = 0; c < reelCount; c++) {
-             const rows = rowCounts[c] || 3;
-             eliminatedRowsMap[c] = [];
-             for (let r = 0; r < rows; r++) {
-                 if (winningCoordsMap.has(`${c}-${r}`)) {
-                     const winIndices = winningCoordsMap.get(`${c}-${r}`);
-                     if (winIndices && winIndices.some(idx => idx !== 999)) {
-                         eliminatedRowsMap[c].push(r);
-                         if (this.isGoldSymbol(initialEvalGrid[c][r])) {
-                             hasGoldWin = true;
-                         }
-                     }
-                 }
-                 if (initialEvalGrid[c][r] === targetSymbol) {
-                     initialTargetPresence++;
-                 }
-             }
-         }
-         
-         if (!hasGoldWin) continue; 
-         
-         let nextGrid = initialGrid.map(col => [...col]);
-         let drawIndices = [...candidateRng].map(idx => idx - 1);
-         
-         for (let c = 0; c < reelCount; c++) {
-             const strip = currentStrips[c];
-             const eliminatedRows = eliminatedRowsMap[c];
-             if (eliminatedRows.length > 0) {
-                 this.applyCascade(nextGrid, c, eliminatedRows, strip, drawIndices, isFreeGame, gameType);
-             }
-         }
-         
-         const nextEvalGrid = this.getEvalGrid(nextGrid, gameType, length, topTrackerOther);
-         const nextWins = this.evaluate(nextEvalGrid, currentPaytable, { gameType, paylines: customPaylines }, customPaylines, true);
-         const targetWins = nextWins.filter(w => w.symbolId === targetSymbol);
-         if (targetWins.length === 1 && targetWins[0].matchCount === length && (gameType.includes('waygame') || targetWins[0].ways === 1)) {
-             let hasExtraTargetSymbol = false;
-             if (!gameType.includes('payanywhere')) {
-                 for (let c = 0; c < reelCount; c++) {
-                     let countInCol = 0;
-                     for (let r = 0; r < (rowCounts[c] || 3); r++) {
-                         if (nextEvalGrid[c][r] === targetSymbol) {
-                             countInCol++;
-                         }
-                     }
-                     if (countInCol > 1) {
-                         hasExtraTargetSymbol = true;
-                         break;
-                     }
-                 }
-             }
-
-             if (hasExtraTargetSymbol) continue;
-             
-             const nextOtherWinsCount = nextWins.filter(w => w.symbolId !== targetSymbol && !wildSymbolSet.has(w.symbolId) && w.payout > 0).length;
-             
-             const totalInterference = nonGoldWinCount + nextOtherWinsCount;
-  
-             if (totalInterference === 0 && initialTargetPresence === 0) {
-                 return { rng: [...candidateRng], isInterfered: false };
-             }
-  
-             if (totalInterference < minInterferenceCount || (totalInterference === minInterferenceCount && initialTargetPresence < bestTargetPresence)) {
-                 minInterferenceCount = totalInterference;
-                 bestTargetPresence = initialTargetPresence;
-                 bestCandidateRng = [...candidateRng];
-             }
-         }
-         
-      } else {
-         // Mode A
-         const targetWins = initialWins.filter(w => w.symbolId === targetSymbol);
-         if (targetWins.length === 1 && targetWins[0].matchCount === length && (gameType.includes('waygame') || targetWins[0].ways === 1)) {
-             
-             let hasExtraTargetSymbol = false;
-             if (!gameType.includes('payanywhere')) {
-                 for (let c = 0; c < reelCount; c++) {
-                     let countInCol = 0;
-                     for (let r = 0; r < (rowCounts[c] || 3); r++) {
-                         if (initialEvalGrid[c][r] === targetSymbol) {
-                             countInCol++;
-                         }
-                     }
-                     if (countInCol > 1) {
-                         hasExtraTargetSymbol = true;
-                         break;
-                     }
-                 }
-             }
-
-             if (!hasExtraTargetSymbol) {
-                 const targetWin = targetWins[0];
-                 const winningCoordsMap = getWinningPositions(initialEvalGrid, [targetWin], currentPaytable, gameType, undefined, customPaylines);
-                 const wildReels = new Set<number>();
-                 let hasGoldInWin = false;
-                 for (const key of winningCoordsMap.keys()) {
-                     const [cStr, rStr] = key.split('-');
-                     const col = parseInt(cStr, 10);
-                     const row = parseInt(rStr, 10);
-                     const sym = initialEvalGrid[col][row];
-                     if (wildSymbolSet.has(sym)) {
-                         wildReels.add(col);
-                     }
-                     if (this.isGoldSymbol(sym)) {
-                         hasGoldInWin = true;
-                     }
-                 }
-                 
-                 if (!hasGoldInWin && wildReels.size === wildCount) {
-                     const otherWinsCount = initialWins.filter(w => w.symbolId !== targetSymbol && !wildSymbolSet.has(w.symbolId) && w.payout > 0).length;
-                     
-                     if (otherWinsCount === 0) {
-                         return { rng: [...candidateRng], isInterfered: false };
-                     }
-      
-                     if (otherWinsCount < minInterferenceCount) {
-                         minInterferenceCount = otherWinsCount;
-                         bestCandidateRng = [...candidateRng];
-                     }
-                 }
-             }
-         }
-      }
-    }
-  
-    if (bestCandidateRng) {
-        return { rng: bestCandidateRng, isInterfered: minInterferenceCount > 0 };
-    }
-  
-    return { rng: null, isInterfered: false };
-  }
-
-  async findRngForCombos(
-    currentStrips: string[][],
-    rowCounts: number[],
-    currentPaytable: PaytableRule[],
-    reelCount: number,
-    gameType: GameType,
-    topTrackerOther?: string[],
-    customPaylines?: number[][],
-    isFreeGame: boolean = false,
-    _stripSets?: Record<string, string[][]>
-  ): Promise<(number[] | null)[]> {
-    const results: (number[] | null)[] = [];
-    const ATTEMPTS = 10000;
-    const yieldIfNeeded = this.createTimeSlicer(16);
-    
-    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      if (attempt % 200 === 0) await yieldIfNeeded();
-      
-      const candidateRng = Array(reelCount).fill(0).map((_, c) => {
-        const len = currentStrips[c]?.length || 1;
-        const rows = rowCounts[c] || 3;
-        const minIdx = 2;
-        const maxIdx = len > rows + 2 ? len - rows : 0;
-        if (maxIdx <= minIdx) return Math.floor(Math.random() * len);
-        return Math.floor(Math.random() * (maxIdx - minIdx + 1)) + minIdx;
-      });
-      
-      let currentGrid = candidateRng.map((start, cIdx) => {
-        const r = rowCounts[cIdx] || 3;
-        const s = currentStrips[cIdx] || ['-'];
-        return Array.from({ length: r }).map((_, ri) => s[(start + ri) % s.length]);
-      });
-      
-      let drawIndices = [...candidateRng].map(idx => idx - 1);
-      let cascadeCount = 0;
-      
-      while (cascadeCount < 20) {
-        let evalGrid = currentGrid;
-        if (gameType === 'megaway' && topTrackerOther) {
-          evalGrid = currentGrid.map((col, colIdx) => {
-            if (colIdx >= 1 && colIdx <= 4) {
-               const topSym = topTrackerOther[colIdx - 1] || 'WX';
-               return [...col, topSym];
-            }
-            return col;
-          });
-        }
-        
-        const simWins = this.evaluate(evalGrid, currentPaytable, { gameType, paylines: customPaylines }, customPaylines, false);
-        const cascadeWins = simWins.filter(w => w.payout > 0);
-        
-        if (cascadeCount > 0 && simWins.some(w => w.symbolId === 'B1' && w.matchCount >= 6)) {
-          cascadeCount = 0; 
-          break;
-        }
-        
-        if (cascadeWins.length === 0) break;
-        
-        const winningCoordsMap = getWinningPositions(evalGrid, cascadeWins, currentPaytable, gameType, undefined, customPaylines);
-        let hasElimination = false;
-        
-        for (let c = 0; c < reelCount; c++) {
-          const strip = currentStrips[c];
-          const rows = rowCounts[c] || 3;
-          const eliminatedRows: number[] = [];
-          for (let r = 0; r < rows; r++) {
-            if (winningCoordsMap.has(`${c}-${r}`)) {
-              if (gameType === 'waygame_qin' && isFreeGame && currentGrid[c][r] === 'S1') continue;
-              const winIndices = winningCoordsMap.get(`${c}-${r}`);
-              if (winIndices && winIndices.some(idx => idx !== 999)) {
-                eliminatedRows.push(r);
-              }
-            }
-          }
-          
-          if (eliminatedRows.length > 0) {
-            hasElimination = true;
-            this.applyCascade(currentGrid, c, eliminatedRows, strip, drawIndices, isFreeGame, gameType);
-          }
-        }
-        
-        if (!hasElimination) break;
-        cascadeCount++;
-      }
-      
-      if (cascadeCount > 0) {
-        while (results.length < cascadeCount) {
-          results.push(null);
-        }
-        if (results[cascadeCount - 1] === null) {
-          results[cascadeCount - 1] = candidateRng;
-        }
-      }
-    }
-    
-    return results;
-  }
-
-  async findRngForMultiplierIntervals(
-    intervals: MultiplierInterval[],
-    bet: number,
-    currentStrips: string[][],
-    rowCounts: number[],
-    currentPaytable: PaytableRule[],
-    reelCount: number,
-    gameType: GameType,
-    topTrackerOther?: string[],
-    customPaylines?: number[][],
-    isFreeGame: boolean = false,
-    _stripSets?: Record<string, string[][]>
-  ): Promise<Record<string, number[]>> {
-    const results: Record<string, number[]> = {};
-    const targets = new Set(intervals.map(i => i.id));
-    const hasCascade = gameType !== 'linegame' && gameType !== 'linegame_set2';
-    const ATTEMPTS = 35000;
-    const yieldIfNeeded = this.createTimeSlicer(16);
-  
-    const topSymbols = currentPaytable
-      .filter(p => !p.isScatter && p.payouts && Object.values(p.payouts).some(v => v > 0))
-      .sort((a, b) => {
-        const maxA = Math.max(...Object.values(a.payouts || {}));
-        const maxB = Math.max(...Object.values(b.payouts || {}));
-        return maxB - maxA;
-      });
-    
-    const topSymbolStopsByRow: Record<number, number[]>[] = [];
-    if (topSymbols.length > 0) {
-      const highSymIds = new Set([topSymbols[0].symbolId, topSymbols[1]?.symbolId, 'WX', 'WILD', 'W'].filter(Boolean));
-      for (let c = 0; c < reelCount; c++) {
-        const strip = currentStrips[c] || [];
-        const rows = rowCounts[c] || 3;
-        const rowMap: Record<number, number[]> = {};
-        for (let r = 0; r < rows; r++) rowMap[r] = [];
-        for (let i = 0; i < strip.length; i++) {
-          for (let r = 0; r < rows; r++) {
-            if (highSymIds.has(strip[(i + r) % strip.length])) {
-              rowMap[r].push(i);
-            }
-          }
-        }
-        topSymbolStopsByRow.push(rowMap);
-      }
-    }
-  
-    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      if (targets.size === 0) break;
-      if (attempt % 200 === 0) await yieldIfNeeded();
-  
-      const remainingIntervals = intervals.filter(i => targets.has(i.id));
-      const onlyHighRemaining = remainingIntervals.every(i => i.min >= 30);
-      const useGuided = (attempt > 1000 && onlyHighRemaining) || (attempt > 4000 && Math.random() < 0.6);
-      const alignRow = Math.floor(Math.random() * 3);
-  
-      const candidateRng = Array(reelCount).fill(0).map((_, c) => {
-        const len = currentStrips[c]?.length || 1;
-        const rows = rowCounts[c] || 3;
-        const minIdx = 2;
-        const maxIdx = len > rows + 2 ? len - rows : 0;
-        
-        if (useGuided && topSymbolStopsByRow[c] && topSymbolStopsByRow[c][alignRow] && topSymbolStopsByRow[c][alignRow].length > 0 && Math.random() < 0.85) {
-          const list = topSymbolStopsByRow[c][alignRow];
-          return list[Math.floor(Math.random() * list.length)];
-        }
-  
-        if (maxIdx <= minIdx) return Math.floor(Math.random() * len);
-        return Math.floor(Math.random() * (maxIdx - minIdx + 1)) + minIdx;
-      });
-      
-      let currentGrid = candidateRng.map((start, cIdx) => {
-        const r = rowCounts[cIdx] || 3;
-        const s = currentStrips[cIdx] || ['-'];
-        return Array.from({ length: r }).map((_, ri) => s[(start + ri) % s.length]);
-      });
-  
-      let totalPayout = 0;
-  
-      if (!hasCascade) {
-        const simWins = this.evaluate(currentGrid, currentPaytable, { gameType, paylines: customPaylines, effectiveBet: bet }, customPaylines, false);
-        for (let i = 0; i < simWins.length; i++) {
-          totalPayout += (simWins[i].totalWin || simWins[i].payout || 0);
-        }
-      } else {
-        let drawIndices = [...candidateRng].map(idx => idx - 1);
-        let cascadeCount = 0;
-        let b1Count = 0;
-  
-        while (cascadeCount < 20) {
-          let evalGrid = currentGrid;
-          if (gameType === 'megaway' && topTrackerOther) {
-            evalGrid = currentGrid.map((col, colIdx) => {
-              if (colIdx >= 1 && colIdx <= 4) {
-                 const topSym = topTrackerOther[colIdx - 1] || 'WX';
-                 return [...col, topSym];
-              }
-              return col;
-            });
-          }
-          
-          const simWins = this.evaluate(evalGrid, currentPaytable, { gameType, paylines: customPaylines, effectiveBet: bet }, customPaylines, false);
-          const cascadeWins = simWins.filter(w => w.payout > 0);
-          
-          let cascadePayout = 0;
-          let cascadeMultiplier = 1;
-          if (gameType === 'waygame' || gameType === 'waygame_qin') {
-            cascadeMultiplier = isFreeGame
-              ? Math.pow(2, Math.min(3 + cascadeCount, 10))
-              : Math.pow(2, Math.min(cascadeCount, 10));
-          }
-          for (const w of cascadeWins) cascadePayout += (w.totalWin || w.payout || 0);
-          totalPayout += cascadePayout * cascadeMultiplier;
-  
-          const b1Win = simWins.find(w => w.symbolId === 'B1');
-          if (b1Win) b1Count = Math.max(b1Count, b1Win.matchCount);
-  
-          if (cascadeWins.length === 0) break;
-          
-          const winningCoordsMap = getWinningPositions(evalGrid, cascadeWins, currentPaytable, gameType, undefined, customPaylines);
-          let hasElimination = false;
-          
-          for (let c = 0; c < reelCount; c++) {
-            const strip = currentStrips[c];
-            const rows = rowCounts[c] || 3;
-            const eliminatedRows: number[] = [];
-            for (let r = 0; r < rows; r++) {
-              if (winningCoordsMap.has(`${c}-${r}`)) {
-                if (gameType === 'waygame_qin' && isFreeGame && currentGrid[c][r] === 'S1') continue;
-                const winIndices = winningCoordsMap.get(`${c}-${r}`);
-                if (winIndices && winIndices.some(idx => idx !== 999)) {
-                  eliminatedRows.push(r);
-                }
-              }
-            }
-            
-            if (eliminatedRows.length > 0) {
-              hasElimination = true;
-              this.applyCascade(currentGrid, c, eliminatedRows, strip, drawIndices, isFreeGame, gameType);
-            }
-          }
-          
-          if (!hasElimination) break;
-          cascadeCount++;
-        }
-  
-        if (!isFreeGame && b1Count >= 6) {
-          continue;
-        }
-      }
-  
-      const multiplier = totalPayout / (bet || 1);
-  
-      for (const interval of intervals) {
-        if (targets.has(interval.id)) {
-          const maxVal = interval.max ?? Infinity;
-          if (multiplier >= interval.min && multiplier < maxVal) {
-            results[interval.id] = [...candidateRng];
-            targets.delete(interval.id);
-          }
-        }
-      }
-    }
-  
-    return results;
-  }
-}
-</file>
-
-<file path="src/games/base/BaseLineGame.ts">
-import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
-import type { WinResult } from '../../utils/evaluation';
-import { LineGameStrategy } from '../../utils/evaluation/strategies/LineGameStrategy';
-import { AbstractGame } from './AbstractGame';
-import { DEFAULT_WILD_SYMBOLS } from '../../utils/evaluation/GameConstants';
-import { ScatterStrategy } from '../../utils/evaluation/strategies/ScatterStrategy';
-
-export abstract class BaseLineGame extends AbstractGame {
-  private scatterStrategy = new ScatterStrategy();
-  private lineGameStrategy = new LineGameStrategy();
-
-  evaluate(
-    grid: string[][],
-    paytable: PaytableRule[],
-    config: GameConfig,
-    customPaylines?: number[][],
-    includeZeroPayout: boolean = false
-  ): WinResult[] {
-    const results: WinResult[] = [];
-    if (!grid || grid.length === 0 || !paytable || paytable.length === 0) return results;
-
-    const wildSymbols = new Set(paytable.filter(p => p.isWild).map(p => p.symbolId));
-    const configuredWilds = config.wildSymbols || DEFAULT_WILD_SYMBOLS;
-    configuredWilds.forEach(w => wildSymbols.add(w));
-
-    const context = {
-      grid,
-      paytable,
-      gameConfig: config,
-      wildSymbols,
-      includeZeroPayout
-    };
-
-    for (const rule of paytable) {
-      if (rule.isScatter) {
-        results.push(...this.scatterStrategy.evaluate(context, rule));
-      } else {
-        results.push(...this.lineGameStrategy.evaluate(context, rule));
-      }
-    }
-
-    const lineWins = new Map<number, WinResult>();
-    const nonLineWins: WinResult[] = [];
-
-    for (const win of results) {
-      if (win.lineIndex !== undefined) {
-        const existing = lineWins.get(win.lineIndex);
-        if (!existing || win.totalWin > existing.totalWin) {
-          lineWins.set(win.lineIndex, win);
-        }
-      } else {
-        nonLineWins.push(win);
-      }
-    }
-    
-    return [...nonLineWins, ...Array.from(lineWins.values())];
-  }
-
-  // Line games do not cascade
-  override async findRngForCombos(
-    _currentStrips: string[][],
-    _rowCounts: number[],
-    _currentPaytable: PaytableRule[],
-    _reelCount: number,
-    _gameType: GameType,
-    _topTrackerOther?: string[],
-    _customPaylines?: number[][],
-    _isFreeGame?: boolean,
-    _stripSets?: Record<string, string[][]>
-  ): Promise<(number[] | null)[]> {
-    return [];
-  }
-}
-</file>
-
-<file path="src/games/base/BasePayAnywhere.ts">
-import type { GameConfig, PaytableRule, ReelStrips } from '../../types';
-import type { WinResult } from '../../utils/evaluation';
-import { PayAnywhereStrategy } from '../../utils/evaluation/strategies/PayAnywhereStrategy';
-import { AbstractGame } from './AbstractGame';
-import { DEFAULT_WILD_SYMBOLS } from '../../utils/evaluation/GameConstants';
-import { ScatterStrategy } from '../../utils/evaluation/strategies/ScatterStrategy';
-
-export abstract class BasePayAnywhere extends AbstractGame {
-  private scatterStrategy = new ScatterStrategy();
-  private payAnywhereStrategy = new PayAnywhereStrategy();
-
-  evaluate(
-    grid: string[][],
-    paytable: PaytableRule[],
-    config: GameConfig,
-    _customPaylines?: number[][],
-    includeZeroPayout: boolean = false
-  ): WinResult[] {
-    const results: WinResult[] = [];
-    if (!grid || grid.length === 0 || !paytable || paytable.length === 0) return results;
-
-    const wildSymbols = new Set(paytable.filter(p => p.isWild).map(p => p.symbolId));
-    const configuredWilds = config.wildSymbols || DEFAULT_WILD_SYMBOLS;
-    configuredWilds.forEach(w => wildSymbols.add(w));
-
-    const context = {
-      grid,
-      paytable,
-      gameConfig: config,
-      wildSymbols,
-      includeZeroPayout
-    };
-
-    for (const rule of paytable) {
-      if (rule.isScatter) {
-        results.push(...this.scatterStrategy.evaluate(context, rule));
-      } else {
-        results.push(...this.payAnywhereStrategy.evaluate(context, rule));
-      }
-    }
-    
-    return results;
-  }
-}
-</file>
-
-<file path="src/games/base/BaseWayGame.ts">
-import type { GameConfig, PaytableRule, ReelStrips } from '../../types';
-import type { WinResult } from '../../utils/evaluation';
-import { WayGameStrategy } from '../../utils/evaluation/strategies/WayGameStrategy';
-import { AbstractGame } from './AbstractGame';
-import { DEFAULT_WILD_SYMBOLS } from '../../utils/evaluation/GameConstants';
-import { ScatterStrategy } from '../../utils/evaluation/strategies/ScatterStrategy';
-
-export abstract class BaseWayGame extends AbstractGame {
-  private scatterStrategy = new ScatterStrategy();
-  private wayGameStrategy = new WayGameStrategy();
-
-  evaluate(
-    grid: string[][],
-    paytable: PaytableRule[],
-    config: GameConfig,
-    _customPaylines?: number[][],
-    includeZeroPayout: boolean = false
-  ): WinResult[] {
-    const results: WinResult[] = [];
-    if (!grid || grid.length === 0 || !paytable || paytable.length === 0) return results;
-
-    const wildSymbols = new Set(paytable.filter(p => p.isWild).map(p => p.symbolId));
-    const configuredWilds = config.wildSymbols || DEFAULT_WILD_SYMBOLS;
-    configuredWilds.forEach(w => wildSymbols.add(w));
-
-    const context = {
-      grid,
-      paytable,
-      gameConfig: config,
-      wildSymbols,
-      includeZeroPayout
-    };
-
-    for (const rule of paytable) {
-      if (rule.isScatter) {
-        results.push(...this.scatterStrategy.evaluate(context, rule));
-      } else {
-        results.push(...this.wayGameStrategy.evaluate(context, rule));
-      }
-    }
-    
-    return results;
-  }
-}
-</file>
-
-<file path="src/games/battle_set2/BattleSet2Game.ts">
-import { BasePayAnywhere } from '../base/BasePayAnywhere';
-import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
-
-export class BattleSet2Game extends BasePayAnywhere {
-  readonly id: GameType = 'payanywhere_set2';
-  readonly name = '決戰賽特2 (Battle Set 2)';
-
-  getDefaultConfig(): GameConfig {
-    return {
-      gameType: this.id,
-      paylines: []
-    };
-  }
-
-  getDefaultPaytable(): PaytableRule[] {
-    return [];
-  }
-
-  getDefaultReelStrips(): ReelStrips {
-    return {
-      0: [], 1: [], 2: [], 3: [], 4: [], 5: []
-    };
-  }
-
-  // Override cascade to implement array shifting rule
-  protected override applyCascade(
-    grid: string[][],
-    colIndex: number,
-    eliminatedRows: number[],
-    strip: string[],
-    drawIndices: number[],
-    isFreeGame: boolean,
-    gameType: GameType
-  ): void {
-    eliminatedRows.sort((a, b) => b - a);
-    for (const r of eliminatedRows) {
-      // Shift symbols above the eliminated row down by 1
-      for (let shift = r; shift > 0; shift--) {
-        grid[colIndex][shift] = grid[colIndex][shift - 1];
-      }
-      
-      // Draw new symbol at the top
-      const len = strip.length;
-      const drawIdx = (((drawIndices[colIndex] % len) + len) % len);
-      grid[colIndex][0] = strip[drawIdx];
-      drawIndices[colIndex]--;
-    }
-  }
-}
-</file>
-
-<file path="src/games/linegame/ClassicLineGame.ts">
-import { BaseLineGame } from '../base/BaseLineGame';
-import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
-
-export class ClassicLineGame extends BaseLineGame {
-  readonly id: GameType = 'linegame';
-  readonly name = '經典線遊戲 (Classic Line)';
-
-  getDefaultConfig(): GameConfig {
-    return {
-      gameType: this.id,
-      paylines: []
-    };
-  }
-
-  getDefaultPaytable(): PaytableRule[] {
-    return [];
-  }
-
-  getDefaultReelStrips(): ReelStrips {
-    return {
-      0: [], 1: [], 2: [], 3: [], 4: []
-    };
-  }
-}
-</file>
-
-<file path="src/games/luxe/LuxeGame.ts">
-import { BaseLineGame } from '../base/BaseLineGame';
-import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
-import type { WinResult } from '../../utils/evaluation';
-
-export class LuxeGame extends BaseLineGame {
-  readonly id: GameType = 'linegame_set2';
-  readonly name = '奢華 (Luxe)';
-
-  getDefaultConfig(): GameConfig {
-    return {
-      gameType: this.id,
-      paylines: []
-    };
-  }
-
-  getDefaultPaytable(): PaytableRule[] {
-    return [];
-  }
-
-  getDefaultReelStrips(): ReelStrips {
-    return {
-      0: [], 1: [], 2: [], 3: [], 4: []
-    };
-  }
-
-  override evaluate(
-    grid: string[][],
-    paytable: PaytableRule[],
-    config: GameConfig,
-    customPaylines?: number[][],
-    includeZeroPayout: boolean = false
-  ): WinResult[] {
-    // 1. Get base linegame evaluation results
-    const baseWins = super.evaluate(grid, paytable, config, customPaylines, includeZeroPayout);
-    const finalWins = [...baseWins];
-
-    const actualPaylines = config.paylines && config.paylines.length > 0 ? config.paylines : (customPaylines || []);
-
-    // 2. Evaluate Jackpots on winning lines
-    if (config.jackpots && Object.keys(config.jackpots).length > 0) {
-      const hitJackpotKeys = new Set<string>();
-      
-      for (const win of baseWins) {
-        if (win.totalWin > 0 && win.lineIndex !== undefined && actualPaylines[win.lineIndex]) {
-           const line = actualPaylines[win.lineIndex];
-           for (let c = 0; c < win.matchCount; c++) {
-              const r = line[c];
-              const posKey = `${c}-${r}`;
-              if (config.jackpots[posKey]) {
-                 hitJackpotKeys.add(posKey);
-              }
-           }
-        }
-      }
-      
-      for (const posKey of hitJackpotKeys) {
-        const jp = config.jackpots[posKey];
-        let jpWin = 0;
-        if (jp === 'MINI') jpWin = 25;
-        else if (jp === 'MAJOR') jpWin = 100;
-        else if (jp === 'MEGA') jpWin = 500;
-        else if (jp === 'MAXWIN') jpWin = 20000;
-        
-        if (jpWin > 0) {
-           const bet = config.effectiveBet || 1;
-           finalWins.push({
-              symbolId: jp + ' 大獎',
-              matchCount: 0,
-              ways: 1,
-              payout: jpWin,
-              totalWin: jpWin * bet,
-              isJackpot: true
-           });
-        }
-      }
-    }
-
-    // 3. S1 Clover Collection
-    let s1Count = 0;
-    let s1Multiplier = 0;
-    
-    for (let c = 0; c < grid.length; c++) {
-      for (let r = 0; r < grid[c].length; r++) {
-        const cell = grid[c][r];
-        if (cell === 'S1') s1Count++;
-        
-        const posKey = `${c}-${r}`;
-        // Collect gold frames
-        if (config.goldFrames && config.goldFrames[posKey]) {
-           s1Multiplier += config.goldFrames[posKey];
-        }
-        // Collect Jackpots (any on the board)
-        if (config.jackpots && config.jackpots[posKey]) {
-           const jp = config.jackpots[posKey];
-           if (jp === 'MINI') s1Multiplier += 25;
-           else if (jp === 'MAJOR') s1Multiplier += 100;
-           else if (jp === 'MEGA') s1Multiplier += 500;
-           else if (jp === 'MAXWIN') s1Multiplier += 20000;
-        }
-        // Collect multiplier symbols
-        if (cell.includes('_') && cell.match(/^[F|L][1-4]_/)) {
-           const valStr = cell.split('_')[1];
-           const num = parseInt(valStr.replace('X', ''), 10);
-           if (!isNaN(num)) s1Multiplier += num;
-        }
-      }
-    }
-
-    if (s1Count > 0 && s1Multiplier > 0) {
-      const bet = config.effectiveBet || 1;
-      finalWins.push({
-         symbolId: 'S1 收集',
-         matchCount: s1Count,
-         ways: s1Count,
-         payout: s1Multiplier,
-         totalWin: s1Multiplier * bet * s1Count,
-         isJackpot: true
-      });
-    }
-
-    return finalWins;
-  }
-}
-</file>
-
-<file path="src/games/mermaid/MermaidGame.ts">
-import { BaseWayGame } from '../base/BaseWayGame';
-import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
-
-export class MermaidGame extends BaseWayGame {
-  readonly id: GameType = 'waygame';
-  readonly name = '美人魚 (Mermaid)';
-
-  getDefaultConfig(): GameConfig {
-    return {
-      gameType: this.id,
-      paylines: []
-    };
-  }
-
-  getDefaultPaytable(): PaytableRule[] {
-    return [];
-  }
-
-  getDefaultReelStrips(): ReelStrips {
-    return {
-      0: [], 1: [], 2: [], 3: [], 4: []
-    };
-  }
-}
-</file>
-
-<file path="src/games/payanywhere/ClassicPayAnywhere.ts">
-import { BasePayAnywhere } from '../base/BasePayAnywhere';
-import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
-
-export class ClassicPayAnywhere extends BasePayAnywhere {
-  readonly id: GameType = 'payanywhere';
-  readonly name = '全盤掉落 (Classic Pay Anywhere)';
-
-  getDefaultConfig(): GameConfig {
-    return {
-      gameType: this.id,
-      paylines: []
-    };
-  }
-
-  getDefaultPaytable(): PaytableRule[] {
-    return [];
-  }
-
-  getDefaultReelStrips(): ReelStrips {
-    return {
-      0: [], 1: [], 2: [], 3: [], 4: [], 5: []
-    };
-  }
-}
-</file>
-
-<file path="src/games/qin/QinGame.ts">
-import { BaseWayGame } from '../base/BaseWayGame';
-import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
-
-export class QinGame extends BaseWayGame {
-  readonly id: GameType = 'waygame_qin';
-  readonly name = '秦皇傳說 (Qin)';
-
-  getDefaultConfig(): GameConfig {
-    return {
-      gameType: this.id,
-      paylines: []
-    };
-  }
-
-  getDefaultPaytable(): PaytableRule[] {
-    return [];
-  }
-
-  getDefaultReelStrips(): ReelStrips {
-    return {
-      0: [], 1: [], 2: [], 3: [], 4: [], 5: []
-    };
-  }
-
-  // Override cascade to implement Gold -> WX rule
-  protected override applyCascade(
-    grid: string[][],
-    colIndex: number,
-    eliminatedRows: number[],
-    strip: string[],
-    drawIndices: number[],
-    isFreeGame: boolean,
-    gameType: GameType
-  ): void {
-    eliminatedRows.sort((a, b) => b - a);
-    for (const r of eliminatedRows) {
-      if (isFreeGame && grid[colIndex][r] === 'S1') {
-        continue;
-      }
-      
-      if (this.isGoldSymbol(grid[colIndex][r])) {
-        // Gold symbol turns into Wild after elimination
-        grid[colIndex][r] = 'WX';
-      } else {
-        const len = strip.length;
-        const drawIdx = (((drawIndices[colIndex] % len) + len) % len);
-        grid[colIndex][r] = strip[drawIdx];
-        drawIndices[colIndex]--;
-      }
-    }
-  }
-}
-</file>
 
 <file path="public/favicon.svg">
 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="46" fill="none" viewBox="0 0 48 46"><path fill="#863bff" d="M25.946 44.938c-.664.845-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.287c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.497 0-3.578-1.842-3.578H1.237c-.92 0-1.456-1.04-.92-1.788L10.013.474c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.579 1.842 3.579h11.377c.943 0 1.473 1.088.89 1.83L25.947 44.94z" style="fill:#863bff;fill:color(display-p3 .5252 .23 1);fill-opacity:1"/><mask id="a" width="48" height="46" x="0" y="0" maskUnits="userSpaceOnUse" style="mask-type:alpha"><path fill="#000" d="M25.842 44.938c-.664.844-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.183c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.498 0-3.579-1.842-3.579H1.133c-.92 0-1.456-1.04-.92-1.787L9.91.473c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.578 1.842 3.578h11.377c.943 0 1.473 1.088.89 1.832L25.843 44.94z" style="fill:#000;fill-opacity:1"/></mask><g mask="url(#a)"><g filter="url(#b)"><ellipse cx="5.508" cy="14.704" fill="#ede6ff" rx="5.508" ry="14.704" style="fill:#ede6ff;fill:color(display-p3 .9275 .9033 1);fill-opacity:1" transform="matrix(.00324 1 1 -.00324 -4.47 31.516)"/></g><g filter="url(#c)"><ellipse cx="10.399" cy="29.851" fill="#ede6ff" rx="10.399" ry="29.851" style="fill:#ede6ff;fill:color(display-p3 .9275 .9033 1);fill-opacity:1" transform="matrix(.00324 1 1 -.00324 -39.328 7.883)"/></g><g filter="url(#d)"><ellipse cx="5.508" cy="30.487" fill="#7e14ff" rx="5.508" ry="30.487" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.814 -25.913 -14.639)scale(1 -1)"/></g><g filter="url(#e)"><ellipse cx="5.508" cy="30.599" fill="#7e14ff" rx="5.508" ry="30.599" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.814 -32.644 -3.334)scale(1 -1)"/></g><g filter="url(#f)"><ellipse cx="5.508" cy="30.599" fill="#7e14ff" rx="5.508" ry="30.599" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="matrix(.00324 1 1 -.00324 -34.34 30.47)"/></g><g filter="url(#g)"><ellipse cx="14.072" cy="22.078" fill="#ede6ff" rx="14.072" ry="22.078" style="fill:#ede6ff;fill:color(display-p3 .9275 .9033 1);fill-opacity:1" transform="rotate(93.35 24.506 48.493)scale(-1 1)"/></g><g filter="url(#h)"><ellipse cx="3.47" cy="21.501" fill="#7e14ff" rx="3.47" ry="21.501" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.009 28.708 47.59)scale(-1 1)"/></g><g filter="url(#i)"><ellipse cx="3.47" cy="21.501" fill="#7e14ff" rx="3.47" ry="21.501" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.009 28.708 47.59)scale(-1 1)"/></g><g filter="url(#j)"><ellipse cx=".387" cy="8.972" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(39.51 .387 8.972)"/></g><g filter="url(#k)"><ellipse cx="47.523" cy="-6.092" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 47.523 -6.092)"/></g><g filter="url(#l)"><ellipse cx="41.412" cy="6.333" fill="#47bfff" rx="5.971" ry="9.665" style="fill:#47bfff;fill:color(display-p3 .2799 .748 1);fill-opacity:1" transform="rotate(37.892 41.412 6.333)"/></g><g filter="url(#m)"><ellipse cx="-1.879" cy="38.332" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 -1.88 38.332)"/></g><g filter="url(#n)"><ellipse cx="-1.879" cy="38.332" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 -1.88 38.332)"/></g><g filter="url(#o)"><ellipse cx="35.651" cy="29.907" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 35.651 29.907)"/></g><g filter="url(#p)"><ellipse cx="38.418" cy="32.4" fill="#47bfff" rx="5.971" ry="15.297" style="fill:#47bfff;fill:color(display-p3 .2799 .748 1);fill-opacity:1" transform="rotate(37.892 38.418 32.4)"/></g></g><defs><filter id="b" width="60.045" height="41.654" x="-19.77" y="16.149" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="7.659"/></filter><filter id="c" width="90.34" height="51.437" x="-54.613" y="-7.533" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="7.659"/></filter><filter id="d" width="79.355" height="29.4" x="-49.64" y="2.03" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="e" width="79.579" height="29.4" x="-45.045" y="20.029" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="f" width="79.579" height="29.4" x="-43.513" y="21.178" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="g" width="74.749" height="58.852" x="15.756" y="-17.901" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="7.659"/></filter><filter id="h" width="61.377" height="25.362" x="23.548" y="2.284" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="i" width="61.377" height="25.362" x="23.548" y="2.284" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="j" width="56.045" height="63.649" x="-27.636" y="-22.853" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="k" width="54.814" height="64.646" x="20.116" y="-38.415" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="l" width="33.541" height="35.313" x="24.641" y="-11.323" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="m" width="54.814" height="64.646" x="-29.286" y="6.009" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="n" width="54.814" height="64.646" x="-29.286" y="6.009" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="o" width="54.814" height="64.646" x="8.244" y="-2.416" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="p" width="39.409" height="43.623" x="18.713" y="10.588" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter></defs></svg>
@@ -2460,77 +1376,105 @@ export const SymbolCategories = {
 } as const;
 </file>
 
-<file path="src/core/GameRegistry.ts">
-import type { IGameEnvironment } from '../games/base/IGameEnvironment';
-import type { GameType } from '../types';
+<file path="src/games/base/AbstractGame.ts">
+import type {
+  GameConfig,
+  PaytableRule,
+  ReelStrips,
+  GameType,
+  MultiplierInterval,
+} from "../../types";
+import type { WinResult } from "../../utils/evaluation";
+import { getWinningPositions } from "../../utils/evaluation";
+import type { IGameEnvironment } from "./IGameEnvironment";
 
-import { MermaidGame } from '../games/mermaid/MermaidGame';
-import { QinGame } from '../games/qin/QinGame';
-import { BattleSet2Game } from '../games/battle_set2/BattleSet2Game';
-import { LuxeGame } from '../games/luxe/LuxeGame';
-import { ClassicLineGame } from '../games/linegame/ClassicLineGame';
-import { ClassicPayAnywhere } from '../games/payanywhere/ClassicPayAnywhere';
+export abstract class AbstractGame implements IGameEnvironment {
+  abstract readonly id: GameType;
+  abstract readonly name: string;
 
-export class GameRegistry {
-  private static games = new Map<GameType, IGameEnvironment>();
-  private static initialized = false;
-
-  static init() {
-    if (this.initialized) return;
-    this.register(new MermaidGame());
-    this.register(new QinGame());
-    this.register(new BattleSet2Game());
-    this.register(new LuxeGame());
-    this.register(new ClassicLineGame());
-    this.register(new ClassicPayAnywhere());
-    this.initialized = true;
-  }
-
-  static register(game: IGameEnvironment) {
-    this.games.set(game.id, game);
-  }
-
-  static getGame(id: GameType): IGameEnvironment {
-    this.init();
-    const game = this.games.get(id);
-    if (!game) {
-      throw new Error(`Game environment for ${id} not found.`);
-    }
-    return game;
-  }
-
-  static getAllGames(): IGameEnvironment[] {
-    this.init();
-    return Array.from(this.games.values());
-  }
-}
-</file>
-
-<file path="src/games/base/IGameEnvironment.ts">
-import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
-import type { WinResult } from '../../utils/evaluation';
-
-export interface IGameEnvironment {
-  readonly id: GameType;
-  readonly name: string;
-  getDefaultConfig(): GameConfig;
-  getDefaultPaytable(): PaytableRule[];
-  getDefaultReelStrips(): ReelStrips;
-  evaluate(grid: string[][], paytable: PaytableRule[], config: GameConfig, customPaylines?: number[][], includeZeroPayout?: boolean): WinResult[];
-  
-  findRngForCombos(
-    currentStrips: string[][],
-    rowCounts: number[],
-    currentPaytable: PaytableRule[],
-    reelCount: number,
-    gameType: GameType,
-    topTrackerOther?: string[],
+  abstract getDefaultConfig(): GameConfig;
+  abstract getDefaultPaytable(): PaytableRule[];
+  abstract getDefaultReelStrips(): ReelStrips;
+  abstract evaluate(
+    grid: string[][],
+    paytable: PaytableRule[],
+    config: GameConfig,
     customPaylines?: number[][],
-    isFreeGame?: boolean,
-    stripSets?: Record<string, string[][]>
-  ): Promise<(number[] | null)[]>;
+    includeZeroPayout?: boolean,
+  ): WinResult[];
 
-  findRngForCombination(
+  protected createTimeSlicer(intervalMs: number = 16) {
+    let lastYield = performance.now();
+    return async function yieldIfNeeded() {
+      if (performance.now() - lastYield > intervalMs) {
+        await new Promise((r) => setTimeout(r, 0));
+        lastYield = performance.now();
+      }
+    };
+  }
+
+  protected isGoldSymbol(sym: string): boolean {
+    return /^G[1-9A-Z]/.test(sym);
+  }
+
+  // Hook for subclasses to define how symbols drop after a win
+  protected applyCascade(
+    grid: string[][],
+    colIndex: number,
+    eliminatedRows: number[],
+    strip: string[],
+    drawIndices: number[],
+    _isFreeGame: boolean,
+    _gameType: GameType,
+  ): void {
+    // Default cascading logic (normal drop)
+    eliminatedRows.sort((a, b) => b - a);
+    for (const r of eliminatedRows) {
+      const len = strip.length;
+      const drawIdx = ((drawIndices[colIndex] % len) + len) % len;
+      grid[colIndex][r] = strip[drawIdx];
+      drawIndices[colIndex]--;
+    }
+  }
+
+  protected getEvalGrid(
+    grid: string[][],
+    gameType: GameType,
+    length: number,
+    topTrackerOther?: string[],
+  ): string[][] {
+    if (gameType === "megaway") {
+      return grid.map((col, colIdx) => {
+        if (colIdx >= 1 && colIdx <= 4 && topTrackerOther) {
+          const topSym =
+            length < 5 && colIdx >= length
+              ? "-"
+              : topTrackerOther[colIdx - 1] || "WX";
+          return [...col, topSym];
+        }
+        return col;
+      });
+    }
+    return grid;
+  }
+
+  protected getGridFromRng(
+    rng: number[],
+    strips: string[][],
+    rowCounts: number[],
+    reelCount: number,
+  ): string[][] {
+    return Array.from({ length: reelCount }, (_, cIdx) => {
+      const r = rowCounts[cIdx] || 3;
+      const s = strips[cIdx];
+      const start = rng[cIdx];
+      return Array.from({ length: r }).map(
+        (_, ri) => s[(start + ri) % s.length],
+      );
+    });
+  }
+
+  async findRngForCombination(
     targetSymbol: string,
     length: number,
     wildCount: number,
@@ -2541,13 +1485,528 @@ export interface IGameEnvironment {
     gameType: GameType,
     topTrackerOther?: string[],
     customPaylines?: number[][],
-    isFreeGame?: boolean,
+    isFreeGame: boolean = false,
     stripSets?: Record<string, string[][]>,
-    requireGoldCascade?: boolean
-  ): Promise<{ rng: number[] | null; isInterfered: boolean; hasS1Drop?: boolean; stripId?: number }>;
+    requireGoldCascade: boolean = false,
+  ): Promise<{
+    rng: number[] | null;
+    isInterfered: boolean;
+    hasS1Drop?: boolean;
+    stripId?: number;
+  }> {
+    if (stripSets && Object.keys(stripSets).length > 0) {
+      const stripIds = Object.keys(stripSets).map(Number);
+      stripIds.sort(() => Math.random() - 0.5);
+      let bestInterferred: {
+        rng: number[] | null;
+        isInterfered: boolean;
+        hasS1Drop?: boolean;
+        stripId?: number;
+      } | null = null;
 
-  findRngForMultiplierIntervals(
-    intervals: import('../../types').MultiplierInterval[],
+      for (const sid of stripIds) {
+        const res = await this.findRngForCombination(
+          targetSymbol,
+          length,
+          wildCount,
+          stripSets[sid],
+          rowCounts,
+          currentPaytable,
+          reelCount,
+          gameType,
+          topTrackerOther,
+          customPaylines,
+          isFreeGame,
+          undefined,
+          requireGoldCascade,
+        );
+        if (res.rng) {
+          if (!res.isInterfered) {
+            return { ...res, rng: [...res.rng, sid], stripId: sid };
+          } else {
+            if (!bestInterferred) {
+              bestInterferred = {
+                ...res,
+                rng: res.rng ? [...res.rng, sid] : null,
+                stripId: sid,
+              };
+            }
+          }
+        }
+      }
+      return bestInterferred || { rng: null, isInterfered: false };
+    }
+
+    const yieldIfNeeded = this.createTimeSlicer(16);
+    const wildSymbolSet = new Set<string>();
+    currentPaytable
+      .filter((p) => p.isWild)
+      .forEach((p) => wildSymbolSet.add(p.symbolId));
+    wildSymbolSet.add("WILD");
+    wildSymbolSet.add("W");
+    wildSymbolSet.add("WX");
+    for (const strip of currentStrips) {
+      if (!strip) continue;
+      for (const sym of strip) {
+        if (sym === "WILD" || sym === "W" || sym === "WX")
+          wildSymbolSet.add(sym);
+      }
+    }
+
+    const MAX_RANDOM_ATTEMPTS = gameType === 'waygame_elephant' ? 100000 : 50000;
+
+    let testCount = 0;
+    const candidateRng = Array(reelCount).fill(0);
+
+    let bestCandidateRng: number[] | null = null;
+    let minInterferenceCount = Infinity;
+    let bestTargetPresence = Infinity;
+
+    while (testCount < MAX_RANDOM_ATTEMPTS) {
+      testCount++;
+      if (testCount % 200 === 0) {
+        await yieldIfNeeded();
+      }
+
+      let skipDraw = false;
+      for (let c = 0; c < reelCount; c++) {
+        const len = currentStrips[c]?.length || 1;
+        const rows = rowCounts[c] || 3;
+        const maxIdx = len > rows + 2 ? len - rows : 0;
+        let chosenIdx = 0;
+        if (maxIdx <= 2) {
+          chosenIdx = Math.floor(Math.random() * len);
+        } else {
+          chosenIdx = Math.floor(Math.random() * (maxIdx - 2 + 1)) + 2;
+        }
+        candidateRng[c] = chosenIdx;
+
+      let hasB1 = false;
+      for (let r = 0; r < rows; r++) {
+        if (currentStrips[c][(chosenIdx + r) % len] === "B1") {
+          hasB1 = true;
+        }
+      }
+      if (hasB1) {
+        skipDraw = true;
+        break;
+      }
+    }
+
+    
+    // // 
+
+    if (skipDraw) {
+      
+      continue;
+    }
+
+    const initialGrid = this.getGridFromRng(
+      candidateRng,
+      currentStrips,
+      rowCounts,
+      reelCount,
+    );
+    const initialEvalGrid = this.getEvalGrid(
+      initialGrid,
+      gameType,
+      length,
+      topTrackerOther,
+    );
+    const initialWins = this.evaluate(
+      initialEvalGrid,
+      currentPaytable,
+      { gameType, paylines: customPaylines },
+      customPaylines,
+      true,
+    );
+
+    if (requireGoldCascade) {
+      // Mode B
+      
+      
+      
+      
+      }
+
+
+      // 
+      const initialTargetWin = initialWins.find(
+        (w) => w.symbolId === targetSymbol && w.payout > 0,
+      );
+      if (initialTargetWin) { 
+        
+        continue;
+      }
+
+      let hasGoldWin = false;
+      const winningCoordsMap = getWinningPositions(
+        initialEvalGrid,
+        initialWins,
+        currentPaytable,
+        gameType,
+        undefined,
+        customPaylines,
+      );
+
+      const eliminatedRowsMap: Record<number, number[]> = {};
+      let initialTargetPresence = 0;
+
+      let nonGoldWinCount = 0;
+
+      for (const win of initialWins) {
+        if (win.payout > 0) {
+          let thisWinHasGold = false;
+          const winPositions = getWinningPositions(
+            initialEvalGrid,
+            [win],
+            currentPaytable,
+            gameType,
+            undefined,
+            customPaylines,
+          );
+          for (let c = 0; c < reelCount; c++) {
+            if (
+              winPositions.has(`${c}-0`) ||
+              winPositions.has(`${c}-1`) ||
+              winPositions.has(`${c}-2`) ||
+              winPositions.has(`${c}-3`) ||
+              winPositions.has(`${c}-4`) ||
+              winPositions.has(`${c}-5`)
+            ) {
+              const rows = rowCounts[c] || 3;
+              for (let r = 0; r < rows; r++) {
+                if (
+                  winPositions.has(`${c}-${r}`) &&
+                  this.isGoldSymbol(initialEvalGrid[c][r])
+                ) {
+                  thisWinHasGold = true;
+                }
+              }
+            }
+          }
+          if (!thisWinHasGold) {
+            nonGoldWinCount++;
+          }
+        }
+      }
+
+      for (let c = 0; c < reelCount; c++) {
+        const rows = rowCounts[c] || 3;
+        eliminatedRowsMap[c] = [];
+        for (let r = 0; r < rows; r++) {
+          if (winningCoordsMap.has(`${c}-${r}`)) {
+            const winIndices = winningCoordsMap.get(`${c}-${r}`);
+            if (winIndices && winIndices.some((idx) => idx !== 999)) {
+              eliminatedRowsMap[c].push(r);
+              if (this.isGoldSymbol(initialEvalGrid[c][r])) {
+                hasGoldWin = true;
+              }
+            }
+          }
+          if (initialEvalGrid[c][r] === targetSymbol) {
+            initialTargetPresence++;
+          }
+        }
+      }
+
+      if (!hasGoldWin) {
+        continue;
+      }
+
+      let nextGrid = initialGrid.map((col) => [...col]);
+      let drawIndices = [...candidateRng].map((idx) => idx - 1);
+
+      for (let c = 0; c < reelCount; c++) {
+        const strip = currentStrips[c];
+        const eliminatedRows = eliminatedRowsMap[c];
+        if (eliminatedRows.length > 0) {
+          this.applyCascade(
+            nextGrid,
+            c,
+            eliminatedRows,
+            strip,
+            drawIndices,
+            isFreeGame,
+            gameType,
+          );
+        }
+      }
+
+      const nextEvalGrid = this.getEvalGrid(
+        nextGrid,
+        gameType,
+        length,
+        topTrackerOther,
+      );
+      const nextWins = this.evaluate(
+        nextEvalGrid,
+        currentPaytable,
+        { gameType, paylines: customPaylines },
+        customPaylines,
+        true,
+      );
+      const targetWins = nextWins.filter((w) => w.symbolId === targetSymbol);
+      
+      if (
+        targetWins.length === 1 &&
+        targetWins[0].matchCount === length
+      ) {
+        
+
+        const targetWin = targetWins[0];
+        const winningCoordsMap = getWinningPositions(
+          nextEvalGrid,
+          [targetWin],
+          currentPaytable,
+          gameType,
+          undefined,
+          customPaylines,
+        );
+        const wildReels = new Set<number>();
+        for (const key of winningCoordsMap.keys()) {
+          const [cStr, rStr] = key.split("-");
+          const col = parseInt(cStr, 10);
+          const row = parseInt(rStr, 10);
+          const sym = nextEvalGrid[col][row];
+          if (wildSymbolSet.has(sym)) {
+            wildReels.add(col);
+          }
+        }
+
+        if (wildReels.size !== wildCount) { 
+          
+            console.log("Target rejected: wildReels.size !== wildCount (size is", wildReels.size, ")");
+          continue;
+        }
+
+        const nextOtherWinsCount = nextWins.filter(
+          (w) =>
+            w.symbolId !== targetSymbol &&
+            !wildSymbolSet.has(w.symbolId) &&
+            w.payout > 0,
+        ).length;
+
+        const totalInterference = nonGoldWinCount + nextOtherWinsCount;
+
+        if (totalInterference === 0 && initialTargetPresence === 0) {
+          
+          return { rng: [...candidateRng], isInterfered: false };
+        }
+
+        if (
+          totalInterference < minInterferenceCount ||
+          (totalInterference === minInterferenceCount &&
+            initialTargetPresence < bestTargetPresence)
+        ) {
+          
+          minInterferenceCount = totalInterference;
+          bestTargetPresence = initialTargetPresence;
+          bestCandidateRng = [...candidateRng];
+        }
+    } else {
+
+      
+      
+      
+
+      const targetWins = initialWins.filter((w) => w.symbolId === targetSymbol);
+
+      
+
+      if (
+        targetWins.length === 1 &&
+        targetWins[0].matchCount === length &&
+        (gameType.includes("waygame") || targetWins[0].ways === 1)
+      ) {
+        if (true) {
+          const targetWin = targetWins[0];
+          const winningCoordsMap = getWinningPositions(
+            initialEvalGrid,
+            [targetWin],
+            currentPaytable,
+            gameType,
+            undefined,
+            customPaylines,
+          );
+          const wildReels = new Set<number>();
+          let hasGoldInWin = false;
+          for (const key of winningCoordsMap.keys()) {
+            const [cStr, rStr] = key.split("-");
+            const col = parseInt(cStr, 10);
+            const row = parseInt(rStr, 10);
+            const sym = initialEvalGrid[col][row];
+            if (wildSymbolSet.has(sym)) {
+              wildReels.add(col);
+            }
+            if (this.isGoldSymbol(sym)) {
+              hasGoldInWin = true;
+            }
+          }
+
+          
+          if (!hasGoldInWin && wildReels.size === wildCount) {
+            const otherWinsCount = initialWins.filter(
+              (w) =>
+                w.symbolId !== targetSymbol &&
+                !wildSymbolSet.has(w.symbolId) &&
+                w.payout > 0,
+            ).length;
+
+            if (otherWinsCount === 0) {
+              return { rng: [...candidateRng], isInterfered: false };
+            }
+
+            if (otherWinsCount < minInterferenceCount) {
+              minInterferenceCount = otherWinsCount;
+              bestCandidateRng = [...candidateRng];
+            }
+          }
+        }
+      }
+    }
+
+    if (bestCandidateRng) {
+      return { rng: bestCandidateRng, isInterfered: minInterferenceCount > 0 };
+    }
+
+    return { rng: null, isInterfered: false };
+  }
+
+  }
+  async findRngForCombos(
+    currentStrips: string[][],
+    rowCounts: number[],
+    currentPaytable: PaytableRule[],
+    reelCount: number,
+    gameType: GameType,
+    topTrackerOther?: string[],
+    customPaylines?: number[][],
+    isFreeGame: boolean = false,
+    _stripSets?: Record<string, string[][]>,
+  ): Promise<(number[] | null)[]> {
+    const results: (number[] | null)[] = [];
+    const ATTEMPTS = 10000;
+    const yieldIfNeeded = this.createTimeSlicer(16);
+
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+      if (attempt % 200 === 0) await yieldIfNeeded();
+
+      const candidateRng = Array(reelCount)
+        .fill(0)
+        .map((_, c) => {
+          const len = currentStrips[c]?.length || 1;
+          const rows = rowCounts[c] || 3;
+          const minIdx = 2;
+          const maxIdx = len > rows + 2 ? len - rows : 0;
+          if (maxIdx <= minIdx) return Math.floor(Math.random() * len);
+          return Math.floor(Math.random() * (maxIdx - minIdx + 1)) + minIdx;
+        });
+
+      let currentGrid = candidateRng.map((start, cIdx) => {
+        const r = rowCounts[cIdx] || 3;
+        const s = currentStrips[cIdx] || ["-"];
+        return Array.from({ length: r }).map(
+          (_, ri) => s[(start + ri) % s.length],
+        );
+      });
+
+      let drawIndices = [...candidateRng].map((idx) => idx - 1);
+      let cascadeCount = 0;
+
+      while (cascadeCount < 20) {
+        let evalGrid = currentGrid;
+        if (gameType === "megaway" && topTrackerOther) {
+          evalGrid = currentGrid.map((col, colIdx) => {
+            if (colIdx >= 1 && colIdx <= 4) {
+              const topSym = topTrackerOther[colIdx - 1] || "WX";
+              return [...col, topSym];
+            }
+            return col;
+          });
+        }
+
+        const simWins = this.evaluate(
+          evalGrid,
+          currentPaytable,
+          { gameType, paylines: customPaylines },
+          customPaylines,
+          false,
+        );
+        const cascadeWins = simWins.filter((w) => w.payout > 0);
+
+        if (
+          cascadeCount > 0 &&
+          simWins.some((w) => w.symbolId === "B1" && w.matchCount >= 6)
+        ) {
+          cascadeCount = 0;
+          break;
+        }
+
+        if (cascadeWins.length === 0) break;
+
+        const winningCoordsMap = getWinningPositions(
+          evalGrid,
+          cascadeWins,
+          currentPaytable,
+          gameType,
+          undefined,
+          customPaylines,
+        );
+        let hasElimination = false;
+
+        for (let c = 0; c < reelCount; c++) {
+          const strip = currentStrips[c];
+          const rows = rowCounts[c] || 3;
+          const eliminatedRows: number[] = [];
+          for (let r = 0; r < rows; r++) {
+            if (winningCoordsMap.has(`${c}-${r}`)) {
+              if (
+                gameType === "waygame_qin" &&
+                isFreeGame &&
+                currentGrid[c][r] === "S1"
+              )
+                continue;
+              const winIndices = winningCoordsMap.get(`${c}-${r}`);
+              if (winIndices && winIndices.some((idx) => idx !== 999)) {
+                eliminatedRows.push(r);
+              }
+            }
+          }
+
+          if (eliminatedRows.length > 0) {
+            hasElimination = true;
+            this.applyCascade(
+              currentGrid,
+              c,
+              eliminatedRows,
+              strip,
+              drawIndices,
+              isFreeGame,
+              gameType,
+            );
+          }
+        }
+
+        if (!hasElimination) break;
+        cascadeCount++;
+      }
+
+      if (cascadeCount > 0) {
+        while (results.length < cascadeCount) {
+          results.push(null);
+        }
+        if (results[cascadeCount - 1] === null) {
+          results[cascadeCount - 1] = candidateRng;
+        }
+      }
+    }
+
+    return results;
+  }
+
+  async findRngForMultiplierIntervals(
+    intervals: MultiplierInterval[],
     bet: number,
     currentStrips: string[][],
     rowCounts: number[],
@@ -2556,9 +2015,468 @@ export interface IGameEnvironment {
     gameType: GameType,
     topTrackerOther?: string[],
     customPaylines?: number[][],
-    isFreeGame?: boolean,
-    stripSets?: Record<string, string[][]>
-  ): Promise<Record<string, number[]>>;
+    isFreeGame: boolean = false,
+    _stripSets?: Record<string, string[][]>,
+  ): Promise<Record<string, number[]>> {
+    const results: Record<string, number[]> = {};
+    const targets = new Set(intervals.map((i) => i.id));
+    const hasCascade = gameType !== "linegame" && gameType !== "linegame_set2";
+    const ATTEMPTS = 35000;
+    const yieldIfNeeded = this.createTimeSlicer(16);
+
+    const topSymbols = currentPaytable
+      .filter(
+        (p) =>
+          !p.isScatter &&
+          p.payouts &&
+          Object.values(p.payouts).some((v) => v > 0),
+      )
+      .sort((a, b) => {
+        const maxA = Math.max(...Object.values(a.payouts || {}));
+        const maxB = Math.max(...Object.values(b.payouts || {}));
+        return maxB - maxA;
+      });
+
+    const topSymbolStopsByRow: Record<number, number[]>[] = [];
+    if (topSymbols.length > 0) {
+      const highSymIds = new Set(
+        [
+          topSymbols[0].symbolId,
+          topSymbols[1]?.symbolId,
+          "WX",
+          "WILD",
+          "W",
+        ].filter(Boolean),
+      );
+      for (let c = 0; c < reelCount; c++) {
+        const strip = currentStrips[c] || [];
+        const rows = rowCounts[c] || 3;
+        const rowMap: Record<number, number[]> = {};
+        for (let r = 0; r < rows; r++) rowMap[r] = [];
+        for (let i = 0; i < strip.length; i++) {
+          for (let r = 0; r < rows; r++) {
+            if (highSymIds.has(strip[(i + r) % strip.length])) {
+              rowMap[r].push(i);
+            }
+          }
+        }
+        topSymbolStopsByRow.push(rowMap);
+      }
+    }
+
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+      if (targets.size === 0) break;
+      if (attempt % 200 === 0) await yieldIfNeeded();
+
+      const remainingIntervals = intervals.filter((i) => targets.has(i.id));
+      const onlyHighRemaining = remainingIntervals.every((i) => i.min >= 30);
+      const useGuided =
+        (attempt > 1000 && onlyHighRemaining) ||
+        (attempt > 4000 && Math.random() < 0.6);
+      const alignRow = Math.floor(Math.random() * 3);
+
+      const candidateRng = Array(reelCount)
+        .fill(0)
+        .map((_, c) => {
+          const len = currentStrips[c]?.length || 1;
+          const rows = rowCounts[c] || 3;
+          const minIdx = 2;
+          const maxIdx = len > rows + 2 ? len - rows : 0;
+
+          if (
+            useGuided &&
+            topSymbolStopsByRow[c] &&
+            topSymbolStopsByRow[c][alignRow] &&
+            topSymbolStopsByRow[c][alignRow].length > 0 &&
+            Math.random() < 0.85
+          ) {
+            const list = topSymbolStopsByRow[c][alignRow];
+            return list[Math.floor(Math.random() * list.length)];
+          }
+
+          if (maxIdx <= minIdx) return Math.floor(Math.random() * len);
+          return Math.floor(Math.random() * (maxIdx - minIdx + 1)) + minIdx;
+        });
+
+      let currentGrid = candidateRng.map((start, cIdx) => {
+        const r = rowCounts[cIdx] || 3;
+        const s = currentStrips[cIdx] || ["-"];
+        return Array.from({ length: r }).map(
+          (_, ri) => s[(start + ri) % s.length],
+        );
+      });
+
+      let totalPayout = 0;
+
+      if (!hasCascade) {
+        const simWins = this.evaluate(
+          currentGrid,
+          currentPaytable,
+          { gameType, paylines: customPaylines, effectiveBet: bet },
+          customPaylines,
+          false,
+        );
+        for (let i = 0; i < simWins.length; i++) {
+          totalPayout += simWins[i].totalWin || simWins[i].payout || 0;
+        }
+      } else {
+        let drawIndices = [...candidateRng].map((idx) => idx - 1);
+        let cascadeCount = 0;
+        let b1Count = 0;
+
+        while (cascadeCount < 20) {
+          let evalGrid = currentGrid;
+          if (gameType === "megaway" && topTrackerOther) {
+            evalGrid = currentGrid.map((col, colIdx) => {
+              if (colIdx >= 1 && colIdx <= 4) {
+                const topSym = topTrackerOther[colIdx - 1] || "WX";
+                return [...col, topSym];
+              }
+              return col;
+            });
+          }
+
+          const simWins = this.evaluate(
+            evalGrid,
+            currentPaytable,
+            { gameType, paylines: customPaylines, effectiveBet: bet },
+            customPaylines,
+            false,
+          );
+          const cascadeWins = simWins.filter((w) => w.payout > 0);
+
+          let cascadePayout = 0;
+          let cascadeMultiplier = 1;
+          if (gameType === "waygame" || gameType === "waygame_qin") {
+            cascadeMultiplier = isFreeGame
+              ? Math.pow(2, Math.min(3 + cascadeCount, 10))
+              : Math.pow(2, Math.min(cascadeCount, 10));
+          }
+          for (const w of cascadeWins)
+            cascadePayout += w.totalWin || w.payout || 0;
+          totalPayout += cascadePayout * cascadeMultiplier;
+
+          const b1Win = simWins.find((w) => w.symbolId === "B1");
+          if (b1Win) b1Count = Math.max(b1Count, b1Win.matchCount);
+
+          if (cascadeWins.length === 0) break;
+
+          const winningCoordsMap = getWinningPositions(
+            evalGrid,
+            cascadeWins,
+            currentPaytable,
+            gameType,
+            undefined,
+            customPaylines,
+          );
+          let hasElimination = false;
+
+          for (let c = 0; c < reelCount; c++) {
+            const strip = currentStrips[c];
+            const rows = rowCounts[c] || 3;
+            const eliminatedRows: number[] = [];
+            for (let r = 0; r < rows; r++) {
+              if (winningCoordsMap.has(`${c}-${r}`)) {
+                if (
+                  gameType === "waygame_qin" &&
+                  isFreeGame &&
+                  currentGrid[c][r] === "S1"
+                )
+                  continue;
+                const winIndices = winningCoordsMap.get(`${c}-${r}`);
+                if (winIndices && winIndices.some((idx) => idx !== 999)) {
+                  eliminatedRows.push(r);
+                }
+              }
+            }
+
+            if (eliminatedRows.length > 0) {
+              hasElimination = true;
+              this.applyCascade(
+                currentGrid,
+                c,
+                eliminatedRows,
+                strip,
+                drawIndices,
+                isFreeGame,
+                gameType,
+              );
+            }
+          }
+
+          if (!hasElimination) break;
+          cascadeCount++;
+        }
+
+        if (!isFreeGame && b1Count >= 6) {
+          continue;
+        }
+      }
+
+      const multiplier = totalPayout / (bet || 1);
+
+      for (const interval of intervals) {
+        if (targets.has(interval.id)) {
+          const maxVal = interval.max ?? Infinity;
+          if (multiplier >= interval.min && multiplier < maxVal) {
+            results[interval.id] = [...candidateRng];
+            targets.delete(interval.id);
+          }
+        }
+      }
+    }
+
+    return results;
+  }
+}
+</file>
+
+<file path="src/games/base/BaseLineGame.ts">
+import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+import type { WinResult } from '../../utils/evaluation';
+import { LineGameStrategy } from '../../utils/evaluation/strategies/LineGameStrategy';
+import { AbstractGame } from './AbstractGame';
+import { DEFAULT_WILD_SYMBOLS } from '../../utils/evaluation/GameConstants';
+import { ScatterStrategy } from '../../utils/evaluation/strategies/ScatterStrategy';
+
+export abstract class BaseLineGame extends AbstractGame {
+  private scatterStrategy = new ScatterStrategy();
+  private lineGameStrategy = new LineGameStrategy();
+
+  evaluate(
+    grid: string[][],
+    paytable: PaytableRule[],
+    config: GameConfig,
+    customPaylines?: number[][],
+    includeZeroPayout: boolean = false
+  ): WinResult[] {
+    const results: WinResult[] = [];
+    if (!grid || grid.length === 0 || !paytable || paytable.length === 0) return results;
+
+    const wildSymbols = new Set(paytable.filter(p => p.isWild).map(p => p.symbolId));
+    const configuredWilds = config.wildSymbols || DEFAULT_WILD_SYMBOLS;
+    configuredWilds.forEach(w => wildSymbols.add(w));
+
+    const context = {
+      grid,
+      paytable,
+      gameConfig: config,
+      wildSymbols,
+      includeZeroPayout
+    };
+
+    for (const rule of paytable) {
+      if (rule.isScatter) {
+        results.push(...this.scatterStrategy.evaluate(context, rule));
+      } else {
+        results.push(...this.lineGameStrategy.evaluate(context, rule));
+      }
+    }
+
+    const lineWins = new Map<number, WinResult>();
+    const nonLineWins: WinResult[] = [];
+
+    for (const win of results) {
+      if (win.lineIndex !== undefined) {
+        const existing = lineWins.get(win.lineIndex);
+        if (!existing || win.totalWin > existing.totalWin) {
+          lineWins.set(win.lineIndex, win);
+        }
+      } else {
+        nonLineWins.push(win);
+      }
+    }
+    
+    return [...nonLineWins, ...Array.from(lineWins.values())];
+  }
+
+  // Line games do not cascade
+  override async findRngForCombos(
+    _currentStrips: string[][],
+    _rowCounts: number[],
+    _currentPaytable: PaytableRule[],
+    _reelCount: number,
+    _gameType: GameType,
+    _topTrackerOther?: string[],
+    _customPaylines?: number[][],
+    _isFreeGame?: boolean,
+    _stripSets?: Record<string, string[][]>
+  ): Promise<(number[] | null)[]> {
+    return [];
+  }
+}
+</file>
+
+<file path="src/games/base/BasePayAnywhere.ts">
+import type { GameConfig, PaytableRule, ReelStrips } from '../../types';
+import type { WinResult } from '../../utils/evaluation';
+import { PayAnywhereStrategy } from '../../utils/evaluation/strategies/PayAnywhereStrategy';
+import { AbstractGame } from './AbstractGame';
+import { DEFAULT_WILD_SYMBOLS } from '../../utils/evaluation/GameConstants';
+import { ScatterStrategy } from '../../utils/evaluation/strategies/ScatterStrategy';
+
+export abstract class BasePayAnywhere extends AbstractGame {
+  private scatterStrategy = new ScatterStrategy();
+  private payAnywhereStrategy = new PayAnywhereStrategy();
+
+  evaluate(
+    grid: string[][],
+    paytable: PaytableRule[],
+    config: GameConfig,
+    _customPaylines?: number[][],
+    includeZeroPayout: boolean = false
+  ): WinResult[] {
+    const results: WinResult[] = [];
+    if (!grid || grid.length === 0 || !paytable || paytable.length === 0) return results;
+
+    const wildSymbols = new Set(paytable.filter(p => p.isWild).map(p => p.symbolId));
+    const configuredWilds = config.wildSymbols || DEFAULT_WILD_SYMBOLS;
+    configuredWilds.forEach(w => wildSymbols.add(w));
+
+    const context = {
+      grid,
+      paytable,
+      gameConfig: config,
+      wildSymbols,
+      includeZeroPayout
+    };
+
+    for (const rule of paytable) {
+      if (rule.isScatter) {
+        results.push(...this.scatterStrategy.evaluate(context, rule));
+      } else {
+        results.push(...this.payAnywhereStrategy.evaluate(context, rule));
+      }
+    }
+    
+    return results;
+  }
+}
+</file>
+
+<file path="src/games/base/BaseWayGame.ts">
+import type { GameConfig, PaytableRule, ReelStrips } from '../../types';
+import type { WinResult } from '../../utils/evaluation';
+import { WayGameStrategy } from '../../utils/evaluation/strategies/WayGameStrategy';
+import { AbstractGame } from './AbstractGame';
+import { DEFAULT_WILD_SYMBOLS } from '../../utils/evaluation/GameConstants';
+import { ScatterStrategy } from '../../utils/evaluation/strategies/ScatterStrategy';
+
+export abstract class BaseWayGame extends AbstractGame {
+  private scatterStrategy = new ScatterStrategy();
+  private wayGameStrategy = new WayGameStrategy();
+
+  evaluate(
+    grid: string[][],
+    paytable: PaytableRule[],
+    config: GameConfig,
+    _customPaylines?: number[][],
+    includeZeroPayout: boolean = false
+  ): WinResult[] {
+    const results: WinResult[] = [];
+    if (!grid || grid.length === 0 || !paytable || paytable.length === 0) return results;
+
+    const wildSymbols = new Set(paytable.filter(p => p.isWild).map(p => p.symbolId));
+    const configuredWilds = config.wildSymbols || DEFAULT_WILD_SYMBOLS;
+    configuredWilds.forEach(w => wildSymbols.add(w));
+
+    const context = {
+      grid,
+      paytable,
+      gameConfig: config,
+      wildSymbols,
+      includeZeroPayout
+    };
+
+    for (const rule of paytable) {
+      if (rule.isScatter) {
+        results.push(...this.scatterStrategy.evaluate(context, rule));
+      } else {
+        results.push(...this.wayGameStrategy.evaluate(context, rule));
+      }
+    }
+    
+    return results;
+  }
+}
+</file>
+
+<file path="src/games/battle_set2/BattleSet2Game.ts">
+import { BasePayAnywhere } from '../base/BasePayAnywhere';
+import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+
+export class BattleSet2Game extends BasePayAnywhere {
+  readonly id: GameType = 'payanywhere_set2';
+  readonly name = '決戰賽特2 (Battle Set 2)';
+
+  getDefaultConfig(): GameConfig {
+    return {
+      gameType: this.id,
+      paylines: []
+    };
+  }
+
+  getDefaultPaytable(): PaytableRule[] {
+    return [];
+  }
+
+  getDefaultReelStrips(): ReelStrips {
+    return {
+      0: [], 1: [], 2: [], 3: [], 4: [], 5: []
+    };
+  }
+
+  // Override cascade to implement array shifting rule
+  protected override applyCascade(
+    grid: string[][],
+    colIndex: number,
+    eliminatedRows: number[],
+    strip: string[],
+    drawIndices: number[],
+    isFreeGame: boolean,
+    gameType: GameType
+  ): void {
+    eliminatedRows.sort((a, b) => b - a);
+    for (const r of eliminatedRows) {
+      // Shift symbols above the eliminated row down by 1
+      for (let shift = r; shift > 0; shift--) {
+        grid[colIndex][shift] = grid[colIndex][shift - 1];
+      }
+      
+      // Draw new symbol at the top
+      const len = strip.length;
+      const drawIdx = (((drawIndices[colIndex] % len) + len) % len);
+      grid[colIndex][0] = strip[drawIdx];
+      drawIndices[colIndex]--;
+    }
+  }
+}
+</file>
+
+<file path="src/games/linegame/ClassicLineGame.ts">
+import { BaseLineGame } from '../base/BaseLineGame';
+import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+
+export class ClassicLineGame extends BaseLineGame {
+  readonly id: GameType = 'linegame';
+  readonly name = '經典線遊戲 (Classic Line)';
+
+  getDefaultConfig(): GameConfig {
+    return {
+      gameType: this.id,
+      paylines: []
+    };
+  }
+
+  getDefaultPaytable(): PaytableRule[] {
+    return [];
+  }
+
+  getDefaultReelStrips(): ReelStrips {
+    return {
+      0: [], 1: [], 2: [], 3: [], 4: []
+    };
+  }
 }
 </file>
 
@@ -2580,6 +2498,184 @@ export const LineGameEnvironment: IGameEnvironment = {
 };
 </file>
 
+<file path="src/games/luxe/LuxeGame.ts">
+import { BaseLineGame } from '../base/BaseLineGame';
+import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+import type { WinResult } from '../../utils/evaluation';
+
+export class LuxeGame extends BaseLineGame {
+  readonly id: GameType = 'linegame_set2';
+  readonly name = '奢華 (Luxe)';
+
+  getDefaultConfig(): GameConfig {
+    return {
+      gameType: this.id,
+      paylines: []
+    };
+  }
+
+  getDefaultPaytable(): PaytableRule[] {
+    return [];
+  }
+
+  getDefaultReelStrips(): ReelStrips {
+    return [[], [], [], [], []];
+  }
+
+  override evaluate(
+    grid: string[][],
+    paytable: PaytableRule[],
+    config: GameConfig,
+    customPaylines?: number[][],
+    includeZeroPayout: boolean = false
+  ): WinResult[] {
+    // 1. Get base linegame evaluation results
+    const baseWins = super.evaluate(grid, paytable, config, customPaylines, includeZeroPayout);
+    const finalWins = [...baseWins];
+
+    const actualPaylines = config.paylines && config.paylines.length > 0 ? config.paylines : (customPaylines || []);
+
+    // 2. Evaluate Jackpots on winning lines
+    if (config.jackpots && Object.keys(config.jackpots).length > 0) {
+      const hitJackpotKeys = new Set<string>();
+      
+      for (const win of baseWins) {
+        if (win.totalWin > 0 && win.lineIndex !== undefined && actualPaylines[win.lineIndex]) {
+           const line = actualPaylines[win.lineIndex];
+           for (let c = 0; c < win.matchCount; c++) {
+              const r = line[c];
+              const posKey = `${c}-${r}`;
+              if (config.jackpots[posKey]) {
+                 hitJackpotKeys.add(posKey);
+              }
+           }
+        }
+      }
+      
+      for (const posKey of hitJackpotKeys) {
+        const jp = config.jackpots[posKey];
+        let jpWin = 0;
+        if (jp === 'MINI') jpWin = 25;
+        else if (jp === 'MAJOR') jpWin = 100;
+        else if (jp === 'MEGA') jpWin = 500;
+        else if (jp === 'MAXWIN') jpWin = 20000;
+        
+        if (jpWin > 0) {
+           const bet = config.effectiveBet || 1;
+           finalWins.push({
+              symbolId: jp + ' 大獎',
+              matchCount: 0,
+              ways: 1,
+              payout: jpWin,
+              totalWin: jpWin * bet,
+              isJackpot: true
+           });
+        }
+      }
+    }
+
+    // 3. S1 Clover Collection
+    let s1Count = 0;
+    let s1Multiplier = 0;
+    
+    for (let c = 0; c < grid.length; c++) {
+      for (let r = 0; r < grid[c].length; r++) {
+        const cell = grid[c][r];
+        if (cell === 'S1') s1Count++;
+        
+        const posKey = `${c}-${r}`;
+        // Collect gold frames
+        if (config.goldFrames && config.goldFrames[posKey]) {
+           s1Multiplier += config.goldFrames[posKey];
+        }
+        // Collect Jackpots (any on the board)
+        if (config.jackpots && config.jackpots[posKey]) {
+           const jp = config.jackpots[posKey];
+           if (jp === 'MINI') s1Multiplier += 25;
+           else if (jp === 'MAJOR') s1Multiplier += 100;
+           else if (jp === 'MEGA') s1Multiplier += 500;
+           else if (jp === 'MAXWIN') s1Multiplier += 20000;
+        }
+        // Collect multiplier symbols
+        if (cell.includes('_') && cell.match(/^[F|L][1-4]_/)) {
+           const valStr = cell.split('_')[1];
+           const num = parseInt(valStr.replace('X', ''), 10);
+           if (!isNaN(num)) s1Multiplier += num;
+        }
+      }
+    }
+
+    if (s1Count > 0 && s1Multiplier > 0) {
+      const bet = config.effectiveBet || 1;
+      finalWins.push({
+         symbolId: 'S1 收集',
+         matchCount: s1Count,
+         ways: s1Count,
+         payout: s1Multiplier,
+         totalWin: s1Multiplier * bet * s1Count,
+         isJackpot: true
+      });
+    }
+
+    return finalWins;
+  }
+}
+</file>
+
+<file path="src/games/mermaid/MermaidGame.ts">
+import { BaseWayGame } from '../base/BaseWayGame';
+import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+
+export class MermaidGame extends BaseWayGame {
+  readonly id: GameType = 'waygame';
+  readonly name = '美人魚 (Mermaid)';
+
+  getDefaultConfig(): GameConfig {
+    return {
+      gameType: this.id,
+      paylines: []
+    };
+  }
+
+  getDefaultPaytable(): PaytableRule[] {
+    return [];
+  }
+
+  getDefaultReelStrips(): ReelStrips {
+    return {
+      0: [], 1: [], 2: [], 3: [], 4: []
+    };
+  }
+}
+</file>
+
+<file path="src/games/payanywhere/ClassicPayAnywhere.ts">
+import { BasePayAnywhere } from '../base/BasePayAnywhere';
+import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+
+export class ClassicPayAnywhere extends BasePayAnywhere {
+  readonly id: GameType = 'payanywhere';
+  readonly name = '全盤掉落 (Classic Pay Anywhere)';
+
+  getDefaultConfig(): GameConfig {
+    return {
+      gameType: this.id,
+      paylines: []
+    };
+  }
+
+  getDefaultPaytable(): PaytableRule[] {
+    return [];
+  }
+
+  getDefaultReelStrips(): ReelStrips {
+    return {
+      0: [], 1: [], 2: [], 3: [], 4: [], 5: []
+    };
+  }
+}
+</file>
+
 <file path="src/games/payanywhere/index.ts">
 import type { IGameEnvironment } from '../base/IGameEnvironment';
 import type { GameConfig, PaytableRule, ReelStrips } from '../../types';
@@ -2596,6 +2692,117 @@ export const PayAnywhereEnvironment: IGameEnvironment = {
     return evaluateGrid(grid, paytable, config, customPaylines);
   }
 };
+</file>
+
+<file path="src/games/qin/QinGame.ts">
+import { BaseWayGame } from '../base/BaseWayGame';
+import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+
+export class QinGame extends BaseWayGame {
+  readonly id: GameType = 'waygame_qin';
+  readonly name = '秦皇傳說 (Qin)';
+
+  getDefaultConfig(): GameConfig {
+    return {
+      gameType: this.id,
+      paylines: []
+    };
+  }
+
+  getDefaultPaytable(): PaytableRule[] {
+    return [];
+  }
+
+  getDefaultReelStrips(): ReelStrips {
+    return {
+      0: [], 1: [], 2: [], 3: [], 4: [], 5: []
+    };
+  }
+
+  // Override cascade to implement Gold -> WX rule
+  protected override applyCascade(
+    grid: string[][],
+    colIndex: number,
+    eliminatedRows: number[],
+    strip: string[],
+    drawIndices: number[],
+    isFreeGame: boolean,
+    gameType: GameType
+  ): void {
+    eliminatedRows.sort((a, b) => b - a);
+    for (const r of eliminatedRows) {
+      if (isFreeGame && grid[colIndex][r] === 'S1') {
+        continue;
+      }
+      
+      if (this.isGoldSymbol(grid[colIndex][r])) {
+        // Gold symbol turns into Wild after elimination
+        grid[colIndex][r] = 'WX';
+      } else {
+        const len = strip.length;
+        const drawIdx = (((drawIndices[colIndex] % len) + len) % len);
+        grid[colIndex][r] = strip[drawIdx];
+        drawIndices[colIndex]--;
+      }
+    }
+  }
+}
+</file>
+
+<file path="src/games/royal_elephant/RoyalElephantGame.ts">
+import { BaseWayGame } from '../base/BaseWayGame';
+import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+
+export class RoyalElephantGame extends BaseWayGame {
+  readonly id: GameType = 'waygame_elephant';
+  readonly name = '皇家金象 (Royal Elephant)';
+
+  getDefaultConfig(): GameConfig {
+    return {
+      gameType: this.id,
+      paylines: []
+    };
+  }
+
+  getDefaultPaytable(): PaytableRule[] {
+    return [];
+  }
+
+  getDefaultReelStrips(): ReelStrips {
+    return [[], [], [], [], []];
+  }
+
+  // 皇家金象專屬邏輯：只有 R3 (colIndex === 2) 和 R4 (colIndex === 3) 會有金色符號轉百搭
+  protected override applyCascade(
+    grid: string[][],
+    colIndex: number,
+    eliminatedRows: number[],
+    strip: string[],
+    drawIndices: number[],
+    isFreeGame: boolean,
+    _gameType: GameType
+  ): void {
+    eliminatedRows.sort((a, b) => b - a);
+    for (const r of eliminatedRows) {
+      if (isFreeGame && grid[colIndex][r] === 'S1') {
+        continue;
+      }
+      
+      const sym = grid[colIndex][r];
+      const isGold = this.isGoldSymbol(sym);
+      
+      if ((colIndex === 2 || colIndex === 3) && isGold) {
+        // 只有 R3, R4 的金色符號消除後會轉換為 WX
+        grid[colIndex][r] = 'WX';
+      } else {
+        const len = strip.length;
+        const drawIdx = (((drawIndices[colIndex] % len) + len) % len);
+        grid[colIndex][r] = strip[drawIdx];
+        drawIndices[colIndex]--;
+      }
+    }
+  }
+}
 </file>
 
 <file path="src/mocks/originalDefaultData.ts">
@@ -4118,6 +4325,111 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
 })
+</file>
+
+<file path="src/core/GameRegistry.ts">
+import type { IGameEnvironment } from '../games/base/IGameEnvironment';
+import type { GameType } from '../types';
+
+import { MermaidGame } from '../games/mermaid/MermaidGame';
+import { QinGame } from '../games/qin/QinGame';
+import { BattleSet2Game } from '../games/battle_set2/BattleSet2Game';
+import { LuxeGame } from '../games/luxe/LuxeGame';
+import { ClassicLineGame } from '../games/linegame/ClassicLineGame';
+import { ClassicPayAnywhere } from '../games/payanywhere/ClassicPayAnywhere';
+
+import { RoyalElephantGame } from '../games/royal_elephant/RoyalElephantGame';
+
+export class GameRegistry {
+  private static games = new Map<GameType, IGameEnvironment>();
+  private static initialized = false;
+
+  static init() {
+    if (this.initialized) return;
+    this.register(new MermaidGame());
+    this.register(new QinGame());
+    this.register(new BattleSet2Game());
+    this.register(new LuxeGame());
+    this.register(new ClassicLineGame());
+    this.register(new ClassicPayAnywhere());
+    this.register(new RoyalElephantGame());
+    this.initialized = true;
+  }
+
+  static register(game: IGameEnvironment) {
+    this.games.set(game.id, game);
+  }
+
+  static getGame(id: GameType): IGameEnvironment {
+    this.init();
+    const game = this.games.get(id);
+    if (!game) {
+      throw new Error(`Game environment for ${id} not found.`);
+    }
+    return game;
+  }
+
+  static getAllGames(): IGameEnvironment[] {
+    this.init();
+    return Array.from(this.games.values());
+  }
+}
+</file>
+
+<file path="src/games/base/IGameEnvironment.ts">
+import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+import type { WinResult } from '../../utils/evaluation';
+
+export interface IGameEnvironment {
+  readonly id: GameType;
+  readonly name: string;
+  getDefaultConfig(): GameConfig;
+  getDefaultPaytable(): PaytableRule[];
+  getDefaultReelStrips(): ReelStrips;
+  evaluate(grid: string[][], paytable: PaytableRule[], config: GameConfig, customPaylines?: number[][], includeZeroPayout?: boolean): WinResult[];
+  
+  findRngForCombos(
+    currentStrips: string[][],
+    rowCounts: number[],
+    currentPaytable: PaytableRule[],
+    reelCount: number,
+    gameType: GameType,
+    topTrackerOther?: string[],
+    customPaylines?: number[][],
+    isFreeGame?: boolean,
+    stripSets?: Record<string, string[][]>
+  ): Promise<(number[] | null)[]>;
+
+  findRngForCombination(
+    targetSymbol: string,
+    length: number,
+    wildCount: number,
+    currentStrips: string[][],
+    rowCounts: number[],
+    currentPaytable: PaytableRule[],
+    reelCount: number,
+    gameType: GameType,
+    topTrackerOther?: string[],
+    customPaylines?: number[][],
+    isFreeGame?: boolean,
+    stripSets?: Record<string, string[][]>,
+    requireGoldCascade?: boolean
+  ): Promise<{ rng: number[] | null; isInterfered: boolean; hasS1Drop?: boolean; stripId?: number }>;
+
+  findRngForMultiplierIntervals(
+    intervals: import('../../types').MultiplierInterval[],
+    bet: number,
+    currentStrips: string[][],
+    rowCounts: number[],
+    currentPaytable: PaytableRule[],
+    reelCount: number,
+    gameType: GameType,
+    topTrackerOther?: string[],
+    customPaylines?: number[][],
+    isFreeGame?: boolean,
+    stripSets?: Record<string, string[][]>
+  ): Promise<Record<string, number[]>>;
+}
 </file>
 
 <file path="src/mocks/defaultData.ts">
@@ -8473,47 +8785,6 @@ c:\github\Payline-RNG\
   - **狀態**：暫時從 UI 隱藏（代碼與邏輯完整保留），後續需要時解除註解即可復原。
 </file>
 
-<file path="src/types/core.ts">
-export type GameType = 'waygame' | 'megaway' | 'payanywhere' | 'payanywhere_set2' | 'waygame_qin' | 'linegame' | 'linegame_set2';
-
-export type ReelStrips = string[][];
-export type ReelStripsList = ReelStrips[];
-
-export interface SpecialSymbolConfig {
-  s1Enabled: boolean;
-  s1Count: number; // 0-3
-  s2Enabled: boolean;
-  s2Count: number; // 0-3
-  multipliersEnabled: boolean;
-  multiplierCounts: Record<string, number>; // key: e.g. "F1_2X", value: count
-  luckyBallsEnabled: boolean;
-  luckyCounts: Record<string, number>; // key: e.g. "L1_2X", value: count
-}
-
-export interface GameConfig {
-  gameType: GameType;
-  paylines?: number[][];
-  wildSymbols?: string[];
-  effectiveBet?: number; // Added for B1/B2 base bet multiplication
-  goldFrames?: Record<string, number>; // e.g. '0-0': 2
-  jackpots?: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>; // e.g. '0-0': 'MINI'
-  specialRules?: {
-    derivativeSymbols?: Record<string, string[]>; // e.g. { 'B1': ['B2'] }
-    payAnywhereThresholds?: { match3: number; match4: number; match5: number };
-    scatterMinCount?: number;
-    scatterAutoWinCount?: number;
-    unremovableSymbols?: string[];
-  };
-}
-
-export interface MultiplierInterval {
-  id: string;
-  name: string;
-  min: number; // inclusive
-  max: number | null; // exclusive (if null, then Infinity)
-}
-</file>
-
 <file path="package.json">
 {
   "name": "payline-rng",
@@ -8859,6 +9130,47 @@ export const useGameStore = create<GameState>((set, get) => ({
     currentGrid: []
   })
 }));
+</file>
+
+<file path="src/types/core.ts">
+export type GameType = 'waygame' | 'megaway' | 'payanywhere' | 'payanywhere_set2' | 'waygame_qin' | 'waygame_elephant' | 'linegame' | 'linegame_set2';
+
+export type ReelStrips = string[][];
+export type ReelStripsList = ReelStrips[];
+
+export interface SpecialSymbolConfig {
+  s1Enabled: boolean;
+  s1Count: number; // 0-3
+  s2Enabled: boolean;
+  s2Count: number; // 0-3
+  multipliersEnabled: boolean;
+  multiplierCounts: Record<string, number>; // key: e.g. "F1_2X", value: count
+  luckyBallsEnabled: boolean;
+  luckyCounts: Record<string, number>; // key: e.g. "L1_2X", value: count
+}
+
+export interface GameConfig {
+  gameType: GameType;
+  paylines?: number[][];
+  wildSymbols?: string[];
+  effectiveBet?: number; // Added for B1/B2 base bet multiplication
+  goldFrames?: Record<string, number>; // e.g. '0-0': 2
+  jackpots?: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>; // e.g. '0-0': 'MINI'
+  specialRules?: {
+    derivativeSymbols?: Record<string, string[]>; // e.g. { 'B1': ['B2'] }
+    payAnywhereThresholds?: { match3: number; match4: number; match5: number };
+    scatterMinCount?: number;
+    scatterAutoWinCount?: number;
+    unremovableSymbols?: string[];
+  };
+}
+
+export interface MultiplierInterval {
+  id: string;
+  name: string;
+  min: number; // inclusive
+  max: number | null; // exclusive (if null, then Infinity)
+}
 </file>
 
 <file path="src/types/index.ts">
@@ -10721,7 +11033,7 @@ import * as xlsx from 'xlsx';
 import type { PaytableRule } from '../types';
 
 export interface ExcelParsedData {
-  gameType?: 'waygame' | 'linegame' | 'payanywhere' | 'linegame_set2' | 'payanywhere_set2' | 'waygame_qin';
+  gameType?: 'waygame' | 'linegame' | 'payanywhere' | 'linegame_set2' | 'payanywhere_set2' | 'waygame_qin' | 'waygame_elephant';
   coin?: number;
   bet?: number;
   paylines?: number[][];
@@ -10878,7 +11190,11 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
            if (wayStr.includes('4096') || parseInt(wayStr) === 4096) {
              result.gameType = 'waygame_qin';
            } else if (parseInt(wayStr) > 0) {
-             result.gameType = 'waygame';
+             if (file.name.includes('家') || file.name.includes('象')) {
+               result.gameType = 'waygame_elephant';
+             } else {
+               result.gameType = 'waygame';
+             }
            }
         }
       }
@@ -11271,7 +11587,7 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
     } else if (file.name.includes('奢華')) {
       result.gameType = 'linegame_set2';
     } else if (file.name.includes('家') || file.name.includes('象')) {
-      result.gameType = 'waygame';
+      result.gameType = 'waygame_elephant';
     } else if (!result.paylines || result.paylines.length === 0) {
       result.gameType = 'payanywhere';
     } else {
@@ -12656,936 +12972,6 @@ function App() {
 export default App;
 </file>
 
-<file path="src/hooks/useRngSearch.ts">
-import { useState, useEffect } from "react";
-import type { PaytableRule, GameType } from "../types";
-import { findRngForCombination, findRngForCombos, findRngForMultiplierIntervals } from "../utils/rngSearch";
-import { evaluateGrid, defaultPaylines } from "../utils/evaluation";
-
-export function useRngSearch(
-  selectedSymbol: string,
-  reelCount: number,
-  rowCounts: number[],
-  currentStrips: string[][],
-  currentPaytable: PaytableRule[],
-  gameType: GameType,
-  topTrackerOther: string[],
-  specialSymbolConfig: import("../types").SpecialSymbolConfig,
-  customPaylines?: number[][],
-  isFreeGame: boolean = false,
-  bet: number = 1,
-  multiplierIntervals: import("../types").MultiplierInterval[] = [],
-  stripSets?: Record<string, string[][]>
-) {
-  const [combinations, setCombinations] = useState<
-    {
-      name: string;
-      length: number;
-      wildCount: number;
-      rng: any[] | null;
-      isInterfered: boolean;
-      hasS1Drop?: boolean;
-      stripId?: number;
-    }[]
-  >([]);
-  const [isSearching, setIsSearching] = useState<boolean>(false);
-
-  const specialSymbolConfigStr = JSON.stringify(specialSymbolConfig);
-  const multiplierIntervalsStr = JSON.stringify(multiplierIntervals);
-
-  useEffect(() => {
-    if (!selectedSymbol) {
-      setCombinations([]);
-      setIsSearching(false);
-      return;
-    }
-    if (
-      gameType !== "payanywhere_set2" &&
-      gameType !== "linegame_set2" &&
-      (currentStrips.length === 0 ||
-        currentStrips.every((s) => !s || s.length === 0))
-    ) {
-      setCombinations([]);
-      setIsSearching(false);
-      return;
-    }
-
-    const isInstantGenerator = gameType === "linegame_set2" || gameType === "payanywhere_set2";
-    if (!isInstantGenerator) {
-      setIsSearching(true);
-    }
-
-    const timer = setTimeout(async () => {
-      const newCombs: typeof combinations = [];
-
-      if (selectedSymbol === 'COMBO') {
-        const results = await findRngForCombos(
-          currentStrips,
-          rowCounts,
-          currentPaytable,
-          reelCount,
-          gameType,
-          topTrackerOther,
-          customPaylines,
-          isFreeGame
-        );
-        
-        for (let i = 0; i < results.length; i++) {
-          if (results[i]) {
-            newCombs.push({
-              name: `${i + 1} Combo`,
-              length: i + 1,
-              wildCount: 0,
-              rng: results[i],
-              isInterfered: false,
-              hasS1Drop: false
-            } as any);
-          }
-        }
-        setCombinations(newCombs);
-        setIsSearching(false);
-        return;
-      }
-
-      if (selectedSymbol === 'WIN_MULTIPLIER') {
-        const validIntervals = (multiplierIntervals || []).filter(
-          iv => iv.min >= 0 && (iv.max === null || (iv.max >= 0 && iv.max >= iv.min))
-        );
-        if (validIntervals.length === 0) {
-          setCombinations([]);
-          setIsSearching(false);
-          return;
-        }
-        if (gameType === 'linegame_set2') {
-          const mathIdMap: Record<string, string> = {};
-          currentPaytable.forEach((p) => {
-            if (p.mathId !== undefined) {
-              const ids = String(p.mathId)
-                .split(",")
-                .map((s) => s.trim());
-              mathIdMap[p.symbolId] = ids[0];
-            }
-          });
-
-          const excludeSymbols = [
-            "W", "W1", "W2", "WX", "WILD", "B1", "B2", "S1", "S2", "NI",
-            "F1", "F2", "F3", "F4", "L1", "L2",
-          ];
-          const nonScatters = currentPaytable
-            .filter(
-              (p) =>
-                p.isEnabled !== false &&
-                !p.isScatter &&
-                !excludeSymbols.includes(p.symbolId),
-            )
-            .map((p) => p.symbolId);
-
-          const linesToUse =
-            customPaylines && customPaylines.length > 0
-              ? customPaylines
-              : defaultPaylines;
-
-          const multiplierToPoolIndex: Record<number, number> = {
-            2: 0, 3: 1, 4: 2, 5: 3, 6: 4, 7: 5, 8: 6, 9: 7, 10: 8, 25: 9, 50: 10, 100: 11
-          };
-          const typeToId: Record<string, number> = { 'MINI': 12, 'MAJOR': 13, 'MEGA': 14, 'MAXWIN': 15 };
-
-          // Build possible single-row hit definitions
-          const possibleRowHits: { sym: string; len: number }[] = [{ sym: '', len: 0 }];
-          for (const sym of nonScatters) {
-            const rule = currentPaytable.find((p) => p.symbolId === sym);
-            if (!rule || !rule.payouts) continue;
-            for (let l = 3; l <= reelCount; l++) {
-              const pVal = Number(rule.payouts[`match${l}` as keyof typeof rule.payouts] || 0);
-              if (pVal > 0) {
-                possibleRowHits.push({ sym, len: l });
-              }
-            }
-          }
-
-          // Evaluate candidate grid
-          const evaluateCandidate = (
-            hit0: { sym: string; len: number },
-            hit1: { sym: string; len: number },
-            hit2: { sym: string; len: number },
-            goldFrames: Record<string, number> = {},
-            jackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'> = {}
-          ) => {
-            const grid: string[][] = Array.from({ length: reelCount }, (_, c) =>
-              Array(rowCounts[c] || 3).fill("-")
-            );
-            if (hit0.len > 0) {
-              for (let c = 0; c < hit0.len; c++) grid[c][0] = hit0.sym;
-            }
-            if (hit1.len > 0) {
-              for (let c = 0; c < hit1.len; c++) grid[c][1] = hit1.sym;
-            }
-            if (hit2.len > 0) {
-              for (let c = 0; c < hit2.len; c++) grid[c][2] = hit2.sym;
-            }
-
-            const dummyPool = nonScatters.filter(
-              (s) => s !== hit0.sym && s !== hit1.sym && s !== hit2.sym
-            );
-            let dIdx = 0;
-            for (let c = 0; c < reelCount; c++) {
-              for (let r = 0; r < (rowCounts[c] || 3); r++) {
-                if (grid[c][r] === "-") {
-                  grid[c][r] = dummyPool[dIdx % dummyPool.length] || "J";
-                  dIdx++;
-                }
-              }
-            }
-
-            const wins = evaluateGrid(grid, currentPaytable, {
-              gameType: "linegame_set2",
-              paylines: linesToUse,
-              effectiveBet: bet,
-              goldFrames,
-              jackpots,
-            });
-
-            const totalWin = wins.reduce((sum, w) => sum + w.totalWin, 0);
-            return { grid, totalWin, wins, goldFrames, jackpots };
-          };
-
-          for (const interval of validIntervals) {
-            const isNearWin = interval.min === 0 || interval.name.includes('接近大獎');
-            const targetMin = interval.min * bet;
-            const targetMax = interval.max !== null ? interval.max * bet : Infinity;
-            const targetMid = interval.max !== null ? ((interval.min + interval.max) / 2) * bet : interval.min * 1.5 * bet;
-
-            let bestCandidate: ReturnType<typeof evaluateCandidate> | null = null;
-            let bestScore = -Infinity;
-
-            // Phase 1: Pure symbol search (multi-row combinations, no gold frames, no jackpots)
-            for (const hit1 of possibleRowHits) {
-              for (const hit0 of possibleRowHits) {
-                for (const hit2 of possibleRowHits) {
-                  if (hit1.len === 0 && hit0.len === 0 && hit2.len === 0) continue;
-                  const cand = evaluateCandidate(hit0, hit1, hit2);
-                  const ratio = cand.totalWin / bet;
-
-                  if (isNearWin) {
-                    // We want ratio < 10, maximized as close to 10 as possible
-                    if (cand.totalWin > 0 && ratio < 10) {
-                      if (ratio > bestScore) {
-                        bestScore = ratio;
-                        bestCandidate = cand;
-                      }
-                    }
-                  } else {
-                    if (cand.totalWin >= targetMin && cand.totalWin < targetMax) {
-                      const dist = -Math.abs(cand.totalWin - targetMid);
-                      if (dist > bestScore) {
-                        bestScore = dist;
-                        bestCandidate = cand;
-                      }
-                    }
-                  }
-                }
-              }
-            }
-
-            // Phase 2: If no pure line candidate was found (e.g. for higher intervals like EPIC WIN or SUPER MEGA WIN)
-            if (!bestCandidate) {
-              const testFrames: Record<string, number>[] = [
-                {},
-                { '1-1': 2 },
-                { '1-1': 3 },
-                { '1-1': 5 },
-                { '1-1': 10 },
-              ];
-              const testJackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>[] = [
-                {},
-                { '2-1': 'MINI' },
-                { '2-1': 'MAJOR' },
-                { '2-1': 'MEGA' },
-              ];
-
-              for (const jpHolder of testJackpots) {
-                for (const gfHolder of testFrames) {
-                  if (Object.keys(jpHolder).length === 0 && Object.keys(gfHolder).length === 0) continue;
-
-                  for (const hit1 of possibleRowHits) {
-                    for (const hit0 of possibleRowHits) {
-                      if (hit1.len === 0 && hit0.len === 0) continue;
-                      const cand = evaluateCandidate(hit0, hit1, { sym: '', len: 0 }, gfHolder, jpHolder);
-                      const ratio = cand.totalWin / bet;
-
-                      if (isNearWin) {
-                        if (cand.totalWin > 0 && ratio < 10) {
-                          if (ratio > bestScore) {
-                            bestScore = ratio;
-                            bestCandidate = cand;
-                          }
-                        }
-                      } else {
-                        if (cand.totalWin >= targetMin && cand.totalWin < targetMax) {
-                          const dist = -Math.abs(cand.totalWin - targetMid);
-                          if (dist > bestScore) {
-                            bestScore = dist;
-                            bestCandidate = cand;
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-
-            // Fallback safety
-            if (!bestCandidate) {
-              bestCandidate = evaluateCandidate({ sym: '', len: 0 }, { sym: nonScatters[0] || 'M1', len: 3 }, { sym: '', len: 0 });
-            }
-
-            const fullMathIds: string[] = [];
-            const columnStrings: string[] = [];
-            for (let c = 0; c < reelCount; c++) {
-              const colArr: string[] = [];
-              for (let r = 0; r < (rowCounts[c] || 3); r++) {
-                const s = bestCandidate.grid[c][r];
-                const mathId = mathIdMap[s] || s;
-                fullMathIds.push(mathId);
-                colArr.push(mathId);
-              }
-              columnStrings.push(colArr.join(","));
-            }
-
-            const classArr: number[] = [];
-            Object.entries(bestCandidate.goldFrames).forEach(([key, val]) => {
-              const [col, row] = key.split('-').map(Number);
-              const poolIdx = multiplierToPoolIndex[val] ?? 0;
-              classArr.push(col, row, poolIdx);
-            });
-            Object.entries(bestCandidate.jackpots).forEach(([key, val]) => {
-              const [col, row] = key.split('-').map(Number);
-              classArr.push(col, row, typeToId[val]);
-            });
-            const classStr = classArr.length > 0 ? `[${classArr.join(', ')}]` : '';
-
-            const maxMatch = bestCandidate.wins.length > 0 ? Math.max(...bestCandidate.wins.map(w => w.matchCount)) : 3;
-
-            newCombs.push({
-              name: interval.name,
-              length: maxMatch,
-              wildCount: 0,
-              rng: columnStrings,
-              isInterfered: false,
-              hasS1Drop: false,
-              fullMathIds: fullMathIds,
-              goldFrames: bestCandidate.goldFrames,
-              jackpots: bestCandidate.jackpots,
-              clovers: {},
-              classStr: classStr,
-            } as any);
-          }
-
-          setCombinations(newCombs);
-          setIsSearching(false);
-          return;
-        }
-
-        const results = await findRngForMultiplierIntervals(
-          multiplierIntervals,
-          bet,
-          currentStrips,
-          rowCounts,
-          currentPaytable,
-          reelCount,
-          gameType,
-          topTrackerOther,
-          customPaylines,
-          isFreeGame
-        );
-        
-        for (const interval of multiplierIntervals) {
-          if (results[interval.id]) {
-            newCombs.push({
-              name: interval.name,
-              length: 0,
-              wildCount: 0,
-              rng: results[interval.id],
-              isInterfered: false,
-              hasS1Drop: false
-            } as any);
-          }
-        }
-        setCombinations(newCombs);
-        setIsSearching(false);
-        return;
-      }
-
-      let minWinCount = gameType.includes('payanywhere') ? 8 : 3;
-      let maxWinCount = gameType.includes('payanywhere') ? 12 : reelCount;
-      const targetRule = currentPaytable.find(p => p.symbolId === selectedSymbol);
-      if (targetRule && targetRule.payouts) {
-        const matchKeys = Object.keys(targetRule.payouts)
-          .filter(k => k.startsWith('match') && targetRule.payouts[k] > 0)
-          .map(k => parseInt(k.replace('match', ''), 10))
-          .filter(n => !isNaN(n));
-        if (matchKeys.length > 0) {
-          minWinCount = Math.min(...matchKeys);
-          maxWinCount = Math.max(...matchKeys);
-        }
-      }
-      const startLen = Math.max(1, minWinCount - 1);
-
-      if (gameType === "payanywhere_set2") {
-        // --- PAY ANYWHERE SET 2 GENERATOR ---
-        // Target counts: 7 to 13
-        let totalGridCells = 0;
-        for (let c = 0; c < reelCount; c++) totalGridCells += rowCounts[c] || 3;
-        // We generate 60 items: 30 for the initial grid, 30 for the drops
-        const requiredTotal = totalGridCells * 2;
-
-        // Get all available regular symbols (not target, not scatters) to fill the grid without wins
-        const excludeSymbols =
-          selectedSymbol === "B1/B2"
-            ? ["B1", "B2", "WX", "NI", "F1", "F2", "F3", "F4", "L1", "L2"]
-            : [selectedSymbol, "WX", "NI", "F1", "F2", "F3", "F4", "L1", "L2"];
-        const nonScatters = currentPaytable
-          .filter(
-            (p) =>
-              p.isEnabled !== false &&
-              !p.isScatter &&
-              !excludeSymbols.includes(p.symbolId),
-          )
-          .map((p) => p.symbolId);
-
-        // Ensure nonScatters has symbols
-        if (nonScatters.length > 0) {
-          if (selectedSymbol === "B1/B2") {
-            const b1b2Targets = [
-              { b1: 3, b2: 0 },
-              { b1: 2, b2: 1 },
-              { b1: 4, b2: 0 },
-              { b1: 3, b2: 1 },
-              { b1: 5, b2: 0 },
-              { b1: 4, b2: 1 },
-              { b1: 6, b2: 0 },
-              { b1: 5, b2: 1 },
-            ];
-
-            b1b2Targets.forEach((target) => {
-              const grid: string[] = Array(requiredTotal).fill("-");
-              const placementOrder: number[] = [];
-              const maxR = Math.max(...rowCounts);
-              for (let r = 0; r < maxR; r++) {
-                for (let c = 0; c < reelCount; c++) {
-                  const colRows = rowCounts[c] || 3;
-                  if (r < colRows) {
-                    placementOrder.push(c * colRows + r);
-                  }
-                }
-              }
-
-              for (let i = 0; i < target.b1; i++) {
-                if (placementOrder[i] !== undefined)
-                  grid[placementOrder[i]] = "B1";
-              }
-              for (let i = 0; i < target.b2; i++) {
-                if (placementOrder[target.b1 + i] !== undefined)
-                  grid[placementOrder[target.b1 + i]] = "B2";
-              }
-
-              let nsIdx = 0;
-
-              const specialSymbolsToPlace: string[] = [];
-              if (
-                specialSymbolConfig.s1Enabled &&
-                specialSymbolConfig.s1Count > 0
-              ) {
-                for (let i = 0; i < specialSymbolConfig.s1Count; i++)
-                  specialSymbolsToPlace.push("S1");
-              }
-              if (
-                specialSymbolConfig.s2Enabled &&
-                specialSymbolConfig.s2Count > 0
-              ) {
-                for (let i = 0; i < specialSymbolConfig.s2Count; i++)
-                  specialSymbolsToPlace.push("S2");
-              }
-              if (specialSymbolConfig.multipliersEnabled) {
-                Object.entries(specialSymbolConfig.multiplierCounts).forEach(
-                  ([key, count]) => {
-                    for (let i = 0; i < count; i++)
-                      specialSymbolsToPlace.push(key); // e.g. "F1_2X"
-                  },
-                );
-              }
-              if (specialSymbolConfig.luckyBallsEnabled) {
-                Object.entries(specialSymbolConfig.luckyCounts).forEach(
-                  ([key, count]) => {
-                    for (let i = 0; i < count; i++)
-                      specialSymbolsToPlace.push(key); // e.g. "L1_2X"
-                  },
-                );
-              }
-
-              for (let i = 0; i < requiredTotal; i++) {
-                if (grid[i] === "-") {
-                  if (specialSymbolsToPlace.length > 0) {
-                    grid[i] = specialSymbolsToPlace.shift()!;
-                  } else {
-                    grid[i] = nonScatters[nsIdx % nonScatters.length];
-                    nsIdx++;
-                  }
-                }
-              }
-
-              const mathIdMap: Record<string, string> = {};
-              currentPaytable.forEach((p) => {
-                if (p.mathId !== undefined) {
-                  const ids = String(p.mathId)
-                    .split(",")
-                    .map((s) => s.trim());
-                  mathIdMap[p.symbolId] = ids[0];
-                }
-              });
-
-              const columnStrings: string[] = [];
-              let cellPointer = 0;
-              for (let c = 0; c < reelCount; c++) {
-                const colRows = rowCounts[c] || 3;
-                const colArr = [];
-                for (let r = 0; r < colRows; r++) {
-                  colArr.push(
-                    mathIdMap[grid[cellPointer]] || grid[cellPointer],
-                  );
-                  cellPointer++;
-                }
-                columnStrings.push(colArr.join(","));
-              }
-
-              const fullMathIds = grid.map((s) => {
-                if (mathIdMap[s]) return mathIdMap[s];
-                if (s.includes("_") && s.match(/^[F|L][1-4]_/)) {
-                  if (s.startsWith("F")) return "15";
-                  if (s.startsWith("L")) return "19";
-                  const base = s.split("_")[0];
-                  return mathIdMap[base] || base;
-                }
-                return s;
-              });
-
-              const dropMathIds = [];
-              for (let i = 0; i < 50; i++) {
-                const sym =
-                  nonScatters[Math.floor(Math.random() * nonScatters.length)];
-                dropMathIds.push(mathIdMap[sym] || sym);
-              }
-
-              newCombs.push({
-                name: `B1*${target.b1}${target.b2 > 0 ? "+B2" : ""}`,
-                length: target.b1 + target.b2,
-                wildCount: 0,
-                rng: columnStrings as any,
-                isInterfered: false,
-              });
-              (newCombs[newCombs.length - 1] as any).fullMathIds = fullMathIds;
-              (newCombs[newCombs.length - 1] as any).dropMathIds = dropMathIds;
-            });
-          } else {
-            let requiredTotal = 0;
-            for (let c = 0; c < reelCount; c++)
-              requiredTotal += rowCounts[c] || 3;
-
-            const endLen = Math.max(startLen + 1, maxWinCount + 1);
-            for (let N = startLen; N <= endLen; N++) {
-              const grid: string[] = Array(requiredTotal).fill("-");
-
-              // Generate placement order (top rows first, filling across columns)
-              const placementOrder: number[] = [];
-              const maxR = Math.max(...rowCounts);
-              for (let r = 0; r < maxR; r++) {
-                for (let c = 0; c < reelCount; c++) {
-                  const colRows = rowCounts[c] || 3;
-                  if (r < colRows) {
-                    let offset = 0;
-                    for (let k = 0; k < c; k++) offset += rowCounts[k] || 3;
-                    placementOrder.push(offset + r);
-                  }
-                }
-              }
-
-              // Distribute N target symbols deterministically
-              for (let i = 0; i < N; i++) {
-                const idx = placementOrder[i];
-                if (idx !== undefined) {
-                  grid[idx] = selectedSymbol;
-                }
-              }
-
-              // Fill the rest with distributed nonScatters to prevent wins (<8 occurrences globally)
-              // Distribute evenly so no symbol exceeds 7.
-              let nsIdx = 0;
-              const specialSymbolsToPlace: string[] = [];
-              if (
-                specialSymbolConfig.s1Enabled &&
-                specialSymbolConfig.s1Count > 0 &&
-                selectedSymbol !== "S1"
-              ) {
-                for (let i = 0; i < specialSymbolConfig.s1Count; i++)
-                  specialSymbolsToPlace.push("S1");
-              }
-              if (
-                specialSymbolConfig.s2Enabled &&
-                specialSymbolConfig.s2Count > 0 &&
-                selectedSymbol !== "S2"
-              ) {
-                for (let i = 0; i < specialSymbolConfig.s2Count; i++)
-                  specialSymbolsToPlace.push("S2");
-              }
-              if (specialSymbolConfig.multipliersEnabled) {
-                Object.entries(specialSymbolConfig.multiplierCounts).forEach(
-                  ([key, count]) => {
-                    for (let i = 0; i < count; i++)
-                      specialSymbolsToPlace.push(key);
-                  },
-                );
-              }
-              if (specialSymbolConfig.luckyBallsEnabled) {
-                Object.entries(specialSymbolConfig.luckyCounts).forEach(
-                  ([key, count]) => {
-                    for (let i = 0; i < count; i++)
-                      specialSymbolsToPlace.push(key);
-                  },
-                );
-              }
-
-              for (let i = 0; i < requiredTotal; i++) {
-                if (grid[i] === "-") {
-                  if (specialSymbolsToPlace.length > 0) {
-                    grid[i] = specialSymbolsToPlace.shift()!;
-                  } else {
-                    grid[i] = nonScatters[nsIdx % nonScatters.length];
-                    nsIdx++;
-                  }
-                }
-              }
-
-              // Convert symbols to their MathIDs
-              const mathIdMap: Record<string, string> = {};
-              currentPaytable.forEach((p) => {
-                if (p.mathId !== undefined) {
-                  // Take the first MathID if there are multiple (e.g., F1: 15,16,17,18)
-                  const ids = String(p.mathId)
-                    .split(",")
-                    .map((s) => s.trim());
-                  mathIdMap[p.symbolId] = ids[0];
-                }
-              });
-
-              // Convert to column-based strings for manualIndicesOther
-              const columnStrings: string[] = [];
-              let cellPointer = 0;
-              for (let c = 0; c < reelCount; c++) {
-                const colRows = rowCounts[c] || 3;
-                const colArr = [];
-                for (let r = 0; r < colRows; r++) {
-                  colArr.push(
-                    mathIdMap[grid[cellPointer]] || grid[cellPointer],
-                  );
-                  cellPointer++;
-                }
-                columnStrings.push(colArr.join(","));
-              }
-
-              // Also attach the full 60-array MathIDs for the clipboard copying in SlotGeneratorTab
-              // We use a custom object format in rng array for this specific case
-              const fullMathIds = grid.map((s) => {
-                if (mathIdMap[s]) return mathIdMap[s];
-                if (s.includes("_") && s.match(/^[F|L][1-4]_/)) {
-                  if (s.startsWith("F")) return "15";
-                  if (s.startsWith("L")) return "19";
-                  const base = s.split("_")[0];
-                  return mathIdMap[base] || base;
-                }
-                return s;
-              });
-
-              const dropMathIds = [];
-              for (let i = 0; i < 50; i++) {
-                const sym =
-                  nonScatters[Math.floor(Math.random() * nonScatters.length)];
-                dropMathIds.push(mathIdMap[sym] || sym);
-              }
-
-              newCombs.push({
-                name:
-                  gameType === "payanywhere_set2" ||
-                  gameType === "linegame_set2"
-                    ? N < minWinCount
-                      ? `無贏分 (1)\n${selectedSymbol} 個數 ${N}`
-                      : `有贏分 (1)\n${selectedSymbol} 個數 ${N}`
-                    : `${selectedSymbol} * ${N} 連線`,
-                length: N,
-                wildCount: 0,
-                rng: columnStrings as any, // Visual columns
-                isInterfered: false,
-              });
-              // Attach the arrays to the comb object dynamically
-              (newCombs[newCombs.length - 1] as any).fullMathIds = fullMathIds;
-              (newCombs[newCombs.length - 1] as any).dropMathIds = dropMathIds;
-            }
-          }
-        }
-      } else if (gameType === "linegame_set2") {
-        // --- LINE GAME SET 2 GENERATOR ---
-        const excludeSymbols = [
-          selectedSymbol,
-          "WX",
-          "NI",
-          "F1",
-          "F2",
-          "F3",
-          "F4",
-          "L1",
-          "L2",
-        ];
-        const nonScatters = currentPaytable
-          .filter(
-            (p) =>
-              p.isEnabled !== false &&
-              !p.isScatter &&
-              !excludeSymbols.includes(p.symbolId),
-          )
-          .map((p) => p.symbolId);
-        const isSelScatter = currentPaytable.some(
-          (p) => p.symbolId === selectedSymbol && p.isScatter,
-        );
-
-        if (nonScatters.length > 0) {
-          const linesToUse =
-            customPaylines && customPaylines.length > 0
-              ? customPaylines
-              : [Array(reelCount).fill(0)];
-          const targetLengths = [];
-          for (let l = startLen; l <= reelCount; l++) {
-             targetLengths.push(l);
-          }
-
-          const mathIdMap: Record<string, string> = {};
-          currentPaytable.forEach((p) => {
-            if (p.mathId !== undefined) {
-              const ids = String(p.mathId)
-                .split(",")
-                .map((s) => s.trim());
-              mathIdMap[p.symbolId] = ids[0];
-            }
-          });
-
-          targetLengths.forEach((len) => {
-            const maxWild = isSelScatter ? 0 : Math.min(1, len - 1);
-            for (let W = 0; W <= maxWild; W++) {
-              const line = linesToUse[0];
-
-              const grid: string[][] = Array.from({ length: reelCount }, (_, c) =>
-                Array(rowCounts[c] || 3).fill("-"),
-              );
-
-              // Place targets and wilds
-              for (let c = 0; c < len; c++) {
-                if (W === 1 && c === 1) {
-                   grid[c][line[c]] = "WX";
-                } else {
-                   grid[c][line[c]] = selectedSymbol;
-                }
-              }
-
-              const flatGrid: { c: number; r: number; val: string }[] = [];
-              for (let c = 0; c < reelCount; c++) {
-                for (let r = 0; r < (rowCounts[c] || 3); r++) {
-                  flatGrid.push({ c, r, val: grid[c][r] });
-                }
-              }
-
-              const specialSymbolsToPlace: string[] = [];
-              if (
-                specialSymbolConfig.s1Enabled &&
-                specialSymbolConfig.s1Count > 0
-              ) {
-                for (let i = 0; i < specialSymbolConfig.s1Count; i++)
-                  specialSymbolsToPlace.push("S1");
-              }
-              if (
-                specialSymbolConfig.s2Enabled &&
-                specialSymbolConfig.s2Count > 0
-              ) {
-                for (let i = 0; i < specialSymbolConfig.s2Count; i++)
-                  specialSymbolsToPlace.push("S2");
-              }
-              if (specialSymbolConfig.multipliersEnabled) {
-                Object.entries(specialSymbolConfig.multiplierCounts).forEach(
-                  ([key, count]) => {
-                    for (let i = 0; i < count; i++)
-                      specialSymbolsToPlace.push(key);
-                  },
-                );
-              }
-
-              let nsIdx = 0;
-              const emptySpots = flatGrid.filter((cell) => cell.val === "-");
-              emptySpots.sort(() => Math.random() - 0.5);
-
-              const safeNonScatters = nonScatters.filter((sym) => sym !== selectedSymbol);
-
-              for (let i = 0; i < emptySpots.length; i++) {
-                if (specialSymbolsToPlace.length > 0) {
-                  emptySpots[i].val = specialSymbolsToPlace.shift()!;
-                } else {
-                  emptySpots[i].val = safeNonScatters[nsIdx % safeNonScatters.length];
-                  nsIdx++;
-                }
-              }
-
-              const fullMathIds: string[] = [];
-              const columnStrings: string[] = [];
-              for (let c = 0; c < reelCount; c++) {
-                const colArr: string[] = [];
-                for (let r = 0; r < (rowCounts[c] || 3); r++) {
-                  const cell = flatGrid.find(
-                    (cell) => cell.c === c && cell.r === r,
-                  )!;
-                  let s = cell.val;
-                  let mathId = mathIdMap[s] || s;
-                  if (s.includes("_") && s.match(/^[F|L][1-4]_/)) {
-                    if (s.startsWith("F")) mathId = "15";
-                    else if (s.startsWith("L")) mathId = "19";
-                    else {
-                      const base = s.split("_")[0];
-                      mathId = mathIdMap[base] || base;
-                    }
-                  }
-                  fullMathIds.push(mathId);
-                  colArr.push(mathId);
-                }
-                columnStrings.push(colArr.join(","));
-              }
-
-              let name = "";
-              if (isSelScatter) {
-                name = W === 0
-                  ? `${selectedSymbol} * ${len} 個 (任意位置)`
-                  : `${selectedSymbol} * ${len - W} + WX (任意位置)`;
-              } else {
-                name = W === 0
-                  ? `${selectedSymbol} * ${len} 連線 (Line 1)`
-                  : `${selectedSymbol} * ${len - W} + WX (Line 1)`;
-              }
-
-              newCombs.push({
-                name: name,
-                length: len,
-                wildCount: W,
-                rng: columnStrings,
-                isInterfered: false,
-                fullMathIds: fullMathIds,
-                goldFrames: {},
-                jackpots: {},
-                clovers: {},
-                classStr: '',
-              } as any);
-            }
-          });
-        }
-      } else {
-        // --- STANDARD RNG SEARCH ---
-        const isSelScatter = currentPaytable.some(
-          (p) => p.symbolId === selectedSymbol && p.isScatter,
-        );
-        const searchTasks: {
-          name: string;
-          length: number;
-          wildCount: number;
-          promise: Promise<{ rng: number[] | null; isInterfered: boolean; hasS1Drop?: boolean }>;
-        }[] = [];
-
-        for (let L = startLen; L <= reelCount; L++) {
-          const maxWild = Math.min(1, L - 1);
-          for (let W = 0; W <= maxWild; W++) {
-            let name = "";
-            if (isSelScatter) {
-              name =
-                W === 0
-                  ? `${selectedSymbol} * ${L} 個 (任意位置)`
-                  : `${selectedSymbol} * ${L - W} + WX (任意位置)`;
-            } else {
-              name =
-                W === 0
-                  ? `${selectedSymbol} * ${L} 連線`
-                  : `${selectedSymbol} * ${L - W} + WX`;
-            }
-            searchTasks.push({
-              name,
-              length: L,
-              wildCount: W,
-              promise: findRngForCombination(
-                selectedSymbol,
-                L,
-                W,
-                currentStrips,
-                rowCounts,
-                currentPaytable,
-                reelCount,
-                gameType,
-                topTrackerOther,
-                customPaylines,
-                isFreeGame,
-                stripSets,
-                W > 0  // requireGoldCascade 當需要 WX 時，透過消除黃金符號產生
-              ),
-            });
-          }
-        }
-
-        const results = await Promise.all(searchTasks.map((t) => t.promise));
-        for (let i = 0; i < searchTasks.length; i++) {
-          const task = searchTasks[i];
-          const res = results[i];
-          newCombs.push({
-            name: task.name,
-            length: task.length,
-            wildCount: task.wildCount,
-            rng: res.rng,
-            isInterfered: res.isInterfered,
-            hasS1Drop: res.hasS1Drop,
-            stripId: (res as any).stripId,
-          });
-        }
-
-        newCombs.sort((a, b) => {
-          const getPriority = (c: (typeof combinations)[0]) => {
-            if (!c.rng) return 2;
-            return c.isInterfered ? 1 : 0;
-          };
-          const pA = getPriority(a);
-          const pB = getPriority(b);
-          if (pA !== pB) return pA - pB;
-
-          if (a.length !== b.length) return a.length - b.length;
-          return a.wildCount - b.wildCount;
-        });
-      }
-
-      setCombinations(newCombs);
-      setIsSearching(false);
-    }, 50);
-
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    selectedSymbol,
-    multiplierIntervalsStr,
-    isFreeGame
-  ]);
-
-  return { isSearching, combinations };
-}
-</file>
-
 <file path="src/components/ConfigPanel.tsx">
 import React, { useState, useEffect, useMemo } from 'react';
 import { Database, Table, Edit3, X } from 'lucide-react';
@@ -14788,6 +14174,925 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
 };
 </file>
 
+<file path="src/hooks/useRngSearch.ts">
+import { useState, useEffect } from "react";
+import type { PaytableRule, GameType } from "../types";
+import { findRngForCombination, findRngForCombos, findRngForMultiplierIntervals } from "../utils/rngSearch";
+import { evaluateGrid, defaultPaylines } from "../utils/evaluation";
+
+export function useRngSearch(
+  selectedSymbol: string,
+  reelCount: number,
+  rowCounts: number[],
+  currentStrips: string[][],
+  currentPaytable: PaytableRule[],
+  gameType: GameType,
+  topTrackerOther: string[],
+  specialSymbolConfig: import("../types").SpecialSymbolConfig,
+  customPaylines?: number[][],
+  isFreeGame: boolean = false,
+  bet: number = 1,
+  multiplierIntervals: import("../types").MultiplierInterval[] = [],
+  stripSets?: Record<string, string[][]>
+) {
+  const [combinations, setCombinations] = useState<
+    {
+      name: string;
+      length: number;
+      wildCount: number;
+      rng: any[] | null;
+      isInterfered: boolean;
+      hasS1Drop?: boolean;
+      stripId?: number;
+    }[]
+  >([]);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+
+
+  const multiplierIntervalsStr = JSON.stringify(multiplierIntervals);
+
+  useEffect(() => {
+    if (!selectedSymbol) {
+      setCombinations([]);
+      setIsSearching(false);
+      return;
+    }
+    if (
+      gameType !== "payanywhere_set2" &&
+      gameType !== "linegame_set2" &&
+      (currentStrips.length === 0 ||
+        currentStrips.every((s) => !s || s.length === 0))
+    ) {
+      setCombinations([]);
+      setIsSearching(false);
+      return;
+    }
+
+    const isInstantGenerator = gameType === "linegame_set2" || gameType === "payanywhere_set2";
+    if (!isInstantGenerator) {
+      setIsSearching(true);
+    }
+
+    const timer = setTimeout(async () => {
+      const newCombs: typeof combinations = [];
+
+      if (selectedSymbol === 'COMBO') {
+        const results = await findRngForCombos(
+          currentStrips,
+          rowCounts,
+          currentPaytable,
+          reelCount,
+          gameType,
+          topTrackerOther,
+          customPaylines,
+          isFreeGame
+        );
+        
+        for (let i = 0; i < results.length; i++) {
+          if (results[i]) {
+            newCombs.push({
+              name: `${i + 1} Combo`,
+              length: i + 1,
+              wildCount: 0,
+              rng: results[i],
+              isInterfered: false,
+              hasS1Drop: false
+            } as any);
+          }
+        }
+        setCombinations(newCombs);
+        setIsSearching(false);
+        return;
+      }
+
+      if (selectedSymbol === 'WIN_MULTIPLIER') {
+        const validIntervals = (multiplierIntervals || []).filter(
+          iv => iv.min >= 0 && (iv.max === null || (iv.max >= 0 && iv.max >= iv.min))
+        );
+        if (validIntervals.length === 0) {
+          setCombinations([]);
+          setIsSearching(false);
+          return;
+        }
+        if (gameType === 'linegame_set2') {
+          const mathIdMap: Record<string, string> = {};
+          currentPaytable.forEach((p) => {
+            if (p.mathId !== undefined) {
+              const ids = String(p.mathId)
+                .split(",")
+                .map((s) => s.trim());
+              mathIdMap[p.symbolId] = ids[0];
+            }
+          });
+
+          const excludeSymbols = [
+            "W", "W1", "W2", "WX", "WILD", "B1", "B2", "S1", "S2", "NI",
+            "F1", "F2", "F3", "F4", "L1", "L2",
+          ];
+          const nonScatters = currentPaytable
+            .filter(
+              (p) =>
+                p.isEnabled !== false &&
+                !p.isScatter &&
+                !excludeSymbols.includes(p.symbolId),
+            )
+            .map((p) => p.symbolId);
+
+          const linesToUse =
+            customPaylines && customPaylines.length > 0
+              ? customPaylines
+              : defaultPaylines;
+
+          const multiplierToPoolIndex: Record<number, number> = {
+            2: 0, 3: 1, 4: 2, 5: 3, 6: 4, 7: 5, 8: 6, 9: 7, 10: 8, 25: 9, 50: 10, 100: 11
+          };
+          const typeToId: Record<string, number> = { 'MINI': 12, 'MAJOR': 13, 'MEGA': 14, 'MAXWIN': 15 };
+
+          // Build possible single-row hit definitions
+          const possibleRowHits: { sym: string; len: number }[] = [{ sym: '', len: 0 }];
+          for (const sym of nonScatters) {
+            const rule = currentPaytable.find((p) => p.symbolId === sym);
+            if (!rule || !rule.payouts) continue;
+            for (let l = 3; l <= reelCount; l++) {
+              const pVal = Number(rule.payouts[`match${l}` as keyof typeof rule.payouts] || 0);
+              if (pVal > 0) {
+                possibleRowHits.push({ sym, len: l });
+              }
+            }
+          }
+
+          // Evaluate candidate grid
+          const evaluateCandidate = (
+            hit0: { sym: string; len: number },
+            hit1: { sym: string; len: number },
+            hit2: { sym: string; len: number },
+            goldFrames: Record<string, number> = {},
+            jackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'> = {}
+          ) => {
+            const grid: string[][] = Array.from({ length: reelCount }, (_, c) =>
+              Array(rowCounts[c] || 3).fill("-")
+            );
+            if (hit0.len > 0) {
+              for (let c = 0; c < hit0.len; c++) grid[c][0] = hit0.sym;
+            }
+            if (hit1.len > 0) {
+              for (let c = 0; c < hit1.len; c++) grid[c][1] = hit1.sym;
+            }
+            if (hit2.len > 0) {
+              for (let c = 0; c < hit2.len; c++) grid[c][2] = hit2.sym;
+            }
+
+            const dummyPool = nonScatters.filter(
+              (s) => s !== hit0.sym && s !== hit1.sym && s !== hit2.sym
+            );
+            let dIdx = 0;
+            for (let c = 0; c < reelCount; c++) {
+              for (let r = 0; r < (rowCounts[c] || 3); r++) {
+                if (grid[c][r] === "-") {
+                  grid[c][r] = dummyPool[dIdx % dummyPool.length] || "J";
+                  dIdx++;
+                }
+              }
+            }
+
+            const wins = evaluateGrid(grid, currentPaytable, {
+              gameType: "linegame_set2",
+              paylines: linesToUse,
+              effectiveBet: bet,
+              goldFrames,
+              jackpots,
+            });
+
+            const totalWin = wins.reduce((sum, w) => sum + w.totalWin, 0);
+            return { grid, totalWin, wins, goldFrames, jackpots };
+          };
+
+          for (const interval of validIntervals) {
+            const isNearWin = interval.min === 0 || interval.name.includes('接近大獎');
+            const targetMin = interval.min * bet;
+            const targetMax = interval.max !== null ? interval.max * bet : Infinity;
+            const targetMid = interval.max !== null ? ((interval.min + interval.max) / 2) * bet : interval.min * 1.5 * bet;
+
+            let bestCandidate: ReturnType<typeof evaluateCandidate> | null = null;
+            let bestScore = -Infinity;
+
+            // Phase 1: Pure symbol search (multi-row combinations, no gold frames, no jackpots)
+            for (const hit1 of possibleRowHits) {
+              for (const hit0 of possibleRowHits) {
+                for (const hit2 of possibleRowHits) {
+                  if (hit1.len === 0 && hit0.len === 0 && hit2.len === 0) continue;
+                  const cand = evaluateCandidate(hit0, hit1, hit2);
+                  const ratio = cand.totalWin / bet;
+
+                  if (isNearWin) {
+                    // We want ratio < 10, maximized as close to 10 as possible
+                    if (cand.totalWin > 0 && ratio < 10) {
+                      if (ratio > bestScore) {
+                        bestScore = ratio;
+                        bestCandidate = cand;
+                      }
+                    }
+                  } else {
+                    if (cand.totalWin >= targetMin && cand.totalWin < targetMax) {
+                      const dist = -Math.abs(cand.totalWin - targetMid);
+                      if (dist > bestScore) {
+                        bestScore = dist;
+                        bestCandidate = cand;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+            // Phase 2: If no pure line candidate was found (e.g. for higher intervals like EPIC WIN or SUPER MEGA WIN)
+            if (!bestCandidate) {
+              const testFrames: Record<string, number>[] = [
+                {},
+                { '1-1': 2 },
+                { '1-1': 3 },
+                { '1-1': 5 },
+                { '1-1': 10 },
+              ];
+              const testJackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>[] = [
+                {},
+                { '2-1': 'MINI' },
+                { '2-1': 'MAJOR' },
+                { '2-1': 'MEGA' },
+              ];
+
+              for (const jpHolder of testJackpots) {
+                for (const gfHolder of testFrames) {
+                  if (Object.keys(jpHolder).length === 0 && Object.keys(gfHolder).length === 0) continue;
+
+                  for (const hit1 of possibleRowHits) {
+                    for (const hit0 of possibleRowHits) {
+                      if (hit1.len === 0 && hit0.len === 0) continue;
+                      const cand = evaluateCandidate(hit0, hit1, { sym: '', len: 0 }, gfHolder, jpHolder);
+                      const ratio = cand.totalWin / bet;
+
+                      if (isNearWin) {
+                        if (cand.totalWin > 0 && ratio < 10) {
+                          if (ratio > bestScore) {
+                            bestScore = ratio;
+                            bestCandidate = cand;
+                          }
+                        }
+                      } else {
+                        if (cand.totalWin >= targetMin && cand.totalWin < targetMax) {
+                          const dist = -Math.abs(cand.totalWin - targetMid);
+                          if (dist > bestScore) {
+                            bestScore = dist;
+                            bestCandidate = cand;
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+            // Fallback safety
+            if (!bestCandidate) {
+              bestCandidate = evaluateCandidate({ sym: '', len: 0 }, { sym: nonScatters[0] || 'M1', len: 3 }, { sym: '', len: 0 });
+            }
+
+            const fullMathIds: string[] = [];
+            const columnStrings: string[] = [];
+            for (let c = 0; c < reelCount; c++) {
+              const colArr: string[] = [];
+              for (let r = 0; r < (rowCounts[c] || 3); r++) {
+                const s = bestCandidate.grid[c][r];
+                const mathId = mathIdMap[s] || s;
+                fullMathIds.push(mathId);
+                colArr.push(mathId);
+              }
+              columnStrings.push(colArr.join(","));
+            }
+
+            const classArr: number[] = [];
+            Object.entries(bestCandidate.goldFrames).forEach(([key, val]) => {
+              const [col, row] = key.split('-').map(Number);
+              const poolIdx = multiplierToPoolIndex[val] ?? 0;
+              classArr.push(col, row, poolIdx);
+            });
+            Object.entries(bestCandidate.jackpots).forEach(([key, val]) => {
+              const [col, row] = key.split('-').map(Number);
+              classArr.push(col, row, typeToId[val]);
+            });
+            const classStr = classArr.length > 0 ? `[${classArr.join(', ')}]` : '';
+
+            const maxMatch = bestCandidate.wins.length > 0 ? Math.max(...bestCandidate.wins.map(w => w.matchCount)) : 3;
+
+            newCombs.push({
+              name: interval.name,
+              length: maxMatch,
+              wildCount: 0,
+              rng: columnStrings,
+              isInterfered: false,
+              hasS1Drop: false,
+              fullMathIds: fullMathIds,
+              goldFrames: bestCandidate.goldFrames,
+              jackpots: bestCandidate.jackpots,
+              clovers: {},
+              classStr: classStr,
+            } as any);
+          }
+
+          setCombinations(newCombs);
+          setIsSearching(false);
+          return;
+        }
+
+        const results = await findRngForMultiplierIntervals(
+          multiplierIntervals,
+          bet,
+          currentStrips,
+          rowCounts,
+          currentPaytable,
+          reelCount,
+          gameType,
+          topTrackerOther,
+          customPaylines,
+          isFreeGame
+        );
+        
+        for (const interval of multiplierIntervals) {
+          if (results[interval.id]) {
+            newCombs.push({
+              name: interval.name,
+              length: 0,
+              wildCount: 0,
+              rng: results[interval.id],
+              isInterfered: false,
+              hasS1Drop: false
+            } as any);
+          }
+        }
+        setCombinations(newCombs);
+        setIsSearching(false);
+        return;
+      }
+
+      let minWinCount = gameType.includes('payanywhere') ? 8 : 3;
+      let maxWinCount = gameType.includes('payanywhere') ? 12 : reelCount;
+      const targetRule = currentPaytable.find(p => p.symbolId === selectedSymbol);
+      if (targetRule && targetRule.payouts) {
+        const matchKeys = Object.keys(targetRule.payouts)
+          .filter(k => k.startsWith('match') && targetRule.payouts[k] > 0)
+          .map(k => parseInt(k.replace('match', ''), 10))
+          .filter(n => !isNaN(n));
+        if (matchKeys.length > 0) {
+          minWinCount = Math.min(...matchKeys);
+          maxWinCount = Math.max(...matchKeys);
+        }
+      }
+      const startLen = Math.max(1, minWinCount - 1);
+
+      if (gameType === "payanywhere_set2") {
+        // --- PAY ANYWHERE SET 2 GENERATOR ---
+        // Target counts: 7 to 13
+        let totalGridCells = 0;
+        for (let c = 0; c < reelCount; c++) totalGridCells += rowCounts[c] || 3;
+        // We generate 60 items: 30 for the initial grid, 30 for the drops
+        const requiredTotal = totalGridCells * 2;
+
+        // Get all available regular symbols (not target, not scatters) to fill the grid without wins
+        const excludeSymbols =
+          selectedSymbol === "B1/B2"
+            ? ["B1", "B2", "WX", "NI", "F1", "F2", "F3", "F4", "L1", "L2"]
+            : [selectedSymbol, "WX", "NI", "F1", "F2", "F3", "F4", "L1", "L2"];
+        const nonScatters = currentPaytable
+          .filter(
+            (p) =>
+              p.isEnabled !== false &&
+              !p.isScatter &&
+              !excludeSymbols.includes(p.symbolId),
+          )
+          .map((p) => p.symbolId);
+
+        // Ensure nonScatters has symbols
+        if (nonScatters.length > 0) {
+          if (selectedSymbol === "B1/B2") {
+            const b1b2Targets = [
+              { b1: 3, b2: 0 },
+              { b1: 2, b2: 1 },
+              { b1: 4, b2: 0 },
+              { b1: 3, b2: 1 },
+              { b1: 5, b2: 0 },
+              { b1: 4, b2: 1 },
+              { b1: 6, b2: 0 },
+              { b1: 5, b2: 1 },
+            ];
+
+            b1b2Targets.forEach((target) => {
+              const grid: string[] = Array(requiredTotal).fill("-");
+              const placementOrder: number[] = [];
+              const maxR = Math.max(...rowCounts);
+              for (let r = 0; r < maxR; r++) {
+                for (let c = 0; c < reelCount; c++) {
+                  const colRows = rowCounts[c] || 3;
+                  if (r < colRows) {
+                    placementOrder.push(c * colRows + r);
+                  }
+                }
+              }
+
+              for (let i = 0; i < target.b1; i++) {
+                if (placementOrder[i] !== undefined)
+                  grid[placementOrder[i]] = "B1";
+              }
+              for (let i = 0; i < target.b2; i++) {
+                if (placementOrder[target.b1 + i] !== undefined)
+                  grid[placementOrder[target.b1 + i]] = "B2";
+              }
+
+              let nsIdx = 0;
+
+              const specialSymbolsToPlace: string[] = [];
+              if (
+                specialSymbolConfig.s1Enabled &&
+                specialSymbolConfig.s1Count > 0
+              ) {
+                for (let i = 0; i < specialSymbolConfig.s1Count; i++)
+                  specialSymbolsToPlace.push("S1");
+              }
+              if (
+                specialSymbolConfig.s2Enabled &&
+                specialSymbolConfig.s2Count > 0
+              ) {
+                for (let i = 0; i < specialSymbolConfig.s2Count; i++)
+                  specialSymbolsToPlace.push("S2");
+              }
+              if (specialSymbolConfig.multipliersEnabled) {
+                Object.entries(specialSymbolConfig.multiplierCounts).forEach(
+                  ([key, count]) => {
+                    for (let i = 0; i < count; i++)
+                      specialSymbolsToPlace.push(key); // e.g. "F1_2X"
+                  },
+                );
+              }
+              if (specialSymbolConfig.luckyBallsEnabled) {
+                Object.entries(specialSymbolConfig.luckyCounts).forEach(
+                  ([key, count]) => {
+                    for (let i = 0; i < count; i++)
+                      specialSymbolsToPlace.push(key); // e.g. "L1_2X"
+                  },
+                );
+              }
+
+              for (let i = 0; i < requiredTotal; i++) {
+                if (grid[i] === "-") {
+                  if (specialSymbolsToPlace.length > 0) {
+                    grid[i] = specialSymbolsToPlace.shift()!;
+                  } else {
+                    grid[i] = nonScatters[nsIdx % nonScatters.length];
+                    nsIdx++;
+                  }
+                }
+              }
+
+              const mathIdMap: Record<string, string> = {};
+              currentPaytable.forEach((p) => {
+                if (p.mathId !== undefined) {
+                  const ids = String(p.mathId)
+                    .split(",")
+                    .map((s) => s.trim());
+                  mathIdMap[p.symbolId] = ids[0];
+                }
+              });
+
+              const columnStrings: string[] = [];
+              let cellPointer = 0;
+              for (let c = 0; c < reelCount; c++) {
+                const colRows = rowCounts[c] || 3;
+                const colArr = [];
+                for (let r = 0; r < colRows; r++) {
+                  colArr.push(
+                    mathIdMap[grid[cellPointer]] || grid[cellPointer],
+                  );
+                  cellPointer++;
+                }
+                columnStrings.push(colArr.join(","));
+              }
+
+              const fullMathIds = grid.map((s) => {
+                if (mathIdMap[s]) return mathIdMap[s];
+                if (s.includes("_") && s.match(/^[F|L][1-4]_/)) {
+                  if (s.startsWith("F")) return "15";
+                  if (s.startsWith("L")) return "19";
+                  const base = s.split("_")[0];
+                  return mathIdMap[base] || base;
+                }
+                return s;
+              });
+
+              const dropMathIds = [];
+              for (let i = 0; i < 50; i++) {
+                const sym =
+                  nonScatters[Math.floor(Math.random() * nonScatters.length)];
+                dropMathIds.push(mathIdMap[sym] || sym);
+              }
+
+              newCombs.push({
+                name: `B1*${target.b1}${target.b2 > 0 ? "+B2" : ""}`,
+                length: target.b1 + target.b2,
+                wildCount: 0,
+                rng: columnStrings as any,
+                isInterfered: false,
+              });
+              (newCombs[newCombs.length - 1] as any).fullMathIds = fullMathIds;
+              (newCombs[newCombs.length - 1] as any).dropMathIds = dropMathIds;
+            });
+          } else {
+            let requiredTotal = 0;
+            for (let c = 0; c < reelCount; c++)
+              requiredTotal += rowCounts[c] || 3;
+
+            const endLen = Math.max(startLen + 1, maxWinCount + 1);
+            for (let N = startLen; N <= endLen; N++) {
+              const grid: string[] = Array(requiredTotal).fill("-");
+
+              // Generate placement order (top rows first, filling across columns)
+              const placementOrder: number[] = [];
+              const maxR = Math.max(...rowCounts);
+              for (let r = 0; r < maxR; r++) {
+                for (let c = 0; c < reelCount; c++) {
+                  const colRows = rowCounts[c] || 3;
+                  if (r < colRows) {
+                    let offset = 0;
+                    for (let k = 0; k < c; k++) offset += rowCounts[k] || 3;
+                    placementOrder.push(offset + r);
+                  }
+                }
+              }
+
+              // Distribute N target symbols deterministically
+              for (let i = 0; i < N; i++) {
+                const idx = placementOrder[i];
+                if (idx !== undefined) {
+                  grid[idx] = selectedSymbol;
+                }
+              }
+
+              // Fill the rest with distributed nonScatters to prevent wins (<8 occurrences globally)
+              // Distribute evenly so no symbol exceeds 7.
+              let nsIdx = 0;
+              const specialSymbolsToPlace: string[] = [];
+              if (
+                specialSymbolConfig.s1Enabled &&
+                specialSymbolConfig.s1Count > 0 &&
+                selectedSymbol !== "S1"
+              ) {
+                for (let i = 0; i < specialSymbolConfig.s1Count; i++)
+                  specialSymbolsToPlace.push("S1");
+              }
+              if (
+                specialSymbolConfig.s2Enabled &&
+                specialSymbolConfig.s2Count > 0 &&
+                selectedSymbol !== "S2"
+              ) {
+                for (let i = 0; i < specialSymbolConfig.s2Count; i++)
+                  specialSymbolsToPlace.push("S2");
+              }
+              if (specialSymbolConfig.multipliersEnabled) {
+                Object.entries(specialSymbolConfig.multiplierCounts).forEach(
+                  ([key, count]) => {
+                    for (let i = 0; i < count; i++)
+                      specialSymbolsToPlace.push(key);
+                  },
+                );
+              }
+              if (specialSymbolConfig.luckyBallsEnabled) {
+                Object.entries(specialSymbolConfig.luckyCounts).forEach(
+                  ([key, count]) => {
+                    for (let i = 0; i < count; i++)
+                      specialSymbolsToPlace.push(key);
+                  },
+                );
+              }
+
+              for (let i = 0; i < requiredTotal; i++) {
+                if (grid[i] === "-") {
+                  if (specialSymbolsToPlace.length > 0) {
+                    grid[i] = specialSymbolsToPlace.shift()!;
+                  } else {
+                    grid[i] = nonScatters[nsIdx % nonScatters.length];
+                    nsIdx++;
+                  }
+                }
+              }
+
+              // Convert symbols to their MathIDs
+              const mathIdMap: Record<string, string> = {};
+              currentPaytable.forEach((p) => {
+                if (p.mathId !== undefined) {
+                  // Take the first MathID if there are multiple (e.g., F1: 15,16,17,18)
+                  const ids = String(p.mathId)
+                    .split(",")
+                    .map((s) => s.trim());
+                  mathIdMap[p.symbolId] = ids[0];
+                }
+              });
+
+              // Convert to column-based strings for manualIndicesOther
+              const columnStrings: string[] = [];
+              let cellPointer = 0;
+              for (let c = 0; c < reelCount; c++) {
+                const colRows = rowCounts[c] || 3;
+                const colArr = [];
+                for (let r = 0; r < colRows; r++) {
+                  colArr.push(
+                    mathIdMap[grid[cellPointer]] || grid[cellPointer],
+                  );
+                  cellPointer++;
+                }
+                columnStrings.push(colArr.join(","));
+              }
+
+              // Also attach the full 60-array MathIDs for the clipboard copying in SlotGeneratorTab
+              // We use a custom object format in rng array for this specific case
+              const fullMathIds = grid.map((s) => {
+                if (mathIdMap[s]) return mathIdMap[s];
+                if (s.includes("_") && s.match(/^[F|L][1-4]_/)) {
+                  if (s.startsWith("F")) return "15";
+                  if (s.startsWith("L")) return "19";
+                  const base = s.split("_")[0];
+                  return mathIdMap[base] || base;
+                }
+                return s;
+              });
+
+              const dropMathIds = [];
+              for (let i = 0; i < 50; i++) {
+                const sym =
+                  nonScatters[Math.floor(Math.random() * nonScatters.length)];
+                dropMathIds.push(mathIdMap[sym] || sym);
+              }
+
+              newCombs.push({
+                name:
+                  gameType === "payanywhere_set2" ||
+                  gameType === "linegame_set2"
+                    ? N < minWinCount
+                      ? `無贏分 (1)\n${selectedSymbol} 個數 ${N}`
+                      : `有贏分 (1)\n${selectedSymbol} 個數 ${N}`
+                    : `${selectedSymbol} * ${N} 連線`,
+                length: N,
+                wildCount: 0,
+                rng: columnStrings as any, // Visual columns
+                isInterfered: false,
+              });
+              // Attach the arrays to the comb object dynamically
+              (newCombs[newCombs.length - 1] as any).fullMathIds = fullMathIds;
+              (newCombs[newCombs.length - 1] as any).dropMathIds = dropMathIds;
+            }
+          }
+        }
+      } else if (gameType === "linegame_set2") {
+        // --- LINE GAME SET 2 GENERATOR ---
+        const excludeSymbols = [
+          selectedSymbol,
+          "WX",
+          "NI",
+          "F1",
+          "F2",
+          "F3",
+          "F4",
+          "L1",
+          "L2",
+        ];
+        const nonScatters = currentPaytable
+          .filter(
+            (p) =>
+              p.isEnabled !== false &&
+              !p.isScatter &&
+              !excludeSymbols.includes(p.symbolId),
+          )
+          .map((p) => p.symbolId);
+        const isSelScatter = currentPaytable.some(
+          (p) => p.symbolId === selectedSymbol && p.isScatter,
+        );
+
+        if (nonScatters.length > 0) {
+          const linesToUse =
+            customPaylines && customPaylines.length > 0
+              ? customPaylines
+              : [Array(reelCount).fill(0)];
+          const targetLengths = [];
+          for (let l = startLen; l <= reelCount; l++) {
+             targetLengths.push(l);
+          }
+
+          const mathIdMap: Record<string, string> = {};
+          currentPaytable.forEach((p) => {
+            if (p.mathId !== undefined) {
+              const ids = String(p.mathId)
+                .split(",")
+                .map((s) => s.trim());
+              mathIdMap[p.symbolId] = ids[0];
+            }
+          });
+
+          targetLengths.forEach((len) => {
+            const maxWild = isSelScatter ? 0 : Math.min(1, len - 1);
+            for (let W = 0; W <= maxWild; W++) {
+              const line = linesToUse[0];
+
+              const grid: string[][] = Array.from({ length: reelCount }, (_, c) =>
+                Array(rowCounts[c] || 3).fill("-"),
+              );
+
+              // Place targets and wilds
+              for (let c = 0; c < len; c++) {
+                if (W === 1 && c === 1) {
+                   grid[c][line[c]] = "WX";
+                } else {
+                   grid[c][line[c]] = selectedSymbol;
+                }
+              }
+
+              const flatGrid: { c: number; r: number; val: string }[] = [];
+              for (let c = 0; c < reelCount; c++) {
+                for (let r = 0; r < (rowCounts[c] || 3); r++) {
+                  flatGrid.push({ c, r, val: grid[c][r] });
+                }
+              }
+
+              const specialSymbolsToPlace: string[] = [];
+              if (
+                specialSymbolConfig.s1Enabled &&
+                specialSymbolConfig.s1Count > 0
+              ) {
+                for (let i = 0; i < specialSymbolConfig.s1Count; i++)
+                  specialSymbolsToPlace.push("S1");
+              }
+              if (
+                specialSymbolConfig.s2Enabled &&
+                specialSymbolConfig.s2Count > 0
+              ) {
+                for (let i = 0; i < specialSymbolConfig.s2Count; i++)
+                  specialSymbolsToPlace.push("S2");
+              }
+              if (specialSymbolConfig.multipliersEnabled) {
+                Object.entries(specialSymbolConfig.multiplierCounts).forEach(
+                  ([key, count]) => {
+                    for (let i = 0; i < count; i++)
+                      specialSymbolsToPlace.push(key);
+                  },
+                );
+              }
+
+              let nsIdx = 0;
+              const emptySpots = flatGrid.filter((cell) => cell.val === "-");
+              emptySpots.sort(() => Math.random() - 0.5);
+
+              const safeNonScatters = nonScatters.filter((sym) => sym !== selectedSymbol);
+
+              for (let i = 0; i < emptySpots.length; i++) {
+                if (specialSymbolsToPlace.length > 0) {
+                  emptySpots[i].val = specialSymbolsToPlace.shift()!;
+                } else {
+                  emptySpots[i].val = safeNonScatters[nsIdx % safeNonScatters.length];
+                  nsIdx++;
+                }
+              }
+
+              const fullMathIds: string[] = [];
+              const columnStrings: string[] = [];
+              for (let c = 0; c < reelCount; c++) {
+                const colArr: string[] = [];
+                for (let r = 0; r < (rowCounts[c] || 3); r++) {
+                  const cell = flatGrid.find(
+                    (cell) => cell.c === c && cell.r === r,
+                  )!;
+                  let s = cell.val;
+                  let mathId = mathIdMap[s] || s;
+                  if (s.includes("_") && s.match(/^[F|L][1-4]_/)) {
+                    if (s.startsWith("F")) mathId = "15";
+                    else if (s.startsWith("L")) mathId = "19";
+                    else {
+                      const base = s.split("_")[0];
+                      mathId = mathIdMap[base] || base;
+                    }
+                  }
+                  fullMathIds.push(mathId);
+                  colArr.push(mathId);
+                }
+                columnStrings.push(colArr.join(","));
+              }
+
+              let name = "";
+              if (isSelScatter) {
+                name = W === 0
+                  ? `${selectedSymbol} * ${len} 個 (任意位置)`
+                  : `${selectedSymbol} * ${len - W} + WX (任意位置)`;
+              } else {
+                name = W === 0
+                  ? `${selectedSymbol} * ${len} 連線 (Line 1)`
+                  : `${selectedSymbol} * ${len - W} + WX (Line 1)`;
+              }
+
+              newCombs.push({
+                name: name,
+                length: len,
+                wildCount: W,
+                rng: columnStrings,
+                isInterfered: false,
+                fullMathIds: fullMathIds,
+                goldFrames: {},
+                jackpots: {},
+                clovers: {},
+                classStr: '',
+              } as any);
+            }
+          });
+        }
+      } else {
+        // --- STANDARD RNG SEARCH ---
+        const isSelScatter = currentPaytable.some(
+          (p) => p.symbolId === selectedSymbol && p.isScatter,
+        );
+        const searchTasks: {
+          name: string;
+          length: number;
+          wildCount: number;
+          promise: Promise<{ rng: number[] | null; isInterfered: boolean; hasS1Drop?: boolean }>;
+        }[] = [];
+
+        for (let L = startLen; L <= reelCount; L++) {
+          const maxWild = Math.min(1, L - 1);
+          for (let W = 0; W <= maxWild; W++) {
+            let name = "";
+            if (isSelScatter) {
+              name =
+                W === 0
+                  ? `${selectedSymbol} * ${L} 個 (任意位置)`
+                  : `${selectedSymbol} * ${L - W} + WX (任意位置)`;
+            } else {
+              name =
+                W === 0
+                  ? `${selectedSymbol} * ${L} 連線`
+                  : `${selectedSymbol} * ${L - W} + WX`;
+            }
+            searchTasks.push({
+              name,
+              length: L,
+              wildCount: W,
+              promise: findRngForCombination(
+                selectedSymbol,
+                L,
+                W,
+                currentStrips,
+                rowCounts,
+                currentPaytable,
+                reelCount,
+                gameType,
+                topTrackerOther,
+                customPaylines,
+                isFreeGame,
+                stripSets,
+                W > 0  // requireGoldCascade 當需要 WX 時，透過消除黃金符號產生
+              ),
+            });
+          }
+        }
+
+        const results = await Promise.all(searchTasks.map((t) => t.promise));
+        for (let i = 0; i < searchTasks.length; i++) {
+          const task = searchTasks[i];
+          const res = results[i];
+          newCombs.push({
+            name: task.name,
+            length: task.length,
+            wildCount: task.wildCount,
+            rng: res.rng,
+            isInterfered: res.isInterfered,
+            hasS1Drop: res.hasS1Drop,
+            stripId: (res as any).stripId,
+          });
+        }
+
+
+      }
+
+      setCombinations(newCombs);
+      setIsSearching(false);
+    }, 50);
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    selectedSymbol,
+    multiplierIntervalsStr,
+    isFreeGame
+  ]);
+
+  return { isSearching, combinations };
+}
+</file>
+
 <file path="src/components/SlotConsole.tsx">
 import React, { useState, useEffect, useMemo } from 'react';
 import { defaultPaylines } from '../utils/evaluation';
@@ -15764,15 +16069,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                 disabled={isSearching || combinations.length === 0}
                 onClick={() => {
                   const textToCopy = [...combinations]
-                    .filter(c => c.rng)
-                    .sort((a, b) => {
-                      const aHasWild = a.wildCount > 0 ? 1 : 0;
-                      const bHasWild = b.wildCount > 0 ? 1 : 0;
-                      if (aHasWild !== bHasWild) return aHasWild - bHasWild;
-                      if (a.length !== b.length) return a.length - b.length;
-                      return a.wildCount - b.wildCount;
-                    })
                     .map(c => {
+                      if (!c.rng) return '-';
                       if (gameType === 'linegame_set2') {
                         const mathIdsStr = (c as any).fullMathIds ? `[${(c as any).fullMathIds.slice(0, 30).join(',')}]` : `[${c.rng?.join(',')}]`;
                         const classStr = (c as any).classStr;

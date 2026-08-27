@@ -679,23 +679,27 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                 disabled={isSearching || combinations.length === 0}
                 onClick={() => {
                   const textToCopy = [...combinations]
+                    .filter(c => c.rng && !c.isInterfered)
                     .map(c => {
-                      if (!c.rng) return '-';
+                      let rngStr = '';
                       if (gameType === 'linegame_set2') {
                         const mathIdsStr = (c as any).fullMathIds ? `[${(c as any).fullMathIds.slice(0, 30).join(',')}]` : `[${c.rng?.join(',')}]`;
                         const classStr = (c as any).classStr;
-                        return classStr ? `${mathIdsStr}, ${classStr},` : `${mathIdsStr},`;
+                        rngStr = classStr ? `${mathIdsStr}, ${classStr},` : `${mathIdsStr},`;
                       } else if (gameType === 'payanywhere_set2') {
-                        let finalCopy = (c as any).fullMathIds ? `[${(c as any).fullMathIds.slice(0, 30).join(',')}],` : `[${c.rng?.join(',')}],`;
+                        rngStr = (c as any).fullMathIds ? `[${(c as any).fullMathIds.slice(0, 30).join(',')}],` : `[${c.rng?.join(',')}],`;
                         if ((c as any).fullMathIds && c.length >= 8) {
                           const dropMathIds = (c as any).dropMathIds || [];
                           const dropCount = c.length;
-                          const dropStr = `[${dropMathIds.slice(0, dropCount).join(',')}],`;
-                          finalCopy += dropStr;
+                          rngStr += `[${dropMathIds.slice(0, dropCount).join(',')}],`;
                         }
-                        return finalCopy;
+                      } else {
+                        const finalRng = (gameType === 'waygame' || gameType === 'megaway')
+                          ? [...(c.rng?.slice(0, 6) || []), (c as any).stripId !== undefined ? Number((c as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)]
+                          : c.rng;
+                        rngStr = `[${finalRng?.join(',')}],`;
                       }
-                      return `[${c.rng?.join(',')}],`;
+                      return `// ${c.name}\n${rngStr}`;
                     })
                     .join('\n');
                   navigator.clipboard.writeText(textToCopy);
@@ -716,119 +720,152 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[180px] overflow-y-auto pr-1">
-            {combinations.map((comb, idx) => (
-              <button
-                key={idx}
-                disabled={!comb.rng || isSearching}
-                onClick={() => {
-                  setSelectedCombIndex(idx);
-                  if (comb.rng) {
-                    setManualIndicesOther(comb.rng.map((val: any) => String(val)));
-                    setIsManualEdited(false);
-                    if ((comb as any).goldFrames !== undefined) {
-                      const gf = (comb as any).goldFrames || {};
-                      setGoldFrames(prev => (JSON.stringify(prev) === JSON.stringify(gf) ? prev : gf));
-                      setShowGoldFrameEditor(Object.keys(gf).length > 0);
-                    }
-                    if ((comb as any).jackpots !== undefined) {
-                      const jp = (comb as any).jackpots || {};
-                      setJackpots(prev => (JSON.stringify(prev) === JSON.stringify(jp) ? prev : jp));
-                      setShowJackpotEditor(Object.keys(jp).length > 0);
-                    }
-                    if ((comb as any).clovers !== undefined) {
-                      const cl = (comb as any).clovers || {};
-                      const hasClovers = Object.keys(cl).length > 0;
-                      setClovers(prev => (JSON.stringify(prev) === JSON.stringify(cl) ? prev : cl));
-                      setSpecialSymbolConfig(prev => (prev.s1Enabled === hasClovers ? prev : { ...prev, s1Enabled: hasClovers }));
-                    }
-                    if ((comb as any).stripId !== undefined && setActiveStripId) {
-                      setActiveStripId(Number((comb as any).stripId));
-                    }
+          {(() => {
+            // 分成兩組：純連線（wildCount=0）和含WX（wildCount>0）
+            const pureCombinations = combinations.filter(c => c.wildCount === 0);
+            const wxCombinations = combinations.filter(c => c.wildCount > 0);
+            const maxRows = Math.max(pureCombinations.length, wxCombinations.length);
 
-                    if (gameType === 'linegame_set2') {
-                      const mathIdsStr = isManualEdited && selectedCombIndex === idx
-                        ? currentRngString
-                        : ((comb as any).fullMathIds ? `[${(comb as any).fullMathIds.slice(0, 30).join(',')}]` : `[${comb.rng.join(',')}]`);
-                      const classStr = (comb as any).classStr || combinedClassIdStr;
-                      const finalCopy = classStr ? `${mathIdsStr}, ${classStr},` : `${mathIdsStr},`;
-                      navigator.clipboard.writeText(finalCopy);
-                    } else if (gameType === 'payanywhere_set2') {
-                      const initStr = isManualEdited && selectedCombIndex === idx 
-                        ? currentRngString 
-                        : ((comb as any).fullMathIds ? `[${(comb as any).fullMathIds.slice(0, 30).join(',')}],` : '');
-                      let finalCopy = initStr;
-                      if ((comb as any).fullMathIds && comb.length >= 8) {
-                        const dropMathIds = (comb as any).dropMathIds || [];
-                        const dropCount = comb.length;
-                        const dropStr = `[${dropMathIds.slice(0, dropCount).join(',')}],`;
-                        finalCopy += dropStr;
+            const renderCombButton = (comb: typeof combinations[0], idx: number) => {
+              const globalIdx = combinations.indexOf(comb);
+              return (
+                <button
+                  key={globalIdx}
+                  disabled={!comb.rng || isSearching}
+                  onClick={() => {
+                    setSelectedCombIndex(globalIdx);
+                    if (comb.rng) {
+                      setManualIndicesOther(comb.rng.map((val: any) => String(val)));
+                      setIsManualEdited(false);
+                      if ((comb as any).goldFrames !== undefined) {
+                        const gf = (comb as any).goldFrames || {};
+                        setGoldFrames(prev => (JSON.stringify(prev) === JSON.stringify(gf) ? prev : gf));
+                        setShowGoldFrameEditor(Object.keys(gf).length > 0);
                       }
-                      navigator.clipboard.writeText(finalCopy);
-                    } else {
-                      let finalCopy = '';
-                      if (isManualEdited && selectedCombIndex === idx) {
-                        finalCopy = currentRngString;
+                      if ((comb as any).jackpots !== undefined) {
+                        const jp = (comb as any).jackpots || {};
+                        setJackpots(prev => (JSON.stringify(prev) === JSON.stringify(jp) ? prev : jp));
+                        setShowJackpotEditor(Object.keys(jp).length > 0);
+                      }
+                      if ((comb as any).clovers !== undefined) {
+                        const cl = (comb as any).clovers || {};
+                        const hasClovers = Object.keys(cl).length > 0;
+                        setClovers(prev => (JSON.stringify(prev) === JSON.stringify(cl) ? prev : cl));
+                        setSpecialSymbolConfig(prev => (prev.s1Enabled === hasClovers ? prev : { ...prev, s1Enabled: hasClovers }));
+                      }
+                      if ((comb as any).stripId !== undefined && setActiveStripId) {
+                        setActiveStripId(Number((comb as any).stripId));
+                      }
+
+                      if (gameType === 'linegame_set2') {
+                        const mathIdsStr = isManualEdited && selectedCombIndex === globalIdx
+                          ? currentRngString
+                          : ((comb as any).fullMathIds ? `[${(comb as any).fullMathIds.slice(0, 30).join(',')}]` : `[${comb.rng.join(',')}]`);
+                        const classStr = (comb as any).classStr || combinedClassIdStr;
+                        const finalCopy = classStr ? `${mathIdsStr}, ${classStr},` : `${mathIdsStr},`;
+                        navigator.clipboard.writeText(finalCopy);
+                      } else if (gameType === 'payanywhere_set2') {
+                        const initStr = isManualEdited && selectedCombIndex === globalIdx
+                          ? currentRngString
+                          : ((comb as any).fullMathIds ? `[${(comb as any).fullMathIds.slice(0, 30).join(',')}],` : '');
+                        let finalCopy = initStr;
+                        if ((comb as any).fullMathIds && comb.length >= 8) {
+                          const dropMathIds = (comb as any).dropMathIds || [];
+                          const dropCount = comb.length;
+                          const dropStr = `[${dropMathIds.slice(0, dropCount).join(',')}],`;
+                          finalCopy += dropStr;
+                        }
+                        navigator.clipboard.writeText(finalCopy);
                       } else {
-                        const finalRng = (gameType === 'waygame' || gameType === 'megaway') 
-                          ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)]
-                          : comb.rng;
-                        finalCopy = `[${finalRng.join(',')}],`;
+                        let finalCopy = '';
+                        if (isManualEdited && selectedCombIndex === globalIdx) {
+                          finalCopy = currentRngString;
+                        } else {
+                          const finalRng = (gameType === 'waygame' || gameType === 'megaway')
+                            ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)]
+                            : comb.rng;
+                          finalCopy = `[${finalRng.join(',')}],`;
+                        }
+                        navigator.clipboard.writeText(finalCopy);
                       }
-                      navigator.clipboard.writeText(finalCopy);
                     }
-                  }
-                }}
-                className={`flex justify-between items-center gap-2 px-3 py-2 rounded border text-left transition-all ${
-                  selectedCombIndex === idx ? 'ring-1 ring-[#64ffda] ' : ''
-                }${comb.rng
-                    ? (comb.isInterfered || (comb as any).hasS1Drop)
-                      ? 'bg-[#112240] border-orange-500/40 hover:border-orange-500 text-dashboard-text-primary cursor-pointer'
-                      : 'bg-[#112240] border-gray-700/50 hover:border-dashboard-accent hover:bg-[#112240]/80 text-dashboard-text-primary cursor-pointer'
-                    : 'bg-[#112240]/10 border-gray-800/50 text-gray-600 cursor-not-allowed'
-                  }`}
-              >
-                <span className="text-xs font-bold whitespace-pre-line shrink-0">{comb.name}</span>
-                {comb.rng ? (
-                  <div className={`text-xs font-mono border bg-[#0a192f] px-1.5 py-0.5 rounded min-w-0 flex-1 truncate text-right ${(comb.isInterfered || (comb as any).hasS1Drop)
-                      ? 'text-orange-400 border-orange-500/30'
-                      : 'text-[#64ffda] border-[#64ffda]/30'
-                    }`}>
-                    {gameType === 'payanywhere_set2' || gameType === 'linegame_set2' ? (
-                      <div className="flex flex-col gap-0.5 mt-0.5 w-full">
-                        <span className="text-[#64ffda] leading-tight truncate block" title={selectedCombIndex === idx && isManualEdited ? currentRngString : `[${(comb as any).fullMathIds?.slice(0, 30).join(',')}]`}>
-                          {selectedCombIndex === idx && isManualEdited ? currentRngString : `[${(comb as any).fullMathIds?.slice(0, 30).join(',')}],`}
+                  }}
+                  className={`flex justify-between items-center gap-2 px-3 py-2 rounded border text-left transition-all ${
+                    selectedCombIndex === globalIdx ? 'ring-1 ring-[#64ffda] ' : ''
+                  }${comb.rng
+                      ? (comb.isInterfered || (comb as any).hasS1Drop)
+                        ? 'bg-[#112240] border-orange-500/40 hover:border-orange-500 text-dashboard-text-primary cursor-pointer'
+                        : 'bg-[#112240] border-gray-700/50 hover:border-dashboard-accent hover:bg-[#112240]/80 text-dashboard-text-primary cursor-pointer'
+                      : 'bg-[#112240]/10 border-gray-800/50 text-gray-600 cursor-not-allowed'
+                    }`}
+                >
+                  <span className="text-xs font-bold whitespace-pre-line shrink-0">{comb.name}</span>
+                  {comb.rng ? (
+                    <div className={`text-xs font-mono border bg-[#0a192f] px-1.5 py-0.5 rounded min-w-0 flex-1 truncate text-right ${(comb.isInterfered || (comb as any).hasS1Drop)
+                        ? 'text-orange-400 border-orange-500/30'
+                        : 'text-[#64ffda] border-[#64ffda]/30'
+                      }`}>
+                      {gameType === 'payanywhere_set2' || gameType === 'linegame_set2' ? (
+                        <div className="flex flex-col gap-0.5 mt-0.5 w-full">
+                          <span className="text-[#64ffda] leading-tight truncate block" title={selectedCombIndex === globalIdx && isManualEdited ? currentRngString : `[${(comb as any).fullMathIds?.slice(0, 30).join(',')}]`}>
+                            {selectedCombIndex === globalIdx && isManualEdited ? currentRngString : `[${(comb as any).fullMathIds?.slice(0, 30).join(',')}],`}
+                          </span>
+                          {gameType === 'payanywhere_set2' && (comb as any).dropMathIds && (comb as any).dropMathIds.length > 0 ? (
+                            <span className="text-[#64ffda] leading-tight opacity-75 truncate block" title={`[${((comb as any).dropMathIds || []).slice(0, comb.length).join(',')}]`}>
+                              [{((comb as any).dropMathIds || []).slice(0, comb.length).join(',')}], (自動複製)
+                            </span>
+                          ) : gameType === 'payanywhere_set2' ? (
+                            <span className="text-gray-400 leading-tight opacity-75 text-[10px] truncate block">
+                              無消除 (自動複製)
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="truncate block" title={`RNG: ${selectedCombIndex === globalIdx && isManualEdited ? currentRngString : `[${(gameType === 'waygame' || gameType === 'megaway') ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)].join(',') : comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}>
+                          {`RNG: ${selectedCombIndex === globalIdx && isManualEdited ? currentRngString : `[${(gameType === 'waygame' || gameType === 'megaway') ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)].join(',') : comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}
                         </span>
-                        {gameType === 'payanywhere_set2' && (comb as any).dropMathIds && (comb as any).dropMathIds.length > 0 ? (
-                          <span className="text-[#64ffda] leading-tight opacity-75 truncate block" title={`[${((comb as any).dropMathIds || []).slice(0, comb.length).join(',')}]`}>
-                            [{((comb as any).dropMathIds || []).slice(0, comb.length).join(',')}], (自動複製)
-                          </span>
-                        ) : gameType === 'payanywhere_set2' ? (
-                          <span className="text-gray-400 leading-tight opacity-75 text-[10px] truncate block">
-                            無消除 (自動複製)
-                          </span>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <span className="truncate block" title={`RNG: ${selectedCombIndex === idx && isManualEdited ? currentRngString : `[${(gameType === 'waygame' || gameType === 'megaway') ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)].join(',') : comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}>
-                        {`RNG: ${selectedCombIndex === idx && isManualEdited ? currentRngString : `[${(gameType === 'waygame' || gameType === 'megaway') ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)].join(',') : comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  <span className="text-xs text-red-500 font-bold shrink-0">無可行滾輪位置</span>
-                )}
-              </button>
-            ))}
-            {combinations.length === 0 && !isSearching && (
-              <div className="col-span-2 py-4 text-center text-xs text-gray-400 font-bold">
-                {selectedSymbol === 'WIN_MULTIPLIER'
-                  ? '區間已修改，請點擊上方「產生對應大獎 RNG」按鈕產出組合'
-                  : '沒有可用的 Symbol，請確認是否載入滾輪表 (Reel Strips)'}
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-red-500 font-bold shrink-0">無可行滾輪位置</span>
+                  )}
+                </button>
+              );
+            };
+
+            if (maxRows === 0 && !isSearching) {
+              return (
+                <div className="py-4 text-center text-xs text-gray-400 font-bold">
+                  {selectedSymbol === 'WIN_MULTIPLIER'
+                    ? '區間已修改，請點擊上方「產生對應大獎 RNG」按鈕產出組合'
+                    : '沒有可用的 Symbol，請確認是否載入滾輪表 (Reel Strips)'}
+                </div>
+              );
+            }
+
+            // 用兩個各自垂直的欄來展示：左欄純連線、右欄含WX
+            return (
+              <div className="grid grid-cols-2 gap-x-2 gap-y-1 max-h-[180px] overflow-y-auto pr-1">
+                {/* 左欄：純連線 */}
+                <div className="flex flex-col gap-1">
+                  {pureCombinations.map((comb, i) => renderCombButton(comb, i))}
+                </div>
+                {/* 右欄：含WX */}
+                <div className="flex flex-col gap-1">
+                  {wxCombinations.map((comb, i) => renderCombButton(comb, i))}
+                </div>
               </div>
-            )}
-          </div>
+            );
+          })()}
+          {combinations.length === 0 && !isSearching && (
+            <div className="py-4 text-center text-xs text-gray-400 font-bold col-span-2">
+              {selectedSymbol === 'WIN_MULTIPLIER'
+                ? '區間已修改，請點擊上方「產生對應大獎 RNG」按鈕產出組合'
+                : '沒有可用的 Symbol，請確認是否載入滾輪表 (Reel Strips)'}
+            </div>
+          )}
         </div>
+
 
         <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-3 rounded-lg border border-gray-700/50 shadow-inner gap-3">
           <div className="flex flex-col sm:flex-row justify-between items-start border-b border-gray-700/50 pb-3 gap-3">

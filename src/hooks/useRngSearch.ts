@@ -844,9 +844,13 @@ export function useRngSearch(
           promise: Promise<{ rng: number[] | null; isInterfered: boolean; hasS1Drop?: boolean }>;
         }[] = [];
 
-        for (let L = startLen; L <= reelCount; L++) {
-          const maxWild = Math.min(1, L - 1);
-          for (let W = 0; W <= maxWild; W++) {
+        // 先跑所有「純連線」（W=0，由少到多），再跑所有「+WX」（W=1，由少到多）
+        // 這樣清單左欄是純連線（上到下），右欄是含WX（上到下）
+        for (let W = 0; W <= 1; W++) {
+          for (let L = startLen; L <= reelCount; L++) {
+            if (W === 1 && L < 2) continue; // WX 至少需要 L>=2（1個symbol+1個WX）
+            const maxWild = Math.min(1, L - 1);
+            if (W > maxWild) continue;
             let name = "";
             if (isSelScatter) {
               name =
