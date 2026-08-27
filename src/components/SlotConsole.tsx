@@ -243,8 +243,6 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
               customPaylines={customPaylines}
               bet={bet}
               isFreeGame={isFreeGame}
-              stripSets={formattedStripSets}
-              setActiveStripId={setActiveStripId}
             />
           </div>
         )}
