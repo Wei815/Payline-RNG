@@ -9,6 +9,10 @@ export abstract class BasePayAnywhere extends AbstractGame {
   private scatterStrategy = new ScatterStrategy();
   private payAnywhereStrategy = new PayAnywhereStrategy();
 
+  public override isPositionDependent(): boolean {
+    return false;
+  }
+
   evaluate(
     grid: string[][],
     paytable: PaytableRule[],

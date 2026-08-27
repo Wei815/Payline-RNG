@@ -851,6 +851,7 @@ export function useRngSearch(
             if (W === 1 && L < 2) continue; // WX 至少需要 L>=2（1個symbol+1個WX）
             const maxWild = Math.min(1, L - 1);
             if (W > maxWild) continue;
+
             let name = "";
             if (isSelScatter) {
               name =

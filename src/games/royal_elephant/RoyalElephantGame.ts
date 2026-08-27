@@ -20,21 +20,22 @@ export class RoyalElephantGame extends BaseWayGame {
     return [[], [], [], [], []];
   }
 
+  public override getMaxRandomAttempts(): number {
+    return 100000;
+  }
+
   // 皇家金象專屬邏輯：只有 R3 (colIndex === 2) 和 R4 (colIndex === 3) 會有金色符號轉百搭
-  protected override applyCascade(
+  public override applyCascade(
     grid: string[][],
     colIndex: number,
     eliminatedRows: number[],
     strip: string[],
     drawIndices: number[],
-    isFreeGame: boolean,
+    _isFreeGame: boolean,
     _gameType: GameType
   ): void {
     eliminatedRows.sort((a, b) => b - a);
     for (const r of eliminatedRows) {
-      if (isFreeGame && grid[colIndex][r] === 'S1') {
-        continue;
-      }
       
       const sym = grid[colIndex][r];
       const isGold = this.isGoldSymbol(sym);

@@ -367,6 +367,9 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
           setClovers(prev => (JSON.stringify(prev) === JSON.stringify(cl) ? prev : cl));
           setSpecialSymbolConfig(prev => (prev.s1Enabled === hasClovers ? prev : { ...prev, s1Enabled: hasClovers }));
         }
+        if (comb.stripId !== undefined && setActiveStripId) {
+          setActiveStripId(Number(comb.stripId));
+        }
       }
     }
   }, [combinations, isSearching, setManualIndicesOther, selectedCombIndex, setGoldFrames, setJackpots, setClovers, setSpecialSymbolConfig, setShowGoldFrameEditor, setShowJackpotEditor]);
@@ -413,7 +416,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
 
   const currentRngString = (() => {
     const targetComb = combinations[selectedCombIndex < combinations.length ? selectedCombIndex : 0];
-    if (gameType === 'waygame' || gameType === 'megaway') {
+    if (gameType.includes('waygame') || gameType.includes('megaway')) {
       const extraId = (targetComb as any)?.stripId !== undefined && !isManualEdited ? Number((targetComb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0);
       return `[${[...currentFormattedRngArray, extraId].join(',')}],`;
     }
@@ -493,6 +496,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
               onWheel={(e) => e.currentTarget.blur()}
               className="bg-[#112240] border border-gray-600 text-dashboard-text-primary rounded px-3 py-1.5 outline-none focus:border-dashboard-accent text-sm cursor-pointer font-bold"
             >
+              <option value="" disabled hidden>請選擇目標</option>
               {groupedSymbols.map(group => {
                 const filteredList = group.list.filter(sym => !['S1', 'S2', 'F1', 'L1'].includes(sym));
                 if (filteredList.length === 0) return null;
@@ -699,7 +703,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                           : c.rng;
                         rngStr = `[${finalRng?.join(',')}],`;
                       }
-                      return `// ${c.name}\n${rngStr}`;
+                      return `${rngStr}`;
                     })
                     .join('\n');
                   navigator.clipboard.writeText(textToCopy);
@@ -821,8 +825,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                           ) : null}
                         </div>
                       ) : (
-                        <span className="truncate block" title={`RNG: ${selectedCombIndex === globalIdx && isManualEdited ? currentRngString : `[${(gameType === 'waygame' || gameType === 'megaway') ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)].join(',') : comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}>
-                          {`RNG: ${selectedCombIndex === globalIdx && isManualEdited ? currentRngString : `[${(gameType === 'waygame' || gameType === 'megaway') ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)].join(',') : comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}
+                        <span className="truncate block" title={`RNG: ${selectedCombIndex === globalIdx && isManualEdited ? currentRngString : `[${(gameType.includes('waygame') || gameType.includes('megaway')) ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)].join(',') : comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}>
+                          {`RNG: ${selectedCombIndex === globalIdx && isManualEdited ? currentRngString : `[${(gameType.includes('waygame') || gameType.includes('megaway')) ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)].join(',') : comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}
                         </span>
                       )}
                     </div>

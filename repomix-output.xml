@@ -89,14 +89,12 @@ src/
       BattleSet2Game.ts
     linegame/
       ClassicLineGame.ts
-      index.ts
     luxe/
       LuxeGame.ts
     mermaid/
       MermaidGame.ts
     payanywhere/
       ClassicPayAnywhere.ts
-      index.ts
     qin/
       QinGame.ts
     royal_elephant/
@@ -141,6 +139,7 @@ src/
   index.css
   main.tsx
 templates/
+  秦皇傳說 RNG範本.txt
   範本-人魚傳說.xlsx
   範本-決戰賽特2_全面覺醒.xlsx
   範本-皇家金象.xlsx
@@ -165,6 +164,89 @@ vite.config.ts
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="templates/秦皇傳說 RNG範本.txt">
+M1	M1*2	[2,9,13,2,1,1,0],
+	M1*3	[2,9,33,2,1,1,0],
+	M1*4	[2,9,33,34,8,1,0],
+	M1*5	[2,9,33,34,43,1,0],
+	M1*6	[2,9,33,34,43,56,0],
+	M1+WW	[3,14,21,13,8,5,0],
+	M1*2+WW	[3,22,14,13,8,5,0],
+	M1*3+WW	[3,22,14,42,8,5,0],
+	M1*4+WW	[3,22,14,42,6,5,0],
+	M1*5+WW	[3,22,14,42,6,9,0]
+M2	M2*2	[25,21,5,8,8,4,1],
+	M2*3	[25,21,32,8,8,4,1],
+	M2*4	[25,21,32,22,8,4,1],
+	M2*5	[25,21,32,22,6,4,1],
+	M2*6	[5,21,31,22,6,9,1],
+	M2+WW	[10,14,12,13,13,12,1],
+	M2*2+WW	[10,26,12,13,13,12,1],
+	M2*3+WW	[10,26,12,39,13,12,1],
+	M2*4+WW	[10,26,12,39,19,12,1],
+	M2*5+WW	[10,26,12,39,19,15,1]
+M3	M3*2	[3,48,17,23,23,23,2],
+	M3*3	[3,6,41,23,23,23,2],
+	M3*4	[3,6,41,16,23,23,2],
+	M3*5	[3,6,41,16,7,23,2],
+	M3*6	[3,6,41,16,7,9,2],
+	M3+WW	[36,23,89,23,23,23,2],
+	M3*2+WW	[36,7,89,23,23,23,2],
+	M3*3+WW	[36,7,89,16,23,23,2],
+	M3*4+WW	[36,7,89,16,7,23,2],
+	M3*5+WW	[36,7,89,16,7,9,2],
+M4	M4*2	[10,6,19,17,17,17,3],
+	M4*3	[10,6,18,17,17,17,3],
+	M4*4	[10,6,18,22,17,17,3],
+	M4*5	[10,6,18,22,22,17,3],
+	M4*6	[10,6,18,22,22,20,3],
+	M4+WW	[26,26,25,17,18,17,3],
+	M4*2+WW	[39,77,2,17,18,17,3],
+	M4*3+WW	[39,77,2,42,18,17,3],
+	M4*4+WW	[39,77,2,42,22,17,3],
+	M4*5+WW	[39,77,2,42,22,20,3],
+A	A*2	[15,16,8,10,7,7,2],
+	A*3	[15,16,13,10,7,7,2],
+	A*4	[15,16,13,8,7,7,2],
+	A*5	[15,16,13,8,3,7,2],
+	A*6	[15,16,13,8,3,40,2],
+	A+WW	[47,54,76,11,7,6,2],
+	A*2+WW	[47,6,76,11,7,6,2],
+	A*3+WW	[47,6,76,26,7,6,2],
+	A*4+WW	[47,6,76,26,37,6,2],
+	A*5+WW	[47,6,76,26,37,40,2],
+K	K*2	[31,7,17,17,13,17,3],
+	K*3	[31,7,11,17,13,17,3],
+	K*4	[31,7,11,13,13,17,3],
+	K*5	[31,7,11,13,20,17,3],
+	K*6	[31,7,11,13,20,40,3],
+	K+WW	[3,50,87,17,17,17,3],
+	K*2+WW	[42,21,87,17,16,5,3],
+	K*3+WW	[42,21,87,13,16,5,3],
+	K*4+WW	[42,21,87,13,1,5,3],
+	K*5+WW	[42,21,87,13,1,2,3],
+Q	Q*2	[21,26,6,13,6,13,0],
+	Q*3	[21,26,16,13,6,13,0],
+	Q*4	[21,26,16,12,6,13,0],
+	Q*5	[21,26,16,12,3,13,0],
+	Q*6	[21,26,16,12,3,40,0],
+	Q+WW	[4,10,68,13,6,13,0],
+	Q*2+WW	[4,16,68,13,6,13,0],
+	Q*3+WW	[4,16,68,12,6,13,0],
+	Q*4+WW	[4,16,68,12,3,13,0],
+	Q*5+WW	[4,16,68,12,3,40,0],
+J	J*2	[6,5,18,13,4,3,1],
+	J*3	[6,5,44,13,4,3,1],
+	J*4	[6,5,44,12,4,3,1],
+	J*5	[6,5,44,12,3,3,1],
+	J*6	[6,5,44,12,3,2,1],
+	J+WW	[7,36,19,13,4,3,1],
+	J*2+WW	[7,19,19,13,4,3,1],
+	J*3+WW	[7,19,19,12,4,3,1],
+	J*4+WW	[7,19,19,12,3,3,1],
+	J*5+WW	[7,19,19,12,3,2,1],
+</file>
 
 <file path="public/favicon.svg">
 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="46" fill="none" viewBox="0 0 48 46"><path fill="#863bff" d="M25.946 44.938c-.664.845-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.287c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.497 0-3.578-1.842-3.578H1.237c-.92 0-1.456-1.04-.92-1.788L10.013.474c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.579 1.842 3.579h11.377c.943 0 1.473 1.088.89 1.83L25.947 44.94z" style="fill:#863bff;fill:color(display-p3 .5252 .23 1);fill-opacity:1"/><mask id="a" width="48" height="46" x="0" y="0" maskUnits="userSpaceOnUse" style="mask-type:alpha"><path fill="#000" d="M25.842 44.938c-.664.844-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.183c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.498 0-3.579-1.842-3.579H1.133c-.92 0-1.456-1.04-.92-1.787L9.91.473c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.578 1.842 3.578h11.377c.943 0 1.473 1.088.89 1.832L25.843 44.94z" style="fill:#000;fill-opacity:1"/></mask><g mask="url(#a)"><g filter="url(#b)"><ellipse cx="5.508" cy="14.704" fill="#ede6ff" rx="5.508" ry="14.704" style="fill:#ede6ff;fill:color(display-p3 .9275 .9033 1);fill-opacity:1" transform="matrix(.00324 1 1 -.00324 -4.47 31.516)"/></g><g filter="url(#c)"><ellipse cx="10.399" cy="29.851" fill="#ede6ff" rx="10.399" ry="29.851" style="fill:#ede6ff;fill:color(display-p3 .9275 .9033 1);fill-opacity:1" transform="matrix(.00324 1 1 -.00324 -39.328 7.883)"/></g><g filter="url(#d)"><ellipse cx="5.508" cy="30.487" fill="#7e14ff" rx="5.508" ry="30.487" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.814 -25.913 -14.639)scale(1 -1)"/></g><g filter="url(#e)"><ellipse cx="5.508" cy="30.599" fill="#7e14ff" rx="5.508" ry="30.599" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.814 -32.644 -3.334)scale(1 -1)"/></g><g filter="url(#f)"><ellipse cx="5.508" cy="30.599" fill="#7e14ff" rx="5.508" ry="30.599" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="matrix(.00324 1 1 -.00324 -34.34 30.47)"/></g><g filter="url(#g)"><ellipse cx="14.072" cy="22.078" fill="#ede6ff" rx="14.072" ry="22.078" style="fill:#ede6ff;fill:color(display-p3 .9275 .9033 1);fill-opacity:1" transform="rotate(93.35 24.506 48.493)scale(-1 1)"/></g><g filter="url(#h)"><ellipse cx="3.47" cy="21.501" fill="#7e14ff" rx="3.47" ry="21.501" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.009 28.708 47.59)scale(-1 1)"/></g><g filter="url(#i)"><ellipse cx="3.47" cy="21.501" fill="#7e14ff" rx="3.47" ry="21.501" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(89.009 28.708 47.59)scale(-1 1)"/></g><g filter="url(#j)"><ellipse cx=".387" cy="8.972" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(39.51 .387 8.972)"/></g><g filter="url(#k)"><ellipse cx="47.523" cy="-6.092" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 47.523 -6.092)"/></g><g filter="url(#l)"><ellipse cx="41.412" cy="6.333" fill="#47bfff" rx="5.971" ry="9.665" style="fill:#47bfff;fill:color(display-p3 .2799 .748 1);fill-opacity:1" transform="rotate(37.892 41.412 6.333)"/></g><g filter="url(#m)"><ellipse cx="-1.879" cy="38.332" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 -1.88 38.332)"/></g><g filter="url(#n)"><ellipse cx="-1.879" cy="38.332" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 -1.88 38.332)"/></g><g filter="url(#o)"><ellipse cx="35.651" cy="29.907" fill="#7e14ff" rx="4.407" ry="29.108" style="fill:#7e14ff;fill:color(display-p3 .4922 .0767 1);fill-opacity:1" transform="rotate(37.892 35.651 29.907)"/></g><g filter="url(#p)"><ellipse cx="38.418" cy="32.4" fill="#47bfff" rx="5.971" ry="15.297" style="fill:#47bfff;fill:color(display-p3 .2799 .748 1);fill-opacity:1" transform="rotate(37.892 38.418 32.4)"/></g></g><defs><filter id="b" width="60.045" height="41.654" x="-19.77" y="16.149" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="7.659"/></filter><filter id="c" width="90.34" height="51.437" x="-54.613" y="-7.533" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="7.659"/></filter><filter id="d" width="79.355" height="29.4" x="-49.64" y="2.03" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="e" width="79.579" height="29.4" x="-45.045" y="20.029" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="f" width="79.579" height="29.4" x="-43.513" y="21.178" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="g" width="74.749" height="58.852" x="15.756" y="-17.901" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="7.659"/></filter><filter id="h" width="61.377" height="25.362" x="23.548" y="2.284" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="i" width="61.377" height="25.362" x="23.548" y="2.284" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="j" width="56.045" height="63.649" x="-27.636" y="-22.853" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="k" width="54.814" height="64.646" x="20.116" y="-38.415" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="l" width="33.541" height="35.313" x="24.641" y="-11.323" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="m" width="54.814" height="64.646" x="-29.286" y="6.009" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="n" width="54.814" height="64.646" x="-29.286" y="6.009" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="o" width="54.814" height="64.646" x="8.244" y="-2.416" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter><filter id="p" width="39.409" height="43.623" x="18.713" y="10.588" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse"><feFlood flood-opacity="0" result="BackgroundImageFix"/><feBlend in="SourceGraphic" in2="BackgroundImageFix" result="shape"/><feGaussianBlur result="effect1_foregroundBlur_2002_17158" stdDeviation="4.596"/></filter></defs></svg>
@@ -1546,103 +1628,6 @@ export abstract class BaseWayGame extends AbstractGame {
 }
 </file>
 
-<file path="src/games/battle_set2/BattleSet2Game.ts">
-import { BasePayAnywhere } from '../base/BasePayAnywhere';
-import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
-
-export class BattleSet2Game extends BasePayAnywhere {
-  readonly id: GameType = 'payanywhere_set2';
-  readonly name = '決戰賽特2 (Battle Set 2)';
-
-  getDefaultConfig(): GameConfig {
-    return {
-      gameType: this.id,
-      paylines: []
-    };
-  }
-
-  getDefaultPaytable(): PaytableRule[] {
-    return [];
-  }
-
-  getDefaultReelStrips(): ReelStrips {
-    return {
-      0: [], 1: [], 2: [], 3: [], 4: [], 5: []
-    };
-  }
-
-  // Override cascade to implement array shifting rule
-  protected override applyCascade(
-    grid: string[][],
-    colIndex: number,
-    eliminatedRows: number[],
-    strip: string[],
-    drawIndices: number[],
-    isFreeGame: boolean,
-    gameType: GameType
-  ): void {
-    eliminatedRows.sort((a, b) => b - a);
-    for (const r of eliminatedRows) {
-      // Shift symbols above the eliminated row down by 1
-      for (let shift = r; shift > 0; shift--) {
-        grid[colIndex][shift] = grid[colIndex][shift - 1];
-      }
-      
-      // Draw new symbol at the top
-      const len = strip.length;
-      const drawIdx = (((drawIndices[colIndex] % len) + len) % len);
-      grid[colIndex][0] = strip[drawIdx];
-      drawIndices[colIndex]--;
-    }
-  }
-}
-</file>
-
-<file path="src/games/linegame/ClassicLineGame.ts">
-import { BaseLineGame } from '../base/BaseLineGame';
-import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
-
-export class ClassicLineGame extends BaseLineGame {
-  readonly id: GameType = 'linegame';
-  readonly name = '經典線遊戲 (Classic Line)';
-
-  getDefaultConfig(): GameConfig {
-    return {
-      gameType: this.id,
-      paylines: []
-    };
-  }
-
-  getDefaultPaytable(): PaytableRule[] {
-    return [];
-  }
-
-  getDefaultReelStrips(): ReelStrips {
-    return {
-      0: [], 1: [], 2: [], 3: [], 4: []
-    };
-  }
-}
-</file>
-
-<file path="src/games/linegame/index.ts">
-import type { IGameEnvironment } from '../base/IGameEnvironment';
-import type { GameConfig, PaytableRule, ReelStrips } from '../../types';
-import { evaluateGrid } from '../../utils/evaluation';
-import type { WinResult } from '../../utils/evaluation';
-
-export const LineGameEnvironment: IGameEnvironment = {
-  id: 'linegame',
-  name: 'Line Game Default',
-  getDefaultConfig: (): GameConfig => ({ gameType: 'linegame' }),
-  getDefaultPaytable: (): PaytableRule[] => [],
-  getDefaultReelStrips: (): ReelStrips => [],
-  evaluate: (grid: string[][], paytable: PaytableRule[], config: GameConfig, customPaylines?: number[][]): WinResult[] => {
-    return evaluateGrid(grid, paytable, config, customPaylines);
-  }
-};
-</file>
-
 <file path="src/games/luxe/LuxeGame.ts">
 import { BaseLineGame } from '../base/BaseLineGame';
 import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
@@ -1763,133 +1748,6 @@ export class LuxeGame extends BaseLineGame {
     }
 
     return finalWins;
-  }
-}
-</file>
-
-<file path="src/games/mermaid/MermaidGame.ts">
-import { BaseWayGame } from '../base/BaseWayGame';
-import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
-
-export class MermaidGame extends BaseWayGame {
-  readonly id: GameType = 'waygame';
-  readonly name = '美人魚 (Mermaid)';
-
-  getDefaultConfig(): GameConfig {
-    return {
-      gameType: this.id,
-      paylines: []
-    };
-  }
-
-  getDefaultPaytable(): PaytableRule[] {
-    return [];
-  }
-
-  getDefaultReelStrips(): ReelStrips {
-    return {
-      0: [], 1: [], 2: [], 3: [], 4: []
-    };
-  }
-}
-</file>
-
-<file path="src/games/payanywhere/ClassicPayAnywhere.ts">
-import { BasePayAnywhere } from '../base/BasePayAnywhere';
-import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
-
-export class ClassicPayAnywhere extends BasePayAnywhere {
-  readonly id: GameType = 'payanywhere';
-  readonly name = '全盤掉落 (Classic Pay Anywhere)';
-
-  getDefaultConfig(): GameConfig {
-    return {
-      gameType: this.id,
-      paylines: []
-    };
-  }
-
-  getDefaultPaytable(): PaytableRule[] {
-    return [];
-  }
-
-  getDefaultReelStrips(): ReelStrips {
-    return {
-      0: [], 1: [], 2: [], 3: [], 4: [], 5: []
-    };
-  }
-}
-</file>
-
-<file path="src/games/payanywhere/index.ts">
-import type { IGameEnvironment } from '../base/IGameEnvironment';
-import type { GameConfig, PaytableRule, ReelStrips } from '../../types';
-import { evaluateGrid } from '../../utils/evaluation';
-import type { WinResult } from '../../utils/evaluation';
-
-export const PayAnywhereEnvironment: IGameEnvironment = {
-  id: 'payanywhere',
-  name: 'Pay Anywhere Default',
-  getDefaultConfig: (): GameConfig => ({ gameType: 'payanywhere' }),
-  getDefaultPaytable: (): PaytableRule[] => [],
-  getDefaultReelStrips: (): ReelStrips => [],
-  evaluate: (grid: string[][], paytable: PaytableRule[], config: GameConfig, customPaylines?: number[][]): WinResult[] => {
-    return evaluateGrid(grid, paytable, config, customPaylines);
-  }
-};
-</file>
-
-<file path="src/games/qin/QinGame.ts">
-import { BaseWayGame } from '../base/BaseWayGame';
-import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
-
-export class QinGame extends BaseWayGame {
-  readonly id: GameType = 'waygame_qin';
-  readonly name = '秦皇傳說 (Qin)';
-
-  getDefaultConfig(): GameConfig {
-    return {
-      gameType: this.id,
-      paylines: []
-    };
-  }
-
-  getDefaultPaytable(): PaytableRule[] {
-    return [];
-  }
-
-  getDefaultReelStrips(): ReelStrips {
-    return {
-      0: [], 1: [], 2: [], 3: [], 4: [], 5: []
-    };
-  }
-
-  // Override cascade to implement Gold -> WX rule
-  protected override applyCascade(
-    grid: string[][],
-    colIndex: number,
-    eliminatedRows: number[],
-    strip: string[],
-    drawIndices: number[],
-    isFreeGame: boolean,
-    gameType: GameType
-  ): void {
-    eliminatedRows.sort((a, b) => b - a);
-    for (const r of eliminatedRows) {
-      if (isFreeGame && grid[colIndex][r] === 'S1') {
-        continue;
-      }
-      
-      if (this.isGoldSymbol(grid[colIndex][r])) {
-        // Gold symbol turns into Wild after elimination
-        grid[colIndex][r] = 'WX';
-      } else {
-        const len = strip.length;
-        const drawIdx = (((drawIndices[colIndex] % len) + len) % len);
-        grid[colIndex][r] = strip[drawIdx];
-        drawIndices[colIndex]--;
-      }
-    }
   }
 }
 </file>
@@ -3397,34 +3255,6 @@ function evaluateGrid(
 * from './evaluation/WinningPositions';
 </file>
 
-<file path="tsconfig.app.json">
-{
-  "compilerOptions": {
-    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-    "target": "es2023",
-    "lib": ["ES2023", "DOM"],
-    "module": "esnext",
-    "types": ["vite/client"],
-    "skipLibCheck": true,
-
-    /* Bundler mode */
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "verbatimModuleSyntax": true,
-    "moduleDetection": "force",
-    "noEmit": true,
-    "jsx": "react-jsx",
-
-    /* Linting */
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
-  },
-  "include": ["src"]
-}
-</file>
-
 <file path="tsconfig.json">
 {
   "files": [],
@@ -4388,6 +4218,184 @@ export interface IGameEnvironment {
     isFreeGame?: boolean,
     stripSets?: Record<string, string[][]>
   ): Promise<Record<string, number[]>>;
+}
+</file>
+
+<file path="src/games/battle_set2/BattleSet2Game.ts">
+import { BasePayAnywhere } from '../base/BasePayAnywhere';
+import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+
+export class BattleSet2Game extends BasePayAnywhere {
+  readonly id: GameType = 'payanywhere_set2';
+  readonly name = '決戰賽特2 (Battle Set 2)';
+
+  getDefaultConfig(): GameConfig {
+    return {
+      gameType: this.id,
+      paylines: []
+    };
+  }
+
+  getDefaultPaytable(): PaytableRule[] {
+    return [];
+  }
+
+  getDefaultReelStrips(): ReelStrips {
+    return [[], [], [], [], [], []];
+  }
+
+  // Override cascade to implement array shifting rule
+  protected override applyCascade(
+    grid: string[][],
+    colIndex: number,
+    eliminatedRows: number[],
+    strip: string[],
+    drawIndices: number[],
+    isFreeGame: boolean,
+    gameType: GameType
+  ): void {
+    eliminatedRows.sort((a, b) => b - a);
+    for (const r of eliminatedRows) {
+      // Shift symbols above the eliminated row down by 1
+      for (let shift = r; shift > 0; shift--) {
+        grid[colIndex][shift] = grid[colIndex][shift - 1];
+      }
+      
+      // Draw new symbol at the top
+      const len = strip.length;
+      const drawIdx = (((drawIndices[colIndex] % len) + len) % len);
+      grid[colIndex][0] = strip[drawIdx];
+      drawIndices[colIndex]--;
+    }
+  }
+}
+</file>
+
+<file path="src/games/linegame/ClassicLineGame.ts">
+import { BaseLineGame } from '../base/BaseLineGame';
+import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+
+export class ClassicLineGame extends BaseLineGame {
+  readonly id: GameType = 'linegame';
+  readonly name = '經典線遊戲 (Classic Line)';
+
+  getDefaultConfig(): GameConfig {
+    return {
+      gameType: this.id,
+      paylines: []
+    };
+  }
+
+  getDefaultPaytable(): PaytableRule[] {
+    return [];
+  }
+
+  getDefaultReelStrips(): ReelStrips {
+    return [[], [], [], [], []];
+  }
+}
+</file>
+
+<file path="src/games/mermaid/MermaidGame.ts">
+import { BaseWayGame } from '../base/BaseWayGame';
+import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+
+export class MermaidGame extends BaseWayGame {
+  readonly id: GameType = 'waygame';
+  readonly name = '美人魚 (Mermaid)';
+
+  getDefaultConfig(): GameConfig {
+    return {
+      gameType: this.id,
+      paylines: []
+    };
+  }
+
+  getDefaultPaytable(): PaytableRule[] {
+    return [];
+  }
+
+  getDefaultReelStrips(): ReelStrips {
+    return [[], [], [], [], []];
+  }
+}
+</file>
+
+<file path="src/games/payanywhere/ClassicPayAnywhere.ts">
+import { BasePayAnywhere } from '../base/BasePayAnywhere';
+import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+
+export class ClassicPayAnywhere extends BasePayAnywhere {
+  readonly id: GameType = 'payanywhere';
+  readonly name = '全盤掉落 (Classic Pay Anywhere)';
+
+  getDefaultConfig(): GameConfig {
+    return {
+      gameType: this.id,
+      paylines: []
+    };
+  }
+
+  getDefaultPaytable(): PaytableRule[] {
+    return [];
+  }
+
+  getDefaultReelStrips(): ReelStrips {
+    return [[], [], [], [], [], []];
+  }
+}
+</file>
+
+<file path="src/games/qin/QinGame.ts">
+import { BaseWayGame } from '../base/BaseWayGame';
+import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+
+export class QinGame extends BaseWayGame {
+  readonly id: GameType = 'waygame_qin';
+  readonly name = '秦皇傳說 (Qin)';
+
+  getDefaultConfig(): GameConfig {
+    return {
+      gameType: this.id,
+      paylines: []
+    };
+  }
+
+  getDefaultPaytable(): PaytableRule[] {
+    return [];
+  }
+
+  getDefaultReelStrips(): ReelStrips {
+    return [[], [], [], [], [], []];
+  }
+
+  // Override cascade to implement Gold -> WX rule
+  protected override applyCascade(
+    grid: string[][],
+    colIndex: number,
+    eliminatedRows: number[],
+    strip: string[],
+    drawIndices: number[],
+    isFreeGame: boolean,
+    gameType: GameType
+  ): void {
+    eliminatedRows.sort((a, b) => b - a);
+    for (const r of eliminatedRows) {
+      if (isFreeGame && grid[colIndex][r] === 'S1') {
+        continue;
+      }
+      
+      if (this.isGoldSymbol(grid[colIndex][r])) {
+        // Gold symbol turns into Wild after elimination
+        grid[colIndex][r] = 'WX';
+      } else {
+        const len = strip.length;
+        const drawIdx = (((drawIndices[colIndex] % len) + len) % len);
+        grid[colIndex][r] = strip[drawIdx];
+        drawIndices[colIndex]--;
+      }
+    }
+  }
 }
 </file>
 
@@ -5537,6 +5545,34 @@ export default defineConfig([
   },
 ])
 ```
+</file>
+
+<file path="tsconfig.app.json">
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "target": "es2023",
+    "lib": ["ES2023", "DOM"],
+    "module": "esnext",
+    "types": ["vite/client"],
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"]
+}
 </file>
 
 <file path="src/components/Sidebar.tsx">
@@ -11681,6 +11717,184 @@ export async function findRngForMultiplierIntervals(
 }
 </file>
 
+<file path="src/App.tsx">
+import { useCallback, useState } from 'react';
+import { ConfigPanel } from './components/ConfigPanel';
+import { SlotConsole } from './components/SlotConsole';
+import { MetricsDashboard } from './components/MetricsDashboard';
+import { useSimulation } from './hooks/useSimulation';
+import { BarChart3, X } from 'lucide-react';
+import { WelcomeScreen } from './components/WelcomeScreen';
+import { Sidebar } from './components/Sidebar';
+import { JiraLinkGenerator } from './components/tools/JiraLinkGenerator';
+import { SnippetLibrary } from './components/tools/SnippetLibrary';
+import { JiraReportGenerator } from './components/tools/JiraReportGenerator';
+import type { GameConfig, GameType } from './types';
+import { useMachineStore } from './store/useMachineStore';
+import { useGameStore } from './store/useGameStore';
+
+function App() {
+  const { isRunning, progress, currentSpins, currentGrid, result, runSimulation } = useSimulation();
+  
+  const gameType = useMachineStore(state => state.gameType);
+  const coin = useMachineStore(state => state.coin);
+  const bet = useMachineStore(state => state.bet);
+
+  const customPaylines = useGameStore(state => state.customPaylines);
+  const currentStrips = useGameStore(state => state.currentStrips);
+  const currentPaytable = useGameStore(state => state.currentPaytable);
+  const rowCounts = useGameStore(state => state.rowCounts);
+  const isProjectLoaded = useGameStore(state => state.isProjectLoaded);
+  
+  const setLoadTemplateTrigger = useMachineStore(state => state.setLoadTemplateTrigger);
+  const setGameType = useMachineStore(state => state.setGameType);
+  const activeModalTool = useMachineStore(state => state.activeModalTool);
+  const setActiveModalTool = useMachineStore(state => state.setActiveModalTool);
+  
+  const [isMetricsOpen, setIsMetricsOpen] = useState<boolean>(false);
+
+  const handleSelectTemplate = useCallback((templateName: string) => {
+    const engineMap: Record<string, GameType> = {
+      'Line Game': 'linegame',
+      'Way Game': 'waygame',
+      'Pay Anywhere': 'payanywhere',
+      'Megaway': 'megaway'
+    };
+    if (engineMap[templateName]) {
+      setGameType(engineMap[templateName]);
+      setLoadTemplateTrigger('預設泛用');
+    } else {
+      setLoadTemplateTrigger(templateName);
+    }
+  }, [setGameType, setLoadTemplateTrigger]);
+
+  const handleTestSpin = useCallback((strips: any[], paytable: any[], spins?: number, rows?: number[], paylines?: number[][], isFreeGame?: boolean) => {
+    const config: GameConfig = {
+      gameType,
+      paylines: paylines || customPaylines,
+      effectiveBet: bet,
+      specialRules: {
+        derivativeSymbols: { 'B1': ['B2'] },
+        unremovableSymbols: ['S1']
+      }
+    };
+    runSimulation(strips, paytable, spins, rows, config, coin, bet, isFreeGame);
+  }, [runSimulation, gameType, customPaylines, coin, bet]);
+
+  const handleDashboardRunSimulation = useCallback(() => {
+    const config: GameConfig = {
+      gameType,
+      paylines: customPaylines,
+      effectiveBet: bet,
+      specialRules: {
+        derivativeSymbols: { 'B1': ['B2'] },
+        unremovableSymbols: ['S1']
+      }
+    };
+    // We don't have activeStripTab here, so we assume Base Game if run from Dashboard directly
+    runSimulation(currentStrips, currentPaytable, 100000, rowCounts, config, coin, bet, false);
+  }, [runSimulation, gameType, customPaylines, bet, currentStrips, currentPaytable, rowCounts, coin]);
+
+  return (
+    <div className="w-screen h-screen flex bg-dashboard-bg overflow-hidden text-dashboard-text-primary">
+      <Sidebar />
+      
+      <div className="flex-1 flex flex-col min-w-0 h-full relative">
+        {/* Header */}
+        <div className="w-full h-14 bg-[#0f1d35] border-b border-gray-800 flex items-center justify-between px-6 shrink-0 shadow-md z-40">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold tracking-widest text-dashboard-text-primary flex items-center gap-2">
+            <span className="text-dashboard-accent">RNG</span> PAY
+          </h1>
+          <span className="ml-4 text-xs font-mono text-dashboard-text-secondary border border-gray-700 px-2 py-0.5 rounded-full bg-[#112240] hidden sm:block">
+            v1.0 Simulation Engine
+          </span>
+        </div>
+        {/* 暫時隱藏 RTP 測試報告按鈕 (待後續開發開放)
+        <button 
+          onClick={() => setIsMetricsOpen(true)}
+          className="flex items-center gap-2 px-4 py-1.5 bg-[#112240] border border-dashboard-accent text-dashboard-accent rounded-lg hover:bg-dashboard-accent hover:text-[#0a192f] transition-all font-bold text-sm"
+        >
+          <BarChart3 size={16} />
+          <span>RTP 測試報告</span>
+        </button>
+        */}
+        </div>
+
+        {/* Main Grid Layout */}
+        <div className="flex-1 w-full flex flex-col md:flex-row min-h-0">
+          {/* Left: ConfigPanel */}
+        <div 
+          className={`
+            ${!isProjectLoaded ? 'hidden' : 'block'}
+            w-full h-full transition-all duration-300 ${gameType === 'payanywhere_set2' || gameType === 'linegame_set2' ? 'md:w-[360px] shrink-0' : 'md:w-[35%]'}
+          `}
+        >
+          <ConfigPanel 
+            onTestSpin={handleTestSpin}
+          />
+        </div>
+
+        {/* Center: SlotConsole or WelcomeScreen */}
+        <div className="w-full flex-1 h-full min-w-0">
+          {!isProjectLoaded ? (
+            <WelcomeScreen onSelectTemplate={handleSelectTemplate} />
+          ) : (
+            <SlotConsole 
+              currentGrid={currentGrid}
+            />
+          )}
+        </div>
+      </div>
+      </div>
+
+      {/* Metrics Modal */}
+      {isMetricsOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200">
+          <div className="bg-[#0a192f] border border-gray-600 w-full max-w-5xl h-full max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden relative">
+            <div className="flex justify-between items-center p-5 border-b border-gray-700 bg-[#0f1d35] shrink-0">
+              <div className="flex items-center gap-3">
+                <BarChart3 className="text-dashboard-accent" />
+                <h2 className="text-xl font-bold text-dashboard-text-primary tracking-wide">RTP 測試報告</h2>
+              </div>
+              <button 
+                onClick={() => setIsMetricsOpen(false)} 
+                className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-gray-800 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden relative bg-[#0a192f]">
+              <MetricsDashboard 
+                result={result}
+                progress={progress}
+                currentSpins={currentSpins}
+                totalSpins={result ? result.totalSpins : (isRunning ? Math.max(currentSpins, 100000) : 100000)}
+                hasData={currentStrips.length > 0 && currentStrips.every(strip => strip.length > 0)}
+                onRunSimulation={handleDashboardRunSimulation}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tools Modals */}
+      {activeModalTool === 'jira' && (
+        <JiraLinkGenerator onClose={() => setActiveModalTool(null)} />
+      )}
+      {activeModalTool === 'snippet' && (
+        <SnippetLibrary onClose={() => setActiveModalTool(null)} />
+      )}
+      {activeModalTool === 'jiraReport' && (
+        <JiraReportGenerator onClose={() => setActiveModalTool(null)} />
+      )}
+    </div>
+  );
+}
+
+export default App;
+</file>
+
 <file path="src/components/tabs/SlotCustomGridTab.tsx">
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Trash2, RotateCcw } from 'lucide-react';
@@ -11814,7 +12028,6 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, [gridSymbols, wins, currentPaytable, gameType, customPaylines]);
 
-  // @ts-expect-error unused
   const handleTumble = () => {
     if (wins.length === 0) return;
     setGridSymbols(prevGrid => {
@@ -12751,184 +12964,6 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     </div>
   );
 };
-</file>
-
-<file path="src/App.tsx">
-import { useCallback, useState } from 'react';
-import { ConfigPanel } from './components/ConfigPanel';
-import { SlotConsole } from './components/SlotConsole';
-import { MetricsDashboard } from './components/MetricsDashboard';
-import { useSimulation } from './hooks/useSimulation';
-import { BarChart3, X } from 'lucide-react';
-import { WelcomeScreen } from './components/WelcomeScreen';
-import { Sidebar } from './components/Sidebar';
-import { JiraLinkGenerator } from './components/tools/JiraLinkGenerator';
-import { SnippetLibrary } from './components/tools/SnippetLibrary';
-import { JiraReportGenerator } from './components/tools/JiraReportGenerator';
-import type { GameConfig, GameType } from './types';
-import { useMachineStore } from './store/useMachineStore';
-import { useGameStore } from './store/useGameStore';
-
-function App() {
-  const { isRunning, progress, currentSpins, currentGrid, result, runSimulation } = useSimulation();
-  
-  const gameType = useMachineStore(state => state.gameType);
-  const coin = useMachineStore(state => state.coin);
-  const bet = useMachineStore(state => state.bet);
-
-  const customPaylines = useGameStore(state => state.customPaylines);
-  const currentStrips = useGameStore(state => state.currentStrips);
-  const currentPaytable = useGameStore(state => state.currentPaytable);
-  const rowCounts = useGameStore(state => state.rowCounts);
-  const isProjectLoaded = useGameStore(state => state.isProjectLoaded);
-  
-  const setLoadTemplateTrigger = useMachineStore(state => state.setLoadTemplateTrigger);
-  const setGameType = useMachineStore(state => state.setGameType);
-  const activeModalTool = useMachineStore(state => state.activeModalTool);
-  const setActiveModalTool = useMachineStore(state => state.setActiveModalTool);
-  
-  const [isMetricsOpen, setIsMetricsOpen] = useState<boolean>(false);
-
-  const handleSelectTemplate = useCallback((templateName: string) => {
-    const engineMap: Record<string, GameType> = {
-      'Line Game': 'linegame',
-      'Way Game': 'waygame',
-      'Pay Anywhere': 'payanywhere',
-      'Megaway': 'megaway'
-    };
-    if (engineMap[templateName]) {
-      setGameType(engineMap[templateName]);
-      setLoadTemplateTrigger('預設泛用');
-    } else {
-      setLoadTemplateTrigger(templateName);
-    }
-  }, [setGameType, setLoadTemplateTrigger]);
-
-  const handleTestSpin = useCallback((strips: any[], paytable: any[], spins?: number, rows?: number[], paylines?: number[][], isFreeGame?: boolean) => {
-    const config: GameConfig = {
-      gameType,
-      paylines: paylines || customPaylines,
-      effectiveBet: bet,
-      specialRules: {
-        derivativeSymbols: { 'B1': ['B2'] },
-        unremovableSymbols: ['S1']
-      }
-    };
-    runSimulation(strips, paytable, spins, rows, config, coin, bet, isFreeGame);
-  }, [runSimulation, gameType, customPaylines, coin, bet]);
-
-  const handleDashboardRunSimulation = useCallback(() => {
-    const config: GameConfig = {
-      gameType,
-      paylines: customPaylines,
-      effectiveBet: bet,
-      specialRules: {
-        derivativeSymbols: { 'B1': ['B2'] },
-        unremovableSymbols: ['S1']
-      }
-    };
-    // We don't have activeStripTab here, so we assume Base Game if run from Dashboard directly
-    runSimulation(currentStrips, currentPaytable, 100000, rowCounts, config, coin, bet, false);
-  }, [runSimulation, gameType, customPaylines, bet, currentStrips, currentPaytable, rowCounts, coin]);
-
-  return (
-    <div className="w-screen h-screen flex bg-dashboard-bg overflow-hidden text-dashboard-text-primary">
-      <Sidebar />
-      
-      <div className="flex-1 flex flex-col min-w-0 h-full relative">
-        {/* Header */}
-        <div className="w-full h-14 bg-[#0f1d35] border-b border-gray-800 flex items-center justify-between px-6 shrink-0 shadow-md z-40">
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold tracking-widest text-dashboard-text-primary flex items-center gap-2">
-            <span className="text-dashboard-accent">RNG</span> PAY
-          </h1>
-          <span className="ml-4 text-xs font-mono text-dashboard-text-secondary border border-gray-700 px-2 py-0.5 rounded-full bg-[#112240] hidden sm:block">
-            v1.0 Simulation Engine
-          </span>
-        </div>
-        {/* 暫時隱藏 RTP 測試報告按鈕 (待後續開發開放)
-        <button 
-          onClick={() => setIsMetricsOpen(true)}
-          className="flex items-center gap-2 px-4 py-1.5 bg-[#112240] border border-dashboard-accent text-dashboard-accent rounded-lg hover:bg-dashboard-accent hover:text-[#0a192f] transition-all font-bold text-sm"
-        >
-          <BarChart3 size={16} />
-          <span>RTP 測試報告</span>
-        </button>
-        */}
-        </div>
-
-        {/* Main Grid Layout */}
-        <div className="flex-1 w-full flex flex-col md:flex-row min-h-0">
-          {/* Left: ConfigPanel */}
-        <div 
-          className={`
-            ${!isProjectLoaded ? 'hidden' : 'block'}
-            w-full h-full transition-all duration-300 ${gameType === 'payanywhere_set2' || gameType === 'linegame_set2' ? 'md:w-[360px] shrink-0' : 'md:w-[35%]'}
-          `}
-        >
-          <ConfigPanel 
-            onTestSpin={handleTestSpin}
-          />
-        </div>
-
-        {/* Center: SlotConsole or WelcomeScreen */}
-        <div className="w-full flex-1 h-full min-w-0">
-          {!isProjectLoaded ? (
-            <WelcomeScreen onSelectTemplate={handleSelectTemplate} />
-          ) : (
-            <SlotConsole 
-              currentGrid={currentGrid}
-            />
-          )}
-        </div>
-      </div>
-      </div>
-
-      {/* Metrics Modal */}
-      {isMetricsOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200">
-          <div className="bg-[#0a192f] border border-gray-600 w-full max-w-5xl h-full max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden relative">
-            <div className="flex justify-between items-center p-5 border-b border-gray-700 bg-[#0f1d35] shrink-0">
-              <div className="flex items-center gap-3">
-                <BarChart3 className="text-dashboard-accent" />
-                <h2 className="text-xl font-bold text-dashboard-text-primary tracking-wide">RTP 測試報告</h2>
-              </div>
-              <button 
-                onClick={() => setIsMetricsOpen(false)} 
-                className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-gray-800 transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-hidden relative bg-[#0a192f]">
-              <MetricsDashboard 
-                result={result}
-                progress={progress}
-                currentSpins={currentSpins}
-                totalSpins={result ? result.totalSpins : (isRunning ? Math.max(currentSpins, 100000) : 100000)}
-                hasData={currentStrips.length > 0 && currentStrips.every(strip => strip.length > 0)}
-                onRunSimulation={handleDashboardRunSimulation}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tools Modals */}
-      {activeModalTool === 'jira' && (
-        <JiraLinkGenerator onClose={() => setActiveModalTool(null)} />
-      )}
-      {activeModalTool === 'snippet' && (
-        <SnippetLibrary onClose={() => setActiveModalTool(null)} />
-      )}
-      {activeModalTool === 'jiraReport' && (
-        <JiraReportGenerator onClose={() => setActiveModalTool(null)} />
-      )}
-    </div>
-  );
-}
-
-export default App;
 </file>
 
 <file path="src/components/ConfigPanel.tsx">
@@ -15302,8 +15337,6 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
               customPaylines={customPaylines}
               bet={bet}
               isFreeGame={isFreeGame}
-              stripSets={formattedStripSets}
-              setActiveStripId={setActiveStripId}
             />
           </div>
         )}

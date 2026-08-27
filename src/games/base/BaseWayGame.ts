@@ -9,6 +9,24 @@ export abstract class BaseWayGame extends AbstractGame {
   private scatterStrategy = new ScatterStrategy();
   private wayGameStrategy = new WayGameStrategy();
 
+  // ==========================================
+  // Overrides for Template Methods
+  // ==========================================
+
+  public override isPositionDependent(): boolean {
+    return false;
+  }
+
+  public override getTumbleMultiplier(cascadeCount: number, isFreeGame: boolean): number {
+    return isFreeGame
+      ? Math.pow(2, Math.min(3 + cascadeCount, 10))
+      : Math.pow(2, Math.min(cascadeCount, 10));
+  }
+
+  // ==========================================
+  // Core Evaluation
+  // ==========================================
+
   evaluate(
     grid: string[][],
     paytable: PaytableRule[],

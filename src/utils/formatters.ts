@@ -18,7 +18,11 @@ export function parsePasteRng(text: string, count: number, rowCounts?: number[])
 
   if (nums.length === 0) return null;
 
-  if (nums.length > count && rowCounts && rowCounts.length > 0) {
+  // If nums.length is large (e.g. >= 15), it's likely a copied MathID grid (e.g. 5x3=15, Megaways=20+)
+  // Otherwise, if it's close to reelCount (e.g. count or count+1 for stripId), it's an RNG array
+  const isMathIdGrid = rowCounts && rowCounts.length > 0 && nums.length >= 15;
+
+  if (isMathIdGrid) {
     const result = Array(count).fill('');
     let idx = 0;
     for (let c = 0; c < count; c++) {
@@ -33,10 +37,21 @@ export function parsePasteRng(text: string, count: number, rowCounts?: number[])
     return result;
   }
 
+  // It's an RNG array.
+  // We no longer subtract 1, because the UI outputs 0-based indices and the user pastes 0-based indices.
   const resultLength = Math.max(count, nums.length);
   const result = Array(resultLength).fill('0');
   for (let i = 0; i < resultLength; i++) {
-    result[i] = nums[i] !== undefined ? nums[i] : '0';
+    if (nums[i] !== undefined) {
+      const val = parseInt(nums[i], 10);
+      if (isNaN(val)) {
+        result[i] = nums[i];
+      } else {
+        result[i] = val.toString();
+      }
+    } else {
+      result[i] = '0';
+    }
   }
 
   return result;

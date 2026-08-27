@@ -9,6 +9,10 @@ export abstract class BaseLineGame extends AbstractGame {
   private scatterStrategy = new ScatterStrategy();
   private lineGameStrategy = new LineGameStrategy();
 
+  public override hasCascadeFeature(): boolean {
+    return false;
+  }
+
   evaluate(
     grid: string[][],
     paytable: PaytableRule[],

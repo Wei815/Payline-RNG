@@ -21,7 +21,7 @@ export class BattleSet2Game extends BasePayAnywhere {
   }
 
   // Override cascade to implement array shifting rule
-  protected override applyCascade(
+  public override applyCascade(
     grid: string[][],
     colIndex: number,
     eliminatedRows: number[],

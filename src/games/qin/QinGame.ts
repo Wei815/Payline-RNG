@@ -20,21 +20,22 @@ export class QinGame extends BaseWayGame {
     return [[], [], [], [], [], []];
   }
 
+  public override isSymbolUnremovable(sym: string, isFreeGame: boolean): boolean {
+    return isFreeGame && sym === 'S1';
+  }
+
   // Override cascade to implement Gold -> WX rule
-  protected override applyCascade(
+  public override applyCascade(
     grid: string[][],
     colIndex: number,
     eliminatedRows: number[],
     strip: string[],
     drawIndices: number[],
-    isFreeGame: boolean,
-    gameType: GameType
+    _isFreeGame: boolean,
+    _gameType: GameType
   ): void {
     eliminatedRows.sort((a, b) => b - a);
     for (const r of eliminatedRows) {
-      if (isFreeGame && grid[colIndex][r] === 'S1') {
-        continue;
-      }
       
       if (this.isGoldSymbol(grid[colIndex][r])) {
         // Gold symbol turns into Wild after elimination

@@ -272,7 +272,7 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
                   name: realSymId === 'WX' ? 'Wild' : realSymId === 'S1' ? 'Scatter' : realSymId === 'B1' ? 'Bonus' : realSymId === 'S2' ? 'S2' : realSymId,
                   payouts: {},
                   isWild: realSymId === 'WX',
-                  isScatter: realSymId === 'SCATTER' || realSymId === 'S1' || realSymId === 'S2',
+                  isScatter: realSymId === 'SCATTER' || realSymId === 'S1' || realSymId === 'S2' || realSymId === 'B1' || realSymId === 'B2',
                   mathId: newMathId,
                   isEnabled: newMathId !== undefined
                 };
@@ -475,7 +475,7 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
                     name: realSymId === 'WX' ? 'Wild' : realSymId === 'SCATTER' ? 'Scatter' : realSymId === 'B1' ? 'Bonus' : realSymId === 'S1' ? 'S1' : realSymId === 'S2' ? 'S2' : realSymId,
                     payouts: { match2: 0, match3: 0, match4: 0, match5: 0 },
                     isWild: realSymId === 'WX',
-                    isScatter: realSymId === 'SCATTER' || realSymId === 'S1' || realSymId === 'S2',
+                    isScatter: realSymId === 'SCATTER' || realSymId === 'S1' || realSymId === 'S2' || realSymId === 'B1' || realSymId === 'B2',
                     mathId: newMathId,
                     isEnabled: newMathId !== undefined
                   };

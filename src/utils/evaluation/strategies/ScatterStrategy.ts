@@ -10,7 +10,7 @@ export class ScatterStrategy implements EvaluationStrategy {
 
     for (const col of grid) {
       for (const cell of col) {
-        let isMatch = cell === sym;
+        let isMatch = cell === sym || (!rule.isWild && context.wildSymbols?.has(cell));
         
         if (!isMatch && gameConfig.specialRules?.derivativeSymbols?.[sym]) {
            const derivatives = gameConfig.specialRules.derivativeSymbols[sym];
@@ -37,7 +37,9 @@ export class ScatterStrategy implements EvaluationStrategy {
     const minScatter = dynamicMinScatter !== Infinity ? dynamicMinScatter : (gameConfig.specialRules?.scatterMinCount ?? 2);
     const autoWinCount = dynamicAutoWinCount !== Infinity ? dynamicAutoWinCount : (gameConfig.specialRules?.scatterAutoWinCount ?? 3);
 
-    if (scatterCount >= minScatter) {
+    if (scatterCount >= minScatter || includeZeroPayout) {
+      if (scatterCount === 0) return [];
+      
       let payout = 0;
       for (let i = scatterCount; i >= 1; i--) {
         const p = rule.payouts[`match${i}` as keyof typeof rule.payouts];
