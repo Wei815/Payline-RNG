@@ -249,10 +249,11 @@ export class RngSearchEngine {
 
       if (hcBestRng) {
         hcAttempts++;
-        if (hcAttempts >= 500) {
+        if (hcAttempts >= 200) {
           hcBestRng = null;
           hcBestMatchCount = 0;
           hcAttempts = 0;
+          hcLockedReels.clear();
         }
       }
 

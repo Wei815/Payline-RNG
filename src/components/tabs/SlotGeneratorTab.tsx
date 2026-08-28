@@ -115,6 +115,11 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
     selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther, specialSymbolConfig, customPaylines, isFreeGame, bet, activeSearchIntervals, stripSets
   );
 
+  let baseMultiplier = 1;
+  if (gameType === 'waygame' || gameType === 'waygame_elephant') {
+    baseMultiplier = isFreeGame ? 8 : 1;
+  }
+
   const displayGridOther = useMemo(() => {
     const rawGrid = Array.from({ length: reelCount }, (_, colIndex) => {
       const rowsForThisCol = rowCounts[colIndex] || 3;
@@ -837,11 +842,19 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
               );
             };
 
+            if (!selectedSymbol) {
+              return (
+                <div className="py-4 text-center text-xs text-gray-400 font-bold col-span-2">
+                  請先從上方下拉選單選擇目標 Symbol
+                </div>
+              );
+            }
+
             if (maxRows === 0 && !isSearching) {
               return (
-                <div className="py-4 text-center text-xs text-gray-400 font-bold">
+                <div className="py-4 text-center text-xs text-gray-400 font-bold col-span-2">
                   {selectedSymbol === 'WIN_MULTIPLIER'
-                    ? '區間已修改，請點擊上方「產生對應大獎 RNG」按鈕產出組合'
+                    ? '參數已修改，請點擊上方「產生最大 RNG」重新產生結果'
                     : '沒有可用的 Symbol，請確認是否載入滾輪表 (Reel Strips)'}
                 </div>
               );
@@ -861,7 +874,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
               </div>
             );
           })()}
-          {combinations.length === 0 && !isSearching && (
+          {selectedSymbol && combinations.length === 0 && !isSearching && (
             <div className="py-4 text-center text-xs text-gray-400 font-bold col-span-2">
               {selectedSymbol === 'WIN_MULTIPLIER'
                 ? '區間已修改，請點擊上方「產生對應大獎 RNG」按鈕產出組合'
@@ -1239,7 +1252,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                           {isInterference && <span className="ml-1 text-[10px] opacity-80"> (干擾)</span>}
                         </span>
                         <span className={`text-xs font-mono mt-0.5 ${isInterference ? 'text-red-300' : 'text-gray-300'}`}>
-                          {w.isJackpot ? `${w.ways} × ${w.payout} × ${bet}` : `${formatAmount(betMultiplier)} × ${w.payout}${w.ways > 1 ? ` × ${w.ways}` : ''}${w.multiplier ? ` × ${w.multiplier}` : ''}`} = <span className={`font-bold ${isInterference ? 'text-red-400' : 'text-dashboard-accent'}`}>{formatAmount(w.isJackpot ? w.totalWin : w.totalWin * betMultiplier)}</span>
+                          {w.isJackpot ? `${w.ways} × ${w.payout} × ${bet}` : `${formatAmount(betMultiplier)} × ${w.payout}${w.ways > 1 ? ` × ${w.ways}` : ''}${w.multiplier ? ` × ${w.multiplier}` : ''}${baseMultiplier > 1 ? ` × ${baseMultiplier}` : ''}`} = <span className={`font-bold ${isInterference ? 'text-red-400' : 'text-dashboard-accent'}`}>{formatAmount(w.isJackpot ? w.totalWin : w.totalWin * betMultiplier * baseMultiplier)}</span>
                         </span>
                       </div>
                     );
@@ -1258,7 +1271,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                       });
                     });
                     const finalMultiplier = globalMultiplier > 0 ? globalMultiplier : 1;
-                    const baseTotalWin = winHits.reduce((sum, w) => sum + (w.isJackpot ? w.totalWin : w.totalWin * betMultiplier), 0);
+                    const baseTotalWin = winHits.reduce((sum, w) => sum + (w.isJackpot ? w.totalWin : w.totalWin * betMultiplier * baseMultiplier), 0);
                     const grandTotalWin = baseTotalWin * finalMultiplier;
                     
                     return (

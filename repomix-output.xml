@@ -43,13 +43,6 @@ The content is organized as follows:
 public/
   favicon.svg
   icons.svg
-scratch/
-  patch_6_1_final.cjs
-  patch_all.cjs
-  patch_all.py
-  patch_rendering.cjs
-  patch_restore.cjs
-  patch_rng_string.cjs
 scripts/
   parse-templates.cjs
 src/
@@ -85,6 +78,7 @@ src/
       BasePayAnywhere.ts
       BaseWayGame.ts
       IGameEnvironment.ts
+      RngSearchEngine.ts
     battle_set2/
       BattleSet2Game.ts
     linegame/
@@ -139,7 +133,7 @@ src/
   index.css
   main.tsx
 templates/
-  秦皇傳說 RNG範本.txt
+  皇家金象 RNG範本.txt
   範本-人魚傳說.xlsx
   範本-決戰賽特2_全面覺醒.xlsx
   範本-皇家金象.xlsx
@@ -165,7 +159,7 @@ vite.config.ts
 <files>
 This section contains the contents of the repository's files.
 
-<file path="templates/秦皇傳說 RNG範本.txt">
+<file path="templates/皇家金象 RNG範本.txt">
 M1	M1*2	[2,9,13,2,1,1,0],
 	M1*3	[2,9,33,2,1,1,0],
 	M1*4	[2,9,33,34,8,1,0],
@@ -277,377 +271,6 @@ J	J*2	[6,5,18,13,4,3,1],
     <path fill="#08060d" fill-rule="evenodd" d="M1.893 1.98c.052.072 1.245 1.769 2.653 3.77l2.892 4.114c.183.261.333.48.333.486s-.068.089-.152.183l-.522.593-.765.867-3.597 4.087c-.375.426-.734.834-.798.905a1 1 0 0 0-.118.148c0 .01.236.017.664.017h.663l.729-.83c.4-.457.796-.906.879-.999a692 692 0 0 0 1.794-2.038c.034-.037.301-.34.594-.675l.551-.624.345-.392a7 7 0 0 1 .34-.374c.006 0 .93 1.306 2.052 2.903l2.084 2.965.045.063h2.275c1.87 0 2.273-.003 2.266-.021-.008-.02-1.098-1.572-3.894-5.547-2.013-2.862-2.28-3.246-2.273-3.266.008-.019.282-.332 2.085-2.38l2-2.274 1.567-1.782c.022-.028-.016-.03-.65-.03h-.674l-.3.342a871 871 0 0 1-1.782 2.025c-.067.075-.405.458-.75.852a100 100 0 0 1-.803.91c-.148.172-.299.344-.99 1.127-.304.343-.32.358-.345.327-.015-.019-.904-1.282-1.976-2.808L6.365 1.85H1.8zm1.782.91 8.078 11.294c.772 1.08 1.413 1.973 1.425 1.984.016.017.241.02 1.05.017l1.03-.004-2.694-3.766L7.796 5.75 5.722 2.852l-1.039-.004-1.039-.004z" clip-rule="evenodd"/>
   </symbol>
 </svg>
-</file>
-
-<file path="scratch/patch_6_1_final.cjs">
-const fs = require('fs');
-let code = fs.readFileSync('src/components/tabs/SlotGeneratorTab.tsx', 'utf8');
-
-// 1. finalRng and string template for top combinations
-code = code.replace(
-  /\(comb as any\)\.stripId \!== undefined \? Number\(\(comb as any\)\.stripId\) : \(stripSets \? Number\(Object\.keys\(stripSets\)\.find\(k => stripSets\[k\] === currentStrips\) \|\| 1\) : 1\)/g,
-  '(comb as any).stripId !== undefined ? Number((comb as any).stripId) + 1 : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) + 1 : 1)'
-);
-
-// 2. extraId for bottom rendering
-code = code.replace(
-  /\(targetComb as any\)\?\.stripId \!== undefined \? Number\(\(targetComb as any\)\.stripId\) : \(stripSets \? Number\(Object\.keys\(stripSets\)\.find\(k => stripSets\[k\] === currentStrips\) \|\| 1\) : 1\)/g,
-  '(targetComb as any)?.stripId !== undefined ? Number((targetComb as any).stripId) + 1 : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) + 1 : 1)'
-);
-
-// 3. onChange logic
-const onChangeOld = `                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val) {
-                    const parsed = parsePasteRng(val, reelCount, rowCounts);
-                    if (parsed) {
-                      setManualIndicesOther(parsed);
-                      setIsManualEdited(true);
-                    }
-                    e.target.value = '';
-                  }
-                }}`;
-const onChangeNew = `                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val) {
-                    const parsed = parsePasteRng(val, reelCount, rowCounts);
-                    if (parsed) {
-                      if (parsed.length > reelCount) {
-                        const extraId = Number(parsed[reelCount]);
-                        if (!isNaN(extraId) && setActiveStripId) {
-                          setActiveStripId(extraId);
-                        }
-                        setManualIndicesOther(parsed.slice(0, reelCount));
-                      } else {
-                        setManualIndicesOther(parsed);
-                      }
-                      setIsManualEdited(true);
-                    }
-                    e.target.value = '';
-                  }
-                }}`;
-
-if (code.includes(onChangeOld)) {
-    code = code.replace(onChangeOld, onChangeNew);
-} else {
-    console.log("Could not find onChange block!");
-}
-
-fs.writeFileSync('src/components/tabs/SlotGeneratorTab.tsx', code);
-console.log('Successfully patched UI and pasting logic for 6+1 format!');
-</file>
-
-<file path="scratch/patch_all.cjs">
-const fs = require('fs');
-let code = fs.readFileSync('src/components/tabs/SlotGeneratorTab.tsx', 'utf8');
-
-// 1. Add props to interface
-const props_old = `export interface SlotGeneratorTabProps {
-  reelCount: number;
-  rowCounts: number[];`;
-const props_new = `export interface SlotGeneratorTabProps {
-  stripSets?: Record<string, string[][]>;
-  setActiveStripId?: (id: number) => void;
-  reelCount: number;
-  rowCounts: number[];`;
-code = code.replace(props_old, props_new);
-
-// 2. Add props to component signature
-const sig_old = `export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
-  reelCount, rowCounts, onRowCountsChange,`;
-const sig_new = `export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
-  stripSets, setActiveStripId,
-  reelCount, rowCounts, onRowCountsChange,`;
-code = code.replace(sig_old, sig_new);
-
-// 3. Add stripSets to useRngSearch
-const search_old = `  const { combinations, isSearching, error } = useRngSearch(
-    gameType, selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, specialSymbolConfig, customPaylines, topTrackerOther,
-    multiplierIntervals, betMultiplier, isFreeGame
-  );`;
-const search_new = `  const { combinations, isSearching, error } = useRngSearch(
-    gameType, selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, specialSymbolConfig, customPaylines, topTrackerOther,
-    multiplierIntervals, betMultiplier, isFreeGame, stripSets
-  );`;
-code = code.replace(search_old, search_new);
-
-// 4. Modify finalRng in combination rendering
-const finalrng_old = `                      // For other game types, just copy the base RNG indices
-                      const finalRng = comb.rng;
-                      const finalCopy = \`[\${finalRng.join(',')}],\`;`;
-const finalrng_new = `                      // For other game types, just copy the base RNG indices
-                      const finalRng = (gameType === 'waygame' || gameType === 'megaway') 
-                        ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) + 1 : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) + 1 : 1)]
-                        : comb.rng;
-                      const finalCopy = \`[\${finalRng.join(',')}],\`;`;
-code = code.replace(finalrng_old, finalrng_new);
-
-const rngstr_old = `                          {\`RNG: \${selectedCombIndex === idx && isManualEdited ? currentRngString : \\\`[\\\${comb.rng.join(',')}]\\\`} \`}`;
-const rngstr_new = `                          {\`RNG: \${selectedCombIndex === idx && isManualEdited ? currentRngString : \\\`[\\\${(gameType === 'waygame' || gameType === 'megaway') ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) + 1 : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) + 1 : 1)].join(',') : comb.rng.join(',')}]\\\`} \`}`;
-code = code.replace(rngstr_old, rngstr_new);
-
-// 5. Modify currentRngString
-const curr_rng_old = `  const currentRngString = \`[\${currentFormattedRngArray.join(',')}],\`;`;
-const curr_rng_new = `  const currentRngString = (() => {
-    const targetComb = combinations[selectedCombIndex < combinations.length ? selectedCombIndex : 0];
-    if (gameType === 'waygame' || gameType === 'megaway') {
-      const extraId = (targetComb as any)?.stripId !== undefined ? Number((targetComb as any).stripId) + 1 : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) + 1 : 1);
-      return \`[\${[...currentFormattedRngArray, extraId].join(',')}],\`;
-    }
-    return \`[\${currentFormattedRngArray.join(',')}],\`;
-  })();`;
-code = code.replace(curr_rng_old, curr_rng_new);
-
-// 6. Modify onChange pasting logic
-const onchange_old = `                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val) {
-                    const parsed = parsePasteRng(val, reelCount, rowCounts);
-                    if (parsed) {
-                      setManualIndicesOther(parsed);
-                      setIsManualEdited(true);
-                    }
-                    e.target.value = '';
-                  }
-                }}`;
-const onchange_new = `                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val) {
-                    const parsed = parsePasteRng(val, reelCount, rowCounts);
-                    if (parsed) {
-                      if (parsed.length > reelCount) {
-                        const extraId = Number(parsed[reelCount]);
-                        if (!isNaN(extraId) && setActiveStripId) {
-                          setActiveStripId(extraId);
-                        }
-                        setManualIndicesOther(parsed.slice(0, reelCount));
-                      } else {
-                        setManualIndicesOther(parsed);
-                      }
-                      setIsManualEdited(true);
-                    }
-                    e.target.value = '';
-                  }
-                }}`;
-code = code.replace(onchange_old, onchange_new);
-
-fs.writeFileSync('src/components/tabs/SlotGeneratorTab.tsx', code);
-console.log("SlotGeneratorTab.tsx fully restored and patched!");
-</file>
-
-<file path="scratch/patch_all.py">
-import re
-
-with open('src/components/tabs/SlotGeneratorTab.tsx', 'r', encoding='utf8') as f:
-    code = f.read()
-
-# 1. Add props to interface
-props_old = """export interface SlotGeneratorTabProps {
-  reelCount: number;
-  rowCounts: number[];"""
-props_new = """export interface SlotGeneratorTabProps {
-  stripSets?: Record<string, string[][]>;
-  setActiveStripId?: (id: number) => void;
-  reelCount: number;
-  rowCounts: number[];"""
-code = code.replace(props_old, props_new)
-
-# 2. Add props to component signature
-sig_old = """export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
-  reelCount, rowCounts, onRowCountsChange,"""
-sig_new = """export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({
-  stripSets, setActiveStripId,
-  reelCount, rowCounts, onRowCountsChange,"""
-code = code.replace(sig_old, sig_new)
-
-# 3. Add stripSets to useRngSearch
-search_old = """  const { combinations, isSearching, error } = useRngSearch(
-    gameType, selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, specialSymbolConfig, customPaylines, topTrackerOther,
-    multiplierIntervals, betMultiplier, isFreeGame
-  );"""
-search_new = """  const { combinations, isSearching, error } = useRngSearch(
-    gameType, selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, specialSymbolConfig, customPaylines, topTrackerOther,
-    multiplierIntervals, betMultiplier, isFreeGame, stripSets
-  );"""
-code = code.replace(search_old, search_new)
-
-# 4. Modify finalRng in combination rendering
-finalrng_old = """                      // For other game types, just copy the base RNG indices
-                      const finalRng = comb.rng;
-                      const finalCopy = `[${finalRng.join(',')}],`;"""
-finalrng_new = """                      // For other game types, just copy the base RNG indices
-                      const finalRng = (gameType === 'waygame' || gameType === 'megaway') 
-                        ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) + 1 : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) + 1 : 1)]
-                        : comb.rng;
-                      const finalCopy = `[${finalRng.join(',')}],`;"""
-code = code.replace(finalrng_old, finalrng_new)
-
-rngstr_old = """                          {`RNG: ${selectedCombIndex === idx && isManualEdited ? currentRngString : \`[\${comb.rng.join(',')}]\`} `}"""
-rngstr_new = """                          {`RNG: ${selectedCombIndex === idx && isManualEdited ? currentRngString : \`[\${(gameType === 'waygame' || gameType === 'megaway') ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) + 1 : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) + 1 : 1)].join(',') : comb.rng.join(',')}]\`} `}"""
-code = code.replace(rngstr_old, rngstr_new)
-
-# 5. Modify currentRngString
-curr_rng_old = """  const currentRngString = `[${currentFormattedRngArray.join(',')}],`;"""
-curr_rng_new = """  const currentRngString = (() => {
-    const targetComb = combinations[selectedCombIndex < combinations.length ? selectedCombIndex : 0];
-    if (gameType === 'waygame' || gameType === 'megaway') {
-      const extraId = (targetComb as any)?.stripId !== undefined ? Number((targetComb as any).stripId) + 1 : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) + 1 : 1);
-      return `[${[...currentFormattedRngArray, extraId].join(',')}],`;
-    }
-    return `[${currentFormattedRngArray.join(',')}],`;
-  })();"""
-code = code.replace(curr_rng_old, curr_rng_new)
-
-# 6. Modify onChange pasting logic
-onchange_old = """                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val) {
-                    const parsed = parsePasteRng(val, reelCount, rowCounts);
-                    if (parsed) {
-                      setManualIndicesOther(parsed);
-                      setIsManualEdited(true);
-                    }
-                    e.target.value = '';
-                  }
-                }}"""
-onchange_new = """                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val) {
-                    const parsed = parsePasteRng(val, reelCount, rowCounts);
-                    if (parsed) {
-                      if (parsed.length > reelCount) {
-                        const extraId = Number(parsed[reelCount]);
-                        if (!isNaN(extraId) && setActiveStripId) {
-                          setActiveStripId(extraId);
-                        }
-                        setManualIndicesOther(parsed.slice(0, reelCount));
-                      } else {
-                        setManualIndicesOther(parsed);
-                      }
-                      setIsManualEdited(true);
-                    }
-                    e.target.value = '';
-                  }
-                }}"""
-code = code.replace(onchange_old, onchange_new)
-
-with open('src/components/tabs/SlotGeneratorTab.tsx', 'w', encoding='utf8') as f:
-    f.write(code)
-
-print("SlotGeneratorTab.tsx fully restored and patched!")
-</file>
-
-<file path="scratch/patch_rendering.cjs">
-const fs = require('fs');
-let code = fs.readFileSync('src/components/tabs/SlotGeneratorTab.tsx', 'utf8');
-
-// Update currentRngString
-const currOldRegex = /const currentRngString = \(\(\) => \{[\s\S]*?\}\(\);/;
-const currNew = `const currentRngString = (() => {
-    const targetComb = combinations[selectedCombIndex < combinations.length ? selectedCombIndex : 0];
-    if (gameType === 'waygame' || gameType === 'megaway') {
-      const extraId = (targetComb as any)?.stripId !== undefined && !isManualEdited 
-        ? Number((targetComb as any).stripId) + 1 
-        : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) + 1 : 1);
-      return \`[\${[...currentFormattedRngArray, extraId].join(',')}],\`;
-    }
-    return \`[\${currentFormattedRngArray.join(',')}],\`;
-  })();`;
-
-code = code.replace(currOldRegex, currNew);
-
-// Update finalCopy
-const finalCopyRegex = /const finalCopy = \`\[\$\{comb\.rng\.join\(\',\ '\)\}\]\,\`;/g;
-const finalCopyNew = `const finalRng = (gameType === 'waygame' || gameType === 'megaway') 
-                        ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) + 1 : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) + 1 : 1)]
-                        : comb.rng;
-                      const finalCopy = \`[\${finalRng.join(',')}],\`;`;
-
-code = code.replace(finalCopyRegex, finalCopyNew);
-
-// Update UI string in button
-const uiStringRegex = /\{\`RNG: \$\{selectedCombIndex === idx && isManualEdited \? currentRngString : \\\`\[\\\$\{comb\.rng\.join\(\',\ '\)\}\]\\\`\} \`\}/g;
-const uiStringNew = `{\`RNG: \${selectedCombIndex === idx && isManualEdited ? currentRngString : \\\`[\\\${(gameType === 'waygame' || gameType === 'megaway') ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) + 1 : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) + 1 : 1)].join(',') : comb.rng.join(',')}]\\\`} \`}`;
-
-code = code.replace(uiStringRegex, uiStringNew);
-
-fs.writeFileSync('src/components/tabs/SlotGeneratorTab.tsx', code);
-</file>
-
-<file path="scratch/patch_restore.cjs">
-const fs = require('fs');
-let code = fs.readFileSync('src/components/tabs/SlotGeneratorTab.tsx', 'utf8');
-
-const badCode = `                    if (parsed) {
-                      setManualIndicesOther(parsed);
-                      setIsManualEdited(true);
-                    }
-                    e.target.value = '';
-                  }
-                }}
-                className="bg-[#112240] border border-gray-700 text-yellow-400 rounded px-2 py-1 outline-none focus:border-yellow-500 text-xs w-full placeholder:text-gray-600 font-mono"`;
-
-const fixedCode = `            )}
-          </div>
-        </div>
-
-        <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-3 rounded-lg border border-gray-700/50 shadow-inner gap-3">
-          <div className="flex flex-col sm:flex-row justify-between items-start border-b border-gray-700/50 pb-3 gap-3">
-            <div className="flex flex-col gap-2 shrink-0 min-w-[200px]">
-              <span className="text-sm text-dashboard-text-secondary font-bold pl-1">Reel Settings (單一連線測試)</span>
-              <input
-                type="text"
-                placeholder="貼上 RNG 數組..."
-                onFocus={(e) => e.target.select()}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val) {
-                    const parsed = parsePasteRng(val, reelCount, rowCounts);
-                    if (parsed) {
-                      if (parsed.length > reelCount) {
-                        const extraId = Number(parsed[reelCount]);
-                        if (!isNaN(extraId) && setActiveStripId) {
-                          setActiveStripId(extraId);
-                        }
-                        setManualIndicesOther(parsed.slice(0, reelCount));
-                      } else {
-                        setManualIndicesOther(parsed);
-                      }
-                      setIsManualEdited(true);
-                    }
-                    e.target.value = '';
-                  }
-                }}
-                className="bg-[#112240] border border-gray-700 text-yellow-400 rounded px-2 py-1 outline-none focus:border-yellow-500 text-xs w-full placeholder:text-gray-600 font-mono"`;
-
-if (code.includes(badCode)) {
-    code = code.replace(badCode, fixedCode);
-    console.log("Successfully restored and patched onChange!");
-} else {
-    console.log("Could not find the bad code to replace.");
-}
-
-fs.writeFileSync('src/components/tabs/SlotGeneratorTab.tsx', code);
-</file>
-
-<file path="scratch/patch_rng_string.cjs">
-const fs = require('fs');
-let code = fs.readFileSync('src/components/tabs/SlotGeneratorTab.tsx', 'utf8');
-
-code = code.replace(
-  '  const currentRngString = `[${currentFormattedRngArray.join(\',\')}],`;',
-  `  const currentRngString = (() => {
-    const targetComb = combinations[selectedCombIndex < combinations.length ? selectedCombIndex : 0];
-    if (gameType === 'waygame' || gameType === 'megaway') {
-      const extraId = (targetComb as any)?.stripId !== undefined ? Number((targetComb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 1) : 1);
-      return \`[\${[...currentFormattedRngArray, extraId].join(',')}],\`;
-    }
-    return \`[\${currentFormattedRngArray.join(',')}],\`;
-  })();`
-);
-
-fs.writeFileSync('src/components/tabs/SlotGeneratorTab.tsx', code);
-console.log('Patched currentRngString');
 </file>
 
 <file path="scripts/parse-templates.cjs">
@@ -1458,171 +1081,869 @@ export const SymbolCategories = {
 } as const;
 </file>
 
-<file path="src/games/base/BaseLineGame.ts">
-import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
-import type { WinResult } from '../../utils/evaluation';
-import { LineGameStrategy } from '../../utils/evaluation/strategies/LineGameStrategy';
-import { AbstractGame } from './AbstractGame';
-import { DEFAULT_WILD_SYMBOLS } from '../../utils/evaluation/GameConstants';
-import { ScatterStrategy } from '../../utils/evaluation/strategies/ScatterStrategy';
+<file path="src/games/base/RngSearchEngine.ts">
+import type {
+  PaytableRule,
+  GameType,
+  MultiplierInterval,
+} from "../../types";
+import { getWinningPositions } from "../../utils/evaluation";
+import type { AbstractGame } from "./AbstractGame";
 
-export abstract class BaseLineGame extends AbstractGame {
-  private scatterStrategy = new ScatterStrategy();
-  private lineGameStrategy = new LineGameStrategy();
+export class RngSearchEngine {
+  private gameInstance: AbstractGame;
+  constructor(gameInstance: AbstractGame) {
+    this.gameInstance = gameInstance;
+  }
 
-  evaluate(
-    grid: string[][],
-    paytable: PaytableRule[],
-    config: GameConfig,
+  async findRngForCombination(
+    targetSymbol: string,
+    length: number,
+    wildCount: number,
+    currentStrips: string[][],
+    rowCounts: number[],
+    currentPaytable: PaytableRule[],
+    reelCount: number,
+    gameType: GameType,
+    topTrackerOther?: string[],
     customPaylines?: number[][],
-    includeZeroPayout: boolean = false
-  ): WinResult[] {
-    const results: WinResult[] = [];
-    if (!grid || grid.length === 0 || !paytable || paytable.length === 0) return results;
+    isFreeGame: boolean = false,
+    stripSets?: Record<string, string[][]>,
+    requireGoldCascade: boolean = false,
+  ): Promise<{
+    rng: number[] | null;
+    isInterfered: boolean;
+    hasS1Drop?: boolean;
+    stripId?: number;
+  }> {
+    if (stripSets && Object.keys(stripSets).length > 0) {
+      const stripIds = Object.keys(stripSets).map(Number);
+      stripIds.sort(() => Math.random() - 0.5);
+      let bestInterferred: {
+        rng: number[] | null;
+        isInterfered: boolean;
+        hasS1Drop?: boolean;
+        stripId?: number;
+      } | null = null;
 
-    const wildSymbols = new Set(paytable.filter(p => p.isWild).map(p => p.symbolId));
-    const configuredWilds = config.wildSymbols || DEFAULT_WILD_SYMBOLS;
-    configuredWilds.forEach(w => wildSymbols.add(w));
-
-    const context = {
-      grid,
-      paytable,
-      gameConfig: config,
-      wildSymbols,
-      includeZeroPayout
-    };
-
-    for (const rule of paytable) {
-      if (rule.isScatter) {
-        results.push(...this.scatterStrategy.evaluate(context, rule));
-      } else {
-        results.push(...this.lineGameStrategy.evaluate(context, rule));
-      }
-    }
-
-    const lineWins = new Map<number, WinResult>();
-    const nonLineWins: WinResult[] = [];
-
-    for (const win of results) {
-      if (win.lineIndex !== undefined) {
-        const existing = lineWins.get(win.lineIndex);
-        if (!existing || win.totalWin > existing.totalWin) {
-          lineWins.set(win.lineIndex, win);
+      for (const sid of stripIds) {
+        const res = await this.findRngForCombination(
+          targetSymbol,
+          length,
+          wildCount,
+          stripSets[sid],
+          rowCounts,
+          currentPaytable,
+          reelCount,
+          gameType,
+          topTrackerOther,
+          customPaylines,
+          isFreeGame,
+          undefined,
+          requireGoldCascade,
+        );
+        if (res.rng) {
+          if (!res.isInterfered) {
+            return { ...res, rng: [...res.rng, sid], stripId: sid };
+          } else {
+            if (!bestInterferred) {
+              bestInterferred = {
+                ...res,
+                rng: res.rng ? [...res.rng, sid] : null,
+                stripId: sid,
+              };
+            }
+          }
         }
-      } else {
-        nonLineWins.push(win);
+      }
+      return bestInterferred || { rng: null, isInterfered: false };
+    }
+
+    const yieldIfNeeded = this.gameInstance.createTimeSlicer(16);
+    const wildSymbolSet = new Set<string>();
+    currentPaytable
+      .filter((p) => p.isWild)
+      .forEach((p) => wildSymbolSet.add(p.symbolId));
+    wildSymbolSet.add("WILD");
+    wildSymbolSet.add("W");
+    wildSymbolSet.add("WX");
+    for (const strip of currentStrips) {
+      if (!strip) continue;
+      for (const sym of strip) {
+        if (sym === "WILD" || sym === "W" || sym === "WX")
+          wildSymbolSet.add(sym);
       }
     }
+
+    const MAX_RANDOM_ATTEMPTS = this.gameInstance.getMaxRandomAttempts();
+
+    let testCount = 0;
+    const candidateRng = Array(reelCount).fill(0);
+
+    let minInterferenceCount = Infinity;
+    let bestTargetPresence = Infinity;
+    let bestCandidateRng: number[] | null = null;
     
-    return [...nonLineWins, ...Array.from(lineWins.values())];
+    // Hill Climbing Optimization
+    let hcBestRng: number[] | null = null;
+    let hcBestMatchCount = 0;
+    let hcAttempts = 0;
+    const hcLockedReels = new Set<number>();
+    const isTargetScatter = currentPaytable.some(p => p.symbolId === targetSymbol && p.isScatter);
+    const isPositionDependent = gameType === 'linegame' || gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'linegame_set2';
+
+    const validIndicesForTarget: number[][] = [];
+    for (let c = 0; c < reelCount; c++) {
+      const validForReel = [];
+      const strip = currentStrips[c];
+      const rows = rowCounts[c];
+      const len = strip.length;
+      if (!strip || strip.length === 0) {
+        validIndicesForTarget.push([]);
+        continue;
+      }
+      for (let i = 0; i < len; i++) {
+        let isVisible = false;
+        for (let r = 0; r < rows; r++) {
+          const sym = strip[(i + r) % len];
+          if (sym === targetSymbol || wildSymbolSet.has(sym)) {
+            isVisible = true; break;
+          }
+          if (targetSymbol === 'B1' && sym === 'B2') {
+            isVisible = true; break;
+          }
+          if ((targetSymbol === 'S1' || targetSymbol === 'S2' || targetSymbol === 'SCATTER') && (sym === 'S1' || sym === 'S2' || sym === 'SCATTER')) {
+            isVisible = true; break;
+          }
+          if (requireGoldCascade && this.gameInstance.isGoldSymbol(sym)) {
+            isVisible = true; break;
+          }
+        }
+        if (isVisible) validForReel.push(i);
+      }
+      validIndicesForTarget.push(validForReel);
+    }
+
+    const possibleReelsCount = validIndicesForTarget.filter(v => v.length > 0).length;
+    if (possibleReelsCount < length) {
+      return { rng: null, isInterfered: false };
+    }
+    if (isPositionDependent) {
+      for (let c = 0; c < length; c++) {
+        if (validIndicesForTarget[c].length === 0) {
+          return { rng: null, isInterfered: false };
+        }
+      }
+    }
+
+    let lastYieldTime = performance.now();
+
+    while (testCount < MAX_RANDOM_ATTEMPTS) {
+      testCount++;
+      if (testCount % 50 === 0) {
+        const now = performance.now();
+        if (now - lastYieldTime > 15) {
+          await new Promise((resolve) => setTimeout(resolve, 0));
+          lastYieldTime = performance.now();
+        }
+      }
+
+      let skipDraw = false;
+      let maxCurrentMatchCount = 0;
+      let lockThreshold = hcBestMatchCount;
+      if (requireGoldCascade && lockThreshold > 0 && lockThreshold < 3) {
+        lockThreshold = 3;
+      }
+
+      let globalHasAnyGold = false;
+
+      for (let c = 0; c < reelCount; c++) {
+        let chosenIdx = 0;
+        let len = currentStrips[c]?.length || 1;
+        let rows = rowCounts[c] || 3;
+
+        let isLocked = false;
+        if (hcBestRng && hcAttempts < 500 && Math.random() < 0.92) {
+          if (isTargetScatter) {
+            isLocked = hcLockedReels.has(c);
+          } else {
+            isLocked = c < lockThreshold;
+          }
+        }
+
+        if (isLocked) {
+          chosenIdx = hcBestRng![c];
+          candidateRng[c] = chosenIdx;
+        } else {
+          let useValidOnly = false;
+          // Optimistically force the target symbol on the first `length` reels on the first attempt 
+          // (when hcBestRng is null) to bypass thousands of random draws.
+          if (!hcBestRng && c < length && validIndicesForTarget[c].length > 0) {
+            useValidOnly = true;
+          }
+          
+          if (useValidOnly) {
+            const valids = validIndicesForTarget[c];
+            chosenIdx = valids[Math.floor(Math.random() * valids.length)];
+          } else {
+            const maxIdx = len > rows + 2 ? len - rows : 0;
+            if (maxIdx <= 2) {
+              chosenIdx = Math.floor(Math.random() * len);
+            } else {
+              chosenIdx = Math.floor(Math.random() * (maxIdx - 2 + 1)) + 2;
+            }
+          }
+          candidateRng[c] = chosenIdx;
+        }
+
+        let hasB1 = false;
+        let hasTargetOrWild = false;
+        for (let r = 0; r < rows; r++) {
+          const sym = currentStrips[c][(chosenIdx + r) % len];
+          if (sym === "B1" && targetSymbol !== "B1") {
+            hasB1 = true;
+          }
+          if ((sym === "S1" || sym === "S2") && targetSymbol !== "S1" && targetSymbol !== "S2" && targetSymbol !== "SCATTER") {
+            hasB1 = true;
+          }
+          if (sym === targetSymbol || wildSymbolSet.has(sym)) {
+            hasTargetOrWild = true;
+          }
+          if (requireGoldCascade && this.gameInstance.isGoldSymbol(sym)) {
+            globalHasAnyGold = true;
+          }
+        }
+        if (hasB1) {
+          skipDraw = true;
+          break;
+        }
+        
+        const isPositionDependent = gameType === 'linegame' || gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'linegame_set2';
+        const isScatter = targetSymbol === 'S1' || targetSymbol === 'S2' || targetSymbol === 'SCATTER' || targetSymbol === 'B1' || targetSymbol === 'B2';
+        
+        if (c < length && !hasTargetOrWild && isPositionDependent && !isScatter && !requireGoldCascade) {
+          skipDraw = true;
+          break;
+        }
+      }
+      
+      if (!skipDraw && requireGoldCascade && !globalHasAnyGold) {
+        skipDraw = true;
+      }
+
+      if (hcBestRng) {
+        hcAttempts++;
+        if (hcAttempts >= 200) {
+          hcBestRng = null;
+          hcBestMatchCount = 0;
+          hcAttempts = 0;
+          hcLockedReels.clear();
+        }
+      }
+
+      if (skipDraw) continue;
+
+      const initialGrid = this.gameInstance.getGridFromRng(
+        candidateRng,
+        currentStrips,
+        rowCounts,
+        reelCount,
+      );
+      const initialEvalGrid = this.gameInstance.getEvalGrid(
+        initialGrid,
+        gameType,
+        length,
+        topTrackerOther,
+      );
+      const initialWins = this.gameInstance.evaluate(
+        initialEvalGrid,
+        currentPaytable,
+        { gameType, paylines: customPaylines },
+        customPaylines,
+        false,
+      );
+
+      if (requireGoldCascade) {
+        const initialTargetWin = initialWins.find(
+          (w) => w.symbolId === targetSymbol && w.payout > 0,
+        );
+        if (initialTargetWin) continue;
+
+        let hasGoldWin = false;
+        const winningCoordsMap = getWinningPositions(
+          initialEvalGrid,
+          initialWins,
+          currentPaytable,
+          gameType,
+          undefined,
+          customPaylines,
+        );
+
+        const eliminatedRowsMap: Record<number, number[]> = {};
+        let initialTargetPresence = 0;
+        let nonGoldWinCount = 0;
+
+        for (const win of initialWins) {
+          if (win.payout > 0) {
+            let thisWinHasGold = false;
+            const winPositions = getWinningPositions(
+              initialEvalGrid,
+              [win],
+              currentPaytable,
+              gameType,
+              undefined,
+              customPaylines,
+            );
+            for (let c = 0; c < reelCount; c++) {
+              const rows = rowCounts[c] || 3;
+              for (let r = 0; r < rows; r++) {
+                if (
+                  winPositions.has(`${c}-${r}`) &&
+                  this.gameInstance.isGoldSymbol(initialEvalGrid[c][r])
+                ) {
+                  thisWinHasGold = true;
+                }
+              }
+            }
+            if (!thisWinHasGold) nonGoldWinCount++;
+          }
+        }
+
+        for (let c = 0; c < reelCount; c++) {
+          const rows = rowCounts[c] || 3;
+          eliminatedRowsMap[c] = [];
+          for (let r = 0; r < rows; r++) {
+            if (winningCoordsMap.has(`${c}-${r}`)) {
+              const winIndices = winningCoordsMap.get(`${c}-${r}`);
+              if (winIndices && winIndices.some((idx) => idx !== 999)) {
+                eliminatedRowsMap[c].push(r);
+                if (this.gameInstance.isGoldSymbol(initialEvalGrid[c][r])) {
+                  hasGoldWin = true;
+                }
+              }
+            }
+            if (initialEvalGrid[c][r] === targetSymbol) {
+              initialTargetPresence++;
+            }
+          }
+        }
+
+        if (!hasGoldWin) continue;
+
+        let nextGrid = initialGrid.map((col) => [...col]);
+        let drawIndices = [...candidateRng].map((idx) => idx - 1);
+
+        for (let c = 0; c < reelCount; c++) {
+          const strip = currentStrips[c];
+          const eliminatedRows = eliminatedRowsMap[c];
+          if (eliminatedRows.length > 0) {
+            this.gameInstance.applyCascade(
+              nextGrid,
+              c,
+              eliminatedRows,
+              strip,
+              drawIndices,
+              isFreeGame,
+              gameType,
+            );
+          }
+        }
+
+        const nextEvalGrid = this.gameInstance.getEvalGrid(
+          nextGrid,
+          gameType,
+          length,
+          topTrackerOther,
+        );
+        const nextWins = this.gameInstance.evaluate(
+          nextEvalGrid,
+          currentPaytable,
+          { gameType, paylines: customPaylines },
+          customPaylines,
+          true,
+        );
+
+        const targetWins = nextWins.filter((w) => w.symbolId === targetSymbol);
+        const currentMatchCount = targetWins.length === 1 ? targetWins[0].matchCount : 0;
+        
+        let wildReelsValid = false;
+        let positionValid = true;
+        if (currentMatchCount > 0) {
+            const targetWin = targetWins[0];
+            if (targetWin.ways !== 1) positionValid = false;
+            
+            const nextWinningCoordsMap = getWinningPositions(
+              nextEvalGrid,
+              [targetWin],
+              currentPaytable,
+              gameType,
+              undefined,
+              customPaylines,
+            );
+            const wildReels = new Set<number>();
+            let hasGoldInTargetWin = false;
+            for (const key of nextWinningCoordsMap.keys()) {
+              const [cStr, rStr] = key.split("-");
+              const col = parseInt(cStr, 10);
+              const row = parseInt(rStr, 10);
+              const sym = nextEvalGrid[col][row];
+              if (wildSymbolSet.has(sym)) {
+                wildReels.add(col);
+              } else if (this.gameInstance.isGoldSymbol(sym)) {
+                hasGoldInTargetWin = true;
+              }
+            }
+            if (!hasGoldInTargetWin && wildReels.size === wildCount) wildReelsValid = true;
+        }
+
+        const nextOtherWinsCount = nextWins.filter(
+          (w) =>
+            w.symbolId !== targetSymbol &&
+            !wildSymbolSet.has(w.symbolId) &&
+            w.payout > 0,
+        ).length;
+
+        const totalInterference = nonGoldWinCount + nextOtherWinsCount;
+
+        if (totalInterference === 0 && initialTargetPresence === 0 && wildReelsValid && positionValid && currentMatchCount === length) {
+          return { rng: [...candidateRng], isInterfered: false };
+        }
+
+        if (currentMatchCount >= hcBestMatchCount && currentMatchCount < length) {
+          hcBestRng = [...candidateRng];
+          hcBestMatchCount = currentMatchCount;
+          hcAttempts = 0;
+          if (isTargetScatter) {
+            hcLockedReels.clear();
+            for (let c = 0; c < reelCount; c++) {
+              if (nextEvalGrid[c].some(s => s === targetSymbol || wildSymbolSet.has(s))) {
+                hcLockedReels.add(c);
+              }
+            }
+          }
+        }
+
+        if (wildReelsValid && positionValid && currentMatchCount === length) {
+          if (
+            totalInterference < minInterferenceCount ||
+            (totalInterference === minInterferenceCount && initialTargetPresence < bestTargetPresence)
+          ) {
+            minInterferenceCount = totalInterference;
+            bestTargetPresence = initialTargetPresence;
+            bestCandidateRng = [...candidateRng];
+          }
+        }
+
+      } else {
+        const initialWinsWithZero = this.gameInstance.evaluate(
+          initialEvalGrid,
+          currentPaytable,
+          { gameType, paylines: customPaylines },
+          customPaylines,
+          true,
+        );
+        const targetWins = initialWinsWithZero.filter((w) => w.symbolId === targetSymbol);
+        const currentMatchCount = targetWins.length === 1 ? targetWins[0].matchCount : 0;
+        
+        let wildReelsValid = false;
+        let positionValid = true;
+        
+        if (currentMatchCount > 0) {
+            const targetWin = targetWins[0];
+            if (targetWin.ways !== 1) positionValid = false;
+            
+            const winningCoordsMap = getWinningPositions(
+              initialEvalGrid,
+              [targetWin],
+              currentPaytable,
+              gameType,
+              undefined,
+              customPaylines,
+            );
+            const wildReels = new Set<number>();
+            let hasGoldInWin = false;
+            for (const key of winningCoordsMap.keys()) {
+              const [cStr, rStr] = key.split("-");
+              const col = parseInt(cStr, 10);
+              const row = parseInt(rStr, 10);
+              const sym = initialEvalGrid[col][row];
+              if (wildSymbolSet.has(sym)) {
+                wildReels.add(col);
+              }
+              if (this.gameInstance.isGoldSymbol(sym)) {
+                hasGoldInWin = true;
+              }
+            }
+            if (!hasGoldInWin && wildReels.size === wildCount) wildReelsValid = true;
+        }
+
+        const otherWinsCount = initialWins.filter(
+          (w) =>
+            w.symbolId !== targetSymbol &&
+            !wildSymbolSet.has(w.symbolId) &&
+            w.payout > 0,
+        ).length;
+
+        if (otherWinsCount === 0 && wildReelsValid && positionValid && currentMatchCount === length) {
+          return { rng: [...candidateRng], isInterfered: false };
+        }
+
+        if (currentMatchCount > 0 && currentMatchCount >= hcBestMatchCount && currentMatchCount <= length) {
+          // Allow hill climbing to lock reels even if there is interference, because
+          // hcAttempts < 500 will eventually break out if it's permanently stuck.
+          hcBestRng = [...candidateRng];
+          hcBestMatchCount = currentMatchCount;
+          hcAttempts = 0;
+          if (isTargetScatter) {
+            hcLockedReels.clear();
+            for (let c = 0; c < reelCount; c++) {
+              if (initialEvalGrid[c].some(s => s === targetSymbol || wildSymbolSet.has(s))) {
+                hcLockedReels.add(c);
+              }
+            }
+          }
+        }
+
+        if (wildReelsValid && positionValid && currentMatchCount === length) {
+          if (otherWinsCount < minInterferenceCount) {
+            minInterferenceCount = otherWinsCount;
+            bestCandidateRng = [...candidateRng];
+          }
+        }
+      }
+    }
+
+    if (bestCandidateRng) {
+      return { rng: bestCandidateRng, isInterfered: (minInterferenceCount > 0) };
+    }
+
+    return { rng: null, isInterfered: false };
   }
 
-  // Line games do not cascade
-  override async findRngForCombos(
-    _currentStrips: string[][],
-    _rowCounts: number[],
-    _currentPaytable: PaytableRule[],
-    _reelCount: number,
-    _gameType: GameType,
-    _topTrackerOther?: string[],
-    _customPaylines?: number[][],
-    _isFreeGame?: boolean,
-    _stripSets?: Record<string, string[][]>
+  async findRngForCombos(
+    currentStrips: string[][],
+    rowCounts: number[],
+    currentPaytable: PaytableRule[],
+    reelCount: number,
+    gameType: GameType,
+    topTrackerOther?: string[],
+    customPaylines?: number[][],
+    isFreeGame: boolean = false,
+    _stripSets?: Record<string, string[][]>,
   ): Promise<(number[] | null)[]> {
-    return [];
-  }
-}
-</file>
+    const results: (number[] | null)[] = [];
+    const ATTEMPTS = 10000;
+    const yieldIfNeeded = this.gameInstance.createTimeSlicer(16);
 
-<file path="src/games/base/BasePayAnywhere.ts">
-import type { GameConfig, PaytableRule, ReelStrips } from '../../types';
-import type { WinResult } from '../../utils/evaluation';
-import { PayAnywhereStrategy } from '../../utils/evaluation/strategies/PayAnywhereStrategy';
-import { AbstractGame } from './AbstractGame';
-import { DEFAULT_WILD_SYMBOLS } from '../../utils/evaluation/GameConstants';
-import { ScatterStrategy } from '../../utils/evaluation/strategies/ScatterStrategy';
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+      if (attempt % 200 === 0) await yieldIfNeeded();
 
-export abstract class BasePayAnywhere extends AbstractGame {
-  private scatterStrategy = new ScatterStrategy();
-  private payAnywhereStrategy = new PayAnywhereStrategy();
+      const candidateRng = Array(reelCount)
+        .fill(0)
+        .map((_, c) => {
+          const len = currentStrips[c]?.length || 1;
+          const rows = rowCounts[c] || 3;
+          const minIdx = 2;
+          const maxIdx = len > rows + 2 ? len - rows : 0;
+          if (maxIdx <= minIdx) return Math.floor(Math.random() * len);
+          return Math.floor(Math.random() * (maxIdx - minIdx + 1)) + minIdx;
+        });
 
-  evaluate(
-    grid: string[][],
-    paytable: PaytableRule[],
-    config: GameConfig,
-    _customPaylines?: number[][],
-    includeZeroPayout: boolean = false
-  ): WinResult[] {
-    const results: WinResult[] = [];
-    if (!grid || grid.length === 0 || !paytable || paytable.length === 0) return results;
+      let currentGrid = candidateRng.map((start, cIdx) => {
+        const r = rowCounts[cIdx] || 3;
+        const s = currentStrips[cIdx] || ["-"];
+        return Array.from({ length: r }).map(
+          (_, ri) => s[(start + ri) % s.length],
+        );
+      });
 
-    const wildSymbols = new Set(paytable.filter(p => p.isWild).map(p => p.symbolId));
-    const configuredWilds = config.wildSymbols || DEFAULT_WILD_SYMBOLS;
-    configuredWilds.forEach(w => wildSymbols.add(w));
+      let drawIndices = [...candidateRng].map((idx) => idx - 1);
+      let cascadeCount = 0;
 
-    const context = {
-      grid,
-      paytable,
-      gameConfig: config,
-      wildSymbols,
-      includeZeroPayout
-    };
+      while (cascadeCount < 20) {
+        const evalGrid = this.gameInstance.getEvalGridForCombos(currentGrid, topTrackerOther);
 
-    for (const rule of paytable) {
-      if (rule.isScatter) {
-        results.push(...this.scatterStrategy.evaluate(context, rule));
-      } else {
-        results.push(...this.payAnywhereStrategy.evaluate(context, rule));
+        const simWins = this.gameInstance.evaluate(
+          evalGrid,
+          currentPaytable,
+          { gameType, paylines: customPaylines },
+          customPaylines,
+          false,
+        );
+        const cascadeWins = simWins.filter((w) => w.payout > 0);
+
+        if (
+          cascadeCount > 0 &&
+          simWins.some((w) => w.symbolId === "B1" && w.matchCount >= 6)
+        ) {
+          cascadeCount = 0;
+          break;
+        }
+
+        if (cascadeWins.length === 0) break;
+
+        const winningCoordsMap = getWinningPositions(
+          evalGrid,
+          cascadeWins,
+          currentPaytable,
+          gameType,
+          undefined,
+          customPaylines,
+        );
+        let hasElimination = false;
+
+        for (let c = 0; c < reelCount; c++) {
+          const strip = currentStrips[c];
+          const rows = rowCounts[c] || 3;
+          const eliminatedRows: number[] = [];
+          for (let r = 0; r < rows; r++) {
+            if (winningCoordsMap.has(`${c}-${r}`)) {
+              if (this.gameInstance.isSymbolUnremovable(currentGrid[c][r], isFreeGame)) {
+                continue;
+              }
+              const winIndices = winningCoordsMap.get(`${c}-${r}`);
+              if (winIndices && winIndices.some((idx) => idx !== 999)) {
+                eliminatedRows.push(r);
+              }
+            }
+          }
+
+          if (eliminatedRows.length > 0) {
+            hasElimination = true;
+            this.gameInstance.applyCascade(
+              currentGrid,
+              c,
+              eliminatedRows,
+              strip,
+              drawIndices,
+              isFreeGame,
+              gameType,
+            );
+          }
+        }
+
+        if (!hasElimination) break;
+        cascadeCount++;
+      }
+
+      if (cascadeCount > 0) {
+        while (results.length < cascadeCount) {
+          results.push(null);
+        }
+        if (results[cascadeCount - 1] === null) {
+          results[cascadeCount - 1] = candidateRng;
+        }
       }
     }
-    
+
     return results;
   }
-}
-</file>
 
-<file path="src/games/base/BaseWayGame.ts">
-import type { GameConfig, PaytableRule, ReelStrips } from '../../types';
-import type { WinResult } from '../../utils/evaluation';
-import { WayGameStrategy } from '../../utils/evaluation/strategies/WayGameStrategy';
-import { AbstractGame } from './AbstractGame';
-import { DEFAULT_WILD_SYMBOLS } from '../../utils/evaluation/GameConstants';
-import { ScatterStrategy } from '../../utils/evaluation/strategies/ScatterStrategy';
+  async findRngForMultiplierIntervals(
+    intervals: MultiplierInterval[],
+    bet: number,
+    currentStrips: string[][],
+    rowCounts: number[],
+    currentPaytable: PaytableRule[],
+    reelCount: number,
+    gameType: GameType,
+    topTrackerOther?: string[],
+    customPaylines?: number[][],
+    isFreeGame: boolean = false,
+    _stripSets?: Record<string, string[][]>,
+  ): Promise<Record<string, number[]>> {
+    const results: Record<string, number[]> = {};
+    const targets = new Set(intervals.map((i) => i.id));
+    const hasCascade = this.gameInstance.hasCascadeFeature();
+    const ATTEMPTS = 35000;
+    const yieldIfNeeded = this.gameInstance.createTimeSlicer(16);
 
-export abstract class BaseWayGame extends AbstractGame {
-  private scatterStrategy = new ScatterStrategy();
-  private wayGameStrategy = new WayGameStrategy();
+    const topSymbols = currentPaytable
+      .filter(
+        (p) =>
+          !p.isScatter &&
+          p.payouts &&
+          Object.values(p.payouts).some((v) => v > 0),
+      )
+      .sort((a, b) => {
+        const maxA = Math.max(...Object.values(a.payouts || {}));
+        const maxB = Math.max(...Object.values(b.payouts || {}));
+        return maxB - maxA;
+      });
 
-  evaluate(
-    grid: string[][],
-    paytable: PaytableRule[],
-    config: GameConfig,
-    _customPaylines?: number[][],
-    includeZeroPayout: boolean = false
-  ): WinResult[] {
-    const results: WinResult[] = [];
-    if (!grid || grid.length === 0 || !paytable || paytable.length === 0) return results;
-
-    const wildSymbols = new Set(paytable.filter(p => p.isWild).map(p => p.symbolId));
-    const configuredWilds = config.wildSymbols || DEFAULT_WILD_SYMBOLS;
-    configuredWilds.forEach(w => wildSymbols.add(w));
-
-    const context = {
-      grid,
-      paytable,
-      gameConfig: config,
-      wildSymbols,
-      includeZeroPayout
-    };
-
-    for (const rule of paytable) {
-      if (rule.isScatter) {
-        results.push(...this.scatterStrategy.evaluate(context, rule));
-      } else {
-        results.push(...this.wayGameStrategy.evaluate(context, rule));
+    const topSymbolStopsByRow: Record<number, number[]>[] = [];
+    if (topSymbols.length > 0) {
+      const highSymIds = new Set(
+        [
+          topSymbols[0].symbolId,
+          topSymbols[1]?.symbolId,
+          "WX",
+          "WILD",
+          "W",
+        ].filter(Boolean),
+      );
+      for (let c = 0; c < reelCount; c++) {
+        const strip = currentStrips[c] || [];
+        const rows = rowCounts[c] || 3;
+        const rowMap: Record<number, number[]> = {};
+        for (let r = 0; r < rows; r++) rowMap[r] = [];
+        for (let i = 0; i < strip.length; i++) {
+          for (let r = 0; r < rows; r++) {
+            if (highSymIds.has(strip[(i + r) % strip.length])) {
+              rowMap[r].push(i);
+            }
+          }
+        }
+        topSymbolStopsByRow.push(rowMap);
       }
     }
-    
+
+    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+      if (targets.size === 0) break;
+      if (attempt % 200 === 0) await yieldIfNeeded();
+
+      const remainingIntervals = intervals.filter((i) => targets.has(i.id));
+      const onlyHighRemaining = remainingIntervals.every((i) => i.min >= 30);
+      const useGuided =
+        (attempt > 1000 && onlyHighRemaining) ||
+        (attempt > 4000 && Math.random() < 0.6);
+      const alignRow = Math.floor(Math.random() * 3);
+
+      const candidateRng = Array(reelCount)
+        .fill(0)
+        .map((_, c) => {
+          const len = currentStrips[c]?.length || 1;
+          const rows = rowCounts[c] || 3;
+          const minIdx = 2;
+          const maxIdx = len > rows + 2 ? len - rows : 0;
+
+          if (
+            useGuided &&
+            topSymbolStopsByRow[c] &&
+            topSymbolStopsByRow[c][alignRow] &&
+            topSymbolStopsByRow[c][alignRow].length > 0 &&
+            Math.random() < 0.85
+          ) {
+            const list = topSymbolStopsByRow[c][alignRow];
+            return list[Math.floor(Math.random() * list.length)];
+          }
+
+          if (maxIdx <= minIdx) return Math.floor(Math.random() * len);
+          return Math.floor(Math.random() * (maxIdx - minIdx + 1)) + minIdx;
+        });
+
+      let currentGrid = candidateRng.map((start, cIdx) => {
+        const r = rowCounts[cIdx] || 3;
+        const s = currentStrips[cIdx] || ["-"];
+        return Array.from({ length: r }).map(
+          (_, ri) => s[(start + ri) % s.length],
+        );
+      });
+
+      let totalPayout = 0;
+
+      if (!hasCascade) {
+        const simWins = this.gameInstance.evaluate(
+          currentGrid,
+          currentPaytable,
+          { gameType, paylines: customPaylines, effectiveBet: bet },
+          customPaylines,
+          false,
+        );
+        for (let i = 0; i < simWins.length; i++) {
+          totalPayout += simWins[i].totalWin || simWins[i].payout || 0;
+        }
+      } else {
+        let drawIndices = [...candidateRng].map((idx) => idx - 1);
+        let cascadeCount = 0;
+        let b1Count = 0;
+
+        while (cascadeCount < 20) {
+          const evalGrid = this.gameInstance.getEvalGridForCombos(currentGrid, topTrackerOther);
+
+          const simWins = this.gameInstance.evaluate(
+            evalGrid,
+            currentPaytable,
+            { gameType, paylines: customPaylines, effectiveBet: bet },
+            customPaylines,
+            false,
+          );
+          const cascadeWins = simWins.filter((w) => w.payout > 0);
+
+          let cascadePayout = 0;
+          const cascadeMultiplier = this.gameInstance.getTumbleMultiplier(cascadeCount, isFreeGame);
+          
+          for (const w of cascadeWins)
+            cascadePayout += w.totalWin || w.payout || 0;
+          totalPayout += cascadePayout * cascadeMultiplier;
+
+          const b1Win = simWins.find((w) => w.symbolId === "B1");
+          if (b1Win) b1Count = Math.max(b1Count, b1Win.matchCount);
+
+          if (cascadeWins.length === 0) break;
+
+          const winningCoordsMap = getWinningPositions(
+            evalGrid,
+            cascadeWins,
+            currentPaytable,
+            gameType,
+            undefined,
+            customPaylines,
+          );
+          let hasElimination = false;
+
+          for (let c = 0; c < reelCount; c++) {
+            const strip = currentStrips[c];
+            const rows = rowCounts[c] || 3;
+            const eliminatedRows: number[] = [];
+            for (let r = 0; r < rows; r++) {
+              if (winningCoordsMap.has(`${c}-${r}`)) {
+                if (this.gameInstance.isSymbolUnremovable(currentGrid[c][r], isFreeGame)) {
+                  continue;
+                }
+                const winIndices = winningCoordsMap.get(`${c}-${r}`);
+                if (winIndices && winIndices.some((idx) => idx !== 999)) {
+                  eliminatedRows.push(r);
+                }
+              }
+            }
+
+            if (eliminatedRows.length > 0) {
+              hasElimination = true;
+              this.gameInstance.applyCascade(
+                currentGrid,
+                c,
+                eliminatedRows,
+                strip,
+                drawIndices,
+                isFreeGame,
+                gameType,
+              );
+            }
+          }
+
+          if (!hasElimination) break;
+          cascadeCount++;
+        }
+
+        if (!isFreeGame && b1Count >= 6) {
+          continue;
+        }
+      }
+
+      const multiplier = totalPayout / (bet || 1);
+
+      for (const interval of intervals) {
+        if (targets.has(interval.id)) {
+          const maxVal = interval.max ?? Infinity;
+          if (multiplier >= interval.min && multiplier < maxVal) {
+            results[interval.id] = [...candidateRng];
+            targets.delete(interval.id);
+          }
+        }
+      }
+    }
+
     return results;
   }
 }
@@ -1748,62 +2069,6 @@ export class LuxeGame extends BaseLineGame {
     }
 
     return finalWins;
-  }
-}
-</file>
-
-<file path="src/games/royal_elephant/RoyalElephantGame.ts">
-import { BaseWayGame } from '../base/BaseWayGame';
-import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
-
-export class RoyalElephantGame extends BaseWayGame {
-  readonly id: GameType = 'waygame_elephant';
-  readonly name = '皇家金象 (Royal Elephant)';
-
-  getDefaultConfig(): GameConfig {
-    return {
-      gameType: this.id,
-      paylines: []
-    };
-  }
-
-  getDefaultPaytable(): PaytableRule[] {
-    return [];
-  }
-
-  getDefaultReelStrips(): ReelStrips {
-    return [[], [], [], [], []];
-  }
-
-  // 皇家金象專屬邏輯：只有 R3 (colIndex === 2) 和 R4 (colIndex === 3) 會有金色符號轉百搭
-  protected override applyCascade(
-    grid: string[][],
-    colIndex: number,
-    eliminatedRows: number[],
-    strip: string[],
-    drawIndices: number[],
-    isFreeGame: boolean,
-    _gameType: GameType
-  ): void {
-    eliminatedRows.sort((a, b) => b - a);
-    for (const r of eliminatedRows) {
-      if (isFreeGame && grid[colIndex][r] === 'S1') {
-        continue;
-      }
-      
-      const sym = grid[colIndex][r];
-      const isGold = this.isGoldSymbol(sym);
-      
-      if ((colIndex === 2 || colIndex === 3) && isGold) {
-        // 只有 R3, R4 的金色符號消除後會轉換為 WX
-        grid[colIndex][r] = 'WX';
-      } else {
-        const len = strip.length;
-        const drawIdx = (((drawIndices[colIndex] % len) + len) % len);
-        grid[colIndex][r] = strip[drawIdx];
-        drawIndices[colIndex]--;
-      }
-    }
   }
 }
 </file>
@@ -3351,815 +3616,197 @@ export class GameRegistry {
 }
 </file>
 
-<file path="src/games/base/AbstractGame.ts">
-import type {
-  GameConfig,
-  PaytableRule,
-  ReelStrips,
-  GameType,
-  MultiplierInterval,
-} from "../../types";
-import type { WinResult } from "../../utils/evaluation";
-import { getWinningPositions } from "../../utils/evaluation";
-import type { IGameEnvironment } from "./IGameEnvironment";
+<file path="src/games/base/BaseLineGame.ts">
+import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+import type { WinResult } from '../../utils/evaluation';
+import { LineGameStrategy } from '../../utils/evaluation/strategies/LineGameStrategy';
+import { AbstractGame } from './AbstractGame';
+import { DEFAULT_WILD_SYMBOLS } from '../../utils/evaluation/GameConstants';
+import { ScatterStrategy } from '../../utils/evaluation/strategies/ScatterStrategy';
 
-export abstract class AbstractGame implements IGameEnvironment {
-  abstract readonly id: GameType;
-  abstract readonly name: string;
+export abstract class BaseLineGame extends AbstractGame {
+  private scatterStrategy = new ScatterStrategy();
+  private lineGameStrategy = new LineGameStrategy();
 
-  abstract getDefaultConfig(): GameConfig;
-  abstract getDefaultPaytable(): PaytableRule[];
-  abstract getDefaultReelStrips(): ReelStrips;
-  abstract evaluate(
+  public override hasCascadeFeature(): boolean {
+    return false;
+  }
+
+  evaluate(
     grid: string[][],
     paytable: PaytableRule[],
     config: GameConfig,
     customPaylines?: number[][],
-    includeZeroPayout?: boolean,
-  ): WinResult[];
+    includeZeroPayout: boolean = false
+  ): WinResult[] {
+    const results: WinResult[] = [];
+    if (!grid || grid.length === 0 || !paytable || paytable.length === 0) return results;
 
-  protected createTimeSlicer(intervalMs: number = 16) {
-    let lastYield = performance.now();
-    return async function yieldIfNeeded() {
-      if (performance.now() - lastYield > intervalMs) {
-        await new Promise((r) => setTimeout(r, 0));
-        lastYield = performance.now();
-      }
+    const wildSymbols = new Set(paytable.filter(p => p.isWild).map(p => p.symbolId));
+    const configuredWilds = config.wildSymbols || DEFAULT_WILD_SYMBOLS;
+    configuredWilds.forEach(w => wildSymbols.add(w));
+
+    const context = {
+      grid,
+      paytable,
+      gameConfig: config,
+      wildSymbols,
+      includeZeroPayout
     };
-  }
 
-  protected isGoldSymbol(sym: string): boolean {
-    return /^G[1-9A-Z]/.test(sym);
-  }
-
-  // Hook for subclasses to define how symbols drop after a win
-  protected applyCascade(
-    grid: string[][],
-    colIndex: number,
-    eliminatedRows: number[],
-    strip: string[],
-    drawIndices: number[],
-    _isFreeGame: boolean,
-    _gameType: GameType,
-  ): void {
-    // Default cascading logic (normal drop)
-    eliminatedRows.sort((a, b) => b - a);
-    for (const r of eliminatedRows) {
-      const len = strip.length;
-      const drawIdx = ((drawIndices[colIndex] % len) + len) % len;
-      grid[colIndex][r] = strip[drawIdx];
-      drawIndices[colIndex]--;
-    }
-  }
-
-  protected getEvalGrid(
-    grid: string[][],
-    gameType: GameType,
-    length: number,
-    topTrackerOther?: string[],
-  ): string[][] {
-    if (gameType === "megaway") {
-      return grid.map((col, colIdx) => {
-        if (colIdx >= 1 && colIdx <= 4 && topTrackerOther) {
-          const topSym =
-            length < 5 && colIdx >= length
-              ? "-"
-              : topTrackerOther[colIdx - 1] || "WX";
-          return [...col, topSym];
-        }
-        return col;
-      });
-    }
-    return grid;
-  }
-
-  protected getGridFromRng(
-    rng: number[],
-    strips: string[][],
-    rowCounts: number[],
-    reelCount: number,
-  ): string[][] {
-    return Array.from({ length: reelCount }, (_, cIdx) => {
-      const r = rowCounts[cIdx] || 3;
-      const s = strips[cIdx];
-      const start = rng[cIdx];
-      return Array.from({ length: r }).map(
-        (_, ri) => s[(start + ri) % s.length],
-      );
-    });
-  }
-
-  async findRngForCombination(
-    targetSymbol: string,
-    length: number,
-    wildCount: number,
-    currentStrips: string[][],
-    rowCounts: number[],
-    currentPaytable: PaytableRule[],
-    reelCount: number,
-    gameType: GameType,
-    topTrackerOther?: string[],
-    customPaylines?: number[][],
-    isFreeGame: boolean = false,
-    stripSets?: Record<string, string[][]>,
-    requireGoldCascade: boolean = false,
-  ): Promise<{
-    rng: number[] | null;
-    isInterfered: boolean;
-    hasS1Drop?: boolean;
-    stripId?: number;
-  }> {
-    if (stripSets && Object.keys(stripSets).length > 0) {
-      const stripIds = Object.keys(stripSets).map(Number);
-      stripIds.sort(() => Math.random() - 0.5);
-      let bestInterferred: {
-        rng: number[] | null;
-        isInterfered: boolean;
-        hasS1Drop?: boolean;
-        stripId?: number;
-      } | null = null;
-
-      for (const sid of stripIds) {
-        const res = await this.findRngForCombination(
-          targetSymbol,
-          length,
-          wildCount,
-          stripSets[sid],
-          rowCounts,
-          currentPaytable,
-          reelCount,
-          gameType,
-          topTrackerOther,
-          customPaylines,
-          isFreeGame,
-          undefined,
-          requireGoldCascade,
-        );
-        if (res.rng) {
-          if (!res.isInterfered) {
-            return { ...res, rng: [...res.rng, sid], stripId: sid };
-          } else {
-            if (!bestInterferred) {
-              bestInterferred = {
-                ...res,
-                rng: res.rng ? [...res.rng, sid] : null,
-                stripId: sid,
-              };
-            }
-          }
-        }
-      }
-      return bestInterferred || { rng: null, isInterfered: false };
-    }
-
-    const yieldIfNeeded = this.createTimeSlicer(16);
-    const wildSymbolSet = new Set<string>();
-    currentPaytable
-      .filter((p) => p.isWild)
-      .forEach((p) => wildSymbolSet.add(p.symbolId));
-    wildSymbolSet.add("WILD");
-    wildSymbolSet.add("W");
-    wildSymbolSet.add("WX");
-    for (const strip of currentStrips) {
-      if (!strip) continue;
-      for (const sym of strip) {
-        if (sym === "WILD" || sym === "W" || sym === "WX")
-          wildSymbolSet.add(sym);
-      }
-    }
-
-    const MAX_RANDOM_ATTEMPTS = gameType === 'waygame_elephant' ? 100000 : 50000;
-
-    let testCount = 0;
-    const candidateRng = Array(reelCount).fill(0);
-
-    let minInterferenceCount = Infinity;
-    let bestTargetPresence = Infinity;
-    let bestCandidateRng: number[] | null = null;
-
-    while (testCount < MAX_RANDOM_ATTEMPTS) {
-      testCount++;
-      if (testCount % 200 === 0) {
-        await yieldIfNeeded();
-      }
-
-      let skipDraw = false;
-      for (let c = 0; c < reelCount; c++) {
-        const len = currentStrips[c]?.length || 1;
-        const rows = rowCounts[c] || 3;
-        const maxIdx = len > rows + 2 ? len - rows : 0;
-        let chosenIdx = 0;
-        if (maxIdx <= 2) {
-          chosenIdx = Math.floor(Math.random() * len);
-        } else {
-          chosenIdx = Math.floor(Math.random() * (maxIdx - 2 + 1)) + 2;
-        }
-        candidateRng[c] = chosenIdx;
-
-        let hasB1 = false;
-        for (let r = 0; r < rows; r++) {
-          if (currentStrips[c][(chosenIdx + r) % len] === "B1") {
-            hasB1 = true;
-          }
-        }
-        if (hasB1) {
-          skipDraw = true;
-          break;
-        }
-      }
-
-      if (skipDraw) continue;
-
-      const initialGrid = this.getGridFromRng(
-        candidateRng,
-        currentStrips,
-        rowCounts,
-        reelCount,
-      );
-      const initialEvalGrid = this.getEvalGrid(
-        initialGrid,
-        gameType,
-        length,
-        topTrackerOther,
-      );
-      const initialWins = this.evaluate(
-        initialEvalGrid,
-        currentPaytable,
-        { gameType, paylines: customPaylines },
-        customPaylines,
-        true,
-      );
-
-      if (requireGoldCascade) {
-        // ── Mode B：搜尋「初盤有金色中獎 → 瀑布後出現 targetSymbol」──
-
-        // 初盤不能已有 targetSymbol 賠率中獎
-        const initialTargetWin = initialWins.find(
-          (w) => w.symbolId === targetSymbol && w.payout > 0,
-        );
-        if (initialTargetWin) continue;
-
-        let hasGoldWin = false;
-        const winningCoordsMap = getWinningPositions(
-          initialEvalGrid,
-          initialWins,
-          currentPaytable,
-          gameType,
-          undefined,
-          customPaylines,
-        );
-
-        const eliminatedRowsMap: Record<number, number[]> = {};
-        let initialTargetPresence = 0;
-        let nonGoldWinCount = 0;
-
-        // 計算哪些中獎沒有金色符號參與（干擾計數）
-        for (const win of initialWins) {
-          if (win.payout > 0) {
-            let thisWinHasGold = false;
-            const winPositions = getWinningPositions(
-              initialEvalGrid,
-              [win],
-              currentPaytable,
-              gameType,
-              undefined,
-              customPaylines,
-            );
-            for (let c = 0; c < reelCount; c++) {
-              const rows = rowCounts[c] || 3;
-              for (let r = 0; r < rows; r++) {
-                if (
-                  winPositions.has(`${c}-${r}`) &&
-                  this.isGoldSymbol(initialEvalGrid[c][r])
-                ) {
-                  thisWinHasGold = true;
-                }
-              }
-            }
-            if (!thisWinHasGold) nonGoldWinCount++;
-          }
-        }
-
-        // 確認哪些格子要被消除，並計算初盤 targetSymbol 的存在量
-        for (let c = 0; c < reelCount; c++) {
-          const rows = rowCounts[c] || 3;
-          eliminatedRowsMap[c] = [];
-          for (let r = 0; r < rows; r++) {
-            if (winningCoordsMap.has(`${c}-${r}`)) {
-              const winIndices = winningCoordsMap.get(`${c}-${r}`);
-              if (winIndices && winIndices.some((idx) => idx !== 999)) {
-                eliminatedRowsMap[c].push(r);
-                if (this.isGoldSymbol(initialEvalGrid[c][r])) {
-                  hasGoldWin = true;
-                }
-              }
-            }
-            if (initialEvalGrid[c][r] === targetSymbol) {
-              initialTargetPresence++;
-            }
-          }
-        }
-
-        // 必須有金色符號被消除，才可能產生 WX
-        if (!hasGoldWin) continue;
-
-        // 執行瀑布（由子類別的 applyCascade 處理金色→WX 轉換）
-        let nextGrid = initialGrid.map((col) => [...col]);
-        let drawIndices = [...candidateRng].map((idx) => idx - 1);
-
-        for (let c = 0; c < reelCount; c++) {
-          const strip = currentStrips[c];
-          const eliminatedRows = eliminatedRowsMap[c];
-          if (eliminatedRows.length > 0) {
-            this.applyCascade(
-              nextGrid,
-              c,
-              eliminatedRows,
-              strip,
-              drawIndices,
-              isFreeGame,
-              gameType,
-            );
-          }
-        }
-
-        // 評估瀑布後的盤面
-        const nextEvalGrid = this.getEvalGrid(
-          nextGrid,
-          gameType,
-          length,
-          topTrackerOther,
-        );
-        const nextWins = this.evaluate(
-          nextEvalGrid,
-          currentPaytable,
-          { gameType, paylines: customPaylines },
-          customPaylines,
-          true,
-        );
-
-        // 瀑布後必須有且只有 1 個 targetSymbol 中獎，且長度符合
-        const targetWins = nextWins.filter((w) => w.symbolId === targetSymbol);
-        if (targetWins.length !== 1 || targetWins[0].matchCount !== length) continue;
-
-        // 計算中獎位置中有幾個滾輪有 WX（wildCount 必須符合）
-        const targetWin = targetWins[0];
-        const nextWinningCoordsMap = getWinningPositions(
-          nextEvalGrid,
-          [targetWin],
-          currentPaytable,
-          gameType,
-          undefined,
-          customPaylines,
-        );
-        const wildReels = new Set<number>();
-        for (const key of nextWinningCoordsMap.keys()) {
-          const [cStr, rStr] = key.split("-");
-          const col = parseInt(cStr, 10);
-          const row = parseInt(rStr, 10);
-          const sym = nextEvalGrid[col][row];
-          if (wildSymbolSet.has(sym)) {
-            wildReels.add(col);
-          }
-        }
-
-        if (wildReels.size !== wildCount) continue;
-
-        // 干擾評估
-        const nextOtherWinsCount = nextWins.filter(
-          (w) =>
-            w.symbolId !== targetSymbol &&
-            !wildSymbolSet.has(w.symbolId) &&
-            w.payout > 0,
-        ).length;
-
-        const totalInterference = nonGoldWinCount + nextOtherWinsCount;
-
-        if (totalInterference === 0 && initialTargetPresence === 0) {
-          return { rng: [...candidateRng], isInterfered: false };
-        }
-
-        if (
-          totalInterference < minInterferenceCount ||
-          (totalInterference === minInterferenceCount &&
-            initialTargetPresence < bestTargetPresence)
-        ) {
-          minInterferenceCount = totalInterference;
-          bestTargetPresence = initialTargetPresence;
-          bestCandidateRng = [...candidateRng];
-        }
-
+    for (const rule of paytable) {
+      if (rule.isScatter) {
+        results.push(...this.scatterStrategy.evaluate(context, rule));
       } else {
-        // ── Mode A：搜尋初盤就有 targetSymbol 中獎 ──
-
-        const targetWins = initialWins.filter((w) => w.symbolId === targetSymbol);
-
-        if (
-          targetWins.length === 1 &&
-          targetWins[0].matchCount === length &&
-          (gameType.includes("waygame") || targetWins[0].ways === 1)
-        ) {
-          const targetWin = targetWins[0];
-          const winningCoordsMap = getWinningPositions(
-            initialEvalGrid,
-            [targetWin],
-            currentPaytable,
-            gameType,
-            undefined,
-            customPaylines,
-          );
-          const wildReels = new Set<number>();
-          let hasGoldInWin = false;
-          for (const key of winningCoordsMap.keys()) {
-            const [cStr, rStr] = key.split("-");
-            const col = parseInt(cStr, 10);
-            const row = parseInt(rStr, 10);
-            const sym = initialEvalGrid[col][row];
-            if (wildSymbolSet.has(sym)) wildReels.add(col);
-            if (this.isGoldSymbol(sym)) hasGoldInWin = true;
-          }
-
-          if (!hasGoldInWin && wildReels.size === wildCount) {
-            const otherWinsCount = initialWins.filter(
-              (w) =>
-                w.symbolId !== targetSymbol &&
-                !wildSymbolSet.has(w.symbolId) &&
-                w.payout > 0,
-            ).length;
-
-            if (otherWinsCount === 0) {
-              return { rng: [...candidateRng], isInterfered: false };
-            }
-
-            if (otherWinsCount < minInterferenceCount) {
-              minInterferenceCount = otherWinsCount;
-              bestCandidateRng = [...candidateRng];
-            }
-          }
-        }
+        results.push(...this.lineGameStrategy.evaluate(context, rule));
       }
     }
 
-    if (bestCandidateRng) {
-      return { rng: bestCandidateRng, isInterfered: minInterferenceCount > 0 };
-    }
+    const lineWins = new Map<number, WinResult>();
+    const nonLineWins: WinResult[] = [];
 
-    return { rng: null, isInterfered: false };
+    for (const win of results) {
+      if (win.lineIndex !== undefined) {
+        const existing = lineWins.get(win.lineIndex);
+        if (!existing || win.totalWin > existing.totalWin) {
+          lineWins.set(win.lineIndex, win);
+        }
+      } else {
+        nonLineWins.push(win);
+      }
+    }
+    
+    return [...nonLineWins, ...Array.from(lineWins.values())];
   }
 
-
-  async findRngForCombos(
-    currentStrips: string[][],
-    rowCounts: number[],
-    currentPaytable: PaytableRule[],
-    reelCount: number,
-    gameType: GameType,
-    topTrackerOther?: string[],
-    customPaylines?: number[][],
-    isFreeGame: boolean = false,
-    _stripSets?: Record<string, string[][]>,
+  // Line games do not cascade
+  override async findRngForCombos(
+    _currentStrips: string[][],
+    _rowCounts: number[],
+    _currentPaytable: PaytableRule[],
+    _reelCount: number,
+    _gameType: GameType,
+    _topTrackerOther?: string[],
+    _customPaylines?: number[][],
+    _isFreeGame?: boolean,
+    _stripSets?: Record<string, string[][]>
   ): Promise<(number[] | null)[]> {
-    const results: (number[] | null)[] = [];
-    const ATTEMPTS = 10000;
-    const yieldIfNeeded = this.createTimeSlicer(16);
+    return [];
+  }
+}
+</file>
 
-    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      if (attempt % 200 === 0) await yieldIfNeeded();
+<file path="src/games/base/BasePayAnywhere.ts">
+import type { GameConfig, PaytableRule, ReelStrips } from '../../types';
+import type { WinResult } from '../../utils/evaluation';
+import { PayAnywhereStrategy } from '../../utils/evaluation/strategies/PayAnywhereStrategy';
+import { AbstractGame } from './AbstractGame';
+import { DEFAULT_WILD_SYMBOLS } from '../../utils/evaluation/GameConstants';
+import { ScatterStrategy } from '../../utils/evaluation/strategies/ScatterStrategy';
 
-      const candidateRng = Array(reelCount)
-        .fill(0)
-        .map((_, c) => {
-          const len = currentStrips[c]?.length || 1;
-          const rows = rowCounts[c] || 3;
-          const minIdx = 2;
-          const maxIdx = len > rows + 2 ? len - rows : 0;
-          if (maxIdx <= minIdx) return Math.floor(Math.random() * len);
-          return Math.floor(Math.random() * (maxIdx - minIdx + 1)) + minIdx;
-        });
+export abstract class BasePayAnywhere extends AbstractGame {
+  private scatterStrategy = new ScatterStrategy();
+  private payAnywhereStrategy = new PayAnywhereStrategy();
 
-      let currentGrid = candidateRng.map((start, cIdx) => {
-        const r = rowCounts[cIdx] || 3;
-        const s = currentStrips[cIdx] || ["-"];
-        return Array.from({ length: r }).map(
-          (_, ri) => s[(start + ri) % s.length],
-        );
-      });
+  public override isPositionDependent(): boolean {
+    return false;
+  }
 
-      let drawIndices = [...candidateRng].map((idx) => idx - 1);
-      let cascadeCount = 0;
+  evaluate(
+    grid: string[][],
+    paytable: PaytableRule[],
+    config: GameConfig,
+    _customPaylines?: number[][],
+    includeZeroPayout: boolean = false
+  ): WinResult[] {
+    const results: WinResult[] = [];
+    if (!grid || grid.length === 0 || !paytable || paytable.length === 0) return results;
 
-      while (cascadeCount < 20) {
-        let evalGrid = currentGrid;
-        if (gameType === "megaway" && topTrackerOther) {
-          evalGrid = currentGrid.map((col, colIdx) => {
-            if (colIdx >= 1 && colIdx <= 4) {
-              const topSym = topTrackerOther[colIdx - 1] || "WX";
-              return [...col, topSym];
-            }
-            return col;
-          });
-        }
+    const wildSymbols = new Set(paytable.filter(p => p.isWild).map(p => p.symbolId));
+    const configuredWilds = config.wildSymbols || DEFAULT_WILD_SYMBOLS;
+    configuredWilds.forEach(w => wildSymbols.add(w));
 
-        const simWins = this.evaluate(
-          evalGrid,
-          currentPaytable,
-          { gameType, paylines: customPaylines },
-          customPaylines,
-          false,
-        );
-        const cascadeWins = simWins.filter((w) => w.payout > 0);
+    const context = {
+      grid,
+      paytable,
+      gameConfig: config,
+      wildSymbols,
+      includeZeroPayout
+    };
 
-        if (
-          cascadeCount > 0 &&
-          simWins.some((w) => w.symbolId === "B1" && w.matchCount >= 6)
-        ) {
-          cascadeCount = 0;
-          break;
-        }
-
-        if (cascadeWins.length === 0) break;
-
-        const winningCoordsMap = getWinningPositions(
-          evalGrid,
-          cascadeWins,
-          currentPaytable,
-          gameType,
-          undefined,
-          customPaylines,
-        );
-        let hasElimination = false;
-
-        for (let c = 0; c < reelCount; c++) {
-          const strip = currentStrips[c];
-          const rows = rowCounts[c] || 3;
-          const eliminatedRows: number[] = [];
-          for (let r = 0; r < rows; r++) {
-            if (winningCoordsMap.has(`${c}-${r}`)) {
-              if (
-                gameType === "waygame_qin" &&
-                isFreeGame &&
-                currentGrid[c][r] === "S1"
-              )
-                continue;
-              const winIndices = winningCoordsMap.get(`${c}-${r}`);
-              if (winIndices && winIndices.some((idx) => idx !== 999)) {
-                eliminatedRows.push(r);
-              }
-            }
-          }
-
-          if (eliminatedRows.length > 0) {
-            hasElimination = true;
-            this.applyCascade(
-              currentGrid,
-              c,
-              eliminatedRows,
-              strip,
-              drawIndices,
-              isFreeGame,
-              gameType,
-            );
-          }
-        }
-
-        if (!hasElimination) break;
-        cascadeCount++;
-      }
-
-      if (cascadeCount > 0) {
-        while (results.length < cascadeCount) {
-          results.push(null);
-        }
-        if (results[cascadeCount - 1] === null) {
-          results[cascadeCount - 1] = candidateRng;
-        }
+    for (const rule of paytable) {
+      if (rule.isScatter) {
+        results.push(...this.scatterStrategy.evaluate(context, rule));
+      } else {
+        results.push(...this.payAnywhereStrategy.evaluate(context, rule));
       }
     }
-
+    
     return results;
   }
+}
+</file>
 
-  async findRngForMultiplierIntervals(
-    intervals: MultiplierInterval[],
-    bet: number,
-    currentStrips: string[][],
-    rowCounts: number[],
-    currentPaytable: PaytableRule[],
-    reelCount: number,
-    gameType: GameType,
-    topTrackerOther?: string[],
-    customPaylines?: number[][],
-    isFreeGame: boolean = false,
-    _stripSets?: Record<string, string[][]>,
-  ): Promise<Record<string, number[]>> {
-    const results: Record<string, number[]> = {};
-    const targets = new Set(intervals.map((i) => i.id));
-    const hasCascade = gameType !== "linegame" && gameType !== "linegame_set2";
-    const ATTEMPTS = 35000;
-    const yieldIfNeeded = this.createTimeSlicer(16);
+<file path="src/games/base/BaseWayGame.ts">
+import type { GameConfig, PaytableRule, ReelStrips } from '../../types';
+import type { WinResult } from '../../utils/evaluation';
+import { WayGameStrategy } from '../../utils/evaluation/strategies/WayGameStrategy';
+import { AbstractGame } from './AbstractGame';
+import { DEFAULT_WILD_SYMBOLS } from '../../utils/evaluation/GameConstants';
+import { ScatterStrategy } from '../../utils/evaluation/strategies/ScatterStrategy';
 
-    const topSymbols = currentPaytable
-      .filter(
-        (p) =>
-          !p.isScatter &&
-          p.payouts &&
-          Object.values(p.payouts).some((v) => v > 0),
-      )
-      .sort((a, b) => {
-        const maxA = Math.max(...Object.values(a.payouts || {}));
-        const maxB = Math.max(...Object.values(b.payouts || {}));
-        return maxB - maxA;
-      });
+export abstract class BaseWayGame extends AbstractGame {
+  private scatterStrategy = new ScatterStrategy();
+  private wayGameStrategy = new WayGameStrategy();
 
-    const topSymbolStopsByRow: Record<number, number[]>[] = [];
-    if (topSymbols.length > 0) {
-      const highSymIds = new Set(
-        [
-          topSymbols[0].symbolId,
-          topSymbols[1]?.symbolId,
-          "WX",
-          "WILD",
-          "W",
-        ].filter(Boolean),
-      );
-      for (let c = 0; c < reelCount; c++) {
-        const strip = currentStrips[c] || [];
-        const rows = rowCounts[c] || 3;
-        const rowMap: Record<number, number[]> = {};
-        for (let r = 0; r < rows; r++) rowMap[r] = [];
-        for (let i = 0; i < strip.length; i++) {
-          for (let r = 0; r < rows; r++) {
-            if (highSymIds.has(strip[(i + r) % strip.length])) {
-              rowMap[r].push(i);
-            }
-          }
-        }
-        topSymbolStopsByRow.push(rowMap);
-      }
-    }
+  // ==========================================
+  // Overrides for Template Methods
+  // ==========================================
 
-    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      if (targets.size === 0) break;
-      if (attempt % 200 === 0) await yieldIfNeeded();
+  public override isPositionDependent(): boolean {
+    return false;
+  }
 
-      const remainingIntervals = intervals.filter((i) => targets.has(i.id));
-      const onlyHighRemaining = remainingIntervals.every((i) => i.min >= 30);
-      const useGuided =
-        (attempt > 1000 && onlyHighRemaining) ||
-        (attempt > 4000 && Math.random() < 0.6);
-      const alignRow = Math.floor(Math.random() * 3);
+  public override getTumbleMultiplier(cascadeCount: number, isFreeGame: boolean): number {
+    return isFreeGame
+      ? Math.pow(2, Math.min(3 + cascadeCount, 10))
+      : Math.pow(2, Math.min(cascadeCount, 10));
+  }
 
-      const candidateRng = Array(reelCount)
-        .fill(0)
-        .map((_, c) => {
-          const len = currentStrips[c]?.length || 1;
-          const rows = rowCounts[c] || 3;
-          const minIdx = 2;
-          const maxIdx = len > rows + 2 ? len - rows : 0;
+  // ==========================================
+  // Core Evaluation
+  // ==========================================
 
-          if (
-            useGuided &&
-            topSymbolStopsByRow[c] &&
-            topSymbolStopsByRow[c][alignRow] &&
-            topSymbolStopsByRow[c][alignRow].length > 0 &&
-            Math.random() < 0.85
-          ) {
-            const list = topSymbolStopsByRow[c][alignRow];
-            return list[Math.floor(Math.random() * list.length)];
-          }
+  evaluate(
+    grid: string[][],
+    paytable: PaytableRule[],
+    config: GameConfig,
+    _customPaylines?: number[][],
+    includeZeroPayout: boolean = false
+  ): WinResult[] {
+    const results: WinResult[] = [];
+    if (!grid || grid.length === 0 || !paytable || paytable.length === 0) return results;
 
-          if (maxIdx <= minIdx) return Math.floor(Math.random() * len);
-          return Math.floor(Math.random() * (maxIdx - minIdx + 1)) + minIdx;
-        });
+    const wildSymbols = new Set(paytable.filter(p => p.isWild).map(p => p.symbolId));
+    const configuredWilds = config.wildSymbols || DEFAULT_WILD_SYMBOLS;
+    configuredWilds.forEach(w => wildSymbols.add(w));
 
-      let currentGrid = candidateRng.map((start, cIdx) => {
-        const r = rowCounts[cIdx] || 3;
-        const s = currentStrips[cIdx] || ["-"];
-        return Array.from({ length: r }).map(
-          (_, ri) => s[(start + ri) % s.length],
-        );
-      });
+    const context = {
+      grid,
+      paytable,
+      gameConfig: config,
+      wildSymbols,
+      includeZeroPayout
+    };
 
-      let totalPayout = 0;
-
-      if (!hasCascade) {
-        const simWins = this.evaluate(
-          currentGrid,
-          currentPaytable,
-          { gameType, paylines: customPaylines, effectiveBet: bet },
-          customPaylines,
-          false,
-        );
-        for (let i = 0; i < simWins.length; i++) {
-          totalPayout += simWins[i].totalWin || simWins[i].payout || 0;
-        }
+    for (const rule of paytable) {
+      if (rule.isScatter) {
+        results.push(...this.scatterStrategy.evaluate(context, rule));
       } else {
-        let drawIndices = [...candidateRng].map((idx) => idx - 1);
-        let cascadeCount = 0;
-        let b1Count = 0;
-
-        while (cascadeCount < 20) {
-          let evalGrid = currentGrid;
-          if (gameType === "megaway" && topTrackerOther) {
-            evalGrid = currentGrid.map((col, colIdx) => {
-              if (colIdx >= 1 && colIdx <= 4) {
-                const topSym = topTrackerOther[colIdx - 1] || "WX";
-                return [...col, topSym];
-              }
-              return col;
-            });
-          }
-
-          const simWins = this.evaluate(
-            evalGrid,
-            currentPaytable,
-            { gameType, paylines: customPaylines, effectiveBet: bet },
-            customPaylines,
-            false,
-          );
-          const cascadeWins = simWins.filter((w) => w.payout > 0);
-
-          let cascadePayout = 0;
-          let cascadeMultiplier = 1;
-          if (gameType === "waygame" || gameType === "waygame_qin") {
-            cascadeMultiplier = isFreeGame
-              ? Math.pow(2, Math.min(3 + cascadeCount, 10))
-              : Math.pow(2, Math.min(cascadeCount, 10));
-          }
-          for (const w of cascadeWins)
-            cascadePayout += w.totalWin || w.payout || 0;
-          totalPayout += cascadePayout * cascadeMultiplier;
-
-          const b1Win = simWins.find((w) => w.symbolId === "B1");
-          if (b1Win) b1Count = Math.max(b1Count, b1Win.matchCount);
-
-          if (cascadeWins.length === 0) break;
-
-          const winningCoordsMap = getWinningPositions(
-            evalGrid,
-            cascadeWins,
-            currentPaytable,
-            gameType,
-            undefined,
-            customPaylines,
-          );
-          let hasElimination = false;
-
-          for (let c = 0; c < reelCount; c++) {
-            const strip = currentStrips[c];
-            const rows = rowCounts[c] || 3;
-            const eliminatedRows: number[] = [];
-            for (let r = 0; r < rows; r++) {
-              if (winningCoordsMap.has(`${c}-${r}`)) {
-                if (
-                  gameType === "waygame_qin" &&
-                  isFreeGame &&
-                  currentGrid[c][r] === "S1"
-                )
-                  continue;
-                const winIndices = winningCoordsMap.get(`${c}-${r}`);
-                if (winIndices && winIndices.some((idx) => idx !== 999)) {
-                  eliminatedRows.push(r);
-                }
-              }
-            }
-
-            if (eliminatedRows.length > 0) {
-              hasElimination = true;
-              this.applyCascade(
-                currentGrid,
-                c,
-                eliminatedRows,
-                strip,
-                drawIndices,
-                isFreeGame,
-                gameType,
-              );
-            }
-          }
-
-          if (!hasElimination) break;
-          cascadeCount++;
-        }
-
-        if (!isFreeGame && b1Count >= 6) {
-          continue;
-        }
-      }
-
-      const multiplier = totalPayout / (bet || 1);
-
-      for (const interval of intervals) {
-        if (targets.has(interval.id)) {
-          const maxVal = interval.max ?? Infinity;
-          if (multiplier >= interval.min && multiplier < maxVal) {
-            results[interval.id] = [...candidateRng];
-            targets.delete(interval.id);
-          }
-        }
+        results.push(...this.wayGameStrategy.evaluate(context, rule));
       }
     }
-
+    
     return results;
   }
 }
@@ -4218,56 +3865,6 @@ export interface IGameEnvironment {
     isFreeGame?: boolean,
     stripSets?: Record<string, string[][]>
   ): Promise<Record<string, number[]>>;
-}
-</file>
-
-<file path="src/games/battle_set2/BattleSet2Game.ts">
-import { BasePayAnywhere } from '../base/BasePayAnywhere';
-import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
-
-export class BattleSet2Game extends BasePayAnywhere {
-  readonly id: GameType = 'payanywhere_set2';
-  readonly name = '決戰賽特2 (Battle Set 2)';
-
-  getDefaultConfig(): GameConfig {
-    return {
-      gameType: this.id,
-      paylines: []
-    };
-  }
-
-  getDefaultPaytable(): PaytableRule[] {
-    return [];
-  }
-
-  getDefaultReelStrips(): ReelStrips {
-    return [[], [], [], [], [], []];
-  }
-
-  // Override cascade to implement array shifting rule
-  protected override applyCascade(
-    grid: string[][],
-    colIndex: number,
-    eliminatedRows: number[],
-    strip: string[],
-    drawIndices: number[],
-    isFreeGame: boolean,
-    gameType: GameType
-  ): void {
-    eliminatedRows.sort((a, b) => b - a);
-    for (const r of eliminatedRows) {
-      // Shift symbols above the eliminated row down by 1
-      for (let shift = r; shift > 0; shift--) {
-        grid[colIndex][shift] = grid[colIndex][shift - 1];
-      }
-      
-      // Draw new symbol at the top
-      const len = strip.length;
-      const drawIdx = (((drawIndices[colIndex] % len) + len) % len);
-      grid[colIndex][0] = strip[drawIdx];
-      drawIndices[colIndex]--;
-    }
-  }
 }
 </file>
 
@@ -4346,13 +3943,13 @@ export class ClassicPayAnywhere extends BasePayAnywhere {
 }
 </file>
 
-<file path="src/games/qin/QinGame.ts">
+<file path="src/games/royal_elephant/RoyalElephantGame.ts">
 import { BaseWayGame } from '../base/BaseWayGame';
 import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
 
-export class QinGame extends BaseWayGame {
-  readonly id: GameType = 'waygame_qin';
-  readonly name = '秦皇傳說 (Qin)';
+export class RoyalElephantGame extends BaseWayGame {
+  readonly id: GameType = 'waygame_elephant';
+  readonly name = '皇家金象 (Royal Elephant)';
 
   getDefaultConfig(): GameConfig {
     return {
@@ -4366,27 +3963,31 @@ export class QinGame extends BaseWayGame {
   }
 
   getDefaultReelStrips(): ReelStrips {
-    return [[], [], [], [], [], []];
+    return [[], [], [], [], []];
   }
 
-  // Override cascade to implement Gold -> WX rule
-  protected override applyCascade(
+  public override getMaxRandomAttempts(): number {
+    return 100000;
+  }
+
+  // 皇家金象專屬邏輯：只有 R3 (colIndex === 2) 和 R4 (colIndex === 3) 會有金色符號轉百搭
+  public override applyCascade(
     grid: string[][],
     colIndex: number,
     eliminatedRows: number[],
     strip: string[],
     drawIndices: number[],
-    isFreeGame: boolean,
-    gameType: GameType
+    _isFreeGame: boolean,
+    _gameType: GameType
   ): void {
     eliminatedRows.sort((a, b) => b - a);
     for (const r of eliminatedRows) {
-      if (isFreeGame && grid[colIndex][r] === 'S1') {
-        continue;
-      }
       
-      if (this.isGoldSymbol(grid[colIndex][r])) {
-        // Gold symbol turns into Wild after elimination
+      const sym = grid[colIndex][r];
+      const isGold = this.isGoldSymbol(sym);
+      
+      if ((colIndex === 2 || colIndex === 3) && isGold) {
+        // 只有 R3, R4 的金色符號消除後會轉換為 WX
         grid[colIndex][r] = 'WX';
       } else {
         const len = strip.length;
@@ -5393,52 +4994,6 @@ export function isGoldSymbol(symbol: string): boolean {
 }
 </file>
 
-<file path="src/utils/formatters.ts">
-export function formatAmount(num: number): string {
-  if (Number.isInteger(num)) return num.toString();
-  return parseFloat(num.toFixed(4)).toString();
-}
-
-export function parsePasteRng(text: string, count: number, rowCounts?: number[]): string[] | null {
-  const match = text.match(/\[([^\]]+)\]/);
-  let numbersString = "";
-
-  if (match && match[1]) {
-    numbersString = match[1];
-  } else {
-    numbersString = text;
-  }
-
-  const cleanStr = numbersString.replace(/[^0-9A-Za-z_]/g, ' ');
-  const nums = cleanStr.trim().split(/\s+/).filter(s => s !== '');
-
-  if (nums.length === 0) return null;
-
-  if (nums.length > count && rowCounts && rowCounts.length > 0) {
-    const result = Array(count).fill('');
-    let idx = 0;
-    for (let c = 0; c < count; c++) {
-      const rows = rowCounts[c] || 3;
-      const colItems = [];
-      for (let r = 0; r < rows; r++) {
-        colItems.push(nums[idx] !== undefined ? nums[idx] : '0');
-        idx++;
-      }
-      result[c] = colItems.join(',');
-    }
-    return result;
-  }
-
-  const resultLength = Math.max(count, nums.length);
-  const result = Array(resultLength).fill('0');
-  for (let i = 0; i < resultLength; i++) {
-    result[i] = nums[i] !== undefined ? nums[i] : '0';
-  }
-
-  return result;
-}
-</file>
-
 <file path="src/App.css">
 /* Custom App-specific animations and overrides */
 </file>
@@ -5835,6 +5390,307 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectTemplate }
     </div>
   );
 };
+</file>
+
+<file path="src/games/base/AbstractGame.ts">
+import type {
+  GameConfig,
+  PaytableRule,
+  ReelStrips,
+  GameType,
+  MultiplierInterval,
+} from "../../types";
+import type { WinResult } from "../../utils/evaluation";
+import type { IGameEnvironment } from "./IGameEnvironment";
+import { RngSearchEngine } from "./RngSearchEngine";
+
+export abstract class AbstractGame implements IGameEnvironment {
+  abstract readonly id: GameType;
+  abstract readonly name: string;
+
+  abstract getDefaultConfig(): GameConfig;
+  abstract getDefaultPaytable(): PaytableRule[];
+  abstract getDefaultReelStrips(): ReelStrips;
+  abstract evaluate(
+    grid: string[][],
+    paytable: PaytableRule[],
+    config: GameConfig,
+    customPaylines?: number[][],
+    includeZeroPayout?: boolean,
+  ): WinResult[];
+
+  public createTimeSlicer(intervalMs: number = 16) {
+    let lastYield = performance.now();
+    return async function yieldIfNeeded() {
+      if (performance.now() - lastYield > intervalMs) {
+        await new Promise((r) => setTimeout(r, 0));
+        lastYield = performance.now();
+      }
+    };
+  }
+
+  public isGoldSymbol(sym: string): boolean {
+    return /^G[1-9A-Z]/.test(sym);
+  }
+
+  // ==========================================
+  // OCP Virtual Methods (Template Method Hooks)
+  // ==========================================
+
+  /** 判斷該符號在盤面消除時是否保留 (例如秦皇傳說 S1 在免費遊戲中不消除) */
+  public isSymbolUnremovable(sym: string, isFreeGame: boolean): boolean {
+    return false;
+  }
+
+  /** 取得連續掉落時的倍數乘數 (例如 WayGame 預設的 1, 2, 4, 8 翻倍) */
+  public getTumbleMultiplier(cascadeCount: number, isFreeGame: boolean): number {
+    return 1;
+  }
+
+  /** 是否啟用掉落機制 (LineGame 可覆寫為 false) */
+  public hasCascadeFeature(): boolean {
+    return true;
+  }
+
+  /** 遊戲是否依賴位置 (LineGame 通常為 true，PayAnywhere / WayGame 可覆寫為 false) */
+  public isPositionDependent(): boolean {
+    return true;
+  }
+
+  /** 搜尋 RNG 隨機生成的最大嘗試次數 */
+  public getMaxRandomAttempts(): number {
+    return 1000;
+  }
+
+  /**
+   * 掉落演算法，供子類別覆寫 (例如決戰賽特2的平移掉落)
+   */
+  public applyCascade(
+    grid: string[][],
+    colIndex: number,
+    eliminatedRows: number[],
+    strip: string[],
+    drawIndices: number[],
+    _isFreeGame: boolean,
+    _gameType: GameType,
+  ): void {
+    eliminatedRows.sort((a, b) => b - a);
+    for (const r of eliminatedRows) {
+      const len = strip.length;
+      const drawIdx = ((drawIndices[colIndex] % len) + len) % len;
+      grid[colIndex][r] = strip[drawIdx];
+      drawIndices[colIndex]--;
+    }
+  }
+
+  /**
+   * 產生計算用盤面 (如 Megaway 需要額外的 TopTracker)
+   */
+  public getEvalGrid(
+    grid: string[][],
+    _gameType: GameType,
+    length: number,
+    topTrackerOther?: string[],
+  ): string[][] {
+    return grid;
+  }
+
+  public getEvalGridForCombos(
+    grid: string[][],
+    topTrackerOther?: string[],
+  ): string[][] {
+    return grid;
+  }
+
+  public getGridFromRng(
+    rng: number[],
+    strips: string[][],
+    rowCounts: number[],
+    reelCount: number,
+  ): string[][] {
+    return Array.from({ length: reelCount }, (_, cIdx) => {
+      const r = rowCounts[cIdx] || 3;
+      const s = strips[cIdx];
+      const start = rng[cIdx];
+      return Array.from({ length: r }).map(
+        (_, ri) => s[(start + ri) % s.length],
+      );
+    });
+  }
+
+  // ==========================================
+  // Delegation to RngSearchEngine
+  // ==========================================
+
+  async findRngForCombination(
+    targetSymbol: string,
+    length: number,
+    wildCount: number,
+    currentStrips: string[][],
+    rowCounts: number[],
+    currentPaytable: PaytableRule[],
+    reelCount: number,
+    gameType: GameType,
+    topTrackerOther?: string[],
+    customPaylines?: number[][],
+    isFreeGame: boolean = false,
+    stripSets?: Record<string, string[][]>,
+    requireGoldCascade: boolean = false,
+  ): Promise<{
+    rng: number[] | null;
+    isInterfered: boolean;
+    hasS1Drop?: boolean;
+    stripId?: number;
+  }> {
+    const engine = new RngSearchEngine(this);
+    return engine.findRngForCombination(
+      targetSymbol, length, wildCount, currentStrips, rowCounts, currentPaytable,
+      reelCount, gameType, topTrackerOther, customPaylines, isFreeGame, stripSets, requireGoldCascade
+    );
+  }
+
+  async findRngForCombos(
+    currentStrips: string[][],
+    rowCounts: number[],
+    currentPaytable: PaytableRule[],
+    reelCount: number,
+    gameType: GameType,
+    topTrackerOther?: string[],
+    customPaylines?: number[][],
+    isFreeGame: boolean = false,
+    stripSets?: Record<string, string[][]>,
+  ): Promise<(number[] | null)[]> {
+    const engine = new RngSearchEngine(this);
+    return engine.findRngForCombos(
+      currentStrips, rowCounts, currentPaytable, reelCount, gameType, topTrackerOther,
+      customPaylines, isFreeGame, stripSets
+    );
+  }
+
+  async findRngForMultiplierIntervals(
+    intervals: MultiplierInterval[],
+    bet: number,
+    currentStrips: string[][],
+    rowCounts: number[],
+    currentPaytable: PaytableRule[],
+    reelCount: number,
+    gameType: GameType,
+    topTrackerOther?: string[],
+    customPaylines?: number[][],
+    isFreeGame: boolean = false,
+    stripSets?: Record<string, string[][]>,
+  ): Promise<Record<string, number[]>> {
+    const engine = new RngSearchEngine(this);
+    return engine.findRngForMultiplierIntervals(
+      intervals, bet, currentStrips, rowCounts, currentPaytable, reelCount, gameType,
+      topTrackerOther, customPaylines, isFreeGame, stripSets
+    );
+  }
+}
+</file>
+
+<file path="src/games/battle_set2/BattleSet2Game.ts">
+import { BasePayAnywhere } from '../base/BasePayAnywhere';
+import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+
+export class BattleSet2Game extends BasePayAnywhere {
+  readonly id: GameType = 'payanywhere_set2';
+  readonly name = '決戰賽特2 (Battle Set 2)';
+
+  getDefaultConfig(): GameConfig {
+    return {
+      gameType: this.id,
+      paylines: []
+    };
+  }
+
+  getDefaultPaytable(): PaytableRule[] {
+    return [];
+  }
+
+  getDefaultReelStrips(): ReelStrips {
+    return [[], [], [], [], [], []];
+  }
+
+  // Override cascade to implement array shifting rule
+  public override applyCascade(
+    grid: string[][],
+    colIndex: number,
+    eliminatedRows: number[],
+    strip: string[],
+    drawIndices: number[],
+    isFreeGame: boolean,
+    gameType: GameType
+  ): void {
+    eliminatedRows.sort((a, b) => b - a);
+    for (const r of eliminatedRows) {
+      // Shift symbols above the eliminated row down by 1
+      for (let shift = r; shift > 0; shift--) {
+        grid[colIndex][shift] = grid[colIndex][shift - 1];
+      }
+      
+      // Draw new symbol at the top
+      const len = strip.length;
+      const drawIdx = (((drawIndices[colIndex] % len) + len) % len);
+      grid[colIndex][0] = strip[drawIdx];
+      drawIndices[colIndex]--;
+    }
+  }
+}
+</file>
+
+<file path="src/games/qin/QinGame.ts">
+import { BaseWayGame } from '../base/BaseWayGame';
+import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+
+export class QinGame extends BaseWayGame {
+  readonly id: GameType = 'waygame_qin';
+  readonly name = '秦皇傳說 (Qin)';
+
+  getDefaultConfig(): GameConfig {
+    return {
+      gameType: this.id,
+      paylines: []
+    };
+  }
+
+  getDefaultPaytable(): PaytableRule[] {
+    return [];
+  }
+
+  getDefaultReelStrips(): ReelStrips {
+    return [[], [], [], [], [], []];
+  }
+
+  public override isSymbolUnremovable(sym: string, isFreeGame: boolean): boolean {
+    return isFreeGame && sym === 'S1';
+  }
+
+  // Override cascade to implement Gold -> WX rule
+  public override applyCascade(
+    grid: string[][],
+    colIndex: number,
+    eliminatedRows: number[],
+    strip: string[],
+    drawIndices: number[],
+    _isFreeGame: boolean,
+    _gameType: GameType
+  ): void {
+    eliminatedRows.sort((a, b) => b - a);
+    for (const r of eliminatedRows) {
+      
+      if (this.isGoldSymbol(grid[colIndex][r])) {
+        // Gold symbol turns into Wild after elimination
+        grid[colIndex][r] = 'WX';
+      } else {
+        const len = strip.length;
+        const drawIdx = (((drawIndices[colIndex] % len) + len) % len);
+        grid[colIndex][r] = strip[drawIdx];
+        drawIndices[colIndex]--;
+      }
+    }
+  }
+}
 </file>
 
 <file path="src/hooks/useSymbolGrouping.ts">
@@ -7475,70 +7331,6 @@ export interface PaytableRule {
 }
 </file>
 
-<file path="src/utils/evaluation/strategies/ScatterStrategy.ts">
-import type { PaytableRule } from '../../../types';
-import type { WinResult } from '../../evaluation';
-import type { EvaluationContext, EvaluationStrategy } from './EvaluationStrategy';
-
-export class ScatterStrategy implements EvaluationStrategy {
-  evaluate(context: EvaluationContext, rule: PaytableRule): WinResult[] {
-    const { grid, gameConfig, includeZeroPayout } = context;
-    const sym = rule.symbolId;
-    let scatterCount = 0;
-
-    for (const col of grid) {
-      for (const cell of col) {
-        let isMatch = cell === sym;
-        
-        if (!isMatch && gameConfig.specialRules?.derivativeSymbols?.[sym]) {
-           const derivatives = gameConfig.specialRules.derivativeSymbols[sym];
-           if (derivatives.includes(cell)) {
-             isMatch = true;
-           }
-        }
-        
-        if (isMatch) scatterCount++;
-      }
-    }
-
-    // Determine minimum scatter count from payouts dynamically
-    let dynamicMinScatter = Infinity;
-    let dynamicAutoWinCount = Infinity;
-    for (let i = 2; i <= 20; i++) {
-      const p = rule.payouts[`match${i}` as keyof typeof rule.payouts];
-      if (p !== undefined && p > 0) {
-        if (i < dynamicMinScatter) dynamicMinScatter = i;
-        if (i > dynamicAutoWinCount || dynamicAutoWinCount === Infinity) dynamicAutoWinCount = i;
-      }
-    }
-
-    const minScatter = dynamicMinScatter !== Infinity ? dynamicMinScatter : (gameConfig.specialRules?.scatterMinCount ?? 2);
-    const autoWinCount = dynamicAutoWinCount !== Infinity ? dynamicAutoWinCount : (gameConfig.specialRules?.scatterAutoWinCount ?? 3);
-
-    if (scatterCount >= minScatter) {
-      let payout = 0;
-      for (let i = scatterCount; i >= 1; i--) {
-        const p = rule.payouts[`match${i}` as keyof typeof rule.payouts];
-        if (p !== undefined && p > 0) {
-          payout = p;
-          break;
-        }
-      }
-
-      if (payout > 0 || scatterCount >= autoWinCount || includeZeroPayout) {
-        let totalWin = payout;
-        if (sym === 'S1' || sym === 'S2' || sym === 'B1' || sym === 'B2') {
-          totalWin = payout * (gameConfig.effectiveBet || 1);
-        }
-        return [{ symbolId: sym, matchCount: scatterCount, ways: 1, payout, totalWin }];
-      }
-    }
-
-    return [];
-  }
-}
-</file>
-
 <file path="src/utils/evaluation/WinningPositions.ts">
 import type { PaytableRule, GameType } from '../../types';
 import type { WinResult } from '../evaluation';
@@ -7660,6 +7452,67 @@ export function getWinningPositions(
   }
 
   return winningCoords;
+}
+</file>
+
+<file path="src/utils/formatters.ts">
+export function formatAmount(num: number): string {
+  if (Number.isInteger(num)) return num.toString();
+  return parseFloat(num.toFixed(4)).toString();
+}
+
+export function parsePasteRng(text: string, count: number, rowCounts?: number[]): string[] | null {
+  const match = text.match(/\[([^\]]+)\]/);
+  let numbersString = "";
+
+  if (match && match[1]) {
+    numbersString = match[1];
+  } else {
+    numbersString = text;
+  }
+
+  const cleanStr = numbersString.replace(/[^0-9A-Za-z_]/g, ' ');
+  const nums = cleanStr.trim().split(/\s+/).filter(s => s !== '');
+
+  if (nums.length === 0) return null;
+
+  // If nums.length is large (e.g. >= 15), it's likely a copied MathID grid (e.g. 5x3=15, Megaways=20+)
+  // Otherwise, if it's close to reelCount (e.g. count or count+1 for stripId), it's an RNG array
+  const isMathIdGrid = rowCounts && rowCounts.length > 0 && nums.length >= 15;
+
+  if (isMathIdGrid) {
+    const result = Array(count).fill('');
+    let idx = 0;
+    for (let c = 0; c < count; c++) {
+      const rows = rowCounts[c] || 3;
+      const colItems = [];
+      for (let r = 0; r < rows; r++) {
+        colItems.push(nums[idx] !== undefined ? nums[idx] : '0');
+        idx++;
+      }
+      result[c] = colItems.join(',');
+    }
+    return result;
+  }
+
+  // It's an RNG array.
+  // We no longer subtract 1, because the UI outputs 0-based indices and the user pastes 0-based indices.
+  const resultLength = Math.max(count, nums.length);
+  const result = Array(resultLength).fill('0');
+  for (let i = 0; i < resultLength; i++) {
+    if (nums[i] !== undefined) {
+      const val = parseInt(nums[i], 10);
+      if (isNaN(val)) {
+        result[i] = nums[i];
+      } else {
+        result[i] = val.toString();
+      }
+    } else {
+      result[i] = '0';
+    }
+  }
+
+  return result;
 }
 </file>
 
@@ -8706,6 +8559,72 @@ export const useMachineStore = create<MachineState>((set) => ({
   setJiraReportFileName: (name) => set({ jiraReportFileName: name }),
   setJiraIssuesByProject: (data) => set({ jiraIssuesByProject: data }),
 }));
+</file>
+
+<file path="src/utils/evaluation/strategies/ScatterStrategy.ts">
+import type { PaytableRule } from '../../../types';
+import type { WinResult } from '../../evaluation';
+import type { EvaluationContext, EvaluationStrategy } from './EvaluationStrategy';
+
+export class ScatterStrategy implements EvaluationStrategy {
+  evaluate(context: EvaluationContext, rule: PaytableRule): WinResult[] {
+    const { grid, gameConfig, includeZeroPayout } = context;
+    const sym = rule.symbolId;
+    let scatterCount = 0;
+
+    for (const col of grid) {
+      for (const cell of col) {
+        let isMatch = cell === sym || (!rule.isWild && context.wildSymbols?.has(cell));
+        
+        if (!isMatch && gameConfig.specialRules?.derivativeSymbols?.[sym]) {
+           const derivatives = gameConfig.specialRules.derivativeSymbols[sym];
+           if (derivatives.includes(cell)) {
+             isMatch = true;
+           }
+        }
+        
+        if (isMatch) scatterCount++;
+      }
+    }
+
+    // Determine minimum scatter count from payouts dynamically
+    let dynamicMinScatter = Infinity;
+    let dynamicAutoWinCount = Infinity;
+    for (let i = 2; i <= 20; i++) {
+      const p = rule.payouts[`match${i}` as keyof typeof rule.payouts];
+      if (p !== undefined && p > 0) {
+        if (i < dynamicMinScatter) dynamicMinScatter = i;
+        if (i > dynamicAutoWinCount || dynamicAutoWinCount === Infinity) dynamicAutoWinCount = i;
+      }
+    }
+
+    const minScatter = dynamicMinScatter !== Infinity ? dynamicMinScatter : (gameConfig.specialRules?.scatterMinCount ?? 2);
+    const autoWinCount = dynamicAutoWinCount !== Infinity ? dynamicAutoWinCount : (gameConfig.specialRules?.scatterAutoWinCount ?? 3);
+
+    if (scatterCount >= minScatter || includeZeroPayout) {
+      if (scatterCount === 0) return [];
+      
+      let payout = 0;
+      for (let i = scatterCount; i >= 1; i--) {
+        const p = rule.payouts[`match${i}` as keyof typeof rule.payouts];
+        if (p !== undefined && p > 0) {
+          payout = p;
+          break;
+        }
+      }
+
+      if (payout > 0 || scatterCount >= autoWinCount || includeZeroPayout) {
+        let totalWin = payout;
+        if (sym === 'S1' || sym === 'S2' || sym === 'B1' || sym === 'B2') {
+          totalWin = payout * (gameConfig.effectiveBet || 1);
+        }
+        return [{ symbolId: sym, matchCount: scatterCount, ways: 1, payout, totalWin }];
+      }
+    }
+
+    return [];
+  }
+}
 </file>
 
 <file path="ARCHITECTURE.md">
@@ -9948,7 +9867,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
       }
       
       let tumbleMultiplier = 1;
-      if (gameConfig.gameType === 'waygame') {
+      if (gameConfig.gameType === 'waygame' || gameConfig.gameType === 'waygame_elephant') {
         tumbleMultiplier = isFreeGame 
           ? Math.min(1024, 8 * Math.pow(2, cascadeCount)) 
           : Math.min(1024, 1 * Math.pow(2, cascadeCount));
@@ -10125,6 +10044,10 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
   const currentFreeStripSets = useGameStore(state => state.currentFreeStripSets);
   const isFreeGame = useGameStore(state => state.isFreeGame);
   const stripSets = isFreeGame ? currentFreeStripSets : currentStripSets;
+  let baseMultiplier = 1;
+  if (gameType === 'waygame' || gameType === 'waygame_elephant') {
+    baseMultiplier = isFreeGame ? 8 : 1;
+  }
 
   const displayGrid = useMemo(() => Array.from({ length: reelCount }, (_, colIndex) => {
     const rowsForThisCol = rowCounts[colIndex] || 3;
@@ -10507,7 +10430,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                           {w.symbolId} {gameType === 'payanywhere' || gameType === 'payanywhere_set2' ? `出現 ${w.matchCount} 個` : (gameType === 'linegame' || gameType === 'linegame_set2') ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
                         </span>
                         <span className="text-xs text-gray-300 font-mono mt-0.5">
-                          {formatAmount(betMultiplier)} × {w.payout}{w.ways > 1 ? ` × ${w.ways}` : ''} = <span className="font-bold text-dashboard-accent">{formatAmount(w.totalWin * betMultiplier)}</span>
+                          {formatAmount(betMultiplier)} × {w.payout}{w.ways > 1 ? ` × ${w.ways}` : ''}{baseMultiplier > 1 ? ` × ${baseMultiplier}` : ''} = <span className="font-bold text-dashboard-accent">{formatAmount(w.totalWin * betMultiplier * baseMultiplier)}</span>
                         </span>
                       </div>
                     );
@@ -10517,7 +10440,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                   {winHits.length > 0 && (
                     <div className="mt-1 pt-2 border-t border-dashboard-accent/20 flex justify-between items-center px-1">
                       <span className="text-white font-bold text-xs">Total Win</span>
-                      <span className="text-dashboard-accent font-bold text-lg">{formatAmount(winHits.reduce((sum, w) => sum + w.totalWin, 0) * betMultiplier)}</span>
+                      <span className="text-dashboard-accent font-bold text-lg">{formatAmount(winHits.reduce((sum, w) => sum + w.totalWin, 0) * betMultiplier * baseMultiplier)}</span>
                     </div>
                   )}
                 </div>
@@ -10713,7 +10636,7 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
     const coords = getWinningPositions(currentGridSymbols, evWins, currentPaytable, gameType);
     
     let mult = 1;
-    if (gameType === 'waygame') {
+    if (gameType === 'waygame' || gameType === 'waygame_elephant') {
       mult = isFreeGame ? Math.min(1024, 8 * Math.pow(2, tumbleCount)) : Math.min(1024, 1 * Math.pow(2, tumbleCount));
     }
     
@@ -11023,6 +10946,64 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
 };
 </file>
 
+<file path="src/utils/evaluation.ts">
+import type { PaytableRule, GameType, GameConfig } from '../types';
+import { GameRegistry } from '../core/GameRegistry';
+
+export interface WinResult {
+  symbolId: string;
+  matchCount: number;
+  ways: number;
+  payout: number;
+  totalWin: number;
+  lineIndex?: number; // 記錄 linegame 中獎的贏分線索引
+  multiplier?: number; // 記錄倍數（如金框加成的倍數）
+  isJackpot?: boolean; // 標記是否為大獎，以區分計算邏輯
+}
+
+// 內建的 20 條中獎線，對應 3x5 盤面
+export const defaultPaylines = [
+  [1, 1, 1, 1, 1], // 中間水平
+  [0, 0, 0, 0, 0], // 上方水平
+  [2, 2, 2, 2, 2], // 下方水平
+  [0, 1, 2, 1, 0], // V 字
+  [2, 1, 0, 1, 2], // 倒 V 字
+  [0, 0, 1, 2, 2],
+  [2, 2, 1, 0, 0],
+  [1, 0, 1, 2, 1],
+  [1, 2, 1, 0, 1],
+  [0, 1, 1, 1, 0],
+  [2, 1, 1, 1, 2],
+  [0, 1, 0, 1, 0],
+  [2, 1, 2, 1, 2],
+  [1, 1, 0, 1, 1],
+  [1, 1, 2, 1, 1],
+  [0, 0, 2, 0, 0],
+  [2, 2, 0, 2, 2],
+  [0, 2, 0, 2, 0],
+  [1, 0, 0, 0, 1],
+  [1, 2, 2, 2, 1]
+];
+
+export function evaluateGrid(
+  grid: string[][],
+  paytable: PaytableRule[],
+  gameConfigOrType: GameType | GameConfig = 'waygame',
+  paylines: number[][] = defaultPaylines,
+  includeZeroPayout = false
+): WinResult[] {
+  // Backwards compatibility layer for legacy calls
+  const gameConfig: GameConfig = typeof gameConfigOrType === 'string' 
+    ? { gameType: gameConfigOrType, paylines }
+    : gameConfigOrType;
+
+  const game = GameRegistry.getGame(gameConfig.gameType);
+  return game.evaluate(grid, paytable, gameConfig, paylines, includeZeroPayout);
+}
+
+export * from './evaluation/WinningPositions';
+</file>
+
 <file path="src/utils/excelParser.ts">
 import * as xlsx from 'xlsx';
 import type { PaytableRule } from '../types';
@@ -11298,7 +11279,7 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
                   name: realSymId === 'WX' ? 'Wild' : realSymId === 'S1' ? 'Scatter' : realSymId === 'B1' ? 'Bonus' : realSymId === 'S2' ? 'S2' : realSymId,
                   payouts: {},
                   isWild: realSymId === 'WX',
-                  isScatter: realSymId === 'SCATTER' || realSymId === 'S1' || realSymId === 'S2',
+                  isScatter: realSymId === 'SCATTER' || realSymId === 'S1' || realSymId === 'S2' || realSymId === 'B1' || realSymId === 'B2',
                   mathId: newMathId,
                   isEnabled: newMathId !== undefined
                 };
@@ -11501,7 +11482,7 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
                     name: realSymId === 'WX' ? 'Wild' : realSymId === 'SCATTER' ? 'Scatter' : realSymId === 'B1' ? 'Bonus' : realSymId === 'S1' ? 'S1' : realSymId === 'S2' ? 'S2' : realSymId,
                     payouts: { match2: 0, match3: 0, match4: 0, match5: 0 },
                     isWild: realSymId === 'WX',
-                    isScatter: realSymId === 'SCATTER' || realSymId === 'S1' || realSymId === 'S2',
+                    isScatter: realSymId === 'SCATTER' || realSymId === 'S1' || realSymId === 'S2' || realSymId === 'B1' || realSymId === 'B2',
                     mathId: newMathId,
                     isEnabled: newMathId !== undefined
                   };
@@ -11592,64 +11573,6 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
 
   return result;
 }
-</file>
-
-<file path="src/utils/evaluation.ts">
-import type { PaytableRule, GameType, GameConfig } from '../types';
-import { GameRegistry } from '../core/GameRegistry';
-
-export interface WinResult {
-  symbolId: string;
-  matchCount: number;
-  ways: number;
-  payout: number;
-  totalWin: number;
-  lineIndex?: number; // 記錄 linegame 中獎的贏分線索引
-  multiplier?: number; // 記錄倍數（如金框加成的倍數）
-  isJackpot?: boolean; // 標記是否為大獎，以區分計算邏輯
-}
-
-// 內建的 20 條中獎線，對應 3x5 盤面
-export const defaultPaylines = [
-  [1, 1, 1, 1, 1], // 中間水平
-  [0, 0, 0, 0, 0], // 上方水平
-  [2, 2, 2, 2, 2], // 下方水平
-  [0, 1, 2, 1, 0], // V 字
-  [2, 1, 0, 1, 2], // 倒 V 字
-  [0, 0, 1, 2, 2],
-  [2, 2, 1, 0, 0],
-  [1, 0, 1, 2, 1],
-  [1, 2, 1, 0, 1],
-  [0, 1, 1, 1, 0],
-  [2, 1, 1, 1, 2],
-  [0, 1, 0, 1, 0],
-  [2, 1, 2, 1, 2],
-  [1, 1, 0, 1, 1],
-  [1, 1, 2, 1, 1],
-  [0, 0, 2, 0, 0],
-  [2, 2, 0, 2, 2],
-  [0, 2, 0, 2, 0],
-  [1, 0, 0, 0, 1],
-  [1, 2, 2, 2, 1]
-];
-
-export function evaluateGrid(
-  grid: string[][],
-  paytable: PaytableRule[],
-  gameConfigOrType: GameType | GameConfig = 'waygame',
-  paylines: number[][] = defaultPaylines,
-  includeZeroPayout = false
-): WinResult[] {
-  // Backwards compatibility layer for legacy calls
-  const gameConfig: GameConfig = typeof gameConfigOrType === 'string' 
-    ? { gameType: gameConfigOrType, paylines }
-    : gameConfigOrType;
-
-  const game = GameRegistry.getGame(gameConfig.gameType);
-  return game.evaluate(grid, paytable, gameConfig, paylines, includeZeroPayout);
-}
-
-export * from './evaluation/WinningPositions';
 </file>
 
 <file path="src/utils/rngSearch.ts">
@@ -15022,6 +14945,7 @@ export function useRngSearch(
             if (W === 1 && L < 2) continue; // WX 至少需要 L>=2（1個symbol+1個WX）
             const maxWild = Math.min(1, L - 1);
             if (W > maxWild) continue;
+
             let name = "";
             if (isSelScatter) {
               name =
@@ -15501,6 +15425,11 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
     selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther, specialSymbolConfig, customPaylines, isFreeGame, bet, activeSearchIntervals, stripSets
   );
 
+  let baseMultiplier = 1;
+  if (gameType === 'waygame' || gameType === 'waygame_elephant') {
+    baseMultiplier = isFreeGame ? 8 : 1;
+  }
+
   const displayGridOther = useMemo(() => {
     const rawGrid = Array.from({ length: reelCount }, (_, colIndex) => {
       const rowsForThisCol = rowCounts[colIndex] || 3;
@@ -15753,6 +15682,9 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
           setClovers(prev => (JSON.stringify(prev) === JSON.stringify(cl) ? prev : cl));
           setSpecialSymbolConfig(prev => (prev.s1Enabled === hasClovers ? prev : { ...prev, s1Enabled: hasClovers }));
         }
+        if (comb.stripId !== undefined && setActiveStripId) {
+          setActiveStripId(Number(comb.stripId));
+        }
       }
     }
   }, [combinations, isSearching, setManualIndicesOther, selectedCombIndex, setGoldFrames, setJackpots, setClovers, setSpecialSymbolConfig, setShowGoldFrameEditor, setShowJackpotEditor]);
@@ -15799,7 +15731,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
 
   const currentRngString = (() => {
     const targetComb = combinations[selectedCombIndex < combinations.length ? selectedCombIndex : 0];
-    if (gameType === 'waygame' || gameType === 'megaway') {
+    if (gameType.includes('waygame') || gameType.includes('megaway')) {
       const extraId = (targetComb as any)?.stripId !== undefined && !isManualEdited ? Number((targetComb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0);
       return `[${[...currentFormattedRngArray, extraId].join(',')}],`;
     }
@@ -15879,6 +15811,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
               onWheel={(e) => e.currentTarget.blur()}
               className="bg-[#112240] border border-gray-600 text-dashboard-text-primary rounded px-3 py-1.5 outline-none focus:border-dashboard-accent text-sm cursor-pointer font-bold"
             >
+              <option value="" disabled hidden>請選擇目標</option>
               {groupedSymbols.map(group => {
                 const filteredList = group.list.filter(sym => !['S1', 'S2', 'F1', 'L1'].includes(sym));
                 if (filteredList.length === 0) return null;
@@ -16085,7 +16018,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                           : c.rng;
                         rngStr = `[${finalRng?.join(',')}],`;
                       }
-                      return `// ${c.name}\n${rngStr}`;
+                      return `${rngStr}`;
                     })
                     .join('\n');
                   navigator.clipboard.writeText(textToCopy);
@@ -16207,8 +16140,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                           ) : null}
                         </div>
                       ) : (
-                        <span className="truncate block" title={`RNG: ${selectedCombIndex === globalIdx && isManualEdited ? currentRngString : `[${(gameType === 'waygame' || gameType === 'megaway') ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)].join(',') : comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}>
-                          {`RNG: ${selectedCombIndex === globalIdx && isManualEdited ? currentRngString : `[${(gameType === 'waygame' || gameType === 'megaway') ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)].join(',') : comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}
+                        <span className="truncate block" title={`RNG: ${selectedCombIndex === globalIdx && isManualEdited ? currentRngString : `[${(gameType.includes('waygame') || gameType.includes('megaway')) ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)].join(',') : comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}>
+                          {`RNG: ${selectedCombIndex === globalIdx && isManualEdited ? currentRngString : `[${(gameType.includes('waygame') || gameType.includes('megaway')) ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)].join(',') : comb.rng.join(',')}]`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`}
                         </span>
                       )}
                     </div>
@@ -16219,11 +16152,19 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
               );
             };
 
+            if (!selectedSymbol) {
+              return (
+                <div className="py-4 text-center text-xs text-gray-400 font-bold col-span-2">
+                  請先從上方下拉選單選擇目標 Symbol
+                </div>
+              );
+            }
+
             if (maxRows === 0 && !isSearching) {
               return (
-                <div className="py-4 text-center text-xs text-gray-400 font-bold">
+                <div className="py-4 text-center text-xs text-gray-400 font-bold col-span-2">
                   {selectedSymbol === 'WIN_MULTIPLIER'
-                    ? '區間已修改，請點擊上方「產生對應大獎 RNG」按鈕產出組合'
+                    ? '參數已修改，請點擊上方「產生最大 RNG」重新產生結果'
                     : '沒有可用的 Symbol，請確認是否載入滾輪表 (Reel Strips)'}
                 </div>
               );
@@ -16243,7 +16184,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
               </div>
             );
           })()}
-          {combinations.length === 0 && !isSearching && (
+          {selectedSymbol && combinations.length === 0 && !isSearching && (
             <div className="py-4 text-center text-xs text-gray-400 font-bold col-span-2">
               {selectedSymbol === 'WIN_MULTIPLIER'
                 ? '區間已修改，請點擊上方「產生對應大獎 RNG」按鈕產出組合'
@@ -16621,7 +16562,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                           {isInterference && <span className="ml-1 text-[10px] opacity-80"> (干擾)</span>}
                         </span>
                         <span className={`text-xs font-mono mt-0.5 ${isInterference ? 'text-red-300' : 'text-gray-300'}`}>
-                          {w.isJackpot ? `${w.ways} × ${w.payout} × ${bet}` : `${formatAmount(betMultiplier)} × ${w.payout}${w.ways > 1 ? ` × ${w.ways}` : ''}${w.multiplier ? ` × ${w.multiplier}` : ''}`} = <span className={`font-bold ${isInterference ? 'text-red-400' : 'text-dashboard-accent'}`}>{formatAmount(w.isJackpot ? w.totalWin : w.totalWin * betMultiplier)}</span>
+                          {w.isJackpot ? `${w.ways} × ${w.payout} × ${bet}` : `${formatAmount(betMultiplier)} × ${w.payout}${w.ways > 1 ? ` × ${w.ways}` : ''}${w.multiplier ? ` × ${w.multiplier}` : ''}${baseMultiplier > 1 ? ` × ${baseMultiplier}` : ''}`} = <span className={`font-bold ${isInterference ? 'text-red-400' : 'text-dashboard-accent'}`}>{formatAmount(w.isJackpot ? w.totalWin : w.totalWin * betMultiplier * baseMultiplier)}</span>
                         </span>
                       </div>
                     );
@@ -16640,7 +16581,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                       });
                     });
                     const finalMultiplier = globalMultiplier > 0 ? globalMultiplier : 1;
-                    const baseTotalWin = winHits.reduce((sum, w) => sum + (w.isJackpot ? w.totalWin : w.totalWin * betMultiplier), 0);
+                    const baseTotalWin = winHits.reduce((sum, w) => sum + (w.isJackpot ? w.totalWin : w.totalWin * betMultiplier * baseMultiplier), 0);
                     const grandTotalWin = baseTotalWin * finalMultiplier;
                     
                     return (

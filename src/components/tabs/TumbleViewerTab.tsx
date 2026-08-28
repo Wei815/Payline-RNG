@@ -130,7 +130,7 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
     const coords = getWinningPositions(currentGridSymbols, evWins, currentPaytable, gameType);
     
     let mult = 1;
-    if (gameType === 'waygame') {
+    if (gameType === 'waygame' || gameType === 'waygame_elephant') {
       mult = isFreeGame ? Math.min(1024, 8 * Math.pow(2, tumbleCount)) : Math.min(1024, 1 * Math.pow(2, tumbleCount));
     }
     

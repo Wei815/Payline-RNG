@@ -43,6 +43,10 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
   const currentFreeStripSets = useGameStore(state => state.currentFreeStripSets);
   const isFreeGame = useGameStore(state => state.isFreeGame);
   const stripSets = isFreeGame ? currentFreeStripSets : currentStripSets;
+  let baseMultiplier = 1;
+  if (gameType === 'waygame' || gameType === 'waygame_elephant') {
+    baseMultiplier = isFreeGame ? 8 : 1;
+  }
 
   const displayGrid = useMemo(() => Array.from({ length: reelCount }, (_, colIndex) => {
     const rowsForThisCol = rowCounts[colIndex] || 3;
@@ -425,7 +429,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                           {w.symbolId} {gameType === 'payanywhere' || gameType === 'payanywhere_set2' ? `出現 ${w.matchCount} 個` : (gameType === 'linegame' || gameType === 'linegame_set2') ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
                         </span>
                         <span className="text-xs text-gray-300 font-mono mt-0.5">
-                          {formatAmount(betMultiplier)} × {w.payout}{w.ways > 1 ? ` × ${w.ways}` : ''} = <span className="font-bold text-dashboard-accent">{formatAmount(w.totalWin * betMultiplier)}</span>
+                          {formatAmount(betMultiplier)} × {w.payout}{w.ways > 1 ? ` × ${w.ways}` : ''}{baseMultiplier > 1 ? ` × ${baseMultiplier}` : ''} = <span className="font-bold text-dashboard-accent">{formatAmount(w.totalWin * betMultiplier * baseMultiplier)}</span>
                         </span>
                       </div>
                     );
@@ -435,7 +439,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                   {winHits.length > 0 && (
                     <div className="mt-1 pt-2 border-t border-dashboard-accent/20 flex justify-between items-center px-1">
                       <span className="text-white font-bold text-xs">Total Win</span>
-                      <span className="text-dashboard-accent font-bold text-lg">{formatAmount(winHits.reduce((sum, w) => sum + w.totalWin, 0) * betMultiplier)}</span>
+                      <span className="text-dashboard-accent font-bold text-lg">{formatAmount(winHits.reduce((sum, w) => sum + w.totalWin, 0) * betMultiplier * baseMultiplier)}</span>
                     </div>
                   )}
                 </div>

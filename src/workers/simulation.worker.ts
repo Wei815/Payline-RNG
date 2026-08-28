@@ -115,7 +115,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
       }
       
       let tumbleMultiplier = 1;
-      if (gameConfig.gameType === 'waygame') {
+      if (gameConfig.gameType === 'waygame' || gameConfig.gameType === 'waygame_elephant') {
         tumbleMultiplier = isFreeGame 
           ? Math.min(1024, 8 * Math.pow(2, cascadeCount)) 
           : Math.min(1024, 1 * Math.pow(2, cascadeCount));

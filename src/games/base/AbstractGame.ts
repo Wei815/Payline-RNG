@@ -64,7 +64,7 @@ export abstract class AbstractGame implements IGameEnvironment {
 
   /** 搜尋 RNG 隨機生成的最大嘗試次數 */
   public getMaxRandomAttempts(): number {
-    return 30000;
+    return 1000;
   }
 
   /**
