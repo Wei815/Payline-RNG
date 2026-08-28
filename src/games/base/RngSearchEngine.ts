@@ -108,45 +108,51 @@ export class RngSearchEngine {
     const isTargetScatter = currentPaytable.some(p => p.symbolId === targetSymbol && p.isScatter);
     const isPositionDependent = gameType === 'linegame' || gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'linegame_set2';
 
-    const validIndicesForTarget: number[][] = [];
+    const targetIndicesForReel: number[][] = [];
+    const goldIndicesForReel: number[][] = [];
     for (let c = 0; c < reelCount; c++) {
-      const validForReel = [];
+      const targetValid = [];
+      const goldValid = [];
       const strip = currentStrips[c];
       const rows = rowCounts[c];
       const len = strip.length;
       if (!strip || strip.length === 0) {
-        validIndicesForTarget.push([]);
+        targetIndicesForReel.push([]);
+        goldIndicesForReel.push([]);
         continue;
       }
       for (let i = 0; i < len; i++) {
-        let isVisible = false;
+        let hasTarget = false;
+        let hasGold = false;
         for (let r = 0; r < rows; r++) {
           const sym = strip[(i + r) % len];
           if (sym === targetSymbol || wildSymbolSet.has(sym)) {
-            isVisible = true; break;
+            hasTarget = true;
           }
           if (targetSymbol === 'B1' && sym === 'B2') {
-            isVisible = true; break;
+            hasTarget = true;
           }
           if ((targetSymbol === 'S1' || targetSymbol === 'S2' || targetSymbol === 'SCATTER') && (sym === 'S1' || sym === 'S2' || sym === 'SCATTER')) {
-            isVisible = true; break;
+            hasTarget = true;
           }
-          if (requireGoldCascade && this.gameInstance.isGoldSymbol(sym)) {
-            isVisible = true; break;
+          if (this.gameInstance.isGoldSymbol(sym)) {
+            hasGold = true;
           }
         }
-        if (isVisible) validForReel.push(i);
+        if (hasTarget) targetValid.push(i);
+        if (hasGold) goldValid.push(i);
       }
-      validIndicesForTarget.push(validForReel);
+      targetIndicesForReel.push(targetValid);
+      goldIndicesForReel.push(goldValid);
     }
 
-    const possibleReelsCount = validIndicesForTarget.filter(v => v.length > 0).length;
+    const possibleReelsCount = targetIndicesForReel.filter(v => v.length > 0).length;
     if (possibleReelsCount < length) {
       return { rng: null, isInterfered: false };
     }
     if (isPositionDependent) {
       for (let c = 0; c < length; c++) {
-        if (validIndicesForTarget[c].length === 0) {
+        if (targetIndicesForReel[c].length === 0) {
           return { rng: null, isInterfered: false };
         }
       }
@@ -191,15 +197,26 @@ export class RngSearchEngine {
           chosenIdx = hcBestRng![c];
           candidateRng[c] = chosenIdx;
         } else {
-          let useValidOnly = false;
-          // Optimistically force the target symbol on the first `length` reels on the first attempt 
-          // (when hcBestRng is null) to bypass thousands of random draws.
-          if (!hcBestRng && c < length && validIndicesForTarget[c].length > 0) {
-            useValidOnly = true;
+          let useGoldList = false;
+          let useTargetList = false;
+          
+          if (!hcBestRng) {
+            if (requireGoldCascade && c < 3) {
+              if (Math.random() < 0.85 && goldIndicesForReel[c].length > 0) {
+                useGoldList = true;
+              }
+            } else if (!requireGoldCascade && c < length) {
+              if (Math.random() < 0.60 && targetIndicesForReel[c].length > 0) {
+                useTargetList = true;
+              }
+            }
           }
           
-          if (useValidOnly) {
-            const valids = validIndicesForTarget[c];
+          if (useGoldList) {
+            const valids = goldIndicesForReel[c];
+            chosenIdx = valids[Math.floor(Math.random() * valids.length)];
+          } else if (useTargetList) {
+            const valids = targetIndicesForReel[c];
             chosenIdx = valids[Math.floor(Math.random() * valids.length)];
           } else {
             const maxIdx = len > rows + 2 ? len - rows : 0;

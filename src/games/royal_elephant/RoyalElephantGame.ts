@@ -21,7 +21,7 @@ export class RoyalElephantGame extends BaseWayGame {
   }
 
   public override getMaxRandomAttempts(): number {
-    return 100000;
+    return 30000;
   }
 
   // 皇家金象專屬邏輯：只有 R3 (colIndex === 2) 和 R4 (colIndex === 3) 會有金色符號轉百搭
