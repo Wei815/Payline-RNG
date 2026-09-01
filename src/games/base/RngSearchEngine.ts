@@ -446,8 +446,8 @@ export class RngSearchEngine {
           hcBestRng = [...candidateRng];
           hcBestMatchCount = currentMatchCount;
           hcAttempts = 0;
+          hcLockedReels.clear();
           if (isTargetScatter) {
-            hcLockedReels.clear();
             for (let c = 0; c < reelCount; c++) {
               if (nextEvalGrid[c].some(s => s === targetSymbol || wildSymbolSet.has(s))) {
                 hcLockedReels.add(c);
@@ -527,8 +527,8 @@ export class RngSearchEngine {
           hcBestRng = [...candidateRng];
           hcBestMatchCount = currentMatchCount;
           hcAttempts = 0;
+          hcLockedReels.clear();
           if (isTargetScatter) {
-            hcLockedReels.clear();
             for (let c = 0; c < reelCount; c++) {
               if (initialEvalGrid[c].some(s => s === targetSymbol || wildSymbolSet.has(s))) {
                 hcLockedReels.add(c);
@@ -568,27 +568,31 @@ export class RngSearchEngine {
     const ATTEMPTS = 10000;
     const yieldIfNeeded = this.gameInstance.createTimeSlicer(16);
 
+    const candidateRng = new Array(reelCount).fill(0);
+
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
       if (attempt % 200 === 0) await yieldIfNeeded();
 
-      const candidateRng = Array(reelCount)
-        .fill(0)
-        .map((_, c) => {
-          const len = currentStrips[c]?.length || 1;
-          const rows = rowCounts[c] || 3;
-          const minIdx = 2;
-          const maxIdx = len > rows + 2 ? len - rows : 0;
-          if (maxIdx <= minIdx) return Math.floor(Math.random() * len);
-          return Math.floor(Math.random() * (maxIdx - minIdx + 1)) + minIdx;
-        });
-
-      let currentGrid = candidateRng.map((start, cIdx) => {
-        const r = rowCounts[cIdx] || 3;
-        const s = currentStrips[cIdx] || ["-"];
-        return Array.from({ length: r }).map(
-          (_, ri) => s[(start + ri) % s.length],
-        );
-      });
+      let currentGrid: string[][] = new Array(reelCount);
+      for (let c = 0; c < reelCount; c++) {
+        const len = currentStrips[c]?.length || 1;
+        const rows = rowCounts[c] || 3;
+        const minIdx = 2;
+        const maxIdx = len > rows + 2 ? len - rows : 0;
+        let start = 0;
+        if (maxIdx <= minIdx) {
+          start = Math.floor(Math.random() * len);
+        } else {
+          start = Math.floor(Math.random() * (maxIdx - minIdx + 1)) + minIdx;
+        }
+        candidateRng[c] = start;
+        
+        const s = currentStrips[c] || ["-"];
+        currentGrid[c] = new Array(rows);
+        for (let ri = 0; ri < rows; ri++) {
+          currentGrid[c][ri] = s[(start + ri) % s.length];
+        }
+      }
 
       let drawIndices = [...candidateRng].map((idx) => idx - 1);
       let cascadeCount = 0;
@@ -731,6 +735,8 @@ export class RngSearchEngine {
       }
     }
 
+    const candidateRng = new Array(reelCount).fill(0);
+
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
       if (targets.size === 0) break;
       if (attempt % 200 === 0) await yieldIfNeeded();
@@ -742,36 +748,36 @@ export class RngSearchEngine {
         (attempt > 4000 && Math.random() < 0.6);
       const alignRow = Math.floor(Math.random() * 3);
 
-      const candidateRng = Array(reelCount)
-        .fill(0)
-        .map((_, c) => {
-          const len = currentStrips[c]?.length || 1;
-          const rows = rowCounts[c] || 3;
-          const minIdx = 2;
-          const maxIdx = len > rows + 2 ? len - rows : 0;
+      let currentGrid: string[][] = new Array(reelCount);
+      for (let c = 0; c < reelCount; c++) {
+        const len = currentStrips[c]?.length || 1;
+        const rows = rowCounts[c] || 3;
+        const minIdx = 2;
+        const maxIdx = len > rows + 2 ? len - rows : 0;
+        let start = 0;
 
-          if (
-            useGuided &&
-            topSymbolStopsByRow[c] &&
-            topSymbolStopsByRow[c][alignRow] &&
-            topSymbolStopsByRow[c][alignRow].length > 0 &&
-            Math.random() < 0.85
-          ) {
-            const list = topSymbolStopsByRow[c][alignRow];
-            return list[Math.floor(Math.random() * list.length)];
-          }
-
-          if (maxIdx <= minIdx) return Math.floor(Math.random() * len);
-          return Math.floor(Math.random() * (maxIdx - minIdx + 1)) + minIdx;
-        });
-
-      let currentGrid = candidateRng.map((start, cIdx) => {
-        const r = rowCounts[cIdx] || 3;
-        const s = currentStrips[cIdx] || ["-"];
-        return Array.from({ length: r }).map(
-          (_, ri) => s[(start + ri) % s.length],
-        );
-      });
+        if (
+          useGuided &&
+          topSymbolStopsByRow[c] &&
+          topSymbolStopsByRow[c][alignRow] &&
+          topSymbolStopsByRow[c][alignRow].length > 0 &&
+          Math.random() < 0.85
+        ) {
+          const list = topSymbolStopsByRow[c][alignRow];
+          start = list[Math.floor(Math.random() * list.length)];
+        } else if (maxIdx <= minIdx) {
+          start = Math.floor(Math.random() * len);
+        } else {
+          start = Math.floor(Math.random() * (maxIdx - minIdx + 1)) + minIdx;
+        }
+        candidateRng[c] = start;
+        
+        const s = currentStrips[c] || ["-"];
+        currentGrid[c] = new Array(rows);
+        for (let ri = 0; ri < rows; ri++) {
+          currentGrid[c][ri] = s[(start + ri) % s.length];
+        }
+      }
 
       let totalPayout = 0;
 

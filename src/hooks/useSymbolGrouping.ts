@@ -17,11 +17,26 @@ export function useSymbolGrouping(
   currentPaytable: PaytableRule[],
   gameType: string
 ): SymbolGroup[] {
+  const disabledSymbolsStr = useMemo(() => {
+    return currentPaytable
+      .filter(r => r.isEnabled === false)
+      .map(r => r.symbolId)
+      .sort()
+      .join(',');
+  }, [currentPaytable]);
+
+  const allPaytableSymbolsStr = useMemo(() => {
+    return currentPaytable
+      .filter(r => r.symbolId && r.isEnabled !== false)
+      .map(r => r.symbolId)
+      .sort()
+      .join(',');
+  }, [currentPaytable]);
+
   return useMemo(() => {
-    const disabledSymbols = new Set(
-      currentPaytable.filter(r => r.isEnabled === false).map(r => r.symbolId)
-    );
-    
+    const disabledSymbols = new Set(disabledSymbolsStr ? disabledSymbolsStr.split(',') : []);
+
+
     const allSyms = new Set<string>();
     currentStrips.forEach(strip => {
       if (!strip) return;
@@ -32,12 +47,8 @@ export function useSymbolGrouping(
       });
     });
 
-    if (allSyms.size === 0) {
-      currentPaytable.forEach(r => {
-        if (r.symbolId && r.isEnabled !== false) {
-          allSyms.add(r.symbolId);
-        }
-      });
+    if (allSyms.size === 0 && allPaytableSymbolsStr) {
+      allPaytableSymbolsStr.split(',').forEach(sym => allSyms.add(sym));
     }
 
     const symList = Array.from(allSyms).filter(sym => !/^G[1-9A-Z]/.test(sym));
@@ -67,12 +78,12 @@ export function useSymbolGrouping(
     sorted.forEach(sym => {
       const base = getBase(sym);
       const b = base.toUpperCase();
-      
+
       if (
-        b === SpecialSymbols.WX || 
-        b === SpecialSymbols.WILD || 
-        b === SpecialSymbols.WW || 
-        b === SpecialSymbols.B1 || 
+        b === SpecialSymbols.WX ||
+        b === SpecialSymbols.WILD ||
+        b === SpecialSymbols.WW ||
+        b === SpecialSymbols.B1 ||
         b === SpecialSymbols.S1
       ) {
         others.push(sym);
@@ -88,7 +99,7 @@ export function useSymbolGrouping(
     if (gameType === GameTypes.PAY_ANYWHERE_SET2) {
       const hasB1 = others.includes(SpecialSymbols.B1);
       const hasB2 = others.includes(SpecialSymbols.B2);
-      
+
       if (hasB1 || hasB2) {
         if (hasB1) others.splice(others.indexOf(SpecialSymbols.B1), 1);
         if (hasB2) others.splice(others.indexOf(SpecialSymbols.B2), 1);
@@ -101,5 +112,5 @@ export function useSymbolGrouping(
       { id: SymbolCategories.M_NUM, title: '第二區塊 (M數字)', list: mnum },
       { id: SymbolCategories.M_LET, title: '第三區塊 (M字母)', list: mlet }
     ].filter(g => g.list.length > 0);
-  }, [currentStrips, currentPaytable, gameType]);
+  }, [currentStrips, disabledSymbolsStr, allPaytableSymbolsStr, gameType]);
 }

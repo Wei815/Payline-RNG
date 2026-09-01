@@ -129,10 +129,22 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectTemplate }
                 <span className="font-bold text-[#e6f1ff] group-hover:text-blue-500 transition-colors">Jira CSV 報表轉換器</span>
               </div>
 
-              {[
-                { name: 'RTP 計算機 (待開發)', icon: <Calculator size={18} /> },
-                { name: 'RNG 腳本驗證 (待開發)', icon: <FileCheck2 size={18} /> },
-              ].map((tool) => (
+              {/* RNG Validator */}
+              <div 
+                onClick={() => useMachineStore.getState().setActiveModalTool('rngValidator')}
+                className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-dashboard-accent hover:-translate-y-1 transition-all duration-200 group shadow-lg"
+              >
+                <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center group-hover:border-dashboard-accent/50 group-hover:text-dashboard-accent transition-colors">
+                  <FileCheck2 size={18} className="text-[#8892b0] group-hover:text-dashboard-accent" />
+                </div>
+                <span className="font-bold text-[#e6f1ff] group-hover:text-dashboard-accent transition-colors">RNG 腳本驗證</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                {[
+                  { name: 'RTP 計算機 (待開發)', icon: <Calculator size={18} /> },
+                ].map((tool) => (
                 <div 
                   key={tool.name}
                   className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 opacity-50 cursor-not-allowed shadow-lg"

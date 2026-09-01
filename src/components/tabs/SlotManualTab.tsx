@@ -121,60 +121,6 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
     };
   }, [displayGrid, wins, currentPaytable, gameType, topTracker, customPaylines]);
 
-  const handleDragStart = (e: React.DragEvent, col: number, row: number) => {
-    e.dataTransfer.setData("sourceCol", col.toString());
-    e.dataTransfer.setData("sourceRow", row.toString());
-    e.dataTransfer.effectAllowed = "move";
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-  };
-
-  const handleDrop = (e: React.DragEvent, targetCol: number, targetRow: number) => {
-    e.preventDefault();
-    const sourceColStr = e.dataTransfer.getData("sourceCol");
-    const sourceRowStr = e.dataTransfer.getData("sourceRow");
-    if (!sourceColStr || !sourceRowStr) return;
-
-    const sourceCol = parseInt(sourceColStr);
-    const sourceRow = parseInt(sourceRowStr);
-
-    if (sourceCol === targetCol && sourceRow === targetRow) return;
-
-    const expandCol = (colIdx: number) => {
-      const val = manualIndices[colIdx] || '';
-      if (val.includes(',')) {
-        return val.split(',').map(s => s.trim());
-      } else {
-        return displayGrid[colIdx].map(sym => sym);
-      }
-    };
-
-    const sourceArr = expandCol(sourceCol);
-
-    if (sourceCol === targetCol) {
-      const temp = sourceArr[sourceRow];
-      sourceArr[sourceRow] = sourceArr[targetRow];
-      sourceArr[targetRow] = temp;
-
-      const newIndices = [...manualIndices];
-      newIndices[sourceCol] = sourceArr.join(',');
-      setManualIndices(newIndices);
-    } else {
-      const targetArr = expandCol(targetCol);
-      const temp = sourceArr[sourceRow];
-      sourceArr[sourceRow] = targetArr[targetRow];
-      targetArr[targetRow] = temp;
-
-      const newIndices = [...manualIndices];
-      newIndices[sourceCol] = sourceArr.join(',');
-      newIndices[targetCol] = targetArr.join(',');
-      setManualIndices(newIndices);
-    }
-  };
-
   return (
     <>
       <div className="flex-1 flex flex-col items-center justify-center gap-8">
@@ -372,13 +318,9 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                       <div
                         key={`${colIndex}-${rowIndex}`}
                         id={`cell-manual-${colIndex}-${rowIndex}`}
-                        draggable={true}
-                        onDragStart={(e) => handleDragStart(e, colIndex, rowIndex)}
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, colIndex, rowIndex)}
                         className={`
                           w-20 h-20 rounded-lg flex items-center justify-center text-xl font-bold
-                          shadow-lg transform transition-all duration-300 relative cursor-grab active:cursor-grabbing border
+                          shadow-lg transform transition-all duration-300 relative border
                           ${customBg ? customBg :
                             symbol === '-' ? 'bg-[#0a192f] text-gray-700 border-2 border-gray-800 border-dashed' :
                             symbol === 'WILD' || symbol.startsWith('W') || symbol === 'WX' ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border-yellow-300' :

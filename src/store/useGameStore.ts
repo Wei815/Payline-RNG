@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { PaytableRule, ReelStrips, ReelStripsList, SpecialSymbolConfig } from '../types';
 import { useMachineStore } from './useMachineStore';
+import type { Snippet } from './useSnippetStore';
 
 export interface GameState {
   currentStrips: ReelStrips;
@@ -29,7 +30,7 @@ export interface GameState {
   isFreeGame: boolean;
   isProjectLoaded: boolean;
   projectName: string;
-  pendingSnippet: any;
+  pendingSnippet: Snippet | null;
   
   setCurrentStrips: (strips: ReelStrips) => void;
   setCurrentStripSets: (stripSets: ReelStripsList) => void;
@@ -57,8 +58,8 @@ export interface GameState {
   setIsFreeGame: (val: boolean) => void;
   setIsProjectLoaded: (val: boolean) => void;
   setProjectName: (val: string) => void;
-  setPendingSnippet: (val: any) => void;
-  applySnippet: (snippet: any) => void;
+  setPendingSnippet: (val: Snippet | null) => void;
+  applySnippet: (snippet: Snippet) => void;
 
   resetGameSpecifics: () => void;
   clearProject: () => void;
@@ -250,26 +251,45 @@ export const useGameStore = create<GameState>((set, get) => ({
     
     const reelCount = store.reelCount;
     const rowCounts = store.rowCounts;
+    const isMathId = isCoordinateClassId || flatIds.length > reelCount + 4;
     const emptyGrid = Array.from({ length: reelCount }, (_, c) => 
       Array(rowCounts[c] || 3).fill('-')
     );
 
-    const newGrid = emptyGrid.map((col) => 
-      col.map((cell) => {
-        if (idIndex < flatIds.length) {
-          const val = flatIds[idIndex++];
-          let sym = mathIdToSymbol[val];
-          if (sym && !isCoordinateClassId && sym.match(/^[F|L][1-4]/)) {
-            const mult = flatClassIds[classIdIndex++];
-            if (mult !== undefined) {
-              sym = `${sym}_${mult}X`;
+    let newGrid = emptyGrid;
+    if (isMathId) {
+      newGrid = emptyGrid.map((col) => 
+        col.map((cell) => {
+          if (idIndex < flatIds.length) {
+            const val = flatIds[idIndex++];
+            let sym = mathIdToSymbol[val];
+            if (sym && !isCoordinateClassId && sym.match(/^[F|L][1-4]/)) {
+              const mult = flatClassIds[classIdIndex++];
+              if (mult !== undefined) {
+                sym = `${sym}_${mult}X`;
+              }
             }
+            return sym ? sym : '-';
           }
-          return sym ? sym : '-';
-        }
-        return cell;
-      })
-    );
+          return cell;
+        })
+      );
+    } else {
+      // Strip index logic
+      const currentStrips = store.currentStrips;
+      newGrid = emptyGrid.map((col, c) => {
+         const start = flatIds[c] || 0;
+         const len = currentStrips[c]?.length || 1;
+         const strip = currentStrips[c] || ['-'];
+         return col.map((_, r) => strip[(start + r) % len]);
+      });
+    }
+    
+    let newTopTracker: string[] = [];
+    if (flatIds.length > reelCount && !isMathId) {
+       // Optional: populate top tracker if they provided it in flatIds
+       newTopTracker = []; // simplified for now, as useGameStore might have more complex logic
+    }
     
     const newSpecialConfig = extractSpecialConfigFromGrid(newGrid, store.specialSymbolConfig, gameType);
 

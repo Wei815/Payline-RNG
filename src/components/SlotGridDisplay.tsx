@@ -47,7 +47,7 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
   return (
     <>
       {gridSymbols.map((col, colIndex) => (
-        <div key={colIndex} className="flex flex-col gap-3">
+        <div key={colIndex} className="flex flex-col justify-center gap-3">
           {col.map((symbol, rowIndex) => {
             const winIndices = winningCoords.get(`${colIndex}-${rowIndex}`);
             const isWinning = !!winIndices;
@@ -61,11 +61,13 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
             let displaySymbol = symbol;
             let customBg = '';
             
-            // Common special ball parsing
-            if (symbol.includes('_') && symbol.match(/^[F|L].*_\d+X/)) {
+            if (symbol.includes('_') && (symbol.startsWith('F') || symbol.startsWith('L'))) {
               const [ballId, valStr] = symbol.split('_');
               displaySymbol = valStr;
-              const numVal = parseInt(valStr.replace('X', ''), 10);
+              let numVal = 0;
+              if (valStr && valStr.endsWith('X')) {
+                numVal = parseInt(valStr.replace('X', ''), 10);
+              }
               const balls = ballId.startsWith('F') ? MULTIPLIER_BALLS : LUCKY_BALLS;
               const ball = balls.find(b => b.values.includes(numVal)) || balls.find(b => b.id === ballId);
               if (ball) {
@@ -74,14 +76,6 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
                 displaySymbol = '2X';
                 customBg = `bg-red-900/30 border-2 border-red-500 text-red-500`;
               }
-            } else if (gridMode === 'custom' && symbol.includes('_') && symbol.match(/^[F|L][1-4]_/)) {
-               // specific loose regex in custom tab
-               const [ballId, val] = symbol.split('_');
-               displaySymbol = val;
-               const numVal = parseInt(val.replace('X', ''), 10);
-               const balls = ballId.startsWith('F') ? MULTIPLIER_BALLS : LUCKY_BALLS;
-               const ball = balls.find(b => b.values.includes(numVal)) || balls.find(b => b.id === ballId);
-               if (ball) customBg = `bg-[#0a192f] border ${ball.border} ${ball.color}`;
             }
 
             const hasAnyWin = winningCoords.size > 0;

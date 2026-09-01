@@ -8,6 +8,7 @@ import type { GameType, PaytableRule } from '../../types';
 import { useGameStore } from '../../store/useGameStore';
 import { SpecialSymbols } from '../../constants/GameConstants';
 
+const ALL_SPECIAL_BALLS = [...MULTIPLIER_BALLS, ...LUCKY_BALLS];
 const MULTIPLIER_LEVELS = [2, 3, 4, 6, 8, 10, 12, 15, 18, 25, 55, 65, 80, 100, 150, 200, 250, 500];
 
 export interface TumbleViewerTabProps {
@@ -126,7 +127,7 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
   // 當前盤面的贏分結果
   const { wins, winningCoords, totalWin, currentMultiplier } = useMemo(() => {
     if (currentGridSymbols.length === 0) return { wins: [], winningCoords: new Map<string, number[]>(), totalWin: 0, currentMultiplier: 1 };
-    const evWins = evaluateGrid(currentGridSymbols, currentPaytable, gameType, undefined, true);
+    const evWins = evaluateGrid(currentGridSymbols, currentPaytable, gameType, undefined, false);
     const coords = getWinningPositions(currentGridSymbols, evWins, currentPaytable, gameType);
     
     let mult = 1;
@@ -190,7 +191,7 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
           
           keptIds.push(keptStr);
         } else {
-          if ((gameType === 'waygame' || gameType === 'waygame_qin') && symId.startsWith('G') && symId !== 'G') {
+          if ((gameType === 'waygame' || gameType === 'waygame_qin' || gameType === 'waygame_elephant') && symId.startsWith('G') && symId !== 'G') {
              keptIds.push('WX');
           }
         }
@@ -308,11 +309,14 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
             {(() => {
               let gridMultiplier = 0;
               currentGridSymbols.forEach(col => col.forEach(sym => {
-                if (sym.includes('_') && sym.match(/^[F|L].*_\d+X/)) {
-                  let val = parseInt(sym.split('_')[1].replace('X', ''), 10);
-                  const ball = [...MULTIPLIER_BALLS, ...LUCKY_BALLS].find(b => b.values.includes(val) && b.id.charAt(0) === sym.charAt(0));
-                  if (!ball) val = 2; // Invalid fallback to 2X
-                  gridMultiplier += val;
+                if (sym.includes('_') && (sym.startsWith('F') || sym.startsWith('L'))) {
+                  const valStr = sym.split('_')[1];
+                  if (valStr && valStr.endsWith('X')) {
+                    let val = parseInt(valStr.replace('X', ''), 10);
+                    const ball = ALL_SPECIAL_BALLS.find(b => b.values.includes(val) && b.id.charAt(0) === sym.charAt(0));
+                    if (!ball) val = 2; // Invalid fallback to 2X
+                    gridMultiplier += val;
+                  }
                 }
               }));
               const baseWin = accumulatedWin + totalWin;
@@ -362,7 +366,7 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
           {currentGridSymbols.length > 0 ? (
             <div className="flex gap-2 p-6 bg-[#0f1d35] rounded-xl border border-gray-700/50 relative shadow-xl">
               {currentGridSymbols.map((col, cIdx) => (
-                <div key={cIdx} className="flex flex-col gap-2">
+                <div key={cIdx} className="flex flex-col justify-end gap-2">
                   {col.map((sym, rIdx) => {
                     const winIndices = winningCoords.get(`${cIdx}-${rIdx}`);
                     const isWin = !!winIndices;
@@ -372,17 +376,19 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
                     
                     let customBg = '';
                     let displaySymbol = sym;
-                    if (sym.includes('_') && sym.match(/^[F|L].*_\d+X/)) {
-                      const [ballId, val] = sym.split('_');
-                      displaySymbol = val;
-                      const numVal = parseInt(val.replace('X', ''), 10);
-                      const ball = [...MULTIPLIER_BALLS, ...LUCKY_BALLS].find(b => b.values.includes(numVal) && b.id.charAt(0) === ballId.charAt(0));
-                      if (ball) {
-                        customBg = `bg-[#0a192f] border ${ball.border} ${ball.color}`;
-                      } else {
-                        // Invalid! Force to 2X and use red border
-                        displaySymbol = '2X';
-                        customBg = `bg-red-900/30 border-2 border-red-500 text-red-500`;
+                    if (sym.includes('_') && (sym.startsWith('F') || sym.startsWith('L'))) {
+                      const [ballId, valStr] = sym.split('_');
+                      displaySymbol = valStr;
+                      if (valStr && valStr.endsWith('X')) {
+                        const numVal = parseInt(valStr.replace('X', ''), 10);
+                        const ball = ALL_SPECIAL_BALLS.find(b => b.values.includes(numVal) && b.id.charAt(0) === ballId.charAt(0));
+                        if (ball) {
+                          customBg = `bg-[#0a192f] border ${ball.border} ${ball.color}`;
+                        } else {
+                          // Invalid! Force to 2X and use red border
+                          displaySymbol = '2X';
+                          customBg = `bg-red-900/30 border-2 border-red-500 text-red-500`;
+                        }
                       }
                     }
                     

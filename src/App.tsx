@@ -9,6 +9,7 @@ import { Sidebar } from './components/Sidebar';
 import { JiraLinkGenerator } from './components/tools/JiraLinkGenerator';
 import { SnippetLibrary } from './components/tools/SnippetLibrary';
 import { JiraReportGenerator } from './components/tools/JiraReportGenerator';
+import { RngValidator } from './components/tools/RngValidator';
 import type { GameConfig, GameType } from './types';
 import { useMachineStore } from './store/useMachineStore';
 import { useGameStore } from './store/useGameStore';
@@ -167,6 +168,9 @@ function App() {
       )}
       {activeModalTool === 'jiraReport' && (
         <JiraReportGenerator onClose={() => setActiveModalTool(null)} />
+      )}
+      {activeModalTool === 'rngValidator' && (
+        <RngValidator onClose={() => setActiveModalTool(null)} />
       )}
     </div>
   );

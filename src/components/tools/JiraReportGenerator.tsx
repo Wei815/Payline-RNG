@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { FileSpreadsheet, X, Copy, Upload, ExternalLink } from 'lucide-react';
+import { FileSpreadsheet, X, Copy, Upload, ExternalLink, Download } from 'lucide-react';
 import { useMachineStore } from '../../store/useMachineStore';
+import type { JiraIssueDetail } from '../../store/useMachineStore';
+import Papa from 'papaparse';
 
 interface JiraReportGeneratorProps {
   onClose: () => void;
@@ -77,6 +79,91 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
   const [assigneeFilter, setAssigneeFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
   
+  const handleExportExcel = async () => {
+    try {
+      const xlsx = await import('xlsx');
+      
+      const projectsToRender = selectedProjectDetails === 'ALL' 
+        ? Object.keys(jiraIssuesByProject || {})
+        : [selectedProjectDetails];
+      
+      const rows: any[][] = [
+        ['專案', '單號', '狀態', '標題', '回報者', '受託人']
+      ];
+      const merges: any[] = [];
+      
+      let currentRow = 1;
+
+      projectsToRender.forEach(proj => {
+        if (!proj) return;
+        const pIssues = jiraIssuesByProject?.[proj] || [];
+        const filteredPIssues = pIssues.filter(issue => 
+          (reporterFilter === 'All' || issue.reporter === reporterFilter) &&
+          (assigneeFilter === 'All' || issue.assignee === assigneeFilter) &&
+          (statusFilter === 'All' || issue.status === statusFilter)
+        );
+
+        if (filteredPIssues.length === 0) return;
+
+        const startRow = currentRow;
+        filteredPIssues.forEach((issue) => {
+          rows.push([
+            proj,
+            issue.issueKey,
+            issue.status,
+            issue.summary || '',
+            issue.reporter || '未知',
+            issue.assignee || '未指派'
+          ]);
+          currentRow++;
+        });
+
+        if (currentRow - startRow > 1) {
+          merges.push({ s: { r: startRow, c: 0 }, e: { r: currentRow - 1, c: 0 } });
+        }
+      });
+
+      if (rows.length === 1) {
+        alert('沒有資料可供匯出');
+        return;
+      }
+
+      const ws = xlsx.utils.aoa_to_sheet(rows);
+      if (merges.length > 0) {
+        ws['!merges'] = merges;
+      }
+
+      for (let r = 1; r < rows.length; r++) {
+        const issueKey = rows[r][1];
+        const cellAddress = xlsx.utils.encode_cell({ r, c: 1 });
+        if (ws[cellAddress]) {
+          ws[cellAddress].l = { Target: `https://auforce.atlassian.net/browse/${issueKey}` };
+        }
+      }
+      
+      ws['!cols'] = [
+        { wch: 30 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 60 },
+        { wch: 15 },
+        { wch: 15 },
+      ];
+
+      const wb = xlsx.utils.book_new();
+      xlsx.utils.book_append_sheet(wb, ws, "Jira Report");
+      
+      const fileName = selectedProjectDetails === 'ALL' 
+        ? 'Jira_All_Projects_Report.xlsx'
+        : `Jira_${selectedProjectDetails?.split('\n')[0]}_Report.xlsx`;
+        
+      xlsx.writeFile(wb, fileName);
+    } catch (err) {
+      console.error('Export failed:', err);
+      alert('匯出 Excel 失敗，請重試');
+    }
+  };
+
   const handleConvert = (csvText: string) => {
     setCopySuccess(false);
     setErrorMsg('');
@@ -130,32 +217,32 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
 
     const headers = parsedLines[0];
     const issueKeyIndex = headers.findIndex(h => 
-      h.toLowerCase().includes('issue key') || h.includes('問題金鑰') || h.includes('問題關鍵字') || h.includes('議題索引鍵')
+      h.toLowerCase().includes('issue key') || h.includes('問題金鑰') || h.includes('問題關鍵字') || h.includes('議題鍵值') || h.includes('議題索引鍵')
     );
     const statusIndex = headers.findIndex(h => 
       h.toLowerCase().includes('status') || h.includes('狀態')
     );
     
     const summaryIndex = headers.findIndex(h => h.toLowerCase().includes('summary') || h.includes('摘要'));
-    const assigneeIndex = headers.findIndex(h => h.toLowerCase().includes('assignee') || h.includes('受託人'));
+    const assigneeIndex = headers.findIndex(h => h.toLowerCase().includes('assignee') || h.includes('經辦人') || h.includes('受託人'));
     const reporterIndex = headers.findIndex(h => h.toLowerCase().includes('reporter') || h.includes('報告者') || h.includes('回報者'));
     
     if (issueKeyIndex === -1 || statusIndex === -1) {
-      setErrorMsg(`找不到必備欄位 (Issue key: ${issueKeyIndex !== -1 ? '✅' : '❌'}, Status: ${statusIndex !== -1 ? '✅' : '❌'})。請確認匯出的 CSV 是否包含這兩個欄位。`);
+      setErrorMsg(`找不到必要欄位 (Issue key: ${issueKeyIndex !== -1 ? '有' : '無'}, Status: ${statusIndex !== -1 ? '有' : '無'})，請確認匯出的 CSV 是否包含這兩個欄位。`);
       return;
     }
     
     const dataLines = parsedLines.slice(1).filter(arr => arr.length > Math.max(issueKeyIndex, statusIndex));
     
     const group: Record<string, Record<string, string[]>> = {};
-    const issuesByProj: Record<string, any[]> = {};
-
+    const issuesByProj: Record<string, JiraIssueDetail[]> = {};
+    
     dataLines.forEach(row => {
-      const issueKey = row[issueKeyIndex];
-      const statusRaw = row[statusIndex];
-      if (!issueKey || !statusRaw) return;
+      const issueKey = row[issueKeyIndex].trim();
+      const rawStatus = row[statusIndex].trim();
+      if (!issueKey || !rawStatus) return;
       
-      const mappedStatus = statusMap[statusRaw];
+      const mappedStatus = statusMap[rawStatus];
       if (!mappedStatus) return;
       
       const pKey = issueKey.split('-')[0];
@@ -185,6 +272,23 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
           const numB = parseInt(b.split('-')[1]) || 0;
           return numA - numB;
         });
+      });
+    });
+
+    // Sort detailed issues by status (matching COLUMNS order) and then by issue key
+    Object.keys(issuesByProj).forEach(proj => {
+      issuesByProj[proj].sort((a, b) => {
+        const statusOrder = COLUMNS.slice(1);
+        const idxA = statusOrder.indexOf(a.status);
+        const idxB = statusOrder.indexOf(b.status);
+        
+        if (idxA !== idxB) {
+          return (idxA === -1 ? 99 : idxA) - (idxB === -1 ? 99 : idxB);
+        }
+        
+        const numA = parseInt(a.issueKey.split('-')[1]) || 0;
+        const numB = parseInt(b.issueKey.split('-')[1]) || 0;
+        return numA - numB;
       });
     });
 
@@ -652,9 +756,19 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                   )}
                 </div>
               </div>
-              <button onClick={() => setSelectedProjectDetails(null)} className="p-2 hover:bg-white/10 rounded-lg text-gray-400">
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={handleExportExcel}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded transition-colors shadow-lg"
+                  title="匯出目前篩選結果為 Excel"
+                >
+                  <Download size={16} />
+                  匯出報表
+                </button>
+                <button onClick={() => setSelectedProjectDetails(null)} className="p-2 hover:bg-white/10 rounded-lg text-gray-400">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
             <div className="p-6 flex-1 overflow-auto">
               {(() => {
