@@ -142,18 +142,19 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectTemplate }
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-                {[
-                  { name: 'RTP 計算機 (待開發)', icon: <Calculator size={18} /> },
-                ].map((tool) => (
-                <div 
-                  key={tool.name}
-                  className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 opacity-50 cursor-not-allowed shadow-lg"
-                >
-                  <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center text-[#8892b0]">
-                    {tool.icon}
+                  {[
+                    { name: 'RTP 模擬計算機', icon: <Calculator size={18} />, action: () => useMachineStore.getState().setActiveModalTool('rtpCalculator') },
+                  ].map((tool) => (
+                  <div 
+                    key={tool.name}
+                    onClick={tool.action}
+                    className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-dashboard-accent hover:-translate-y-1 transition-all duration-200 group shadow-lg"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center text-[#8892b0] group-hover:border-dashboard-accent/50 group-hover:text-dashboard-accent transition-colors">
+                      {tool.icon}
+                    </div>
+                    <span className="font-bold text-[#e6f1ff] group-hover:text-dashboard-accent transition-colors">{tool.name}</span>
                   </div>
-                  <span className="font-bold text-[#8892b0]">{tool.name}</span>
-                </div>
               ))}
             </div>
           </section>

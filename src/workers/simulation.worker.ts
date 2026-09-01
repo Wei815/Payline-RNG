@@ -1,8 +1,11 @@
 import type { PaytableRule, ReelStrips, SymbolMetric, GameConfig } from '../types';
 import { evaluateGrid, getWinningPositions } from '../utils/evaluation';
+import { isGoldSymbol } from '../utils/evaluation/GameConstants';
 
 export type WorkerMessageData = {
+  mode?: 'base_only' | 'free_only' | 'full_game';
   strips: ReelStrips;
+  freeStrips?: ReelStrips;
   paytable: PaytableRule[];
   totalSpins: number;
   rowCounts: number[];
@@ -20,9 +23,10 @@ export type WorkerResponse = {
   type: 'DONE';
   result: any;
 };
+const REPORT_INTERVAL_MS = 100;
 
 self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
-  const { strips, paytable, totalSpins, rowCounts, gameConfig, coin, bet, isFreeGame } = e.data;
+  const { mode = 'base_only', strips, freeStrips, paytable, totalSpins, rowCounts, gameConfig, coin, bet, isFreeGame } = e.data;
   
   const symbolMetrics: Record<string, SymbolMetric> = {};
   paytable.forEach(rule => {
@@ -40,41 +44,35 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
 
   let overallWin = 0;
   let winningSpins = 0;
+  let baseWinTotal = 0;
+  let freeWinTotal = 0;
+  let freeGameTriggers = 0;
+  let freeGameRetriggers = 0;
+  let freeSpinsPlayedTotal = 0;
 
   // Pre-allocate the grid to avoid GC overhead
+  
   const maxCols = strips.length;
   const grid: string[][] = new Array(maxCols);
   for (let c = 0; c < maxCols; c++) {
-    // Determine max rows for this column (including possible megaways top row slot)
     const rows = rowCounts[c] || 3;
     const isMegawayTop = gameConfig.gameType === 'megaway' && c >= 1 && c <= 4;
     grid[c] = new Array(rows + (isMegawayTop ? 1 : 0)).fill('0');
   }
 
-  // Pre-allocate a grid for display without the megaway top tracker (if needed)
   const displayGrid: string[][] = new Array(maxCols);
   for (let c = 0; c < maxCols; c++) {
     const rows = rowCounts[c] || 3;
     displayGrid[c] = new Array(rows).fill('0');
   }
 
-  const effectivePaylines = ((gameConfig.gameType === 'linegame' || gameConfig.gameType === 'linegame_set2') && gameConfig.paylines && gameConfig.paylines.length > 0)
-    ? gameConfig.paylines : undefined;
-
-  // Optimize batch size and progress reporting
-  // Avoid postMessage too often.
-  const REPORT_INTERVAL_MS = 200;
+  let effectivePaylines = gameConfig.paylines;
   let lastReportTime = performance.now();
-
-  // Pre-allocate arrays to avoid GC overhead in the main loop
   const drawIndices: number[] = new Array(maxCols);
 
-  for (let i = 0; i < totalSpins; i++) {
-    // Keep track of the top-most draw index for each column (used for tumbling)
-    
-    // Generate initial grid from continuous strips
-    for (let colIndex = 0; colIndex < strips.length; colIndex++) {
-      const strip = strips[colIndex];
+  const runSpin = (currentStrips: import('../types').ReelStrips, isFG: boolean) => {
+    for (let colIndex = 0; colIndex < currentStrips.length; colIndex++) {
+      const strip = currentStrips[colIndex];
       const rows = rowCounts[colIndex] || 3;
       let writeIdx = 0;
 
@@ -82,17 +80,15 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
         for (let r = 0; r < rows; r++) {
           grid[colIndex][writeIdx++] = 'WILD';
         }
-        drawIndices[colIndex] = 0; // fallback
+        drawIndices[colIndex] = 0;
       } else {
         const startIndex = Math.floor(Math.random() * strip.length);
-        drawIndices[colIndex] = startIndex - 1; // The next symbol to draw is above the startIndex
-        
+        drawIndices[colIndex] = startIndex - 1;
         for (let r = 0; r < rows; r++) {
           grid[colIndex][writeIdx++] = strip[(startIndex + r) % strip.length];
         }
       }
       
-      // Megaways top row (usually drawn randomly or from a separate strip, keeping random for now)
       if (gameConfig.gameType === 'megaway' && colIndex >= 1 && colIndex <= 4) {
         if (!strip || strip.length === 0) {
           grid[colIndex][writeIdx++] = 'WX';
@@ -105,6 +101,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
     let spinWin = 0;
     let keepCascading = true;
     let cascadeCount = 0;
+    let scatterHits = 0;
 
     while (keepCascading) {
       const wins = evaluateGrid(grid, paytable, gameConfig, effectivePaylines);
@@ -116,7 +113,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
       
       let tumbleMultiplier = 1;
       if (gameConfig.gameType === 'waygame' || gameConfig.gameType === 'waygame_elephant') {
-        tumbleMultiplier = isFreeGame 
+        tumbleMultiplier = isFG 
           ? Math.min(1024, 8 * Math.pow(2, cascadeCount)) 
           : Math.min(1024, 1 * Math.pow(2, cascadeCount));
       }
@@ -132,13 +129,9 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
           metric.totalPayout += multipliedWin;
 
           if (gameConfig.gameType === 'payanywhere' || gameConfig.gameType === 'payanywhere_set2') {
-            if (win.matchCount >= 8 && win.matchCount <= 9) {
-              metric.hits3++;
-            } else if (win.matchCount >= 10 && win.matchCount <= 11) {
-              metric.hits4++;
-            } else if (win.matchCount >= 12) {
-              metric.hits5++;
-            }
+            if (win.matchCount >= 8 && win.matchCount <= 9) metric.hits3++;
+            else if (win.matchCount >= 10 && win.matchCount <= 11) metric.hits4++;
+            else if (win.matchCount >= 12) metric.hits5++;
           } else {
             const matches = Math.min(win.matchCount, 6);
             if (matches === 2) metric.hits2++;
@@ -152,27 +145,27 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
 
       spinWin += cascadeWin;
 
-      // Handle Cascading logic (Tumbling)
-      if ((gameConfig.gameType === 'waygame' || gameConfig.gameType === 'waygame_qin' || gameConfig.gameType === 'payanywhere_set2') && cascadeWin > 0) {
-        // Find which coordinates were eliminated
+      if ((gameConfig.gameType === 'waygame' || gameConfig.gameType === 'waygame_qin' || gameConfig.gameType === 'waygame_elephant' || gameConfig.gameType === 'payanywhere_set2') && cascadeWin > 0) {
         const winningCoordsMap = getWinningPositions(grid, wins, paytable, gameConfig.gameType, undefined, effectivePaylines);
         
         for (let colIndex = 0; colIndex < grid.length; colIndex++) {
-          const strip = strips[colIndex];
+          const strip = currentStrips[colIndex];
           if (!strip || strip.length === 0) continue;
           
-          // Get eliminated rows in this column
           const rows = rowCounts[colIndex] || 3;
 
-          // Process from bottom to top (rows - 1 down to 0) to replace eliminated symbols directly
           for (let r = rows - 1; r >= 0; r--) {
             if (winningCoordsMap.has(`${colIndex}-${r}`)) {
-              // If it's a Free Game and the symbol is unremovable, do NOT eliminate it
               const unremovable = gameConfig.specialRules?.unremovableSymbols || [];
-              if (isFreeGame && unremovable.includes(grid[colIndex][r])) {
+              const currentSym = grid[colIndex][r];
+              if (isFG && unremovable.includes(currentSym)) {
                 continue;
               }
-              // Make sure to ignore 999 which is just the highlight marker for unremovable symbols
+              if (gameConfig.gameType === 'waygame_elephant' && isGoldSymbol(currentSym)) {
+                grid[colIndex][r] = 'WX';
+                continue;
+              }
+
               const winIndices = winningCoordsMap.get(`${colIndex}-${r}`);
               const hasRealWin = winIndices && winIndices.some(idx => idx !== 999);
               if (hasRealWin) {
@@ -186,17 +179,64 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
           }
         }
       } else {
-        // No cascading mechanic for other games currently, or no win to trigger it
         keepCascading = false;
       }
       
       cascadeCount++;
     }
-
-    if (spinWin > 0) {
-      winningSpins++;
-      overallWin += spinWin;
+    
+    for (let c = 0; c < grid.length; c++) {
+       const rows = rowCounts[c] || 3;
+       for (let r = 0; r < rows; r++) {
+         if (grid[c][r] === 'B1' || grid[c][r] === 'S1') scatterHits++;
+       }
     }
+
+    return { spinWin, scatterHits };
+  };
+
+  for (let i = 0; i < totalSpins; i++) {
+
+    // Keep track of the top-most draw index for each column (used for tumbling)
+    
+    
+    let bgResult = runSpin(strips, mode === 'free_only' || !!isFreeGame);
+    let totalWinForRound = bgResult.spinWin;
+    
+    if (bgResult.spinWin > 0) {
+      winningSpins++;
+      baseWinTotal += bgResult.spinWin;
+    }
+
+    if (mode === 'full_game' && freeStrips && bgResult.scatterHits >= 3) {
+      freeGameTriggers++;
+      let freeSpinsRemaining = 10 + (bgResult.scatterHits - 3) * 2;
+      let totalFreeSpinsPlayed = 0;
+      
+      while (freeSpinsRemaining > 0 && totalFreeSpinsPlayed < 200) {
+        freeSpinsRemaining--;
+        totalFreeSpinsPlayed++;
+        
+        let fgResult = runSpin(freeStrips, true);
+        totalWinForRound += fgResult.spinWin;
+        freeWinTotal += fgResult.spinWin;
+        
+        if (fgResult.scatterHits >= 3) {
+           freeGameRetriggers++;
+           let additional = 10 + (fgResult.scatterHits - 3) * 2;
+           freeSpinsRemaining += additional;
+           if (totalFreeSpinsPlayed + freeSpinsRemaining > 200) {
+              freeSpinsRemaining = 200 - totalFreeSpinsPlayed;
+           }
+        }
+      }
+      freeSpinsPlayedTotal += totalFreeSpinsPlayed;
+    }
+    
+    overallWin += totalWinForRound;
+
+
+    
 
     // Report progress periodically
     if ((i + 1) % 1000 === 0) {
@@ -234,13 +274,18 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
   self.postMessage({
     type: 'DONE',
     result: {
+      overallWin,
       totalSpins,
       overallRTP,
       hitFrequency,
       symbolMetrics,
-      paylineCount: usedPaylines,
-      effectiveBet,
-      gameType: gameConfig.gameType
+      winningSpins,
+      usedPaylines,
+      baseWin: baseWinTotal,
+      freeWin: freeWinTotal,
+      freeGameTriggers,
+      freeGameRetriggers,
+      freeSpinsPlayed: freeSpinsPlayedTotal
     }
   } as WorkerResponse);
 };

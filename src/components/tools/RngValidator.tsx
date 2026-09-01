@@ -84,8 +84,9 @@ const StepCard = ({ step, idx }: { step: any, idx: number }) => {
 };
 
 export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
-  const [jsonInput, setJsonInput] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
+  const [jsonInput, setJsonInput] = useState<string>('');
+  const [errorMsg, setErrorMsg] = useState<string>('');
+  const [isFreeGame, setIsFreeGame] = useState<boolean>(false);
   const [parsedSteps, setParsedSteps] = useState<{
     totalWin: number;
     drops: {
@@ -98,6 +99,7 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
   const {
     currentStrips,
     currentStripSets,
+    currentFreeStripSets,
     rowCounts,
     reelCount,
     currentPaytable,
@@ -105,7 +107,7 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
     isProjectLoaded
   } = useGameStore();
   const { bet, coin, gameType, setLoadTemplateTrigger } = useMachineStore();
-  const betMultiplier = bet * coin;
+  const betMultiplier = coin > 0 ? bet / coin : 1;
 
   const templatesList = Object.keys(templateFiles).map(path => ({
     path,
@@ -160,9 +162,8 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
          let activeStrips = currentStrips;
          if (!isMathId && rngArray.length > reelCount) {
             const stripId = rngArray[reelCount];
-            if (currentStripSets[stripId]) {
-               activeStrips = currentStripSets[stripId];
-            }
+            const targetStripSets = isFreeGame && currentFreeStripSets.length > 0 ? currentFreeStripSets : currentStripSets;
+            activeStrips = targetStripSets[stripId] || currentStrips;
          }
 
          if (isMathId) {
@@ -193,7 +194,13 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
 
          let evWins = evaluateGrid(currentGrid, currentPaytable, gameType, undefined, false);
          let coords = getWinningPositions(currentGrid, evWins, currentPaytable, gameType);
-         let winSum = evWins.reduce((sum, w) => sum + (w.totalWin * betMultiplier), 0);
+         
+         let initialTumbleMultiplier = 1;
+         if (gameType === 'waygame' || gameType === 'waygame_elephant') {
+            initialTumbleMultiplier = isFreeGame ? 8 : 1;
+         }
+         
+         let winSum = evWins.reduce((sum, w) => sum + (w.totalWin * betMultiplier * initialTumbleMultiplier), 0);
 
          const drops = [{
             grid: currentGrid,
@@ -258,7 +265,15 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
             
             const evWinsNext = evaluateGrid(nextGrid, currentPaytable, gameType, undefined, false);
             const coordsNext = getWinningPositions(nextGrid, evWinsNext, currentPaytable, gameType);
-            const winSumNext = evWinsNext.reduce((sum, w) => sum + (w.totalWin * betMultiplier), 0);
+            
+            let tumbleMultiplier = 1;
+            if (gameType === 'waygame' || gameType === 'waygame_elephant') {
+               tumbleMultiplier = isFreeGame 
+                 ? Math.min(1024, 8 * Math.pow(2, dropCount))
+                 : Math.min(1024, 1 * Math.pow(2, dropCount));
+            }
+            
+            const winSumNext = evWinsNext.reduce((sum, w) => sum + (w.totalWin * betMultiplier * tumbleMultiplier), 0);
             
             drops.push({
                grid: nextGrid,
@@ -324,6 +339,19 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
             <div className="p-4 border-b border-gray-700/50 flex flex-col gap-2 relative">
               <span className="text-sm font-bold text-[#e6f1ff]">貼上 QA JSON 腳本</span>
               <span className="text-xs text-gray-400">請貼上包含 QA[0].RNGs 的腳本內容，系統會自動轉換為對應盤面。</span>
+              
+              <div className="flex items-center gap-2 mt-2">
+                <input 
+                  type="checkbox" 
+                  id="validator-freegame-toggle"
+                  checked={isFreeGame}
+                  onChange={(e) => setIsFreeGame(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-600 text-dashboard-accent focus:ring-dashboard-accent focus:ring-offset-gray-900 bg-gray-800"
+                />
+                <label htmlFor="validator-freegame-toggle" className="text-sm text-gray-300 font-bold cursor-pointer hover:text-white">
+                  使用 Free Game 滾輪表 (免遊模式)
+                </label>
+              </div>
               
               {!isProjectLoaded && (
                 <div className="mt-2 p-3 bg-red-900/20 border border-red-500/50 rounded-lg flex flex-col items-center justify-center text-center">

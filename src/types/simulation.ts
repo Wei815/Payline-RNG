@@ -17,4 +17,10 @@ export interface SimulationResult {
   paylineCount: number;   // 實際使用幾條線
   effectiveBet: number;   // 有效每 spin 投注額 (BET)
   gameType: string;
+  overallWin?: number;
+  baseWin?: number;
+  freeWin?: number;
+  freeGameTriggers?: number;
+  freeGameRetriggers?: number;
+  freeSpinsPlayed?: number;
 }

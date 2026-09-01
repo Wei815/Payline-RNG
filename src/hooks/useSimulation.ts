@@ -29,7 +29,9 @@ export const useSimulation = () => {
     gameConfig: GameConfig,
     coin: number = 1,
     bet: number = 1,
-    isFreeGame?: boolean
+    isFreeGame?: boolean,
+    mode?: 'base_only' | 'free_only' | 'full_game',
+    freeStrips?: ReelStrips
   ) => {
     if (isRunning && workerRef.current) {
       workerRef.current.terminate();
@@ -63,7 +65,9 @@ export const useSimulation = () => {
     };
 
     const message: WorkerMessageData = {
+      mode,
       strips,
+      freeStrips,
       paytable,
       totalSpins,
       rowCounts,

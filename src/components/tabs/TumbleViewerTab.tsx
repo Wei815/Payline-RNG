@@ -304,7 +304,7 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
         <div className="flex justify-between items-start shrink-0 relative z-50">
           <div className="flex items-start gap-4 text-sm text-gray-400">
             <span className="pt-0.5">消除次數: <span className="text-white font-bold">{tumbleCount}</span></span>
-            {gameType === 'waygame' && <span className="pt-0.5">當前倍率: <span className="text-purple-400 font-bold">x{currentMultiplier}</span></span>}
+            {(gameType === 'waygame' || gameType === 'waygame_elephant') && <span className="pt-0.5">目前倍數: <span className="text-purple-400 font-bold">x{currentMultiplier}</span></span>}
             <span className="pt-0.5">單次贏分: <span className="text-yellow-400 font-bold">{formatAmount(totalWin * betMultiplier)}</span></span>
             {(() => {
               let gridMultiplier = 0;
