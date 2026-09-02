@@ -89,6 +89,45 @@ export abstract class AbstractGame implements IGameEnvironment {
   }
 
   /**
+   * UI 層專用的不可變掉落邏輯 (Immutable Tumbling)
+   * 給 RngValidator / TumbleViewer 使用，取代 UI 內的邏輯耦合。
+   * 會遍歷每一軸，將沒有消除的符號往下沉，並利用 pullNextSymbol 取出新符號放上方。
+   */
+  public calculateNextDropGrid(
+    currentGrid: string[][],
+    winningCoords: Map<string, number[]>,
+    isFreeGame: boolean,
+    pullNextSymbol: (colIndex: number, dropIndex: number, totalDropped: number) => string
+  ): string[][] {
+    const nextGrid: string[][] = [];
+    const reelCount = currentGrid.length;
+
+    for (let c = 0; c < reelCount; c++) {
+      const colLen = currentGrid[c].length;
+      const keptSymbols: string[] = [];
+
+      for (let r = 0; r < colLen; r++) {
+        const symId = currentGrid[c][r];
+        const isUnremovable = this.isSymbolUnremovable(symId, isFreeGame);
+
+        if (!winningCoords.has(`${c}-${r}`) || isUnremovable) {
+          keptSymbols.push(symId);
+        }
+      }
+
+      const removedCount = colLen - keptSymbols.length;
+      const newSymbols: string[] = [];
+      for (let i = 0; i < removedCount; i++) {
+        newSymbols.push(pullNextSymbol(c, i, removedCount));
+      }
+
+      nextGrid.push([...newSymbols, ...keptSymbols]);
+    }
+
+    return nextGrid;
+  }
+
+  /**
    * 產生計算用盤面 (如 Megaway 需要額外的 TopTracker)
    */
   public getEvalGrid(

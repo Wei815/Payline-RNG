@@ -572,404 +572,6 @@ export const JiraLinkGenerator: React.FC<JiraLinkGeneratorProps> = ({ onClose })
 };
 </file>
 
-<file path="src/components/tools/RtpCalculator.tsx">
-import React, { useState, useMemo } from 'react';
-import { X, Play, Square, Calculator, AlertCircle, Percent, Target, Coins, BarChart2, ArrowDownWideNarrow } from 'lucide-react';
-import { useGameStore } from '../../store/useGameStore';
-import { useMachineStore } from '../../store/useMachineStore';
-import { useSimulation } from '../../hooks/useSimulation';
-import { formatAmount } from '../../utils/formatters';
-import { getBaseSymbol } from '../../utils/evaluation/GameConstants';
-import type { GameConfig } from '../../types';
-
-interface RtpCalculatorProps {
-  onClose: () => void;
-}
-
-export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
-  const {
-    isProjectLoaded,
-    currentStripSets,
-    currentFreeStripSets,
-    currentPaytable,
-    rowCounts,
-    reelCount
-  } = useGameStore();
-
-  const { gameType, bet, coin } = useMachineStore();
-  const betMultiplier = coin > 0 ? bet / coin : 1;
-
-  const { isRunning, progress, currentSpins, result, runSimulation } = useSimulation();
-
-  const [selectedSpins, setSelectedSpins] = useState<number>(100000);
-  const [selectedStripKey, setSelectedStripKey] = useState<string>('base-0');
-
-  const spinOptions = [1000, 10000, 100000, 1000000];
-
-  const handleStart = () => {
-    if (!isProjectLoaded) return;
-
-    let isFreeGame = false;
-    let stripId = 0;
-    let mode: 'base_only' | 'free_only' | 'full_game' = 'base_only';
-
-    if (selectedStripKey.startsWith('full-')) {
-      mode = 'full_game';
-      stripId = parseInt(selectedStripKey.replace('full-', ''), 10);
-    } else if (selectedStripKey.startsWith('free-')) {
-      mode = 'free_only';
-      isFreeGame = true;
-      stripId = parseInt(selectedStripKey.replace('free-', ''), 10);
-    } else {
-      mode = 'base_only';
-      isFreeGame = false;
-      stripId = parseInt(selectedStripKey.replace('base-', ''), 10);
-    }
-
-    const strips = currentStripSets[stripId] || [];
-    const freeStrips = currentFreeStripSets[stripId] || [];
-
-    if (mode === 'free_only' && (!freeStrips || freeStrips.length === 0)) return;
-    if (mode === 'base_only' && (!strips || strips.length === 0)) return;
-
-    const gameConfig: GameConfig = {
-      gameType,
-      paylines: [],
-      specialRules: {
-        unremovableSymbols: ['S1', 'B1']
-      }
-    };
-
-    const targetStrips = mode === 'free_only' ? freeStrips : strips;
-
-    runSimulation(targetStrips, currentPaytable, selectedSpins, rowCounts, gameConfig, coin, bet, isFreeGame, mode, mode === 'full_game' ? freeStrips : undefined);
-  };
-
-  const sortedMetrics = useMemo(() => {
-    if (!result?.symbolMetrics) return [];
-    return Object.values(result.symbolMetrics)
-      .filter(m => getBaseSymbol(m.symbolId) === m.symbolId)
-      .sort((a, b) => b.contributionRTP - a.contributionRTP);
-  }, [result?.symbolMetrics]);
-
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#0a192f] w-[95vw] max-w-[1400px] h-[90vh] rounded-xl shadow-2xl border border-blue-500/30 flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-[#112240]">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/20 rounded-lg">
-              <Calculator className="w-5 h-5 text-blue-400" />
-            </div>
-            <h2 className="text-lg font-bold text-white">RTP 模擬計算機</h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="flex-1 flex overflow-hidden">
-          {/* Left Column: Settings */}
-          <div className="w-[350px] border-r border-gray-700/50 p-6 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
-            {!isProjectLoaded && (
-              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                <p className="text-sm text-red-400">請先載入專案 (Excel 範本) 後再執行模擬計算。</p>
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">選擇測試滾輪表</label>
-                <select
-                  value={selectedStripKey}
-                  onChange={(e) => setSelectedStripKey(e.target.value)}
-                  className="w-full bg-[#0a192f] border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
-                  disabled={!isProjectLoaded || isRunning}
-                >
-                  <optgroup label="全流程模擬 (Base + Free)">
-                    {currentStripSets.map((_, i) => {
-                      const hasFree = currentFreeStripSets[i] && currentFreeStripSets[i].length > 0;
-                      if (!hasFree) return null;
-                      return (
-                        <option key={`full-${i}`} value={`full-${i}`}>
-                          Full Game - Strip Set {i}
-                        </option>
-                      );
-                    })}
-                  </optgroup>
-                  <optgroup label="Base Game 滾輪表 (單測)">
-                    {currentStripSets.map((_, i) => (
-                      <option key={`base-${i}`} value={`base-${i}`}>
-                        Base Game - Strip Set {i}
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="Free Game 滾輪表 (單測)">
-                    {currentFreeStripSets.map((_, i) => (
-                      <option key={`free-${i}`} value={`free-${i}`}>
-                        Free Game - Strip Set {i}
-                      </option>
-                    ))}
-                  </optgroup>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">選擇測試局數</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {spinOptions.map((spins) => (
-                    <button
-                      key={spins}
-                      onClick={() => setSelectedSpins(spins)}
-                      disabled={!isProjectLoaded || isRunning}
-                      className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${selectedSpins === spins
-                        ? 'bg-blue-600 text-white border-blue-500'
-                        : 'bg-[#112240] text-gray-400 border-gray-700 hover:border-gray-500 hover:text-white'
-                        } border disabled:opacity-50 disabled:cursor-not-allowed`}
-                    >
-                      {spins.toLocaleString()} 局
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={handleStart}
-              disabled={!isProjectLoaded || isRunning}
-              className={`mt-4 w-full py-3 px-4 rounded-lg font-bold flex items-center justify-center gap-2 transition-all ${isRunning
-                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                : !isProjectLoaded
-                  ? 'bg-blue-600/50 text-blue-200/50 cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-500/25'
-                }`}
-            >
-              {isRunning ? (
-                <>
-                  <Square className="w-5 h-5 animate-pulse" />
-                  計算中... ({progress.toFixed(1)}%)
-                </>
-              ) : (
-                <>
-                  <Play className="w-5 h-5" />
-                  開始計算 RTP
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Right Column: Results */}
-          <div className="flex-1 bg-[#0a192f] flex flex-col overflow-hidden">
-            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
-
-              {/* Progress Bar */}
-              {(isRunning || result) && (
-                <div className="mb-8">
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <span className="text-gray-400">模擬進度</span>
-                    <span className="text-blue-400 font-mono font-bold">
-                      {currentSpins.toLocaleString()} / {selectedSpins.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-blue-500 transition-all duration-300"
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Loading Skeleton */}
-              {isRunning && !result && (
-                <div className="flex flex-col items-center justify-center mt-20 animate-pulse space-y-6">
-                  <div className="w-16 h-16 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
-                  <div className="text-blue-400 font-mono font-bold tracking-widest text-lg">
-                    SIMULATING... {progress.toFixed(1)}%
-                  </div>
-                  <div className="text-gray-500 text-sm">
-                    正在進行百萬局蒙地卡羅運算，請稍候...
-                  </div>
-
-                  {/* Skeleton Cards */}
-                  <div className="grid grid-cols-4 gap-4 w-full mt-8 opacity-20">
-                    <div className="h-24 bg-[#112240] rounded-xl border border-blue-500/20"></div>
-                    <div className="h-24 bg-[#112240] rounded-xl border border-purple-500/20"></div>
-                    <div className="h-24 bg-[#112240] rounded-xl border border-yellow-500/20"></div>
-                    <div className="h-24 bg-[#112240] rounded-xl border border-green-500/20"></div>
-                  </div>
-                  <div className="w-full h-64 bg-[#112240] rounded-xl border border-gray-700/50 mt-4 opacity-20"></div>
-                </div>
-              )}
-
-              {/* KPI Cards */}
-              {result && (
-                <div className="grid grid-cols-4 gap-4 mb-8">
-                  <div className="bg-[#112240] p-4 rounded-xl border border-blue-500/20">
-                    <div className="flex items-center gap-2 text-gray-400 mb-2">
-                      <Percent className="w-4 h-4" />
-                      <span className="text-sm">總 RTP</span>
-                    </div>
-                    <div className="text-2xl font-bold text-dashboard-accent">
-                      {result.overallRTP.toFixed(2)}%
-                    </div>
-                  </div>
-
-                  <div className="bg-[#112240] p-4 rounded-xl border border-purple-500/20">
-                    <div className="flex items-center gap-2 text-gray-400 mb-2">
-                      <Target className="w-4 h-4" />
-                      <span className="text-sm">命中率 (Hit Freq)</span>
-                    </div>
-                    <div className="text-2xl font-bold text-purple-400">
-                      {result.hitFrequency.toFixed(2)}%
-                    </div>
-                  </div>
-
-                  <div className="bg-[#112240] p-4 rounded-xl border border-yellow-500/20">
-                    <div className="flex items-center gap-2 text-gray-400 mb-2">
-                      <Coins className="w-4 h-4" />
-                      <span className="text-sm">有效底注 (Eff. Bet)</span>
-                    </div>
-                    <div className="text-2xl font-bold text-yellow-400">
-                      {result.effectiveBet}
-                    </div>
-                  </div>
-
-                  <div className="bg-[#112240] p-4 rounded-xl border border-green-500/20">
-                    <div className="flex items-center gap-2 text-gray-400 mb-2">
-                      <BarChart2 className="w-4 h-4" />
-                      <span className="text-sm">遊戲屬性</span>
-                    </div>
-                    <div className="text-lg font-bold text-green-400 truncate">
-                      {result.gameType}
-                    </div>
-                    <div className="text-xs text-gray-400 mt-1">
-                      {result.paylineCount > 0 ? `${result.paylineCount} 條線` : '全盤連線 (Way)'}
-                    </div>
-                  </div>
-                </div>
-              )}
-              {/* Full Game Detailed Metrics */}
-              {result && result.freeGameTriggers !== undefined && result.freeGameTriggers > 0 && (
-                <div className="grid grid-cols-4 gap-4 mb-8">
-                  <div className="bg-[#112240] p-4 rounded-xl border border-blue-500/20 flex flex-col justify-between">
-                    <div className="flex items-center gap-2 text-gray-400 mb-2">
-                      <span className="text-xs">Base Game 貢獻 RTP</span>
-                    </div>
-                    <div className="text-lg font-bold text-blue-400">
-                      {((result.baseWin || 0) / ((result.totalSpins || 1) * (betMultiplier || 1)) * 100).toFixed(2)}%
-                    </div>
-                  </div>
-
-                  <div className="bg-[#112240] p-4 rounded-xl border border-pink-500/20 flex flex-col justify-between">
-                    <div className="flex items-center gap-2 text-gray-400 mb-2">
-                      <span className="text-xs">Free Game 貢獻 RTP</span>
-                    </div>
-                    <div className="text-lg font-bold text-pink-400">
-                      {((result.freeWin || 0) / ((result.totalSpins || 1) * (betMultiplier || 1)) * 100).toFixed(2)}%
-                    </div>
-                  </div>
-
-                  <div className="bg-[#112240] p-4 rounded-xl border border-indigo-500/20 flex flex-col justify-between">
-                    <div className="flex items-center gap-2 text-gray-400 mb-2">
-                      <span className="text-xs">進免遊次數 (Trigger)</span>
-                    </div>
-                    <div className="text-lg font-bold text-indigo-400 flex items-center justify-between">
-                      <span>{result.freeGameTriggers.toLocaleString()} 次</span>
-                      {result.freeGameTriggers > 0 && (
-                        <span className="text-xs text-gray-500 font-normal ml-1">({Math.round(1 / (result.freeGameTriggers / (result.totalSpins || 1)))} 轉 1 次)</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="bg-[#112240] p-4 rounded-xl border border-cyan-500/20 flex flex-col justify-between">
-                    <div className="flex items-center gap-2 text-gray-400 mb-2">
-                      <span className="text-xs">Retrigger 次數</span>
-                    </div>
-                    <div className="text-lg font-bold text-cyan-400 flex items-center justify-between">
-                      <span>{(result.freeGameRetriggers || 0).toLocaleString()} 次</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Symbol Metrics Table */}
-              {result && (
-                <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <ArrowDownWideNarrow className="w-5 h-5 text-gray-400" />
-                    <h3 className="text-lg font-bold text-white">符號 RTP 貢獻度分析</h3>
-                  </div>
-                  <div className="bg-[#112240] rounded-xl border border-gray-700/50 overflow-hidden">
-                    <table className="w-full text-sm text-left">
-                      <thead className="text-xs text-gray-400 uppercase bg-gray-800/50 border-b border-gray-700/50">
-                        <tr>
-                          <th className="px-6 py-4 font-medium">符號 ID</th>
-                          <th className="px-6 py-4 font-medium text-right">RTP 貢獻</th>
-                          <th className="px-6 py-4 font-medium text-right">Hit 2</th>
-                          <th className="px-6 py-4 font-medium text-right">Hit 3</th>
-                          <th className="px-6 py-4 font-medium text-right">Hit 4</th>
-                          <th className="px-6 py-4 font-medium text-right">Hit 5</th>
-                          {reelCount > 5 && (
-                            <th className="px-6 py-4 font-medium text-right">Hit 6</th>
-                          )}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-700/50">
-                        {sortedMetrics.map((metric) => (
-                          <tr key={metric.symbolId} className="hover:bg-gray-800/30 transition-colors">
-                            <td className="px-6 py-3">
-                              <span className="font-bold text-blue-400">{metric.symbolId}</span>
-                            </td>
-                            <td className="px-6 py-3 text-right">
-                              <span className="font-bold text-dashboard-accent">
-                                {metric.contributionRTP.toFixed(3)}%
-                              </span>
-                            </td>
-                            <td className="px-6 py-3 text-right text-gray-300 font-mono">
-                              {metric.hits2.toLocaleString()}
-                            </td>
-                            <td className="px-6 py-3 text-right text-gray-300 font-mono">
-                              {metric.hits3.toLocaleString()}
-                            </td>
-                            <td className="px-6 py-3 text-right text-gray-300 font-mono">
-                              {metric.hits4.toLocaleString()}
-                            </td>
-                            <td className="px-6 py-3 text-right text-gray-300 font-mono">
-                              {metric.hits5.toLocaleString()}
-                            </td>
-                            {reelCount > 5 && (
-                              <td className="px-6 py-3 text-right text-gray-300 font-mono">
-                                {(metric.hits6 || 0).toLocaleString()}
-                              </td>
-                            )}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {!isRunning && !result && isProjectLoaded && (
-                <div className="h-full flex flex-col items-center justify-center text-gray-500 min-h-[400px]">
-                  <Calculator className="w-16 h-16 mb-4 opacity-20" />
-                  <p>調整左側設定，點擊「開始計算 RTP」</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-</file>
-
 <file path="src/components/tools/SnippetLibrary.tsx">
 import React, { useState } from 'react';
 import { X, Copy, Trash2, Check } from 'lucide-react';
@@ -2689,162 +2291,459 @@ export default defineConfig({
 })
 </file>
 
-<file path="src/components/SlotGridDisplay.tsx">
-import React from 'react';
-import { getWinColorClass } from '../utils/svgPaths';
-import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../utils/evaluation/GameConstants';
+<file path="src/components/tools/RtpCalculator.tsx">
+import React, { useState, useMemo } from 'react';
+import { X, Play, Square, Calculator, AlertCircle, Percent, Target, Coins, BarChart2, ArrowDownWideNarrow } from 'lucide-react';
+import { useGameStore } from '../../store/useGameStore';
+import { useMachineStore } from '../../store/useMachineStore';
+import { useSimulation } from '../../hooks/useSimulation';
+import { formatAmount } from '../../utils/formatters';
+import { getBaseSymbol } from '../../utils/evaluation/GameConstants';
+import type { GameConfig } from '../../types';
 
-export interface SlotGridDisplayProps {
-  gridSymbols: string[][];
-  winningCoords: Map<string, number[]>;
-  onCellClick?: (colIndex: number, rowIndex: number) => void;
-  onDragStart?: (e: React.DragEvent, symbol: string, colIndex: number, rowIndex: number) => void;
-  onDragOver?: (e: React.DragEvent) => void;
-  onDrop?: (e: React.DragEvent, colIndex: number, rowIndex: number) => void;
-  
-  // Custom configurations
-  goldFrames?: Record<string, number>;
-  jackpots?: Record<string, string>;
-  
-  // Mode controls for specific Tailwind styling
-  gridMode?: 'custom' | 'manual' | 'tumble';
-  pulseClass?: string;
-  hideEmptyCells?: boolean;
-
-  // Render prop for inside the cell
-  renderCellInner?: (
-    symbol: string, 
-    colIndex: number, 
-    rowIndex: number, 
-    displaySymbol: string, 
-    hasGoldFrame: boolean, 
-    goldMultiplier: number | undefined, 
-    hasJackpot: boolean, 
-    jackpotValue: string | undefined
-  ) => React.ReactNode;
+interface RtpCalculatorProps {
+  onClose: () => void;
 }
 
-export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
-  gridSymbols,
-  winningCoords,
-  onCellClick,
-  onDragStart,
-  onDragOver,
-  onDrop,
-  goldFrames = {},
-  jackpots = {},
-  gridMode = 'custom',
-  pulseClass = '',
-  hideEmptyCells = false,
-  renderCellInner
-}) => {
+const templateFiles = import.meta.glob('/templates/*.{xlsx,xls}', { query: '?url', eager: true, import: 'default' }) as Record<string, string>;
+const getTemplateName = (path: string) => {
+  const parts = path.split('/');
+  const filename = parts[parts.length - 1];
+  return filename.replace(/\.(xlsx|xls)$/, '').replace('範本-', '');
+};
+
+export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
+  const {
+    isProjectLoaded,
+    isProjectLoading,
+    projectName,
+    currentStripSets,
+    currentFreeStripSets,
+    currentPaytable,
+    rowCounts,
+    reelCount
+  } = useGameStore();
+
+  const { gameType, bet, coin, loadTemplateTrigger, setLoadTemplateTrigger } = useMachineStore();
+  const betMultiplier = coin > 0 ? bet / coin : 1;
+
+  const { isRunning, progress, currentSpins, result, runSimulation } = useSimulation();
+
+  const [selectedSpins, setSelectedSpins] = useState<number>(100000);
+  const [selectedStripKey, setSelectedStripKey] = useState<string>('base-0');
+
+  const spinOptions = [1000, 10000, 100000, 1000000];
+
+  const handleStart = () => {
+    if (!isProjectLoaded) return;
+
+    let isFreeGame = false;
+    let stripId = 0;
+    let mode: 'base_only' | 'free_only' | 'full_game' = 'base_only';
+
+    if (selectedStripKey.startsWith('full-')) {
+      mode = 'full_game';
+      stripId = parseInt(selectedStripKey.replace('full-', ''), 10);
+    } else if (selectedStripKey.startsWith('free-')) {
+      mode = 'free_only';
+      isFreeGame = true;
+      stripId = parseInt(selectedStripKey.replace('free-', ''), 10);
+    } else {
+      mode = 'base_only';
+      isFreeGame = false;
+      stripId = parseInt(selectedStripKey.replace('base-', ''), 10);
+    }
+
+    const strips = currentStripSets[stripId] || [];
+    const freeStrips = currentFreeStripSets[stripId] || [];
+
+    if (mode === 'free_only' && (!freeStrips || freeStrips.length === 0)) return;
+    if (mode === 'base_only' && (!strips || strips.length === 0)) return;
+
+    const gameConfig: GameConfig = {
+      gameType,
+      paylines: [],
+      specialRules: {
+        unremovableSymbols: ['S1', 'B1']
+      }
+    };
+
+    const targetStrips = mode === 'free_only' ? freeStrips : strips;
+
+    runSimulation(targetStrips, currentPaytable, selectedSpins, rowCounts, gameConfig, coin, bet, isFreeGame, mode, mode === 'full_game' ? freeStrips : undefined);
+  };
+
+  const templatesList = Object.keys(templateFiles).map(path => ({
+    path,
+    name: getTemplateName(path)
+  }));
+
+  const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val) {
+      setLoadTemplateTrigger(val);
+    }
+  };
+
+  const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+  React.useEffect(() => {
+    if (isProjectLoading) {
+      setLoadStatus('loading');
+    } else if (loadStatus === 'loading') {
+      if (isProjectLoaded) {
+        setLoadStatus('success');
+        setTimeout(() => setLoadStatus('idle'), 2000);
+      } else {
+        setLoadStatus('error');
+        setTimeout(() => setLoadStatus('idle'), 2000);
+      }
+    }
+  }, [isProjectLoading, isProjectLoaded]);
+
+  const sortedMetrics = useMemo(() => {
+    if (!result?.symbolMetrics) return [];
+    return Object.values(result.symbolMetrics)
+      .filter(m => getBaseSymbol(m.symbolId) === m.symbolId)
+      .sort((a, b) => b.contributionRTP - a.contributionRTP);
+  }, [result?.symbolMetrics]);
+
   return (
-    <>
-      {gridSymbols.map((col, colIndex) => (
-        <div key={colIndex} className="flex flex-col justify-center gap-3">
-          {col.map((symbol, rowIndex) => {
-            const winIndices = winningCoords.get(`${colIndex}-${rowIndex}`);
-            const isWinning = !!winIndices;
-            const winColorClass = isWinning ? getWinColorClass(winIndices) : '';
-            
-            const goldMultiplier = goldFrames[`${colIndex}-${rowIndex}`];
-            const hasGoldFrame = goldMultiplier !== undefined;
-            const jackpotValue = jackpots[`${colIndex}-${rowIndex}`];
-            const hasJackpot = jackpotValue !== undefined;
-            
-            let displaySymbol = symbol;
-            let customBg = '';
-            
-            if (symbol.includes('_') && (symbol.startsWith('F') || symbol.startsWith('L'))) {
-              const [ballId, valStr] = symbol.split('_');
-              displaySymbol = valStr;
-              let numVal = 0;
-              if (valStr && valStr.endsWith('X')) {
-                numVal = parseInt(valStr.replace('X', ''), 10);
-              }
-              const balls = ballId.startsWith('F') ? MULTIPLIER_BALLS : LUCKY_BALLS;
-              const ball = balls.find(b => b.values.includes(numVal)) || balls.find(b => b.id === ballId);
-              if (ball) {
-                customBg = `bg-[#0a192f] border ${ball.border} ${ball.color}`;
-              } else if (gridMode === 'tumble') {
-                displaySymbol = '2X';
-                customBg = `bg-red-900/30 border-2 border-red-500 text-red-500`;
-              }
-            }
-
-            const hasAnyWin = winningCoords.size > 0;
-            const isWild = symbol === 'WILD' || symbol.startsWith('W') || symbol === 'WX';
-            const isUnknown = symbol.startsWith('?');
-
-            let cellClassNames = '';
-
-            if (gridMode === 'custom') {
-              const defaultBg = symbol === '-' ? 'bg-[#0a192f] text-gray-700 border-2 border-gray-800 border-dashed hover:border-dashboard-accent' :
-                                isWild ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border border-yellow-300' :
-                                symbol === 'SCATTER' ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border border-pink-300' :
-                                'bg-[#112240] text-dashboard-text-primary border border-dashboard-accent/30';
-              
-              cellClassNames = `
-                w-16 h-16 sm:w-20 sm:h-20 rounded-lg flex items-center justify-center text-xl font-bold
-                shadow-lg transform relative cursor-pointer active:scale-95 transition-all duration-200 shrink-0
-                ${customBg ? customBg : defaultBg}
-                ${hideEmptyCells && symbol === '-' ? 'hidden' : ''}
-                ${isWinning ? `ring-2 z-10 scale-105 ${winColorClass}` : ''}
-                ${hasGoldFrame && !isWinning ? `ring-2 ring-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.6)]` : ''}
-                ${hasJackpot && !isWinning ? `ring-2 ring-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]` : ''}
-              `;
-            } else if (gridMode === 'manual') {
-              const defaultBg = symbol === '-' ? 'bg-[#0a192f] text-gray-700 border-2 border-gray-800 border-dashed' :
-                                isWild ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border-yellow-300' :
-                                symbol === 'SCATTER' ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border-pink-300' :
-                                'bg-[#112240] text-dashboard-text-primary border-dashboard-accent/30';
-                                
-              cellClassNames = `
-                w-20 h-20 rounded-lg flex items-center justify-center text-xl font-bold
-                shadow-lg transform transition-all duration-300 relative cursor-grab active:cursor-grabbing border
-                ${customBg ? customBg : defaultBg}
-                ${isWinning ? `z-10 ring-2 scale-105 ${winColorClass}` : hasAnyWin ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]' : ''}
-              `;
-            } else if (gridMode === 'tumble') {
-              const defaultBg = isWild ? 'bg-[#112240] text-purple-400 border border-purple-500/30' :
-                                isUnknown ? 'bg-red-900/30 text-red-400 border border-red-500/50' :
-                                'bg-[#112240] text-gray-300 border border-gray-700/50';
-                                
-              cellClassNames = `
-                w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center rounded-lg relative transform text-sm sm:text-base font-bold
-                ${!isWinning ? 'transition-all duration-300' : ''}
-                ${isWinning ? `z-10 ring-2 scale-105 ${winColorClass} ${pulseClass}` : customBg ? customBg : defaultBg}
-                ${!isWinning && hasAnyWin && !customBg ? 'opacity-30 scale-95 border-transparent' : ''}
-              `;
-            }
-
-            const idPrefix = gridMode === 'custom' ? 'cell-custom' : gridMode === 'manual' ? 'cell-manual' : 'cell-tumble';
-
-            return (
-              <div
-                id={`${idPrefix}-${colIndex}-${rowIndex}`}
-                key={`${colIndex}-${rowIndex}`}
-                draggable={!!onDragStart}
-                onClick={() => onCellClick && onCellClick(colIndex, rowIndex)}
-                onDragStart={(e) => onDragStart && onDragStart(e, symbol, colIndex, rowIndex)}
-                onDragOver={(e) => {
-                  if (onDragOver) onDragOver(e);
-                  else if (onDrop) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }
-                }}
-                onDrop={(e) => onDrop && onDrop(e, colIndex, rowIndex)}
-                className={cellClassNames.replace(/\s+/g, ' ').trim()}
-              >
-                {renderCellInner ? renderCellInner(symbol, colIndex, rowIndex, displaySymbol, hasGoldFrame, goldMultiplier, hasJackpot, jackpotValue) : (
-                  <div className="flex flex-col items-center justify-center pointer-events-none w-full h-full relative">
-                    <span>{displaySymbol}</span>
-                  </div>
-                )}
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-[#0a192f] w-[95vw] max-w-[1400px] h-[90vh] rounded-xl shadow-2xl border border-blue-500/30 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-[#112240] shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-500/20 rounded-lg">
+                <Calculator className="w-5 h-5 text-blue-400" />
               </div>
-            );
-          })}
+              <h2 className="text-lg font-bold text-white">RTP 模擬計算機</h2>
+            </div>
+            <div className="w-[1px] h-6 bg-gray-700/50"></div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-gray-400 uppercase tracking-wider">選擇遊戲範本:</span>
+              <select 
+                onChange={handleTemplateChange}
+                className="bg-[#0a192f] border border-blue-500/50 text-[#e6f1ff] font-bold rounded px-3 py-1.5 text-sm outline-none focus:border-blue-400 cursor-pointer shadow-lg hover:bg-[#112240] transition-colors"
+                value={isProjectLoaded || loadStatus !== 'idle' ? "loaded" : ""}
+              >
+                <option value="" disabled hidden>-- 請選擇 --</option>
+                <option value="loaded" disabled hidden className={loadStatus === 'error' ? "text-red-400" : "text-blue-400"}>
+                  {loadStatus === 'loading' ? '⏳ 載入中...' :
+                   loadStatus === 'success' ? '✅ 載入專案成功' :
+                   loadStatus === 'error' ? '❌ 載入專案失敗' :
+                   isProjectLoaded ? projectName : "-- 請選擇 --"}
+                </option>
+                {templatesList.map(tmpl => (
+                  <option key={tmpl.path} value={tmpl.path}>{tmpl.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
-      ))}
-    </>
+
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Column: Settings */}
+          <div className="w-[350px] border-r border-gray-700/50 p-6 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
+            {!isProjectLoaded && !isProjectLoading && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <p className="text-sm text-red-400">請先載入專案 (Excel 範本) 後再執行模擬計算。</p>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">選擇測試滾輪表</label>
+                <select
+                  value={selectedStripKey}
+                  onChange={(e) => setSelectedStripKey(e.target.value)}
+                  className="w-full bg-[#0a192f] border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
+                  disabled={!isProjectLoaded || isRunning}
+                >
+                  <optgroup label="全流程模擬 (Base + Free)">
+                    {currentStripSets.map((_, i) => {
+                      const hasFree = currentFreeStripSets[i] && currentFreeStripSets[i].length > 0;
+                      if (!hasFree) return null;
+                      return (
+                        <option key={`full-${i}`} value={`full-${i}`}>
+                          Full Game - Strip Set {i}
+                        </option>
+                      );
+                    })}
+                  </optgroup>
+                  <optgroup label="Base Game 滾輪表 (單測)">
+                    {currentStripSets.map((_, i) => (
+                      <option key={`base-${i}`} value={`base-${i}`}>
+                        Base Game - Strip Set {i}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Free Game 滾輪表 (單測)">
+                    {currentFreeStripSets.map((_, i) => (
+                      <option key={`free-${i}`} value={`free-${i}`}>
+                        Free Game - Strip Set {i}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-2">選擇測試局數</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {spinOptions.map((spins) => (
+                    <button
+                      key={spins}
+                      onClick={() => setSelectedSpins(spins)}
+                      disabled={!isProjectLoaded || isRunning}
+                      className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${selectedSpins === spins
+                        ? 'bg-blue-600 text-white border-blue-500'
+                        : 'bg-[#112240] text-gray-400 border-gray-700 hover:border-gray-500 hover:text-white'
+                        } border disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {spins.toLocaleString()} 局
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleStart}
+              disabled={!isProjectLoaded || isRunning}
+              className={`mt-4 w-full py-3 px-4 rounded-lg font-bold flex items-center justify-center gap-2 transition-all ${isRunning
+                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                : !isProjectLoaded
+                  ? 'bg-blue-600/50 text-blue-200/50 cursor-not-allowed'
+                  : 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-500/25'
+                }`}
+            >
+              {isRunning ? (
+                <>
+                  <Square className="w-5 h-5 animate-pulse" />
+                  計算中... ({progress.toFixed(1)}%)
+                </>
+              ) : (
+                <>
+                  <Play className="w-5 h-5" />
+                  開始計算 RTP
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Right Column: Results */}
+          <div className="flex-1 bg-[#0a192f] flex flex-col overflow-hidden">
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+
+              {/* Progress Bar */}
+              {(isRunning || result) && (
+                <div className="mb-8">
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span className="text-gray-400">模擬進度</span>
+                    <span className="text-blue-400 font-mono font-bold">
+                      {currentSpins.toLocaleString()} / {selectedSpins.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-500 transition-all duration-300"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Loading Skeleton */}
+              {isRunning && !result && (
+                <div className="flex flex-col items-center justify-center mt-20 animate-pulse space-y-6">
+                  <div className="w-16 h-16 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+                  <div className="text-blue-400 font-mono font-bold tracking-widest text-lg">
+                    SIMULATING... {progress.toFixed(1)}%
+                  </div>
+                  <div className="text-gray-500 text-sm">
+                    正在進行百萬局蒙地卡羅運算，請稍候...
+                  </div>
+
+                  {/* Skeleton Cards */}
+                  <div className="grid grid-cols-4 gap-4 w-full mt-8 opacity-20">
+                    <div className="h-24 bg-[#112240] rounded-xl border border-blue-500/20"></div>
+                    <div className="h-24 bg-[#112240] rounded-xl border border-purple-500/20"></div>
+                    <div className="h-24 bg-[#112240] rounded-xl border border-yellow-500/20"></div>
+                    <div className="h-24 bg-[#112240] rounded-xl border border-green-500/20"></div>
+                  </div>
+                  <div className="w-full h-64 bg-[#112240] rounded-xl border border-gray-700/50 mt-4 opacity-20"></div>
+                </div>
+              )}
+
+              {/* KPI Cards */}
+              {result && (
+                <div className="grid grid-cols-4 gap-4 mb-8">
+                  <div className="bg-[#112240] p-4 rounded-xl border border-blue-500/20">
+                    <div className="flex items-center gap-2 text-gray-400 mb-2">
+                      <Percent className="w-4 h-4" />
+                      <span className="text-sm">總 RTP</span>
+                    </div>
+                    <div className="text-2xl font-bold text-dashboard-accent">
+                      {result.overallRTP.toFixed(2)}%
+                    </div>
+                  </div>
+
+                  <div className="bg-[#112240] p-4 rounded-xl border border-purple-500/20">
+                    <div className="flex items-center gap-2 text-gray-400 mb-2">
+                      <Target className="w-4 h-4" />
+                      <span className="text-sm">命中率 (Hit Freq)</span>
+                    </div>
+                    <div className="text-2xl font-bold text-purple-400">
+                      {result.hitFrequency.toFixed(2)}%
+                    </div>
+                  </div>
+
+                  <div className="bg-[#112240] p-4 rounded-xl border border-yellow-500/20">
+                    <div className="flex items-center gap-2 text-gray-400 mb-2">
+                      <Coins className="w-4 h-4" />
+                      <span className="text-sm">有效底注 (Eff. Bet)</span>
+                    </div>
+                    <div className="text-2xl font-bold text-yellow-400">
+                      {result.effectiveBet}
+                    </div>
+                  </div>
+
+                  <div className="bg-[#112240] p-4 rounded-xl border border-green-500/20">
+                    <div className="flex items-center gap-2 text-gray-400 mb-2">
+                      <BarChart2 className="w-4 h-4" />
+                      <span className="text-sm">遊戲屬性</span>
+                    </div>
+                    <div className="text-lg font-bold text-green-400 truncate">
+                      {result.gameType}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      {result.paylineCount > 0 ? `${result.paylineCount} 條線` : '全盤連線 (Way)'}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* Full Game Detailed Metrics */}
+              {result && result.freeGameTriggers !== undefined && result.freeGameTriggers > 0 && (
+                <div className="grid grid-cols-4 gap-4 mb-8">
+                  <div className="bg-[#112240] p-4 rounded-xl border border-blue-500/20 flex flex-col justify-between">
+                    <div className="flex items-center gap-2 text-gray-400 mb-2">
+                      <span className="text-xs">Base Game 貢獻 RTP</span>
+                    </div>
+                    <div className="text-lg font-bold text-blue-400">
+                      {((result.baseWin || 0) / ((result.totalSpins || 1) * (betMultiplier || 1)) * 100).toFixed(2)}%
+                    </div>
+                  </div>
+
+                  <div className="bg-[#112240] p-4 rounded-xl border border-pink-500/20 flex flex-col justify-between">
+                    <div className="flex items-center gap-2 text-gray-400 mb-2">
+                      <span className="text-xs">Free Game 貢獻 RTP</span>
+                    </div>
+                    <div className="text-lg font-bold text-pink-400">
+                      {((result.freeWin || 0) / ((result.totalSpins || 1) * (betMultiplier || 1)) * 100).toFixed(2)}%
+                    </div>
+                  </div>
+
+                  <div className="bg-[#112240] p-4 rounded-xl border border-indigo-500/20 flex flex-col justify-between">
+                    <div className="flex items-center gap-2 text-gray-400 mb-2">
+                      <span className="text-xs">進免遊次數 (Trigger)</span>
+                    </div>
+                    <div className="text-lg font-bold text-indigo-400 flex items-center justify-between">
+                      <span>{result.freeGameTriggers.toLocaleString()} 次</span>
+                      {result.freeGameTriggers > 0 && (
+                        <span className="text-xs text-gray-500 font-normal ml-1">({Math.round(1 / (result.freeGameTriggers / (result.totalSpins || 1)))} 轉 1 次)</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-[#112240] p-4 rounded-xl border border-cyan-500/20 flex flex-col justify-between">
+                    <div className="flex items-center gap-2 text-gray-400 mb-2">
+                      <span className="text-xs">Retrigger 次數</span>
+                    </div>
+                    <div className="text-lg font-bold text-cyan-400 flex items-center justify-between">
+                      <span>{(result.freeGameRetriggers || 0).toLocaleString()} 次</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Symbol Metrics Table */}
+              {result && (
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <ArrowDownWideNarrow className="w-5 h-5 text-gray-400" />
+                    <h3 className="text-lg font-bold text-white">符號 RTP 貢獻度分析</h3>
+                  </div>
+                  <div className="bg-[#112240] rounded-xl border border-gray-700/50 overflow-hidden">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs text-gray-400 uppercase bg-gray-800/50 border-b border-gray-700/50">
+                        <tr>
+                          <th className="px-6 py-4 font-medium">符號 ID</th>
+                          <th className="px-6 py-4 font-medium text-right">RTP 貢獻</th>
+                          <th className="px-6 py-4 font-medium text-right">Hit 2</th>
+                          <th className="px-6 py-4 font-medium text-right">Hit 3</th>
+                          <th className="px-6 py-4 font-medium text-right">Hit 4</th>
+                          <th className="px-6 py-4 font-medium text-right">Hit 5</th>
+                          {reelCount > 5 && (
+                            <th className="px-6 py-4 font-medium text-right">Hit 6</th>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-700/50">
+                        {sortedMetrics.map((metric) => (
+                          <tr key={metric.symbolId} className="hover:bg-gray-800/30 transition-colors">
+                            <td className="px-6 py-3">
+                              <span className="font-bold text-blue-400">{metric.symbolId}</span>
+                            </td>
+                            <td className="px-6 py-3 text-right">
+                              <span className="font-bold text-dashboard-accent">
+                                {metric.contributionRTP.toFixed(3)}%
+                              </span>
+                            </td>
+                            <td className="px-6 py-3 text-right text-gray-300 font-mono">
+                              {metric.hits2.toLocaleString()}
+                            </td>
+                            <td className="px-6 py-3 text-right text-gray-300 font-mono">
+                              {metric.hits3.toLocaleString()}
+                            </td>
+                            <td className="px-6 py-3 text-right text-gray-300 font-mono">
+                              {metric.hits4.toLocaleString()}
+                            </td>
+                            <td className="px-6 py-3 text-right text-gray-300 font-mono">
+                              {metric.hits5.toLocaleString()}
+                            </td>
+                            {reelCount > 5 && (
+                              <td className="px-6 py-3 text-right text-gray-300 font-mono">
+                                {(metric.hits6 || 0).toLocaleString()}
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {!isRunning && !result && isProjectLoaded && (
+                <div className="h-full flex flex-col items-center justify-center text-gray-500 min-h-[400px]">
+                  <Calculator className="w-16 h-16 mb-4 opacity-20" />
+                  <p>調整左側設定，點擊「開始計算 RTP」</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 </file>
@@ -4334,442 +4233,6 @@ export default defineConfig([
   },
   "include": ["src"]
 }
-</file>
-
-<file path="src/components/tools/RngValidator.tsx">
-import React, { useState } from 'react';
-import { X, Play, AlertCircle } from 'lucide-react';
-import { useGameStore } from '../../store/useGameStore';
-import { useMachineStore } from '../../store/useMachineStore';
-import { SlotGridDisplay } from '../SlotGridDisplay';
-import { evaluateGrid, getWinningPositions } from '../../utils/evaluation';
-import { GameRegistry } from '../../core/GameRegistry';
-
-const templateFiles = import.meta.glob('/templates/*.{xlsx,xls}', { query: '?url', eager: true, import: 'default' }) as Record<string, string>;
-const getTemplateName = (path: string) => {
-  const parts = path.split('/');
-  const filename = parts[parts.length - 1];
-  return filename.replace(/\.(xlsx|xls)$/, '').replace('範本-', '');
-};
-
-interface RngValidatorProps {
-  onClose: () => void;
-}
-
-const StepCard = ({ step, idx, gameType }: { step: any, idx: number, gameType: string }) => {
-  const [activeDrop, setActiveDrop] = useState(0);
-  const currentDrop = step.drops[activeDrop];
-
-  return (
-    <div className="bg-[#0a192f] border border-gray-700/50 rounded-xl p-6 shadow-xl relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-1 bg-dashboard-accent h-full"></div>
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-bold text-dashboard-text-primary flex items-center gap-2">
-          <span className="bg-dashboard-accent/10 text-dashboard-accent px-2 py-1 rounded text-sm">
-            Step {idx + 1}
-          </span>
-          {step.drops.length > 1 && (
-            <span className="text-sm text-gray-400">
-              (消除掉落: {activeDrop + 1} / {step.drops.length})
-            </span>
-          )}
-        </h3>
-        <div className="text-right">
-          <p className="text-sm text-gray-400">Total Win</p>
-          <p className={`text-2xl font-black font-mono ${step.totalWin > 0 ? 'text-green-400' : 'text-gray-500'}`}>
-            {step.totalWin > 0 ? '+' : ''}{step.totalWin}
-          </p>
-        </div>
-      </div>
-      
-      <div className="flex flex-col items-center gap-4 bg-[#112240] p-6 rounded-lg border border-gray-700/30 relative">
-        {step.drops.length > 1 && (
-          <div className="flex w-full justify-between items-center px-2 mb-2">
-            <button 
-              onClick={() => setActiveDrop(Math.max(0, activeDrop - 1))}
-              disabled={activeDrop === 0}
-              className="p-2 bg-gray-700 rounded-full disabled:opacity-30 hover:bg-gray-600 transition-colors shadow-lg border border-gray-600"
-            >
-              ◀ 
-            </button>
-            <span className="text-gray-400 font-bold text-sm bg-gray-800 px-3 py-1 rounded-full border border-gray-700">
-              Drop {activeDrop + 1}
-              {(gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'waygame_qin') && (
-                <span className="text-yellow-400 ml-2">X{currentDrop.multiplier}</span>
-              )}
-            </span>
-            <button 
-              onClick={() => setActiveDrop(Math.min(step.drops.length - 1, activeDrop + 1))}
-              disabled={activeDrop === step.drops.length - 1}
-              className="p-2 bg-gray-700 rounded-full disabled:opacity-30 hover:bg-gray-600 transition-colors shadow-lg border border-gray-600"
-            >
-              ▶
-            </button>
-          </div>
-        )}
-        
-        <div className="flex gap-2 justify-center">
-          <SlotGridDisplay
-            gridMode="custom"
-            gridSymbols={currentDrop.grid}
-            winningCoords={currentDrop.winningCoords}
-            hideEmptyCells={true}
-          />
-        </div>
-        
-        {step.drops.length > 0 && (
-          <div className={`text-sm font-bold mt-2 px-4 py-2 rounded-full border text-center flex flex-col ${currentDrop.totalWin > 0 ? 'text-green-400 bg-green-900/20 border-green-500/30' : 'text-gray-400 bg-gray-800/50 border-gray-700/50'}`}>
-            <span>該次掉落贏分</span>
-            {(gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'waygame_qin') ? (
-              <span className="text-lg">
-                {currentDrop.originalWin} <span className="text-gray-500 text-sm mx-1">×</span> {currentDrop.multiplier} <span className="text-gray-500 text-sm mx-1">=</span> {currentDrop.totalWin}
-              </span>
-            ) : (
-              <span className="text-lg">{currentDrop.totalWin}</span>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
-  const [jsonInput, setJsonInput] = useState<string>('');
-  const [errorMsg, setErrorMsg] = useState<string>('');
-  const [isFreeGame, setIsFreeGame] = useState<boolean>(false);
-  const [parsedSteps, setParsedSteps] = useState<{
-    totalWin: number;
-    drops: {
-      grid: string[][];
-      totalWin: number;
-      originalWin: number;
-      multiplier: number;
-      winningCoords: Map<string, number[]>;
-    }[];
-  }[]>([]);
-
-  const {
-    currentStrips,
-    currentStripSets,
-    currentFreeStripSets,
-    rowCounts,
-    reelCount,
-    currentPaytable,
-    specialSymbolConfig,
-    isProjectLoaded
-  } = useGameStore();
-  const { bet, coin, gameType, setLoadTemplateTrigger } = useMachineStore();
-  const betMultiplier = coin > 0 ? bet / coin : 1;
-
-  const templatesList = Object.keys(templateFiles).map(path => ({
-    path,
-    name: getTemplateName(path)
-  }));
-
-  const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const val = e.target.value;
-    if (val) {
-      setLoadTemplateTrigger(val);
-    }
-  };
-
-  const handleParse = () => {
-    setErrorMsg('');
-    try {
-      const data = JSON.parse(jsonInput);
-      if (!data?.QA || !data.QA[0] || !data.QA[0].RNGs) {
-        throw new Error('無效的格式，找不到 QA[0].RNGs');
-      }
-
-      const rngSteps: number[][] = data.QA[0].RNGs;
-      const classIds: number[][] = data.QA[0].ClassIDs || [];
-
-      // Build MathID map
-      const mathIdToSymbol: Record<number, string> = {};
-      currentPaytable.forEach(r => {
-        if (r.mathId !== undefined) {
-          const ids = String(r.mathId).split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
-          ids.forEach(id => {
-            mathIdToSymbol[id] = r.symbolId;
-          });
-        }
-      });
-
-      const isCoordinateClassId = gameType === 'linegame_set2' || gameType === 'linegame';
-
-      const newSteps = rngSteps.map((rngArray, stepIndex) => {
-         const isMathId = isCoordinateClassId || rngArray.length > reelCount + 4;
-         
-         const emptyGrid = Array.from({ length: reelCount }, (_, c) => 
-            Array(rowCounts[c] || 3).fill('-')
-         );
-
-         let classIdIndex = 0;
-         const flatClassIds = classIds[stepIndex] || [];
-         
-         let currentGrid: string[][];
-         let idIndex = 0;
-         const currentTopCursors = [...rngArray];
-         
-         let activeStrips = currentStrips;
-         if (!isMathId && rngArray.length > reelCount) {
-            const stripId = rngArray[reelCount];
-            const targetStripSets = isFreeGame && currentFreeStripSets.length > 0 ? currentFreeStripSets : currentStripSets;
-            activeStrips = targetStripSets[stripId] || currentStrips;
-         }
-
-         if (isMathId) {
-            currentGrid = emptyGrid.map(col => 
-               col.map(cell => {
-                  if (idIndex < rngArray.length) {
-                    const val = rngArray[idIndex++];
-                    let sym = mathIdToSymbol[val];
-                    if (sym && !isCoordinateClassId && (sym.startsWith('F') || sym.startsWith('L'))) {
-                      const mult = flatClassIds[classIdIndex++];
-                      if (mult !== undefined) {
-                         sym = `${sym}_${mult}X`;
-                      }
-                    }
-                    return sym ? sym : '-';
-                  }
-                  return cell;
-               })
-            );
-         } else {
-            currentGrid = emptyGrid.map((col, c) => {
-               const start = rngArray[c] || 0;
-               const len = activeStrips[c]?.length || 1;
-               const strip = activeStrips[c] || ['-'];
-               return col.map((_, r) => strip[(start + r) % len]);
-            });
-         }
-
-         let evWins = evaluateGrid(currentGrid, currentPaytable, gameType, undefined, false);
-         let coords = getWinningPositions(currentGrid, evWins, currentPaytable, gameType);
-         
-         let initialTumbleMultiplier = 1;
-         if (gameType === 'waygame' || gameType === 'waygame_elephant') {
-            initialTumbleMultiplier = isFreeGame ? 8 : 1;
-         }
-         
-         let originalWinSum = evWins.reduce((sum, w) => sum + (w.totalWin * betMultiplier), 0);
-         let winSum = originalWinSum * initialTumbleMultiplier;
-
-         const drops = [{
-            grid: currentGrid,
-            totalWin: winSum,
-            originalWin: originalWinSum,
-            multiplier: initialTumbleMultiplier,
-            winningCoords: coords
-         }];
-
-         // Simulate tumbling
-         let hasWins = coords.size > 0;
-         let dropCount = 0;
-         let lastGrid = currentGrid;
-         let lastCoords = coords;
-
-         while (hasWins && dropCount < 30) {
-            dropCount++;
-            const nextGrid = Array.from({ length: reelCount }, () => [] as string[]);
-            
-            for (let c = 0; c < reelCount; c++) {
-               const colLen = rowCounts[c] || 3;
-               const strip = activeStrips[c] || ['-'];
-               const stripLen = strip.length;
-               
-               const gameInstance = GameRegistry.getGame(gameType);
-               
-               const keptSymbols: string[] = [];
-               for (let r = 0; r < colLen; r++) {
-                  const symId = lastGrid[c][r];
-                  const isUnremovable = gameInstance.isSymbolUnremovable?.(symId, isFreeGame) ?? false;
-                  // We also shouldn't eliminate if the win index is 999, but checking isUnremovable is the authoritative way.
-                  if (!lastCoords.has(`${c}-${r}`) || isUnremovable) {
-                     keptSymbols.push(symId);
-                  } else {
-                     if ((gameType === 'waygame' || gameType === 'waygame_qin' || gameType === 'waygame_elephant') && symId.startsWith('G') && symId !== 'G') {
-                        keptSymbols.push('WX');
-                     }
-                  }
-               }
-               
-               const removedCount = colLen - keptSymbols.length;
-               const newSymbols: string[] = [];
-               
-               if (isMathId) {
-                  for (let i = 0; i < removedCount; i++) {
-                     if (idIndex < rngArray.length) {
-                        const val = rngArray[idIndex++];
-                        let sym = mathIdToSymbol[val];
-                        if (sym && !isCoordinateClassId && (sym.startsWith('F') || sym.startsWith('L'))) {
-                           const mult = flatClassIds[classIdIndex++];
-                           if (mult !== undefined) sym = `${sym}_${mult}X`;
-                        }
-                        newSymbols.push(sym || '-');
-                     } else {
-                        newSymbols.push('0');
-                     }
-                  }
-               } else {
-                  for (let i = 0; i < removedCount; i++) {
-                     currentTopCursors[c] = (currentTopCursors[c] - 1 + stripLen) % stripLen;
-                     newSymbols.push(strip[currentTopCursors[c]]);
-                  }
-                  newSymbols.reverse();
-               }
-               
-               nextGrid[c] = [...newSymbols, ...keptSymbols];
-            }
-            
-            const evWinsNext = evaluateGrid(nextGrid, currentPaytable, gameType, undefined, false);
-            const coordsNext = getWinningPositions(nextGrid, evWinsNext, currentPaytable, gameType);
-            
-            let tumbleMultiplier = 1;
-            if (gameType === 'waygame' || gameType === 'waygame_elephant') {
-               tumbleMultiplier = isFreeGame 
-                 ? Math.min(1024, 8 * Math.pow(2, dropCount))
-                 : Math.min(1024, 1 * Math.pow(2, dropCount));
-            }
-            
-            const originalWinSumNext = evWinsNext.reduce((sum, w) => sum + (w.totalWin * betMultiplier), 0);
-            const winSumNext = originalWinSumNext * tumbleMultiplier;
-            
-            drops.push({
-               grid: nextGrid,
-               totalWin: winSumNext,
-               originalWin: originalWinSumNext,
-               multiplier: tumbleMultiplier,
-               winningCoords: coordsNext
-            });
-            
-            lastGrid = nextGrid;
-            lastCoords = coordsNext;
-            hasWins = coordsNext.size > 0;
-         }
-
-         const stepTotalWin = drops.reduce((sum, drop) => sum + drop.totalWin, 0);
-
-         return {
-            drops,
-            totalWin: stepTotalWin
-         };
-      });
-
-      setParsedSteps(newSteps);
-    } catch (err: any) {
-      setErrorMsg(err.message || 'JSON 解析失敗');
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
-      <div className="bg-[#0a192f] border border-dashboard-accent/30 rounded-2xl w-full max-w-[90vw] min-h-[60vh] max-h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
-        
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-700/50 shrink-0">
-          <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-[#e6f1ff] flex items-center gap-2">
-              <Play className="text-dashboard-accent" size={24} />
-              RNG 腳本驗證 (RNG Validator)
-            </h2>
-            <div className="w-[1px] h-6 bg-gray-700/50"></div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-gray-400 uppercase tracking-wider">選擇遊戲範本:</span>
-              <select 
-                onChange={handleTemplateChange}
-                className="bg-[#0a192f] border border-dashboard-accent text-[#e6f1ff] font-bold rounded px-3 py-1.5 text-sm outline-none focus:border-blue-500 cursor-pointer shadow-lg hover:bg-[#112240] transition-colors"
-                value={isProjectLoaded ? "loaded" : ""}
-              >
-                <option value="" disabled>-- 請選擇 --</option>
-                <option value="loaded" disabled className="text-dashboard-accent">{isProjectLoaded ? "✅ 已載入當前專案" : "-- 請選擇 --"}</option>
-                {templatesList.map(tmpl => (
-                  <option key={tmpl.path} value={tmpl.path}>{tmpl.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
-            <X size={24} />
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Left Panel: Input */}
-          <div className="w-[350px] border-r border-gray-700/50 flex flex-col bg-[#0a192f] shrink-0">
-            <div className="p-4 border-b border-gray-700/50 flex flex-col gap-2 relative">
-              <span className="text-sm font-bold text-[#e6f1ff]">貼上 QA JSON 腳本</span>
-              <span className="text-xs text-gray-400">請貼上包含 QA[0].RNGs 的腳本內容，系統會自動轉換為對應盤面。</span>
-              
-              <div className="flex items-center gap-2 mt-2">
-                <input 
-                  type="checkbox" 
-                  id="validator-freegame-toggle"
-                  checked={isFreeGame}
-                  onChange={(e) => setIsFreeGame(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-600 text-dashboard-accent focus:ring-dashboard-accent focus:ring-offset-gray-900 bg-gray-800"
-                />
-                <label htmlFor="validator-freegame-toggle" className="text-sm text-gray-300 font-bold cursor-pointer hover:text-white">
-                  使用 Free Game 滾輪表 (免遊模式)
-                </label>
-              </div>
-              
-              {!isProjectLoaded && (
-                <div className="mt-2 p-3 bg-red-900/20 border border-red-500/50 rounded-lg flex flex-col items-center justify-center text-center">
-                  <AlertCircle size={20} className="text-red-500 mb-1" />
-                  <span className="text-red-400 text-xs font-bold">尚未載入專案，請先在上方選擇遊戲範本！</span>
-                </div>
-              )}
-            </div>
-            <textarea
-              value={jsonInput}
-              onChange={(e) => setJsonInput(e.target.value)}
-              className="flex-1 bg-[#112240] border border-gray-700 rounded-lg p-3 text-sm text-dashboard-text-primary font-mono focus:border-dashboard-accent focus:ring-1 focus:ring-dashboard-accent outline-none resize-none"
-              placeholder={'{\n "QA": [\n  {\n   "RNGs": [\n    [22, 31, 9, 0, 0, 0, 0]\n   ]\n  }\n ]\n}'}
-            />
-            {errorMsg && (
-              <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-lg flex items-start gap-2 text-sm">
-                <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                <p>{errorMsg}</p>
-              </div>
-            )}
-            <button
-                onClick={handleParse}
-                disabled={!isProjectLoaded}
-                className={`w-full py-3 flex items-center justify-center gap-2 font-bold rounded-lg transition-colors shadow-lg ${
-                  isProjectLoaded 
-                  ? "bg-dashboard-accent text-[#0a192f] hover:bg-dashboard-accent/90" 
-                  : "bg-gray-700 text-gray-500 cursor-not-allowed"
-                }`}
-              >
-                <Play size={18} />
-                解析並生成盤面
-              </button>
-          </div>
-
-          {/* Right Panel */}
-          <div className="flex-1 bg-[#112240]/50 overflow-y-auto p-6">
-            {parsedSteps.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-gray-500 gap-4">
-                <Play size={48} className="opacity-20" />
-                <p>尚無資料，請在左側貼上腳本並點擊解析</p>
-              </div>
-            ) : (
-              <div className="space-y-4 pr-2 custom-scrollbar pb-4">
-              {parsedSteps.map((step, idx) => (
-                <StepCard key={idx} step={step} idx={idx} gameType={gameType} />
-              ))}
-            </div>
-            )}
-          </div>
-
-        </div>
-      </div>
-    </div>
-  );
-};
 </file>
 
 <file path="src/games/base/IGameEnvironment.ts">
@@ -6810,65 +6273,772 @@ export function getWinColorClass(winIndices: number[] | undefined): string {
 }
 </file>
 
-<file path="src/index.css">
-@import "tailwindcss";
+<file path="src/components/tools/RngValidator.tsx">
+import React, { useState } from 'react';
+import { X, Play, AlertCircle, Square } from 'lucide-react';
+import { useGameStore } from '../../store/useGameStore';
+import { useMachineStore } from '../../store/useMachineStore';
+import { SlotGridDisplay } from '../SlotGridDisplay';
+import { evaluateGrid, getWinningPositions } from '../../utils/evaluation';
+import { GameRegistry } from '../../core/GameRegistry';
 
-@theme {
-  --color-dashboard-bg: #0a192f;
-  --color-dashboard-card: #112240;
-  --color-dashboard-accent: #64ffda;
-  --color-dashboard-text-primary: #e6f1ff;
-  --color-dashboard-text-secondary: #8892b0;
+const templateFiles = import.meta.glob('/templates/*.{xlsx,xls}', { query: '?url', eager: true, import: 'default' }) as Record<string, string>;
+const getTemplateName = (path: string) => {
+  const parts = path.split('/');
+  const filename = parts[parts.length - 1];
+  return filename.replace(/\.(xlsx|xls)$/, '').replace('範本-', '');
+};
+
+interface RngValidatorProps {
+  onClose: () => void;
 }
 
-@layer base {
-  body {
-    @apply bg-dashboard-bg text-dashboard-text-primary antialiased m-0 font-sans h-screen w-screen overflow-hidden;
-  }
-}
+const StepCard = ({ step, idx, gameType }: { step: any, idx: number, gameType: string }) => {
+  const [activeDrop, setActiveDrop] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [animationStage, setAnimationStage] = useState<'idle' | 'eliminating' | 'dropping'>('idle');
+  const currentDrop = step.drops[activeDrop];
+  const previousDrop = activeDrop > 0 ? step.drops[activeDrop - 1] : undefined;
 
-@layer utilities {
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: rgba(10, 25, 47, 0.5); 
-    border-radius: 4px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(136, 146, 176, 0.3); 
-    border-radius: 4px;
-  }
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(100, 255, 218, 0.5); 
-  }
+  React.useEffect(() => {
+    if (!isPlaying) return;
 
-  @keyframes sync-pulse-1 {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
-  @keyframes sync-pulse-2 {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
-  .animate-sync-pulse-1 {
-    animation: sync-pulse-1 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-  .animate-sync-pulse-2 {
-    animation: sync-pulse-2 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-  
-  @keyframes lineFlow {
-    to {
-      stroke-dashoffset: -32;
+    let t: NodeJS.Timeout;
+
+    if (animationStage === 'idle') {
+      if (activeDrop >= step.drops.length - 1) {
+        setIsPlaying(false);
+        return;
+      }
+      t = setTimeout(() => setAnimationStage('eliminating'), 500);
+    } else if (animationStage === 'eliminating') {
+      t = setTimeout(() => {
+        setActiveDrop(prev => prev + 1);
+        setAnimationStage('dropping');
+      }, 600);
+    } else if (animationStage === 'dropping') {
+      t = setTimeout(() => {
+        setAnimationStage('idle');
+      }, 850);
     }
-  }
-  .winning-line-flow {
-    stroke-dasharray: 14 6;
-    animation: lineFlow 1.1s linear infinite;
-  }
+
+    return () => clearTimeout(t);
+  }, [isPlaying, animationStage, activeDrop, step.drops.length]);
+
+  const togglePlay = () => {
+    if (activeDrop >= step.drops.length - 1 && !isPlaying) {
+      setActiveDrop(0);
+      setAnimationStage('idle');
+      setTimeout(() => setIsPlaying(true), 50);
+    } else {
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  return (
+    <div className="bg-[#0a192f] border border-gray-700/50 rounded-xl p-6 shadow-xl relative overflow-hidden">
+      <div className="absolute top-0 left-0 w-1 bg-dashboard-accent h-full"></div>
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-bold text-dashboard-text-primary flex items-center gap-2">
+          <span className="bg-dashboard-accent/10 text-dashboard-accent px-2 py-1 rounded text-sm">
+            Step {idx + 1}
+          </span>
+          {step.drops.length > 1 && (
+            <span className="text-sm text-gray-400">
+              (消除掉落: {activeDrop + 1} / {step.drops.length})
+            </span>
+          )}
+        </h3>
+        <div className="text-right">
+          <p className="text-sm text-gray-400">Total Win</p>
+          <p className={`text-2xl font-black font-mono ${step.totalWin > 0 ? 'text-green-400' : 'text-gray-500'}`}>
+            {step.totalWin > 0 ? '+' : ''}{step.totalWin}
+          </p>
+        </div>
+      </div>
+      
+      <div className="flex flex-col items-center gap-4 bg-[#112240] p-6 rounded-lg border border-gray-700/30 relative">
+        {step.drops.length > 0 && (
+          <div className="flex w-full justify-between items-center px-2 mb-2">
+            <button 
+              onClick={() => setActiveDrop(Math.max(0, activeDrop - 1))}
+              disabled={activeDrop === 0 || isPlaying}
+              className="p-2 bg-gray-700 rounded-full disabled:opacity-30 hover:bg-gray-600 transition-colors shadow-lg border border-gray-600"
+            >
+              ◀ 
+            </button>
+            
+            <div className="flex items-center gap-3">
+              <span className="text-gray-400 font-bold text-sm bg-gray-800 px-3 py-1 rounded-full border border-gray-700">
+                Drop {activeDrop + 1}
+                {(gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'waygame_qin') && (
+                  <span className="text-yellow-400 ml-2">X{currentDrop.multiplier}</span>
+                )}
+              </span>
+              
+              <button
+                onClick={togglePlay}
+                className={`p-1.5 rounded-full shadow-lg border transition-all ${
+                  isPlaying 
+                    ? 'bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30' 
+                    : 'bg-green-500/20 text-green-400 border-green-500/50 hover:bg-green-500/30'
+                }`}
+                title={isPlaying ? '暫停播放' : '自動播放所有掉落'}
+              >
+                {isPlaying ? <Square size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
+              </button>
+            </div>
+
+            <button 
+              onClick={() => setActiveDrop(Math.min(step.drops.length - 1, activeDrop + 1))}
+              disabled={activeDrop === step.drops.length - 1 || isPlaying}
+              className="p-2 bg-gray-700 rounded-full disabled:opacity-30 hover:bg-gray-600 transition-colors shadow-lg border border-gray-600"
+            >
+              ▶
+            </button>
+          </div>
+        )}
+        
+        <div className="flex gap-2 justify-center">
+          <SlotGridDisplay
+            gridMode="custom"
+            gridSymbols={currentDrop.grid}
+            winningCoords={currentDrop.winningCoords}
+            prevGridSymbols={previousDrop?.grid}
+            prevWinningCoords={previousDrop?.winningCoords}
+            hideEmptyCells={true}
+            animationStage={animationStage}
+          />
+        </div>
+        
+        {step.drops.length > 0 && (
+          <div className={`text-sm font-bold mt-2 px-4 py-2 rounded-full border text-center flex flex-col ${currentDrop.totalWin > 0 ? 'text-green-400 bg-green-900/20 border-green-500/30' : 'text-gray-400 bg-gray-800/50 border-gray-700/50'}`}>
+            <span>該次掉落贏分</span>
+            {(gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'waygame_qin') ? (
+              <span className="text-lg">
+                {currentDrop.originalWin} <span className="text-gray-500 text-sm mx-1">×</span> {currentDrop.multiplier} <span className="text-gray-500 text-sm mx-1">=</span> {currentDrop.totalWin}
+              </span>
+            ) : (
+              <span className="text-lg">{currentDrop.totalWin}</span>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
+  const [jsonInput, setJsonInput] = useState<string>('');
+  const [errorMsg, setErrorMsg] = useState<string>('');
+  const [isFreeGame, setIsFreeGame] = useState<boolean>(false);
+  const [parsedSteps, setParsedSteps] = useState<{
+    totalWin: number;
+    drops: {
+      grid: string[][];
+      totalWin: number;
+      originalWin: number;
+      multiplier: number;
+      winningCoords: Map<string, number[]>;
+    }[];
+  }[]>([]);
+
+  const {
+    currentStrips,
+    currentStripSets,
+    currentFreeStripSets,
+    rowCounts,
+    reelCount,
+    currentPaytable,
+    specialSymbolConfig,
+    isProjectLoaded,
+    isProjectLoading,
+    projectName
+  } = useGameStore();
+  const { bet, coin, gameType, loadTemplateTrigger, setLoadTemplateTrigger } = useMachineStore();
+  const betMultiplier = coin > 0 ? bet / coin : 1;
+
+  const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+  React.useEffect(() => {
+    if (isProjectLoading) {
+      setLoadStatus('loading');
+    } else if (loadStatus === 'loading') {
+      if (isProjectLoaded) {
+        setLoadStatus('success');
+        setTimeout(() => setLoadStatus('idle'), 2000);
+      } else {
+        setLoadStatus('error');
+        setTimeout(() => setLoadStatus('idle'), 2000);
+      }
+    }
+  }, [isProjectLoading, isProjectLoaded]);
+
+  const templatesList = Object.keys(templateFiles).map(path => ({
+    path,
+    name: getTemplateName(path)
+  }));
+
+  const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val) {
+      setLoadTemplateTrigger(val);
+    }
+  };
+
+  const handleParse = () => {
+    setErrorMsg('');
+    try {
+      const data = JSON.parse(jsonInput);
+      if (!data?.QA || !data.QA[0] || !data.QA[0].RNGs) {
+        throw new Error('無效的格式，找不到 QA[0].RNGs');
+      }
+
+      const rngSteps: number[][] = data.QA[0].RNGs;
+      const classIds: number[][] = data.QA[0].ClassIDs || [];
+
+      // Build MathID map
+      const mathIdToSymbol: Record<number, string> = {};
+      currentPaytable.forEach(r => {
+        if (r.mathId !== undefined) {
+          const ids = String(r.mathId).split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+          ids.forEach(id => {
+            mathIdToSymbol[id] = r.symbolId;
+          });
+        }
+      });
+
+      const isCoordinateClassId = gameType === 'linegame_set2' || gameType === 'linegame';
+
+      const newSteps = rngSteps.map((rngArray, stepIndex) => {
+         const isMathId = isCoordinateClassId || rngArray.length > reelCount + 4;
+         
+         const emptyGrid = Array.from({ length: reelCount }, (_, c) => 
+            Array(rowCounts[c] || 3).fill('-')
+         );
+
+         let classIdIndex = 0;
+         const flatClassIds = classIds[stepIndex] || [];
+         
+         let currentGrid: string[][];
+         let idIndex = 0;
+         const currentTopCursors = [...rngArray];
+         
+         let activeStrips = currentStrips;
+         if (!isMathId && rngArray.length > reelCount) {
+            const stripId = rngArray[reelCount];
+            const targetStripSets = isFreeGame && currentFreeStripSets.length > 0 ? currentFreeStripSets : currentStripSets;
+            activeStrips = targetStripSets[stripId] || currentStrips;
+         }
+
+         if (isMathId) {
+            currentGrid = emptyGrid.map(col => 
+               col.map(cell => {
+                  if (idIndex < rngArray.length) {
+                    const val = rngArray[idIndex++];
+                    let sym = mathIdToSymbol[val];
+                    if (sym && !isCoordinateClassId && (sym.startsWith('F') || sym.startsWith('L'))) {
+                      const mult = flatClassIds[classIdIndex++];
+                      if (mult !== undefined) {
+                         sym = `${sym}_${mult}X`;
+                      }
+                    }
+                    return sym ? sym : '-';
+                  }
+                  return cell;
+               })
+            );
+         } else {
+            currentGrid = emptyGrid.map((col, c) => {
+               const start = rngArray[c] || 0;
+               const len = activeStrips[c]?.length || 1;
+               const strip = activeStrips[c] || ['-'];
+               return col.map((_, r) => strip[(start + r) % len]);
+            });
+         }
+
+         let evWins = evaluateGrid(currentGrid, currentPaytable, gameType, undefined, false);
+         let coords = getWinningPositions(currentGrid, evWins, currentPaytable, gameType);
+         
+         let initialTumbleMultiplier = 1;
+         if (gameType === 'waygame' || gameType === 'waygame_elephant') {
+            initialTumbleMultiplier = isFreeGame ? 8 : 1;
+         }
+         
+         let originalWinSum = evWins.reduce((sum, w) => sum + (w.totalWin * betMultiplier), 0);
+         let winSum = originalWinSum * initialTumbleMultiplier;
+
+         const drops = [{
+            grid: currentGrid,
+            totalWin: winSum,
+            originalWin: originalWinSum,
+            multiplier: initialTumbleMultiplier,
+            winningCoords: coords
+         }];
+
+         // Simulate tumbling
+         let hasWins = coords.size > 0;
+         let dropCount = 0;
+         let lastGrid = currentGrid;
+         let lastCoords = coords;
+
+         while (hasWins && dropCount < 30) {
+            dropCount++;
+            const nextGrid = Array.from({ length: reelCount }, () => [] as string[]);
+            
+            for (let c = 0; c < reelCount; c++) {
+               const colLen = rowCounts[c] || 3;
+               const strip = activeStrips[c] || ['-'];
+               const stripLen = strip.length;
+               
+               const gameInstance = GameRegistry.getGame(gameType);
+               
+               const keptSymbols: string[] = [];
+               for (let r = 0; r < colLen; r++) {
+                  const symId = lastGrid[c][r];
+                  const isUnremovable = gameInstance.isSymbolUnremovable?.(symId, isFreeGame) ?? false;
+                  // We also shouldn't eliminate if the win index is 999, but checking isUnremovable is the authoritative way.
+                  if (!lastCoords.has(`${c}-${r}`) || isUnremovable) {
+                     keptSymbols.push(symId);
+                  } else {
+                     if ((gameType === 'waygame' || gameType === 'waygame_qin' || gameType === 'waygame_elephant') && symId.startsWith('G') && symId !== 'G') {
+                        keptSymbols.push('WX');
+                     }
+                  }
+               }
+               
+               const removedCount = colLen - keptSymbols.length;
+               const newSymbols: string[] = [];
+               
+               if (isMathId) {
+                  for (let i = 0; i < removedCount; i++) {
+                     if (idIndex < rngArray.length) {
+                        const val = rngArray[idIndex++];
+                        let sym = mathIdToSymbol[val];
+                        if (sym && !isCoordinateClassId && (sym.startsWith('F') || sym.startsWith('L'))) {
+                           const mult = flatClassIds[classIdIndex++];
+                           if (mult !== undefined) sym = `${sym}_${mult}X`;
+                        }
+                        newSymbols.push(sym || '-');
+                     } else {
+                        newSymbols.push('0');
+                     }
+                  }
+               } else {
+                  for (let i = 0; i < removedCount; i++) {
+                     currentTopCursors[c] = (currentTopCursors[c] - 1 + stripLen) % stripLen;
+                     newSymbols.push(strip[currentTopCursors[c]]);
+                  }
+                  newSymbols.reverse();
+               }
+               
+               nextGrid[c] = [...newSymbols, ...keptSymbols];
+            }
+            
+            const evWinsNext = evaluateGrid(nextGrid, currentPaytable, gameType, undefined, false);
+            const coordsNext = getWinningPositions(nextGrid, evWinsNext, currentPaytable, gameType);
+            
+            let tumbleMultiplier = 1;
+            if (gameType === 'waygame' || gameType === 'waygame_elephant') {
+               tumbleMultiplier = isFreeGame 
+                 ? Math.min(1024, 8 * Math.pow(2, dropCount))
+                 : Math.min(1024, 1 * Math.pow(2, dropCount));
+            }
+            
+            const originalWinSumNext = evWinsNext.reduce((sum, w) => sum + (w.totalWin * betMultiplier), 0);
+            const winSumNext = originalWinSumNext * tumbleMultiplier;
+            
+            drops.push({
+               grid: nextGrid,
+               totalWin: winSumNext,
+               originalWin: originalWinSumNext,
+               multiplier: tumbleMultiplier,
+               winningCoords: coordsNext
+            });
+            
+            lastGrid = nextGrid;
+            lastCoords = coordsNext;
+            hasWins = coordsNext.size > 0;
+         }
+
+         const stepTotalWin = drops.reduce((sum, drop) => sum + drop.totalWin, 0);
+
+         return {
+            drops,
+            totalWin: stepTotalWin
+         };
+      });
+
+      setParsedSteps(newSteps);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'JSON 解析失敗');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
+      <div className="bg-[#0a192f] border border-dashboard-accent/30 rounded-2xl w-full max-w-[90vw] h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-700/50 shrink-0">
+          <div className="flex items-center gap-4">
+            <h2 className="text-xl font-bold text-[#e6f1ff] flex items-center gap-2">
+              <Play className="text-dashboard-accent" size={24} />
+              RNG 腳本驗證 (RNG Validator)
+            </h2>
+            <div className="w-[1px] h-6 bg-gray-700/50"></div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-gray-400 uppercase tracking-wider">選擇遊戲範本:</span>
+              <select 
+                onChange={handleTemplateChange}
+                className="bg-[#0a192f] border border-dashboard-accent text-[#e6f1ff] font-bold rounded px-3 py-1.5 text-sm outline-none focus:border-blue-500 cursor-pointer shadow-lg hover:bg-[#112240] transition-colors"
+                value={isProjectLoaded || loadStatus !== 'idle' ? "loaded" : ""}
+              >
+                <option value="" disabled hidden>-- 請選擇 --</option>
+                <option value="loaded" disabled hidden className={loadStatus === 'error' ? "text-red-400" : "text-dashboard-accent"}>
+                  {loadStatus === 'loading' ? '⏳ 載入中...' :
+                   loadStatus === 'success' ? '✅ 載入專案成功' :
+                   loadStatus === 'error' ? '❌ 載入專案失敗' :
+                   isProjectLoaded ? projectName : "-- 請選擇 --"}
+                </option>
+                {templatesList.map(tmpl => (
+                  <option key={tmpl.path} value={tmpl.path}>{tmpl.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Panel: Input */}
+          <div className="w-[350px] border-r border-gray-700/50 flex flex-col bg-[#0a192f] shrink-0">
+            <div className="p-4 border-b border-gray-700/50 flex flex-col gap-2 relative">
+              <span className="text-sm font-bold text-[#e6f1ff]">貼上 QA JSON 腳本</span>
+              <span className="text-xs text-gray-400">請貼上包含 QA[0].RNGs 的腳本內容，系統會自動轉換為對應盤面。</span>
+              
+              <div className="flex items-center gap-2 mt-2">
+                <input 
+                  type="checkbox" 
+                  id="validator-freegame-toggle"
+                  checked={isFreeGame}
+                  onChange={(e) => setIsFreeGame(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-600 text-dashboard-accent focus:ring-dashboard-accent focus:ring-offset-gray-900 bg-gray-800"
+                />
+                <label htmlFor="validator-freegame-toggle" className="text-sm text-gray-300 font-bold cursor-pointer hover:text-white">
+                  使用 Free Game 滾輪表 (免遊模式)
+                </label>
+              </div>
+              
+              {!isProjectLoaded && !isProjectLoading && (
+                <div className="mt-2 p-3 bg-red-900/20 border border-red-500/50 rounded-lg flex flex-col items-center justify-center text-center">
+                  <AlertCircle size={20} className="text-red-500 mb-1" />
+                  <span className="text-red-400 text-xs font-bold">尚未載入專案，請先在上方選擇遊戲範本！</span>
+                </div>
+              )}
+            </div>
+            <textarea
+              value={jsonInput}
+              onChange={(e) => setJsonInput(e.target.value)}
+              className="flex-1 bg-[#112240] border border-gray-700 rounded-lg p-3 text-sm text-dashboard-text-primary font-mono focus:border-dashboard-accent focus:ring-1 focus:ring-dashboard-accent outline-none resize-none"
+              placeholder={'{\n "QA": [\n  {\n   "RNGs": [\n    [22, 31, 9, 0, 0, 0, 0]\n   ]\n  }\n ]\n}'}
+            />
+            {errorMsg && (
+              <div className="bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-lg flex items-start gap-2 text-sm">
+                <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                <p>{errorMsg}</p>
+              </div>
+            )}
+            <button
+                onClick={handleParse}
+                disabled={!isProjectLoaded}
+                className={`w-full py-3 flex items-center justify-center gap-2 font-bold rounded-lg transition-colors shadow-lg ${
+                  isProjectLoaded 
+                  ? "bg-dashboard-accent text-[#0a192f] hover:bg-dashboard-accent/90" 
+                  : "bg-gray-700 text-gray-500 cursor-not-allowed"
+                }`}
+              >
+                <Play size={18} />
+                解析並生成盤面
+              </button>
+          </div>
+
+          {/* Right Panel */}
+          <div className="flex-1 bg-[#112240]/50 overflow-y-auto p-6">
+            {parsedSteps.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-gray-500 gap-4">
+                <Play size={48} className="opacity-20" />
+                <p>尚無資料，請在左側貼上腳本並點擊解析</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-10 max-w-4xl mx-auto pb-10">
+              {parsedSteps.map((step, idx) => (
+                <StepCard key={idx} step={step} idx={idx} gameType={gameType} />
+              ))}
+            </div>
+            )}
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+};
+</file>
+
+<file path="src/components/SlotGridDisplay.tsx">
+import React from 'react';
+import { getWinColorClass } from '../utils/svgPaths';
+import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../utils/evaluation/GameConstants';
+
+export interface SlotGridDisplayProps {
+  gridSymbols: string[][];
+  winningCoords: Map<string, number[]>;
+  prevGridSymbols?: string[][];
+  prevWinningCoords?: Map<string, number[]>;
+  onCellClick?: (colIndex: number, rowIndex: number) => void;
+  onDragStart?: (e: React.DragEvent, symbol: string, colIndex: number, rowIndex: number) => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent, colIndex: number, rowIndex: number) => void;
+  
+  // Custom configurations
+  goldFrames?: Record<string, number>;
+  jackpots?: Record<string, string>;
+  animationStage?: 'idle' | 'eliminating' | 'dropping';
+  
+  // Mode controls for specific Tailwind styling
+  gridMode?: 'custom' | 'manual' | 'tumble';
+  pulseClass?: string;
+  hideEmptyCells?: boolean;
+
+  // Render prop for inside the cell
+  renderCellInner?: (
+    symbol: string, 
+    colIndex: number, 
+    rowIndex: number, 
+    displaySymbol: string, 
+    hasGoldFrame: boolean, 
+    goldMultiplier: number | undefined, 
+    hasJackpot: boolean, 
+    jackpotValue: string | undefined
+  ) => React.ReactNode;
 }
+
+export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
+  gridSymbols,
+  winningCoords,
+  prevGridSymbols,
+  prevWinningCoords,
+  onCellClick,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  goldFrames = {},
+  jackpots = {},
+  animationStage = 'idle',
+  gridMode = 'custom',
+  pulseClass = '',
+  hideEmptyCells = false,
+  renderCellInner
+}) => {
+  const containerClass = gridMode === 'tumble' 
+    ? "flex flex-wrap gap-2 md:gap-4 justify-center" 
+    : "flex gap-1 sm:gap-2 justify-center";
+
+  // Calculate drop distances for dropping animation
+  const dropDistances = React.useMemo(() => {
+    if (animationStage !== 'dropping' || !prevGridSymbols || !prevWinningCoords) return [];
+    
+    const distances: number[][] = [];
+    for (let col = 0; col < gridSymbols.length; col++) {
+      const colDistances: number[] = [];
+      const oldCol = prevGridSymbols[col] || [];
+      const colWins = prevWinningCoords.get(col.toString()) || [];
+      
+      let elimCount = 0;
+      for (let r = oldCol.length - 1; r >= 0; r--) {
+        const isGSymbol = oldCol[r] && (oldCol[r].startsWith('G') || oldCol[r].startsWith('g'));
+        if (colWins.includes(r) && !isGSymbol) {
+          elimCount++;
+        } else {
+          colDistances[r + elimCount] = elimCount;
+        }
+      }
+      for (let r = 0; r < elimCount; r++) {
+        colDistances[r] = elimCount;
+      }
+      for (let r = 0; r < gridSymbols[col].length; r++) {
+        if (colDistances[r] === undefined) colDistances[r] = elimCount;
+      }
+      distances.push(colDistances);
+    }
+    return distances;
+  }, [animationStage, gridSymbols, prevGridSymbols, prevWinningCoords]);
+
+  return (
+    <div className={containerClass}>
+      {gridSymbols.map((col, colIndex) => (
+        <div key={colIndex} className="flex flex-col justify-center gap-3">
+          {col.map((symbol, rowIndex) => {
+            const winIndices = winningCoords.get(`${colIndex}-${rowIndex}`);
+            const isWinning = !!winIndices;
+            const winColorClass = isWinning ? getWinColorClass(winIndices) : '';
+            
+            const goldMultiplier = goldFrames[`${colIndex}-${rowIndex}`];
+            const hasGoldFrame = goldMultiplier !== undefined;
+            const jackpotValue = jackpots[`${colIndex}-${rowIndex}`];
+            const hasJackpot = jackpotValue !== undefined;
+            
+            let displaySymbol = symbol;
+            let customBg = '';
+            
+            if (symbol.includes('_') && (symbol.startsWith('F') || symbol.startsWith('L'))) {
+              const [ballId, valStr] = symbol.split('_');
+              displaySymbol = valStr;
+              let numVal = 0;
+              if (valStr && valStr.endsWith('X')) {
+                numVal = parseInt(valStr.replace('X', ''), 10);
+              }
+              const balls = ballId.startsWith('F') ? MULTIPLIER_BALLS : LUCKY_BALLS;
+              const ball = balls.find(b => b.values.includes(numVal)) || balls.find(b => b.id === ballId);
+              if (ball) {
+                customBg = `bg-[#0a192f] border ${ball.border} ${ball.color}`;
+              } else if (gridMode === 'tumble') {
+                displaySymbol = '2X';
+                customBg = `bg-red-900/30 border-2 border-red-500 text-red-500`;
+              }
+            }
+
+            const hasAnyWin = winningCoords.size > 0;
+            const dist = dropDistances[colIndex]?.[rowIndex] || 0;
+            const oldRowIndex = rowIndex - dist;
+            const oldSymbol = oldRowIndex >= 0 ? prevGridSymbols?.[colIndex]?.[oldRowIndex] : undefined;
+            const isWild = symbol === 'WILD' || symbol.startsWith('W') || symbol === 'WX';
+            const isUnknown = symbol.startsWith('?');
+            const isGSymbolOld = oldSymbol && (oldSymbol.startsWith('G') || oldSymbol.startsWith('g'));
+            const isGSymbolCurrent = symbol.startsWith('G') || hasGoldFrame;
+            const isFlipping = animationStage === 'dropping' && isWild && isGSymbolOld;
+
+            let cellClassNames = '';
+
+            let animationClasses = '';
+            let style: React.CSSProperties = {};
+
+            if (animationStage === 'eliminating' && isWinning) {
+              if (isGSymbolCurrent) {
+                animationClasses = 'animate-pulse brightness-125 transition-all duration-500';
+              } else {
+                animationClasses = 'scale-0 opacity-0 rotate-12 transition-all duration-500';
+              }
+            } else if (animationStage === 'dropping') {
+              if (isFlipping) {
+                // Handled inside
+              } else if (dropDistances.length > 0) {
+                if (dist > 0) {
+                  animationClasses = 'animate-slide-down-dynamic';
+                  style = { '--drop-dist': dist, animationDelay: `${rowIndex * 40}ms` } as React.CSSProperties;
+                }
+              } else {
+                animationClasses = 'animate-drop-in';
+                style = { animationDelay: `${rowIndex * 40}ms` } as React.CSSProperties;
+              }
+            }
+
+            if (gridMode === 'custom') {
+              const defaultBg = symbol === '-' ? 'bg-[#0a192f] text-gray-700 border-2 border-gray-800 border-dashed hover:border-dashboard-accent' :
+                                isWild ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border border-yellow-300' :
+                                symbol === 'SCATTER' ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border border-pink-300' :
+                                'bg-[#112240] text-dashboard-text-primary border border-dashboard-accent/30';
+              
+              cellClassNames = `
+                w-16 h-16 sm:w-20 sm:h-20 rounded-lg flex items-center justify-center text-xl font-bold
+                shadow-lg transform relative cursor-pointer active:scale-95 transition-all duration-200 shrink-0
+                ${customBg ? customBg : defaultBg}
+                ${hideEmptyCells && symbol === '-' ? 'hidden' : ''}
+                ${isWinning ? `ring-2 z-10 scale-105 ${winColorClass}` : ''}
+                ${hasGoldFrame && !isWinning ? `ring-2 ring-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.6)]` : ''}
+                ${hasJackpot && !isWinning ? `ring-2 ring-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]` : ''}
+                ${animationClasses}
+              `;
+            } else if (gridMode === 'manual') {
+              const defaultBg = symbol === '-' ? 'bg-[#0a192f] text-gray-700 border-2 border-gray-800 border-dashed' :
+                                isWild ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border-yellow-300' :
+                                symbol === 'SCATTER' ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border-pink-300' :
+                                'bg-[#112240] text-dashboard-text-primary border-dashboard-accent/30';
+                                
+              cellClassNames = `
+                w-20 h-20 rounded-lg flex items-center justify-center text-xl font-bold
+                shadow-lg transform transition-all duration-300 relative cursor-grab active:cursor-grabbing border
+                ${customBg ? customBg : defaultBg}
+                ${isWinning ? `z-10 ring-2 scale-105 ${winColorClass}` : hasAnyWin ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]' : ''}
+                ${animationClasses}
+              `;
+            } else if (gridMode === 'tumble') {
+              const defaultBg = isWild ? 'bg-[#112240] text-purple-400 border border-purple-500/30' :
+                                isUnknown ? 'bg-red-900/30 text-red-400 border border-red-500/50' :
+                                'bg-[#112240] text-gray-300 border border-gray-700/50';
+                                
+              cellClassNames = `
+                w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center rounded-lg relative transform text-sm sm:text-base font-bold
+                ${!isWinning ? 'transition-all duration-300' : ''}
+                ${isWinning ? `z-10 ring-2 scale-105 ${winColorClass} ${pulseClass}` : customBg ? customBg : defaultBg}
+                ${!isWinning && hasAnyWin && !customBg ? 'opacity-30 scale-95 border-transparent' : ''}
+              `;
+            }
+
+            const idPrefix = gridMode === 'custom' ? 'cell-custom' : gridMode === 'manual' ? 'cell-manual' : 'cell-tumble';
+
+            return (
+              <div
+                id={`${idPrefix}-${colIndex}-${rowIndex}`}
+                key={`${colIndex}-${rowIndex}`}
+                draggable={!!onDragStart}
+                onClick={() => onCellClick && onCellClick(colIndex, rowIndex)}
+                onDragStart={(e) => onDragStart && onDragStart(e, symbol, colIndex, rowIndex)}
+                onDragOver={(e) => {
+                  if (onDragOver) onDragOver(e);
+                  else if (onDrop) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }
+                }}
+                onDrop={(e) => onDrop && onDrop(e, colIndex, rowIndex)}
+                className={cellClassNames.replace(/\s+/g, ' ').trim()}
+                title={symbol}
+                style={style}
+              >
+                {isFlipping ? (
+                  <div className="relative w-full h-full perspective-1000">
+                    <div className="absolute inset-0 animate-flip-front">
+                      {renderCellInner ? renderCellInner(oldSymbol, colIndex, rowIndex, oldSymbol.replace(/^G_?/, ''), true, undefined, false, undefined) : (
+                        <div className="flex flex-col items-center justify-center pointer-events-none w-full h-full relative">
+                          <span>{oldSymbol.replace(/^G_?/, '')}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="absolute inset-0 animate-flip-back">
+                      {renderCellInner ? renderCellInner(symbol, colIndex, rowIndex, displaySymbol, false, undefined, hasJackpot, jackpotValue) : (
+                        <div className="flex flex-col items-center justify-center pointer-events-none w-full h-full relative">
+                          <span>{displaySymbol}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : renderCellInner ? (
+                  renderCellInner(symbol, colIndex, rowIndex, displaySymbol, hasGoldFrame, goldMultiplier, hasJackpot, jackpotValue)
+                ) : (
+                  <div className="flex flex-col items-center justify-center pointer-events-none w-full h-full relative">
+                    <span>{displaySymbol}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+};
 </file>
 
 <file path="src/games/base/AbstractGame.ts">
@@ -7311,6 +7481,107 @@ export const useMachineStore = create<MachineState>((set) => ({
   setJiraReportFileName: (name) => set({ jiraReportFileName: name }),
   setJiraIssuesByProject: (data) => set({ jiraIssuesByProject: data }),
 }));
+</file>
+
+<file path="src/index.css">
+@import "tailwindcss";
+
+@theme {
+  --color-dashboard-bg: #0a192f;
+  --color-dashboard-card: #112240;
+  --color-dashboard-accent: #64ffda;
+  --color-dashboard-text-primary: #e6f1ff;
+  --color-dashboard-text-secondary: #8892b0;
+}
+
+@layer base {
+  body {
+    @apply bg-dashboard-bg text-dashboard-text-primary antialiased m-0 font-sans h-screen w-screen overflow-hidden;
+  }
+}
+
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(10, 25, 47, 0.5); 
+    border-radius: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(136, 146, 176, 0.3); 
+    border-radius: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 255, 218, 0.5); 
+  }
+
+  @keyframes sync-pulse-1 {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  @keyframes sync-pulse-2 {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  .animate-sync-pulse-1 {
+    animation: sync-pulse-1 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  .animate-sync-pulse-2 {
+    animation: sync-pulse-2 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes drop-in {
+    0% { transform: translateY(-60px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+  .animate-drop-in {
+    animation: drop-in 0.6s cubic-bezier(0.25, 1, 0.5, 1) both;
+  }
+
+  @keyframes flip-front {
+    0% { transform: perspective(400px) rotateY(0deg); opacity: 1; }
+    49.999% { transform: perspective(400px) rotateY(90deg); opacity: 1; }
+    50% { opacity: 0; }
+    100% { opacity: 0; }
+  }
+  .animate-flip-front {
+    animation: flip-front 0.6s cubic-bezier(0.45, 0, 0.55, 1) forwards;
+  }
+
+  @keyframes flip-back {
+    0% { transform: perspective(400px) rotateY(-90deg); opacity: 0; }
+    49.999% { opacity: 0; }
+    50% { transform: perspective(400px) rotateY(-90deg); opacity: 1; }
+    100% { transform: perspective(400px) rotateY(0deg); opacity: 1; }
+  }
+  .animate-flip-back {
+    animation: flip-back 0.6s cubic-bezier(0.45, 0, 0.55, 1) forwards;
+  }
+
+  @keyframes slide-down-dynamic {
+    0% { 
+      transform: translateY(calc( -100% * var(--drop-dist, 1) - 0.5rem * var(--drop-dist, 1) )); 
+    }
+    100% { 
+      transform: translateY(0); 
+    }
+  }
+  .animate-slide-down-dynamic {
+    animation: slide-down-dynamic 0.6s cubic-bezier(0.25, 1, 0.5, 1) both;
+  }
+  
+  @keyframes lineFlow {
+    to {
+      stroke-dashoffset: -32;
+    }
+  }
+  .winning-line-flow {
+    stroke-dasharray: 14 6;
+    animation: lineFlow 1.1s linear infinite;
+  }
+}
 </file>
 
 <file path="ARCHITECTURE.md">
@@ -8368,175 +8639,6 @@ export const Sidebar: React.FC = () => {
 };
 </file>
 
-<file path="src/components/WelcomeScreen.tsx">
-import React from 'react';
-import { Play, FileBox, Calculator, FileCheck2, Upload, Link as LinkIcon, FileSpreadsheet } from 'lucide-react';
-import { useMachineStore } from '../store/useMachineStore';
-
-interface WelcomeScreenProps {
-  onSelectTemplate: (templateName: string) => void;
-}
-
-export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectTemplate }) => {
-  return (
-    <div className="w-full h-full flex flex-col items-center justify-start pt-20 px-4 md:px-8 bg-[#0a192f] text-dashboard-text-primary overflow-y-auto">
-      <div className="max-w-5xl w-full flex flex-col gap-10">
-        
-        {/* Header */}
-        <div className="flex flex-col items-center justify-center gap-2 text-center">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-wider">
-            歡迎使用 <span className="text-dashboard-accent">RNG PAY</span>
-          </h1>
-          <p className="text-[#8892b0] text-sm md:text-base">請選擇要建立或載入的專案，開始您的 RTP 測試與模擬</p>
-        </div>
-
-        <div className="flex flex-col gap-12 mt-4">
-          
-          {/* Section 1: Game Engines */}
-          <section className="flex flex-col gap-4">
-            <h2 className="text-xl font-bold text-[#e6f1ff] border-b border-gray-700/50 pb-2">遊戲基底 (Game Engines)</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { name: 'Line Game', type: 'linegame' },
-                { name: 'Way Game', type: 'waygame' },
-                { name: 'Pay Anywhere', type: 'payanywhere' },
-                { name: 'Megaway', type: 'megaway' },
-              ].map((engine) => (
-                <div 
-                  key={engine.name}
-                  onClick={() => onSelectTemplate(engine.name)}
-                  className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex flex-col items-start gap-4 cursor-pointer hover:border-dashboard-accent hover:-translate-y-1 transition-all duration-200 group shadow-lg"
-                >
-                  <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center group-hover:border-dashboard-accent/50 group-hover:text-dashboard-accent transition-colors">
-                    <Play size={18} className="text-[#8892b0] group-hover:text-dashboard-accent" />
-                  </div>
-                  <span className="font-bold text-[#e6f1ff] group-hover:text-dashboard-accent transition-colors">{engine.name}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Section 2: Templates */}
-          <section className="flex flex-col gap-4">
-            <h2 className="text-xl font-bold text-[#e6f1ff] border-b border-gray-700/50 pb-2">遊戲範本 (Templates)</h2>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              
-              {/* Upload Custom Template Card */}
-              <div 
-                onClick={() => document.getElementById('welcome-file-upload')?.click()}
-                className="bg-[#112240] border border-dashboard-accent/30 rounded-xl p-5 flex flex-col items-start gap-4 cursor-pointer hover:border-dashboard-accent hover:-translate-y-1 transition-all duration-200 group shadow-lg relative overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-dashboard-accent/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="w-10 h-10 rounded-full bg-dashboard-accent/10 border border-dashboard-accent/30 flex items-center justify-center group-hover:border-dashboard-accent/50 group-hover:text-dashboard-accent transition-colors relative z-10">
-                  <Upload size={18} className="text-dashboard-accent group-hover:scale-110 transition-transform" />
-                </div>
-                <span className="font-bold text-dashboard-accent relative z-10">上傳自訂 Excel</span>
-              </div>
-
-              <input 
-                type="file" 
-                id="welcome-file-upload" 
-                accept=".xlsx,.xls" 
-                className="hidden" 
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    useMachineStore.getState().setUploadedTemplateFile(file);
-                    e.target.value = ''; // Reset
-                  }
-                }}
-              />
-
-              {['人魚傳說', '決戰賽特2', '秦皇傳說', '奢華', '皇家金象'].map((template) => (
-                <div 
-                  key={template}
-                  onClick={() => onSelectTemplate(template)}
-                  className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex flex-col items-start gap-4 cursor-pointer hover:border-dashboard-accent hover:-translate-y-1 transition-all duration-200 group shadow-lg"
-                >
-                  <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center group-hover:border-dashboard-accent/50 group-hover:text-dashboard-accent transition-colors">
-                    <FileBox size={18} className="text-[#8892b0] group-hover:text-dashboard-accent" />
-                  </div>
-                  <span className="font-bold text-[#e6f1ff] group-hover:text-dashboard-accent transition-colors">{template}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Section 3: Tools */}
-          <section className="flex flex-col gap-4 mb-10">
-            <h2 className="text-xl font-bold text-[#e6f1ff] border-b border-gray-700/50 pb-2">小工具 (Tools)</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              
-              {/* JIRA Tool */}
-              <div 
-                onClick={() => useMachineStore.getState().setActiveModalTool('jira')}
-                className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-dashboard-accent transition-colors shadow-lg group"
-              >
-                <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center text-[#8892b0] group-hover:text-dashboard-accent group-hover:border-dashboard-accent/50 transition-colors">
-                  <LinkIcon size={18} />
-                </div>
-                <span className="font-bold text-[#e6f1ff] group-hover:text-dashboard-accent transition-colors">JIRA 出測 BUG 備註工具</span>
-              </div>
-
-              {/* Snippet Tool */}
-              <div 
-                onClick={() => useMachineStore.getState().setActiveModalTool('snippet')}
-                className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-dashboard-accent transition-colors shadow-lg group"
-              >
-                <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center text-[#8892b0] group-hover:text-dashboard-accent group-hover:border-dashboard-accent/50 transition-colors">
-                  <FileBox size={18} />
-                </div>
-                <span className="font-bold text-[#e6f1ff] group-hover:text-dashboard-accent transition-colors">測試腳本暫存庫</span>
-              </div>
-
-              {/* Jira Report Generator Tool */}
-              <div 
-                onClick={() => useMachineStore.getState().setActiveModalTool('jiraReport')}
-                className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-blue-500 transition-colors shadow-lg group"
-              >
-                <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center text-[#8892b0] group-hover:text-blue-500 group-hover:border-blue-500/50 transition-colors">
-                  <FileSpreadsheet size={18} />
-                </div>
-                <span className="font-bold text-[#e6f1ff] group-hover:text-blue-500 transition-colors">Jira CSV 報表轉換器</span>
-              </div>
-
-              {/* RNG Validator */}
-              <div 
-                onClick={() => useMachineStore.getState().setActiveModalTool('rngValidator')}
-                className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-dashboard-accent hover:-translate-y-1 transition-all duration-200 group shadow-lg"
-              >
-                <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center group-hover:border-dashboard-accent/50 group-hover:text-dashboard-accent transition-colors">
-                  <FileCheck2 size={18} className="text-[#8892b0] group-hover:text-dashboard-accent" />
-                </div>
-                <span className="font-bold text-[#e6f1ff] group-hover:text-dashboard-accent transition-colors">RNG 腳本驗證</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-                  {[
-                    { name: 'RTP 模擬計算機', icon: <Calculator size={18} />, action: () => useMachineStore.getState().setActiveModalTool('rtpCalculator') },
-                  ].map((tool) => (
-                  <div 
-                    key={tool.name}
-                    onClick={tool.action}
-                    className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-dashboard-accent hover:-translate-y-1 transition-all duration-200 group shadow-lg"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center text-[#8892b0] group-hover:border-dashboard-accent/50 group-hover:text-dashboard-accent transition-colors">
-                      {tool.icon}
-                    </div>
-                    <span className="font-bold text-[#e6f1ff] group-hover:text-dashboard-accent transition-colors">{tool.name}</span>
-                  </div>
-              ))}
-            </div>
-          </section>
-
-        </div>
-      </div>
-    </div>
-  );
-};
-</file>
-
 <file path="src/games/base/RngSearchEngine.ts">
 import type {
   PaytableRule,
@@ -9504,6 +9606,169 @@ export class ScatterStrategy implements EvaluationStrategy {
 }
 </file>
 
+<file path="src/components/WelcomeScreen.tsx">
+import React from 'react';
+import { Play, FileBox, Calculator, FileCheck2, Upload, Link as LinkIcon, FileSpreadsheet } from 'lucide-react';
+import { useMachineStore } from '../store/useMachineStore';
+
+interface WelcomeScreenProps {
+  onSelectTemplate: (templateName: string) => void;
+}
+
+export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectTemplate }) => {
+  return (
+    <div className="w-full h-full flex flex-col items-center justify-start pt-20 px-4 md:px-8 bg-[#0a192f] text-dashboard-text-primary overflow-y-auto">
+      <div className="max-w-5xl w-full flex flex-col gap-10">
+        
+        {/* Header */}
+        <div className="flex flex-col items-center justify-center gap-2 text-center">
+          <h1 className="text-3xl md:text-4xl font-bold tracking-wider">
+            歡迎使用 <span className="text-dashboard-accent">RNG PAY</span>
+          </h1>
+          <p className="text-[#8892b0] text-sm md:text-base">請選擇要建立或載入的專案，開始您的 RTP 測試與模擬</p>
+        </div>
+
+        <div className="flex flex-col gap-12 mt-4">
+          
+          {/* Section 1: Game Engines */}
+          <section className="flex flex-col gap-4">
+            <h2 className="text-xl font-bold text-[#e6f1ff] border-b border-gray-700/50 pb-2">遊戲基底 (Game Engines)</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { name: 'Line Game', type: 'linegame' },
+                { name: 'Way Game', type: 'waygame' },
+                { name: 'Pay Anywhere', type: 'payanywhere' },
+                { name: 'Megaway', type: 'megaway' },
+              ].map((engine) => (
+                <div 
+                  key={engine.name}
+                  onClick={() => onSelectTemplate(engine.name)}
+                  className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex flex-col items-start gap-4 cursor-pointer hover:border-dashboard-accent hover:-translate-y-1 transition-all duration-200 group shadow-lg"
+                >
+                  <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center group-hover:border-dashboard-accent/50 group-hover:text-dashboard-accent transition-colors">
+                    <Play size={18} className="text-[#8892b0] group-hover:text-dashboard-accent" />
+                  </div>
+                  <span className="font-bold text-[#e6f1ff] group-hover:text-dashboard-accent transition-colors">{engine.name}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Section 2: Templates */}
+          <section className="flex flex-col gap-4">
+            <h2 className="text-xl font-bold text-[#e6f1ff] border-b border-gray-700/50 pb-2">遊戲範本 (Templates)</h2>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              
+              {/* Upload Custom Template Card */}
+              <div 
+                onClick={() => document.getElementById('welcome-file-upload')?.click()}
+                className="bg-[#112240] border border-dashboard-accent/30 rounded-xl p-5 flex flex-col items-start gap-4 cursor-pointer hover:border-dashboard-accent hover:-translate-y-1 transition-all duration-200 group shadow-lg relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-dashboard-accent/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="w-10 h-10 rounded-full bg-dashboard-accent/10 border border-dashboard-accent/30 flex items-center justify-center group-hover:border-dashboard-accent/50 group-hover:text-dashboard-accent transition-colors relative z-10">
+                  <Upload size={18} className="text-dashboard-accent group-hover:scale-110 transition-transform" />
+                </div>
+                <span className="font-bold text-dashboard-accent relative z-10">上傳自訂 Excel</span>
+              </div>
+
+              <input 
+                type="file" 
+                id="welcome-file-upload" 
+                accept=".xlsx,.xls" 
+                className="hidden" 
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    useMachineStore.getState().setUploadedTemplateFile(file);
+                    e.target.value = ''; // Reset
+                  }
+                }}
+              />
+
+              {['人魚傳說', '決戰賽特2', '秦皇傳說', '奢華', '皇家金象'].map((template) => (
+                <div 
+                  key={template}
+                  onClick={() => onSelectTemplate(template)}
+                  className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex flex-col items-start gap-4 cursor-pointer hover:border-dashboard-accent hover:-translate-y-1 transition-all duration-200 group shadow-lg"
+                >
+                  <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center group-hover:border-dashboard-accent/50 group-hover:text-dashboard-accent transition-colors">
+                    <FileBox size={18} className="text-[#8892b0] group-hover:text-dashboard-accent" />
+                  </div>
+                  <span className="font-bold text-[#e6f1ff] group-hover:text-dashboard-accent transition-colors">{template}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Section 3: Tools */}
+          <section className="flex flex-col gap-4 mb-10">
+            <h2 className="text-xl font-bold text-[#e6f1ff] border-b border-gray-700/50 pb-2">小工具 (Tools)</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              
+              {/* JIRA Tool */}
+              <div 
+                onClick={() => useMachineStore.getState().setActiveModalTool('jira')}
+                className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-dashboard-accent transition-colors shadow-lg group"
+              >
+                <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center text-[#8892b0] group-hover:text-dashboard-accent group-hover:border-dashboard-accent/50 transition-colors">
+                  <LinkIcon size={18} />
+                </div>
+                <span className="font-bold text-[#e6f1ff] group-hover:text-dashboard-accent transition-colors">JIRA 出測 BUG 備註工具</span>
+              </div>
+
+              {/* Snippet Tool */}
+              <div 
+                onClick={() => useMachineStore.getState().setActiveModalTool('snippet')}
+                className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-dashboard-accent transition-colors shadow-lg group"
+              >
+                <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center text-[#8892b0] group-hover:text-dashboard-accent group-hover:border-dashboard-accent/50 transition-colors">
+                  <FileBox size={18} />
+                </div>
+                <span className="font-bold text-[#e6f1ff] group-hover:text-dashboard-accent transition-colors">測試腳本暫存庫</span>
+              </div>
+
+              {/* Jira Report Generator Tool */}
+              <div 
+                onClick={() => useMachineStore.getState().setActiveModalTool('jiraReport')}
+                className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-blue-500 transition-colors shadow-lg group"
+              >
+                <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center text-[#8892b0] group-hover:text-blue-500 group-hover:border-blue-500/50 transition-colors">
+                  <FileSpreadsheet size={18} />
+                </div>
+                <span className="font-bold text-[#e6f1ff] group-hover:text-blue-500 transition-colors">Jira CSV 報表轉換器</span>
+              </div>
+
+              {/* RNG Validator */}
+              <div 
+                onClick={() => useMachineStore.getState().setActiveModalTool('rngValidator')}
+                className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-dashboard-accent hover:-translate-y-1 transition-all duration-200 group shadow-lg"
+              >
+                <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center group-hover:border-dashboard-accent/50 group-hover:text-dashboard-accent transition-colors">
+                  <FileCheck2 size={18} className="text-[#8892b0] group-hover:text-dashboard-accent" />
+                </div>
+                <span className="font-bold text-[#e6f1ff] group-hover:text-dashboard-accent transition-colors">RNG 腳本驗證</span>
+              </div>
+              
+              {/* RTP Calculator */}
+              <div 
+                onClick={() => useMachineStore.getState().setActiveModalTool('rtpCalculator')}
+                className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-dashboard-accent hover:-translate-y-1 transition-all duration-200 group shadow-lg"
+              >
+                <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center text-[#8892b0] group-hover:border-dashboard-accent/50 group-hover:text-dashboard-accent transition-colors">
+                  <Calculator size={18} />
+                </div>
+                <span className="font-bold text-[#e6f1ff] group-hover:text-dashboard-accent transition-colors">RTP 模擬計算機</span>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      </div>
+    </div>
+  );
+};
+</file>
+
 <file path="src/types/core.ts">
 export type GameType = 'waygame' | 'megaway' | 'payanywhere' | 'payanywhere_set2' | 'waygame_qin' | 'waygame_elephant' | 'linegame' | 'linegame_set2';
 
@@ -10161,6 +10426,101 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({ result, prog
 };
 </file>
 
+<file path="src/hooks/useSimulation.ts">
+import { useState, useCallback, useRef, useEffect } from 'react';
+import type { PaytableRule, ReelStrips, SimulationResult, GameConfig } from '../types';
+import type { WorkerMessageData, WorkerResponse } from '../workers/simulation.worker';
+import { useMachineStore } from '../store/useMachineStore';
+
+export const useSimulation = () => {
+  const { isRunning, setIsRunning } = useMachineStore();
+  const [progress, setProgress] = useState(0);
+  const [currentSpins, setCurrentSpins] = useState(0);
+  const [currentGrid, setCurrentGrid] = useState<string[][]>([]);
+  const [result, setResult] = useState<SimulationResult | null>(null);
+
+  const workerRef = useRef<Worker | null>(null);
+
+  // Clean up worker on unmount
+  useEffect(() => {
+    return () => {
+      if (workerRef.current) {
+        workerRef.current.terminate();
+      }
+    };
+  }, []);
+
+  const runSimulation = useCallback((
+    strips: ReelStrips, 
+    paytable: PaytableRule[], 
+    totalSpins: number = 1000, 
+    rowCounts: number[] = [],
+    gameConfig: GameConfig,
+    coin: number = 1,
+    bet: number = 1,
+    isFreeGame?: boolean,
+    mode?: 'base_only' | 'free_only' | 'full_game',
+    freeStrips?: ReelStrips
+  ) => {
+    if (isRunning && workerRef.current) {
+      workerRef.current.terminate();
+      workerRef.current = new Worker(new URL('../workers/simulation.worker.ts', import.meta.url), { type: 'module' });
+    } else if (!workerRef.current) {
+      workerRef.current = new Worker(new URL('../workers/simulation.worker.ts', import.meta.url), { type: 'module' });
+    }
+
+    setIsRunning(true);
+    setProgress(0);
+    setCurrentSpins(0);
+    setResult(null);
+
+    workerRef.current.onmessage = (e: MessageEvent<WorkerResponse>) => {
+      const data = e.data;
+      if (data.type === 'PROGRESS') {
+        setCurrentSpins(data.spinsDone);
+        setProgress((data.spinsDone / totalSpins) * 100);
+        if (data.currentGrid) {
+          setCurrentGrid(data.currentGrid);
+        }
+      } else if (data.type === 'DONE') {
+        setIsRunning(false);
+        setResult(data.result);
+      }
+    };
+
+    workerRef.current.onerror = (error) => {
+      console.error("Simulation worker error:", error);
+      setIsRunning(false);
+    };
+
+    const message: WorkerMessageData = {
+      mode,
+      strips,
+      freeStrips,
+      paytable,
+      totalSpins,
+      rowCounts,
+      gameConfig,
+      coin,
+      bet,
+      isFreeGame
+    };
+
+    workerRef.current.postMessage(message);
+
+  }, []);
+
+  return {
+    isRunning,
+    progress,
+    currentSpins,
+    currentGrid,
+    result,
+    runSimulation
+  };
+};
+</file>
+
 <file path="src/store/useGameStore.ts">
 import { create } from 'zustand';
 import type { PaytableRule, ReelStrips, ReelStripsList, SpecialSymbolConfig } from '../types';
@@ -10193,6 +10553,7 @@ export interface GameState {
   activeTab: 'manual' | 'other' | 'lines' | 'customGrid';
   isFreeGame: boolean;
   isProjectLoaded: boolean;
+  isProjectLoading: boolean;
   projectName: string;
   pendingSnippet: Snippet | null;
   
@@ -10219,9 +10580,10 @@ export interface GameState {
   setTopTracker: (tracker: string[]) => void;
   setTopTrackerOther: (tracker: string[]) => void;
   setActiveTab: (tab: 'manual' | 'other' | 'lines' | 'customGrid') => void;
-  setIsFreeGame: (val: boolean) => void;
-  setIsProjectLoaded: (val: boolean) => void;
-  setProjectName: (val: string) => void;
+  setIsFreeGame: (isFree: boolean) => void;
+  setIsProjectLoaded: (loaded: boolean) => void;
+  setIsProjectLoading: (loading: boolean) => void;
+  setProjectName: (name: string) => void;
   setPendingSnippet: (val: Snippet | null) => void;
   applySnippet: (snippet: Snippet) => void;
 
@@ -10308,7 +10670,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   activeTab: 'manual',
   isFreeGame: false,
   isProjectLoaded: false,
-  projectName: '',
+  isProjectLoading: false,
+  projectName: '預設泛用',
   pendingSnippet: null,
 
   setCurrentStrips: (strips) => set({ currentStrips: strips }),
@@ -10358,9 +10721,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   setTopTracker: (tracker) => set({ topTracker: tracker }),
   setTopTrackerOther: (tracker) => set({ topTrackerOther: tracker }),
   setActiveTab: (tab) => set({ activeTab: tab }),
-  setIsFreeGame: (val) => set({ isFreeGame: val }),
-  setIsProjectLoaded: (val) => set({ isProjectLoaded: val }),
-  setProjectName: (val) => set({ projectName: val }),
+  setIsFreeGame: (isFree) => set({ isFreeGame: isFree }),
+  setIsProjectLoaded: (loaded) => set({ isProjectLoaded: loaded }),
+  setIsProjectLoading: (loading) => set({ isProjectLoading: loading }),
+  setProjectName: (name) => set({ projectName: name }),
   setPendingSnippet: (val) => set({ pendingSnippet: val }),
 
   applySnippet: (snippet) => {
@@ -10483,101 +10847,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     currentGrid: []
   })
 }));
-</file>
-
-<file path="src/hooks/useSimulation.ts">
-import { useState, useCallback, useRef, useEffect } from 'react';
-import type { PaytableRule, ReelStrips, SimulationResult, GameConfig } from '../types';
-import type { WorkerMessageData, WorkerResponse } from '../workers/simulation.worker';
-import { useMachineStore } from '../store/useMachineStore';
-
-export const useSimulation = () => {
-  const { isRunning, setIsRunning } = useMachineStore();
-  const [progress, setProgress] = useState(0);
-  const [currentSpins, setCurrentSpins] = useState(0);
-  const [currentGrid, setCurrentGrid] = useState<string[][]>([]);
-  const [result, setResult] = useState<SimulationResult | null>(null);
-
-  const workerRef = useRef<Worker | null>(null);
-
-  // Clean up worker on unmount
-  useEffect(() => {
-    return () => {
-      if (workerRef.current) {
-        workerRef.current.terminate();
-      }
-    };
-  }, []);
-
-  const runSimulation = useCallback((
-    strips: ReelStrips, 
-    paytable: PaytableRule[], 
-    totalSpins: number = 1000, 
-    rowCounts: number[] = [],
-    gameConfig: GameConfig,
-    coin: number = 1,
-    bet: number = 1,
-    isFreeGame?: boolean,
-    mode?: 'base_only' | 'free_only' | 'full_game',
-    freeStrips?: ReelStrips
-  ) => {
-    if (isRunning && workerRef.current) {
-      workerRef.current.terminate();
-      workerRef.current = new Worker(new URL('../workers/simulation.worker.ts', import.meta.url), { type: 'module' });
-    } else if (!workerRef.current) {
-      workerRef.current = new Worker(new URL('../workers/simulation.worker.ts', import.meta.url), { type: 'module' });
-    }
-
-    setIsRunning(true);
-    setProgress(0);
-    setCurrentSpins(0);
-    setResult(null);
-
-    workerRef.current.onmessage = (e: MessageEvent<WorkerResponse>) => {
-      const data = e.data;
-      if (data.type === 'PROGRESS') {
-        setCurrentSpins(data.spinsDone);
-        setProgress((data.spinsDone / totalSpins) * 100);
-        if (data.currentGrid) {
-          setCurrentGrid(data.currentGrid);
-        }
-      } else if (data.type === 'DONE') {
-        setIsRunning(false);
-        setResult(data.result);
-      }
-    };
-
-    workerRef.current.onerror = (error) => {
-      console.error("Simulation worker error:", error);
-      setIsRunning(false);
-    };
-
-    const message: WorkerMessageData = {
-      mode,
-      strips,
-      freeStrips,
-      paytable,
-      totalSpins,
-      rowCounts,
-      gameConfig,
-      coin,
-      bet,
-      isFreeGame
-    };
-
-    workerRef.current.postMessage(message);
-
-  }, []);
-
-  return {
-    isRunning,
-    progress,
-    currentSpins,
-    currentGrid,
-    result,
-    runSimulation
-  };
-};
 </file>
 
 <file path="src/workers/simulation.worker.ts">
@@ -13535,6 +13804,192 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
 };
 </file>
 
+<file path="src/App.tsx">
+import { useCallback, useState } from 'react';
+import { ConfigPanel } from './components/ConfigPanel';
+import { SlotConsole } from './components/SlotConsole';
+import { MetricsDashboard } from './components/MetricsDashboard';
+import { useSimulation } from './hooks/useSimulation';
+import { BarChart3, X } from 'lucide-react';
+import { WelcomeScreen } from './components/WelcomeScreen';
+import { Sidebar } from './components/Sidebar';
+import { JiraLinkGenerator } from './components/tools/JiraLinkGenerator';
+import { SnippetLibrary } from './components/tools/SnippetLibrary';
+import { JiraReportGenerator } from './components/tools/JiraReportGenerator';
+import { RngValidator } from './components/tools/RngValidator';
+import { RtpCalculator } from './components/tools/RtpCalculator';
+import type { GameConfig, GameType } from './types';
+import { useMachineStore } from './store/useMachineStore';
+import { useGameStore } from './store/useGameStore';
+
+function App() {
+  const { isRunning, progress, currentSpins, currentGrid, result, runSimulation } = useSimulation();
+  
+  const gameType = useMachineStore(state => state.gameType);
+  const coin = useMachineStore(state => state.coin);
+  const bet = useMachineStore(state => state.bet);
+
+  const customPaylines = useGameStore(state => state.customPaylines);
+  const currentStrips = useGameStore(state => state.currentStrips);
+  const currentPaytable = useGameStore(state => state.currentPaytable);
+  const rowCounts = useGameStore(state => state.rowCounts);
+  const isProjectLoaded = useGameStore(state => state.isProjectLoaded);
+  
+  const setLoadTemplateTrigger = useMachineStore(state => state.setLoadTemplateTrigger);
+  const setGameType = useMachineStore(state => state.setGameType);
+  const activeModalTool = useMachineStore(state => state.activeModalTool);
+  const setActiveModalTool = useMachineStore(state => state.setActiveModalTool);
+  
+  const [isMetricsOpen, setIsMetricsOpen] = useState<boolean>(false);
+
+  const handleSelectTemplate = useCallback((templateName: string) => {
+    const engineMap: Record<string, GameType> = {
+      'Line Game': 'linegame',
+      'Way Game': 'waygame',
+      'Pay Anywhere': 'payanywhere',
+      'Megaway': 'megaway'
+    };
+    if (engineMap[templateName]) {
+      setGameType(engineMap[templateName]);
+      setLoadTemplateTrigger('預設泛用');
+    } else {
+      setLoadTemplateTrigger(templateName);
+    }
+  }, [setGameType, setLoadTemplateTrigger]);
+
+  const handleTestSpin = useCallback((strips: any[], paytable: any[], spins?: number, rows?: number[], paylines?: number[][], isFreeGame?: boolean) => {
+    const config: GameConfig = {
+      gameType,
+      paylines: paylines || customPaylines,
+      effectiveBet: bet,
+      specialRules: {
+        derivativeSymbols: { 'B1': ['B2'] },
+        unremovableSymbols: ['S1']
+      }
+    };
+    runSimulation(strips, paytable, spins, rows, config, coin, bet, isFreeGame);
+  }, [runSimulation, gameType, customPaylines, coin, bet]);
+
+  const handleDashboardRunSimulation = useCallback(() => {
+    const config: GameConfig = {
+      gameType,
+      paylines: customPaylines,
+      effectiveBet: bet,
+      specialRules: {
+        derivativeSymbols: { 'B1': ['B2'] },
+        unremovableSymbols: ['S1']
+      }
+    };
+    // We don't have activeStripTab here, so we assume Base Game if run from Dashboard directly
+    runSimulation(currentStrips, currentPaytable, 100000, rowCounts, config, coin, bet, false);
+  }, [runSimulation, gameType, customPaylines, bet, currentStrips, currentPaytable, rowCounts, coin]);
+
+  return (
+    <div className="w-screen h-screen flex bg-dashboard-bg overflow-hidden text-dashboard-text-primary">
+      <Sidebar />
+      
+      <div className="flex-1 flex flex-col min-w-0 h-full relative">
+        {/* Header */}
+        <div className="w-full h-14 bg-[#0f1d35] border-b border-gray-800 flex items-center justify-between px-6 shrink-0 shadow-md z-40">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl font-bold tracking-widest text-dashboard-text-primary flex items-center gap-2">
+            <span className="text-dashboard-accent">RNG</span> PAY
+          </h1>
+          <span className="ml-4 text-xs font-mono text-dashboard-text-secondary border border-gray-700 px-2 py-0.5 rounded-full bg-[#112240] hidden sm:block">
+            v1.0 Simulation Engine
+          </span>
+        </div>
+        {/* 暫時隱藏 RTP 測試報告按鈕 (待後續開發開放)
+        <button 
+          onClick={() => setIsMetricsOpen(true)}
+          className="flex items-center gap-2 px-4 py-1.5 bg-[#112240] border border-dashboard-accent text-dashboard-accent rounded-lg hover:bg-dashboard-accent hover:text-[#0a192f] transition-all font-bold text-sm"
+        >
+          <BarChart3 size={16} />
+          <span>RTP 測試報告</span>
+        </button>
+        */}
+        </div>
+
+        {/* Main Grid Layout */}
+        <div className="flex-1 w-full flex flex-col md:flex-row min-h-0">
+          {/* Left: ConfigPanel */}
+        <div 
+          className={`
+            ${!isProjectLoaded ? 'hidden' : 'block'}
+            w-full h-full transition-all duration-300 ${gameType === 'payanywhere_set2' || gameType === 'linegame_set2' ? 'md:w-[360px] shrink-0' : 'md:w-[35%]'}
+          `}
+        >
+          <ConfigPanel 
+            onTestSpin={handleTestSpin}
+          />
+        </div>
+
+        {/* Center: SlotConsole or WelcomeScreen */}
+        <div className="w-full flex-1 h-full min-w-0">
+          {!isProjectLoaded ? (
+            <WelcomeScreen onSelectTemplate={handleSelectTemplate} />
+          ) : (
+            <SlotConsole 
+              currentGrid={currentGrid}
+            />
+          )}
+        </div>
+      </div>
+      </div>
+
+      {/* Metrics Modal */}
+      {isMetricsOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200">
+          <div className="bg-[#0a192f] border border-gray-600 w-full max-w-5xl h-full max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden relative">
+            <div className="flex justify-between items-center p-5 border-b border-gray-700 bg-[#0f1d35] shrink-0">
+              <div className="flex items-center gap-3">
+                <BarChart3 className="text-dashboard-accent" />
+                <h2 className="text-xl font-bold text-dashboard-text-primary tracking-wide">RTP 測試報告</h2>
+              </div>
+              <button 
+                onClick={() => setIsMetricsOpen(false)} 
+                className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-gray-800 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden relative bg-[#0a192f]">
+              <MetricsDashboard 
+                result={result}
+                progress={progress}
+                currentSpins={currentSpins}
+                totalSpins={result ? result.totalSpins : (isRunning ? Math.max(currentSpins, 100000) : 100000)}
+                hasData={currentStrips.length > 0 && currentStrips.every(strip => strip.length > 0)}
+                onRunSimulation={handleDashboardRunSimulation}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tools Modals */}
+      {activeModalTool === 'jira' && (
+        <JiraLinkGenerator onClose={() => setActiveModalTool(null)} />
+      )}
+      {activeModalTool === 'snippet' && (
+        <SnippetLibrary onClose={() => setActiveModalTool(null)} />
+      )}
+      {activeModalTool === 'jiraReport' && (
+        <JiraReportGenerator onClose={() => setActiveModalTool(null)} />
+      )}
+      {activeModalTool === 'rngValidator' && (
+        <RngValidator onClose={() => setActiveModalTool(null)} />
+      )}
+      {activeModalTool === 'rtpCalculator' && (
+        <RtpCalculator onClose={() => setActiveModalTool(null)} />
+      )}
+    </div>
+  );
+}
+
+export default App;
+</file>
+
 <file path="src/components/ConfigPanel.tsx">
 import React, { useState, useEffect, useMemo } from 'react';
 import { Database, Table, Edit3, X } from 'lucide-react';
@@ -13796,6 +14251,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
   const setUploadedTemplateFile = useMachineStore(state => state.setUploadedTemplateFile);
 
   const handleLoadDefaults = async (overrideTemplate?: string | React.MouseEvent) => {
+    useGameStore.getState().setIsProjectLoading(true);
     setIsProjectLoaded(false);
     useGameStore.getState().setCurrentPaytable([]);
     
@@ -13879,6 +14335,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
       } catch (err) {
         setError('載入範本失敗: ' + (err as Error).message);
       }
+      useGameStore.getState().setIsProjectLoading(false);
     }
   };
 
@@ -13903,6 +14360,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
   useEffect(() => {
     if (uploadedTemplateFile) {
       const processFile = async () => {
+        useGameStore.getState().setIsProjectLoading(true);
         try {
           const { parseExcelData } = await import('../utils/excelParser');
           const parsed = await parseExcelData(uploadedTemplateFile);
@@ -13962,6 +14420,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
           setIsProjectLoaded(true);
         } catch (err) {
           setError('Failed to parse Excel file: ' + (err as Error).message);
+        } finally {
+          useGameStore.getState().setIsProjectLoading(false);
         }
         setUploadedTemplateFile(null);
       };
@@ -14735,192 +15195,6 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
     </div>
   );
 };
-</file>
-
-<file path="src/App.tsx">
-import { useCallback, useState } from 'react';
-import { ConfigPanel } from './components/ConfigPanel';
-import { SlotConsole } from './components/SlotConsole';
-import { MetricsDashboard } from './components/MetricsDashboard';
-import { useSimulation } from './hooks/useSimulation';
-import { BarChart3, X } from 'lucide-react';
-import { WelcomeScreen } from './components/WelcomeScreen';
-import { Sidebar } from './components/Sidebar';
-import { JiraLinkGenerator } from './components/tools/JiraLinkGenerator';
-import { SnippetLibrary } from './components/tools/SnippetLibrary';
-import { JiraReportGenerator } from './components/tools/JiraReportGenerator';
-import { RngValidator } from './components/tools/RngValidator';
-import { RtpCalculator } from './components/tools/RtpCalculator';
-import type { GameConfig, GameType } from './types';
-import { useMachineStore } from './store/useMachineStore';
-import { useGameStore } from './store/useGameStore';
-
-function App() {
-  const { isRunning, progress, currentSpins, currentGrid, result, runSimulation } = useSimulation();
-  
-  const gameType = useMachineStore(state => state.gameType);
-  const coin = useMachineStore(state => state.coin);
-  const bet = useMachineStore(state => state.bet);
-
-  const customPaylines = useGameStore(state => state.customPaylines);
-  const currentStrips = useGameStore(state => state.currentStrips);
-  const currentPaytable = useGameStore(state => state.currentPaytable);
-  const rowCounts = useGameStore(state => state.rowCounts);
-  const isProjectLoaded = useGameStore(state => state.isProjectLoaded);
-  
-  const setLoadTemplateTrigger = useMachineStore(state => state.setLoadTemplateTrigger);
-  const setGameType = useMachineStore(state => state.setGameType);
-  const activeModalTool = useMachineStore(state => state.activeModalTool);
-  const setActiveModalTool = useMachineStore(state => state.setActiveModalTool);
-  
-  const [isMetricsOpen, setIsMetricsOpen] = useState<boolean>(false);
-
-  const handleSelectTemplate = useCallback((templateName: string) => {
-    const engineMap: Record<string, GameType> = {
-      'Line Game': 'linegame',
-      'Way Game': 'waygame',
-      'Pay Anywhere': 'payanywhere',
-      'Megaway': 'megaway'
-    };
-    if (engineMap[templateName]) {
-      setGameType(engineMap[templateName]);
-      setLoadTemplateTrigger('預設泛用');
-    } else {
-      setLoadTemplateTrigger(templateName);
-    }
-  }, [setGameType, setLoadTemplateTrigger]);
-
-  const handleTestSpin = useCallback((strips: any[], paytable: any[], spins?: number, rows?: number[], paylines?: number[][], isFreeGame?: boolean) => {
-    const config: GameConfig = {
-      gameType,
-      paylines: paylines || customPaylines,
-      effectiveBet: bet,
-      specialRules: {
-        derivativeSymbols: { 'B1': ['B2'] },
-        unremovableSymbols: ['S1']
-      }
-    };
-    runSimulation(strips, paytable, spins, rows, config, coin, bet, isFreeGame);
-  }, [runSimulation, gameType, customPaylines, coin, bet]);
-
-  const handleDashboardRunSimulation = useCallback(() => {
-    const config: GameConfig = {
-      gameType,
-      paylines: customPaylines,
-      effectiveBet: bet,
-      specialRules: {
-        derivativeSymbols: { 'B1': ['B2'] },
-        unremovableSymbols: ['S1']
-      }
-    };
-    // We don't have activeStripTab here, so we assume Base Game if run from Dashboard directly
-    runSimulation(currentStrips, currentPaytable, 100000, rowCounts, config, coin, bet, false);
-  }, [runSimulation, gameType, customPaylines, bet, currentStrips, currentPaytable, rowCounts, coin]);
-
-  return (
-    <div className="w-screen h-screen flex bg-dashboard-bg overflow-hidden text-dashboard-text-primary">
-      <Sidebar />
-      
-      <div className="flex-1 flex flex-col min-w-0 h-full relative">
-        {/* Header */}
-        <div className="w-full h-14 bg-[#0f1d35] border-b border-gray-800 flex items-center justify-between px-6 shrink-0 shadow-md z-40">
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold tracking-widest text-dashboard-text-primary flex items-center gap-2">
-            <span className="text-dashboard-accent">RNG</span> PAY
-          </h1>
-          <span className="ml-4 text-xs font-mono text-dashboard-text-secondary border border-gray-700 px-2 py-0.5 rounded-full bg-[#112240] hidden sm:block">
-            v1.0 Simulation Engine
-          </span>
-        </div>
-        {/* 暫時隱藏 RTP 測試報告按鈕 (待後續開發開放)
-        <button 
-          onClick={() => setIsMetricsOpen(true)}
-          className="flex items-center gap-2 px-4 py-1.5 bg-[#112240] border border-dashboard-accent text-dashboard-accent rounded-lg hover:bg-dashboard-accent hover:text-[#0a192f] transition-all font-bold text-sm"
-        >
-          <BarChart3 size={16} />
-          <span>RTP 測試報告</span>
-        </button>
-        */}
-        </div>
-
-        {/* Main Grid Layout */}
-        <div className="flex-1 w-full flex flex-col md:flex-row min-h-0">
-          {/* Left: ConfigPanel */}
-        <div 
-          className={`
-            ${!isProjectLoaded ? 'hidden' : 'block'}
-            w-full h-full transition-all duration-300 ${gameType === 'payanywhere_set2' || gameType === 'linegame_set2' ? 'md:w-[360px] shrink-0' : 'md:w-[35%]'}
-          `}
-        >
-          <ConfigPanel 
-            onTestSpin={handleTestSpin}
-          />
-        </div>
-
-        {/* Center: SlotConsole or WelcomeScreen */}
-        <div className="w-full flex-1 h-full min-w-0">
-          {!isProjectLoaded ? (
-            <WelcomeScreen onSelectTemplate={handleSelectTemplate} />
-          ) : (
-            <SlotConsole 
-              currentGrid={currentGrid}
-            />
-          )}
-        </div>
-      </div>
-      </div>
-
-      {/* Metrics Modal */}
-      {isMetricsOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200">
-          <div className="bg-[#0a192f] border border-gray-600 w-full max-w-5xl h-full max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden relative">
-            <div className="flex justify-between items-center p-5 border-b border-gray-700 bg-[#0f1d35] shrink-0">
-              <div className="flex items-center gap-3">
-                <BarChart3 className="text-dashboard-accent" />
-                <h2 className="text-xl font-bold text-dashboard-text-primary tracking-wide">RTP 測試報告</h2>
-              </div>
-              <button 
-                onClick={() => setIsMetricsOpen(false)} 
-                className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-gray-800 transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            <div className="flex-1 overflow-hidden relative bg-[#0a192f]">
-              <MetricsDashboard 
-                result={result}
-                progress={progress}
-                currentSpins={currentSpins}
-                totalSpins={result ? result.totalSpins : (isRunning ? Math.max(currentSpins, 100000) : 100000)}
-                hasData={currentStrips.length > 0 && currentStrips.every(strip => strip.length > 0)}
-                onRunSimulation={handleDashboardRunSimulation}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tools Modals */}
-      {activeModalTool === 'jira' && (
-        <JiraLinkGenerator onClose={() => setActiveModalTool(null)} />
-      )}
-      {activeModalTool === 'snippet' && (
-        <SnippetLibrary onClose={() => setActiveModalTool(null)} />
-      )}
-      {activeModalTool === 'jiraReport' && (
-        <JiraReportGenerator onClose={() => setActiveModalTool(null)} />
-      )}
-      {activeModalTool === 'rngValidator' && (
-        <RngValidator onClose={() => setActiveModalTool(null)} />
-      )}
-      {activeModalTool === 'rtpCalculator' && (
-        <RtpCalculator onClose={() => setActiveModalTool(null)} />
-      )}
-    </div>
-  );
-}
-
-export default App;
 </file>
 
 <file path="src/components/SlotConsole.tsx">

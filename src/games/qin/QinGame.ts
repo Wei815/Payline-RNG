@@ -48,4 +48,41 @@ export class QinGame extends BaseWayGame {
       }
     }
   }
+
+  public override calculateNextDropGrid(
+    currentGrid: string[][],
+    winningCoords: Map<string, number[]>,
+    isFreeGame: boolean,
+    pullNextSymbol: (colIndex: number, dropIndex: number, totalDropped: number) => string
+  ): string[][] {
+    const nextGrid: string[][] = [];
+    const reelCount = currentGrid.length;
+
+    for (let c = 0; c < reelCount; c++) {
+      const colLen = currentGrid[c].length;
+      const keptSymbols: string[] = [];
+
+      for (let r = 0; r < colLen; r++) {
+        const symId = currentGrid[c][r];
+        const isUnremovable = this.isSymbolUnremovable(symId, isFreeGame);
+
+        if (!winningCoords.has(`${c}-${r}`) || isUnremovable) {
+          keptSymbols.push(symId);
+        } else if (this.isGoldSymbol(symId)) {
+          // 在消除名單內，且是金框符號，轉為 WX 並保留
+          keptSymbols.push('WX');
+        }
+      }
+
+      const removedCount = colLen - keptSymbols.length;
+      const newSymbols: string[] = [];
+      for (let i = 0; i < removedCount; i++) {
+        newSymbols.push(pullNextSymbol(c, i, removedCount));
+      }
+
+      nextGrid.push([...newSymbols, ...keptSymbols]);
+    }
+
+    return nextGrid;
+  }
 }

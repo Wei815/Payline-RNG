@@ -11,6 +11,15 @@ export interface IGameEnvironment {
   
   isSymbolUnremovable?(sym: string, isFreeGame: boolean): boolean;
 
+  calculateNextDropGrid(
+    currentGrid: string[][],
+    winningCoords: Map<string, number[]>,
+    isFreeGame: boolean,
+    pullNextSymbol: (colIndex: number, dropIndex: number, totalDropped: number) => string
+  ): string[][];
+
+  getTumbleMultiplier(cascadeCount: number, isFreeGame: boolean): number;
+
   findRngForCombos(
     currentStrips: string[][],
     rowCounts: number[],

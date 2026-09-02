@@ -284,10 +284,8 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
          let evWins = evaluateGrid(currentGrid, currentPaytable, gameType, undefined, false);
          let coords = getWinningPositions(currentGrid, evWins, currentPaytable, gameType);
          
-         let initialTumbleMultiplier = 1;
-         if (gameType === 'waygame' || gameType === 'waygame_elephant') {
-            initialTumbleMultiplier = isFreeGame ? 8 : 1;
-         }
+         const gameInstance = GameRegistry.getGame(gameType);
+         let initialTumbleMultiplier = gameInstance.getTumbleMultiplier(0, isFreeGame);
          
          let originalWinSum = evWins.reduce((sum, w) => sum + (w.totalWin * betMultiplier), 0);
          let winSum = originalWinSum * initialTumbleMultiplier;
@@ -308,66 +306,79 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
 
          while (hasWins && dropCount < 30) {
             dropCount++;
-            const nextGrid = Array.from({ length: reelCount }, () => [] as string[]);
             
-            for (let c = 0; c < reelCount; c++) {
-               const colLen = rowCounts[c] || 3;
-               const strip = activeStrips[c] || ['-'];
-               const stripLen = strip.length;
-               
-               const gameInstance = GameRegistry.getGame(gameType);
-               
-               const keptSymbols: string[] = [];
-               for (let r = 0; r < colLen; r++) {
-                  const symId = lastGrid[c][r];
-                  const isUnremovable = gameInstance.isSymbolUnremovable?.(symId, isFreeGame) ?? false;
-                  // We also shouldn't eliminate if the win index is 999, but checking isUnremovable is the authoritative way.
-                  if (!lastCoords.has(`${c}-${r}`) || isUnremovable) {
-                     keptSymbols.push(symId);
-                  } else {
-                     if ((gameType === 'waygame' || gameType === 'waygame_qin' || gameType === 'waygame_elephant') && symId.startsWith('G') && symId !== 'G') {
-                        keptSymbols.push('WX');
-                     }
-                  }
-               }
-               
-               const removedCount = colLen - keptSymbols.length;
-               const newSymbols: string[] = [];
-               
-               if (isMathId) {
-                  for (let i = 0; i < removedCount; i++) {
+            const gameInstance = GameRegistry.getGame(gameType);
+            const nextGrid = gameInstance.calculateNextDropGrid(
+               lastGrid,
+               lastCoords,
+               isFreeGame,
+               (c, dropIndex, totalDropped) => {
+                  const strip = activeStrips[c] || ['-'];
+                  const stripLen = strip.length;
+                  let sym = '-';
+                  if (isMathId) {
                      if (idIndex < rngArray.length) {
                         const val = rngArray[idIndex++];
-                        let sym = mathIdToSymbol[val];
+                        sym = mathIdToSymbol[val] || '-';
                         if (sym && !isCoordinateClassId && (sym.startsWith('F') || sym.startsWith('L'))) {
                            const mult = flatClassIds[classIdIndex++];
                            if (mult !== undefined) sym = `${sym}_${mult}X`;
                         }
-                        newSymbols.push(sym || '-');
                      } else {
-                        newSymbols.push('0');
+                        sym = '0';
+                     }
+                  } else {
+                     currentTopCursors[c] = (currentTopCursors[c] - 1 + stripLen) % stripLen;
+                     sym = strip[currentTopCursors[c]];
+                  }
+                  return sym;
+               }
+            );
+
+            // 如果是 Strip，因為 pullNextSymbol 是一次拿一個最新的頂端符號，
+            // 拿到的是 [頂部1, 頂部2]，但實際上第一個拿到的應該是放在盤面最上面。
+            // 剛剛的 strip 邏輯裡 currentTopCursors 一路往上減，代表最先拔出來的是原先盤面最上面的「上一格」。
+            // 而計算 calculateNextDropGrid 時也是從 i=0 開始放到 newSymbols[0]，代表最先拔出來的在最上面，這是正確的。
+            // Wait, 原版條帶的邏輯是: for(i=0) 拿出 top-1, push 到 newSymbols。然後 newSymbols.reverse()，再放到盤面上方。
+            // 為什麼要 reverse？因為如果 top=10, 拿 top-1=9 (放 newSymbols[0])，拿 top-2=8 (放 newSymbols[1])。
+            // 陣列看起來是 [9, 8]。然後 [...newSymbols, ...keptSymbols] 放到畫面上，9 在第一排(上)，8 在第二排(下)。
+            // 但實際上條帶 index 越小，應該在畫面的越上方。
+            // 所以 8 應該在 9 的上面！這就是原版為什麼 reverse 的原因！
+            // 所以我們必須在 pull 的時候，直接把順序調對！
+            // 當 i=0 (最上面的一格), 它應該拿到的是最遠的那個 cursor，也就是 (top - totalDropped + i)！
+            
+            if (!isMathId) {
+               // 修正: 重新排列 newly generated Strip symbols, 由於 calculateNextDropGrid 會把
+               // i=0 當作 newSymbols 的第0項 (盤面最上)，這格應該對應條帶最遠 (最小 index) 的那格。
+               // 在迴圈外統一更新 cursor，迴圈內直接計算位置即可
+               for (let c = 0; c < reelCount; c++) {
+                  const strip = activeStrips[c] || ['-'];
+                  const stripLen = strip.length;
+                  const colWins = lastCoords.get(c.toString()) || [];
+                  let keptCount = 0;
+                  for (let r = 0; r < lastGrid[c].length; r++) {
+                     if (!colWins.includes(r) || gameInstance.isSymbolUnremovable?.(lastGrid[c][r], isFreeGame)) {
+                        keptCount++;
+                     } else if ((gameInstance as any).isGoldSymbol?.(lastGrid[c][r])) {
+                        keptCount++;
                      }
                   }
-               } else {
-                  for (let i = 0; i < removedCount; i++) {
-                     currentTopCursors[c] = (currentTopCursors[c] - 1 + stripLen) % stripLen;
-                     newSymbols.push(strip[currentTopCursors[c]]);
+                  const removedCount = lastGrid[c].length - keptCount;
+                  
+                  if (removedCount > 0) {
+                     // 顛倒新符號順序: i=0 (最上面) 應該拿 8, i=1 (下面) 應該拿 9
+                     // 這在迴圈外無法對 nextGrid 作用，我們需要在 nextGrid 產生後，對每一軸前 removedCount 個符號做 reverse！
+                     const newSymbols = nextGrid[c].slice(0, removedCount);
+                     newSymbols.reverse();
+                     nextGrid[c].splice(0, removedCount, ...newSymbols);
                   }
-                  newSymbols.reverse();
                }
-               
-               nextGrid[c] = [...newSymbols, ...keptSymbols];
             }
             
             const evWinsNext = evaluateGrid(nextGrid, currentPaytable, gameType, undefined, false);
             const coordsNext = getWinningPositions(nextGrid, evWinsNext, currentPaytable, gameType);
             
-            let tumbleMultiplier = 1;
-            if (gameType === 'waygame' || gameType === 'waygame_elephant') {
-               tumbleMultiplier = isFreeGame 
-                 ? Math.min(1024, 8 * Math.pow(2, dropCount))
-                 : Math.min(1024, 1 * Math.pow(2, dropCount));
-            }
+            let tumbleMultiplier = gameInstance.getTumbleMultiplier(dropCount, isFreeGame);
             
             const originalWinSumNext = evWinsNext.reduce((sum, w) => sum + (w.totalWin * betMultiplier), 0);
             const winSumNext = originalWinSumNext * tumbleMultiplier;

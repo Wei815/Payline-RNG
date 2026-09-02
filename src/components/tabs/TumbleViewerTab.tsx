@@ -4,6 +4,7 @@ import { formatAmount } from '../../utils/formatters';
 import { getWinColorClass } from '../../utils/svgPaths';
 import { getWinningPositions } from '../../utils/evaluation';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
+import { GameRegistry } from '../../core/GameRegistry';
 import type { GameType, PaytableRule } from '../../types';
 import { useGameStore } from '../../store/useGameStore';
 import { SpecialSymbols } from '../../constants/GameConstants';
@@ -130,10 +131,8 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
     const evWins = evaluateGrid(currentGridSymbols, currentPaytable, gameType, undefined, false);
     const coords = getWinningPositions(currentGridSymbols, evWins, currentPaytable, gameType);
     
-    let mult = 1;
-    if (gameType === 'waygame' || gameType === 'waygame_elephant') {
-      mult = isFreeGame ? Math.min(1024, 8 * Math.pow(2, tumbleCount)) : Math.min(1024, 1 * Math.pow(2, tumbleCount));
-    }
+    const gameInstance = GameRegistry.getGame(gameType);
+    let mult = gameInstance.getTumbleMultiplier(tumbleCount, isFreeGame);
     
     const winSum = evWins.reduce((sum, w) => sum + (w.totalWin * mult), 0);
     return { wins: evWins, winningCoords: coords, totalWin: winSum, currentMultiplier: mult };
@@ -153,57 +152,32 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
     setAccumulatedWin(prev => prev + totalWin);
     setTumbleCount(prev => prev + 1);
 
-    const newGridIds: string[][] = [];
     let newSequence = [...mathIdSequence];
     let newClassSeq = [...remainingClassIds];
     let newLuckySelects = [...remainingLuckySelects];
     let sequenceDepleted = false;
 
-    // Get upgrade count for this tumble
+    // 預處理 L 符號升級 (僅對未被消除的符號進行升級)
     const upgradeCount = newLuckySelects.length > 0 ? newLuckySelects.shift()! : 0;
-
-    for (let c = 0; c < reelCount; c++) {
-      const rowsForThisCol = rowCounts[c] || 3;
-      const keptIds: string[] = [];
-
-      // 收集未被消除的符號，並進行 L 球升級
-      for (let r = 0; r < rowsForThisCol; r++) {
-        let keptStr = String(currentGridIds[c][r]);
-        const symId = currentGridSymbols[c][r];
-        const isUnremovable = isFreeGame && symId === SpecialSymbols.S1;
-
-        if (!winningCoords.has(`${c}-${r}`) || isUnremovable) {
-          
-          // L 球升級邏輯
-          if (upgradeCount > 0 && keptStr.includes('_')) {
-             const baseId = parseInt(keptStr.split('_')[0], 10);
-             const mappedSym = reverseMap[baseId];
-             if (mappedSym && mappedSym.startsWith('L')) {
-                let val = parseInt(keptStr.split('_')[1].replace('X', ''), 10);
-                let currentIndex = MULTIPLIER_LEVELS.indexOf(val);
-                if (currentIndex === -1) currentIndex = MULTIPLIER_LEVELS.indexOf(2); // fallback
-                const nextIndex = Math.min(MULTIPLIER_LEVELS.length - 1, currentIndex + upgradeCount);
-                val = MULTIPLIER_LEVELS[nextIndex];
-                keptStr = `${baseId}_${val}X`;
-             }
-          }
-          
-          
-          keptIds.push(keptStr);
-        } else {
-          if ((gameType === 'waygame' || gameType === 'waygame_qin' || gameType === 'waygame_elephant') && symId.startsWith('G') && symId !== 'G') {
-             keptIds.push('WX');
-          }
-        }
+    const upgradedGridSymbols = currentGridSymbols.map((col, c) => col.map((symId, r) => {
+      if (!winningCoords.has(`${c}-${r}`) && upgradeCount > 0 && symId.startsWith('L') && symId.includes('_')) {
+        let val = parseInt(symId.split('_')[1].replace('X', ''), 10);
+        let currentIndex = MULTIPLIER_LEVELS.indexOf(val);
+        if (currentIndex === -1) currentIndex = MULTIPLIER_LEVELS.indexOf(2);
+        const nextIndex = Math.min(MULTIPLIER_LEVELS.length - 1, currentIndex + upgradeCount);
+        val = MULTIPLIER_LEVELS[nextIndex];
+        return `${symId.split('_')[0]}_${val}X`;
       }
+      return symId;
+    }));
 
-      const removedCount = rowsForThisCol - keptIds.length;
-      const newSymbols: string[] = [];
-
-      // 從上方(輸入陣列)提取新的符號補齊
-      for (let i = 0; i < removedCount; i++) {
+    const gameInstance = GameRegistry.getGame(gameType);
+    const nextGrid = gameInstance.calculateNextDropGrid(
+      upgradedGridSymbols,
+      winningCoords,
+      isFreeGame,
+      (c, dropIndex, totalDropped) => {
         if (newSequence.length > 0) {
-          // 模擬從上方掉落，所以從陣列最前面拿取
           let idVal = newSequence.shift()!;
           let symStr = String(idVal);
           const mappedSym = reverseMap[idVal];
@@ -211,24 +185,19 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
             const mult = newClassSeq.shift();
             if (mult) symStr = `${idVal}_${mult}X`;
           }
-          newSymbols.push(symStr);
+          return symStr;
         } else {
-          // 若陣列空了，則補上一個未知的預設值 0
-          newSymbols.push("0");
-          sequenceDepleted = true;
+          return "0";
         }
       }
-
-      // 補上的符號在上方，原本留下來的在下方
-      newGridIds.push([...newSymbols, ...keptIds]);
-    }
+    );
 
     if (sequenceDepleted) {
-      setToastMessage("補位數字用盡！已補上 0 (未知符號)。請準備更長的輸入陣列。");
+      setToastMessage("補位陣列用盡！已補入 0 (未知符號)。請準備更長的輸入陣列。");
       setTimeout(() => setToastMessage(null), 3000);
     }
 
-    setCurrentGridIds(newGridIds);
+    setCurrentGridIds(nextGrid);
     setMathIdSequence(newSequence);
     setRemainingClassIds(newClassSeq);
     setRemainingLuckySelects(newLuckySelects);
