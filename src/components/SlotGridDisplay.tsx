@@ -68,7 +68,8 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
       
       let elimCount = 0;
       for (let r = oldCol.length - 1; r >= 0; r--) {
-        if (colWins.includes(r)) {
+        const isGSymbol = oldCol[r] && (oldCol[r].startsWith('G') || oldCol[r].startsWith('g'));
+        if (colWins.includes(r) && !isGSymbol) {
           elimCount++;
         } else {
           colDistances[r + elimCount] = elimCount;
@@ -120,7 +121,9 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
             }
 
             const hasAnyWin = winningCoords.size > 0;
-            const oldSymbol = prevGridSymbols?.[colIndex]?.[rowIndex];
+            const dist = dropDistances[colIndex]?.[rowIndex] || 0;
+            const oldRowIndex = rowIndex - dist;
+            const oldSymbol = oldRowIndex >= 0 ? prevGridSymbols?.[colIndex]?.[oldRowIndex] : undefined;
             const isWild = symbol === 'WILD' || symbol.startsWith('W') || symbol === 'WX';
             const isUnknown = symbol.startsWith('?');
             const isGSymbolOld = oldSymbol && (oldSymbol.startsWith('G') || oldSymbol.startsWith('g'));
@@ -142,7 +145,6 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
               if (isFlipping) {
                 // Handled inside
               } else if (dropDistances.length > 0) {
-                const dist = dropDistances[colIndex]?.[rowIndex] || 0;
                 if (dist > 0) {
                   animationClasses = 'animate-slide-down-dynamic';
                   style = { '--drop-dist': dist, animationDelay: `${rowIndex * 40}ms` } as React.CSSProperties;
