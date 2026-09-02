@@ -29,6 +29,7 @@ export interface GameState {
   activeTab: 'manual' | 'other' | 'lines' | 'customGrid';
   isFreeGame: boolean;
   isProjectLoaded: boolean;
+  isProjectLoading: boolean;
   projectName: string;
   pendingSnippet: Snippet | null;
   
@@ -55,9 +56,10 @@ export interface GameState {
   setTopTracker: (tracker: string[]) => void;
   setTopTrackerOther: (tracker: string[]) => void;
   setActiveTab: (tab: 'manual' | 'other' | 'lines' | 'customGrid') => void;
-  setIsFreeGame: (val: boolean) => void;
-  setIsProjectLoaded: (val: boolean) => void;
-  setProjectName: (val: string) => void;
+  setIsFreeGame: (isFree: boolean) => void;
+  setIsProjectLoaded: (loaded: boolean) => void;
+  setIsProjectLoading: (loading: boolean) => void;
+  setProjectName: (name: string) => void;
   setPendingSnippet: (val: Snippet | null) => void;
   applySnippet: (snippet: Snippet) => void;
 
@@ -144,7 +146,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   activeTab: 'manual',
   isFreeGame: false,
   isProjectLoaded: false,
-  projectName: '',
+  isProjectLoading: false,
+  projectName: '預設泛用',
   pendingSnippet: null,
 
   setCurrentStrips: (strips) => set({ currentStrips: strips }),
@@ -194,9 +197,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   setTopTracker: (tracker) => set({ topTracker: tracker }),
   setTopTrackerOther: (tracker) => set({ topTrackerOther: tracker }),
   setActiveTab: (tab) => set({ activeTab: tab }),
-  setIsFreeGame: (val) => set({ isFreeGame: val }),
-  setIsProjectLoaded: (val) => set({ isProjectLoaded: val }),
-  setProjectName: (val) => set({ projectName: val }),
+  setIsFreeGame: (isFree) => set({ isFreeGame: isFree }),
+  setIsProjectLoaded: (loaded) => set({ isProjectLoaded: loaded }),
+  setIsProjectLoading: (loading) => set({ isProjectLoading: loading }),
+  setProjectName: (name) => set({ projectName: name }),
   setPendingSnippet: (val) => set({ pendingSnippet: val }),
 
   applySnippet: (snippet) => {

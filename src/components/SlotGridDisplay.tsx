@@ -5,6 +5,8 @@ import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../utils/evaluation/GameConstants
 export interface SlotGridDisplayProps {
   gridSymbols: string[][];
   winningCoords: Map<string, number[]>;
+  prevGridSymbols?: string[][];
+  prevWinningCoords?: Map<string, number[]>;
   onCellClick?: (colIndex: number, rowIndex: number) => void;
   onDragStart?: (e: React.DragEvent, symbol: string, colIndex: number, rowIndex: number) => void;
   onDragOver?: (e: React.DragEvent) => void;
@@ -13,10 +15,12 @@ export interface SlotGridDisplayProps {
   // Custom configurations
   goldFrames?: Record<string, number>;
   jackpots?: Record<string, string>;
+  animationStage?: 'idle' | 'eliminating' | 'dropping';
   
   // Mode controls for specific Tailwind styling
   gridMode?: 'custom' | 'manual' | 'tumble';
   pulseClass?: string;
+  hideEmptyCells?: boolean;
 
   // Render prop for inside the cell
   renderCellInner?: (
@@ -34,18 +38,55 @@ export interface SlotGridDisplayProps {
 export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
   gridSymbols,
   winningCoords,
+  prevGridSymbols,
+  prevWinningCoords,
   onCellClick,
   onDragStart,
   onDragOver,
   onDrop,
   goldFrames = {},
   jackpots = {},
+  animationStage = 'idle',
   gridMode = 'custom',
   pulseClass = '',
+  hideEmptyCells = false,
   renderCellInner
 }) => {
+  const containerClass = gridMode === 'tumble' 
+    ? "flex flex-wrap gap-2 md:gap-4 justify-center" 
+    : "flex gap-1 sm:gap-2 justify-center";
+
+  // Calculate drop distances for dropping animation
+  const dropDistances = React.useMemo(() => {
+    if (animationStage !== 'dropping' || !prevGridSymbols || !prevWinningCoords) return [];
+    
+    const distances: number[][] = [];
+    for (let col = 0; col < gridSymbols.length; col++) {
+      const colDistances: number[] = [];
+      const oldCol = prevGridSymbols[col] || [];
+      const colWins = prevWinningCoords.get(col.toString()) || [];
+      
+      let elimCount = 0;
+      for (let r = oldCol.length - 1; r >= 0; r--) {
+        if (colWins.includes(r)) {
+          elimCount++;
+        } else {
+          colDistances[r + elimCount] = elimCount;
+        }
+      }
+      for (let r = 0; r < elimCount; r++) {
+        colDistances[r] = elimCount;
+      }
+      for (let r = 0; r < gridSymbols[col].length; r++) {
+        if (colDistances[r] === undefined) colDistances[r] = elimCount;
+      }
+      distances.push(colDistances);
+    }
+    return distances;
+  }, [animationStage, gridSymbols, prevGridSymbols, prevWinningCoords]);
+
   return (
-    <>
+    <div className={containerClass}>
       {gridSymbols.map((col, colIndex) => (
         <div key={colIndex} className="flex flex-col justify-center gap-3">
           {col.map((symbol, rowIndex) => {
@@ -79,10 +120,38 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
             }
 
             const hasAnyWin = winningCoords.size > 0;
+            const oldSymbol = prevGridSymbols?.[colIndex]?.[rowIndex];
             const isWild = symbol === 'WILD' || symbol.startsWith('W') || symbol === 'WX';
             const isUnknown = symbol.startsWith('?');
+            const isGSymbolOld = oldSymbol && (oldSymbol.startsWith('G') || oldSymbol.startsWith('g'));
+            const isGSymbolCurrent = symbol.startsWith('G') || hasGoldFrame;
+            const isFlipping = animationStage === 'dropping' && isWild && isGSymbolOld;
 
             let cellClassNames = '';
+
+            let animationClasses = '';
+            let style: React.CSSProperties = {};
+
+            if (animationStage === 'eliminating' && isWinning) {
+              if (isGSymbolCurrent) {
+                animationClasses = 'animate-pulse brightness-125 transition-all duration-500';
+              } else {
+                animationClasses = 'scale-0 opacity-0 rotate-12 transition-all duration-500';
+              }
+            } else if (animationStage === 'dropping') {
+              if (isFlipping) {
+                // Handled inside
+              } else if (dropDistances.length > 0) {
+                const dist = dropDistances[colIndex]?.[rowIndex] || 0;
+                if (dist > 0) {
+                  animationClasses = 'animate-slide-down-dynamic';
+                  style = { '--drop-dist': dist, animationDelay: `${rowIndex * 40}ms` } as React.CSSProperties;
+                }
+              } else {
+                animationClasses = 'animate-drop-in';
+                style = { animationDelay: `${rowIndex * 40}ms` } as React.CSSProperties;
+              }
+            }
 
             if (gridMode === 'custom') {
               const defaultBg = symbol === '-' ? 'bg-[#0a192f] text-gray-700 border-2 border-gray-800 border-dashed hover:border-dashboard-accent' :
@@ -94,9 +163,11 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
                 w-16 h-16 sm:w-20 sm:h-20 rounded-lg flex items-center justify-center text-xl font-bold
                 shadow-lg transform relative cursor-pointer active:scale-95 transition-all duration-200 shrink-0
                 ${customBg ? customBg : defaultBg}
+                ${hideEmptyCells && symbol === '-' ? 'hidden' : ''}
                 ${isWinning ? `ring-2 z-10 scale-105 ${winColorClass}` : ''}
                 ${hasGoldFrame && !isWinning ? `ring-2 ring-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.6)]` : ''}
                 ${hasJackpot && !isWinning ? `ring-2 ring-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]` : ''}
+                ${animationClasses}
               `;
             } else if (gridMode === 'manual') {
               const defaultBg = symbol === '-' ? 'bg-[#0a192f] text-gray-700 border-2 border-gray-800 border-dashed' :
@@ -109,6 +180,7 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
                 shadow-lg transform transition-all duration-300 relative cursor-grab active:cursor-grabbing border
                 ${customBg ? customBg : defaultBg}
                 ${isWinning ? `z-10 ring-2 scale-105 ${winColorClass}` : hasAnyWin ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]' : ''}
+                ${animationClasses}
               `;
             } else if (gridMode === 'tumble') {
               const defaultBg = isWild ? 'bg-[#112240] text-purple-400 border border-purple-500/30' :
@@ -138,8 +210,29 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
                 }}
                 onDrop={(e) => onDrop && onDrop(e, colIndex, rowIndex)}
                 className={cellClassNames.replace(/\s+/g, ' ').trim()}
+                title={symbol}
+                style={style}
               >
-                {renderCellInner ? renderCellInner(symbol, colIndex, rowIndex, displaySymbol, hasGoldFrame, goldMultiplier, hasJackpot, jackpotValue) : (
+                {isFlipping ? (
+                  <div className="relative w-full h-full perspective-1000">
+                    <div className="absolute inset-0 animate-flip-front">
+                      {renderCellInner ? renderCellInner(oldSymbol, colIndex, rowIndex, oldSymbol.replace(/^G_?/, ''), true, undefined, false, undefined) : (
+                        <div className="flex flex-col items-center justify-center pointer-events-none w-full h-full relative">
+                          <span>{oldSymbol.replace(/^G_?/, '')}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="absolute inset-0 animate-flip-back">
+                      {renderCellInner ? renderCellInner(symbol, colIndex, rowIndex, displaySymbol, false, undefined, hasJackpot, jackpotValue) : (
+                        <div className="flex flex-col items-center justify-center pointer-events-none w-full h-full relative">
+                          <span>{displaySymbol}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : renderCellInner ? (
+                  renderCellInner(symbol, colIndex, rowIndex, displaySymbol, hasGoldFrame, goldMultiplier, hasJackpot, jackpotValue)
+                ) : (
                   <div className="flex flex-col items-center justify-center pointer-events-none w-full h-full relative">
                     <span>{displaySymbol}</span>
                   </div>
@@ -149,6 +242,6 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
           })}
         </div>
       ))}
-    </>
+    </div>
   );
 };

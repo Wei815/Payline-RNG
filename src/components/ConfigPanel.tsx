@@ -258,6 +258,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
   const setUploadedTemplateFile = useMachineStore(state => state.setUploadedTemplateFile);
 
   const handleLoadDefaults = async (overrideTemplate?: string | React.MouseEvent) => {
+    useGameStore.getState().setIsProjectLoading(true);
     setIsProjectLoaded(false);
     useGameStore.getState().setCurrentPaytable([]);
     
@@ -341,6 +342,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
       } catch (err) {
         setError('載入範本失敗: ' + (err as Error).message);
       }
+      useGameStore.getState().setIsProjectLoading(false);
     }
   };
 
@@ -365,6 +367,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
   useEffect(() => {
     if (uploadedTemplateFile) {
       const processFile = async () => {
+        useGameStore.getState().setIsProjectLoading(true);
         try {
           const { parseExcelData } = await import('../utils/excelParser');
           const parsed = await parseExcelData(uploadedTemplateFile);
@@ -424,6 +427,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
           setIsProjectLoaded(true);
         } catch (err) {
           setError('Failed to parse Excel file: ' + (err as Error).message);
+        } finally {
+          useGameStore.getState().setIsProjectLoading(false);
         }
         setUploadedTemplateFile(null);
       };

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Play, AlertCircle } from 'lucide-react';
+import { X, Play, AlertCircle, Square } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
 import { useMachineStore } from '../../store/useMachineStore';
 import { SlotGridDisplay } from '../SlotGridDisplay';
@@ -17,9 +17,47 @@ interface RngValidatorProps {
   onClose: () => void;
 }
 
-const StepCard = ({ step, idx }: { step: any, idx: number }) => {
+const StepCard = ({ step, idx, gameType }: { step: any, idx: number, gameType: string }) => {
   const [activeDrop, setActiveDrop] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [animationStage, setAnimationStage] = useState<'idle' | 'eliminating' | 'dropping'>('idle');
   const currentDrop = step.drops[activeDrop];
+  const previousDrop = activeDrop > 0 ? step.drops[activeDrop - 1] : undefined;
+
+  React.useEffect(() => {
+    if (!isPlaying) return;
+
+    let t: NodeJS.Timeout;
+
+    if (animationStage === 'idle') {
+      if (activeDrop >= step.drops.length - 1) {
+        setIsPlaying(false);
+        return;
+      }
+      t = setTimeout(() => setAnimationStage('eliminating'), 500);
+    } else if (animationStage === 'eliminating') {
+      t = setTimeout(() => {
+        setActiveDrop(prev => prev + 1);
+        setAnimationStage('dropping');
+      }, 600);
+    } else if (animationStage === 'dropping') {
+      t = setTimeout(() => {
+        setAnimationStage('idle');
+      }, 850);
+    }
+
+    return () => clearTimeout(t);
+  }, [isPlaying, animationStage, activeDrop, step.drops.length]);
+
+  const togglePlay = () => {
+    if (activeDrop >= step.drops.length - 1 && !isPlaying) {
+      setActiveDrop(0);
+      setAnimationStage('idle');
+      setTimeout(() => setIsPlaying(true), 50);
+    } else {
+      setIsPlaying(!isPlaying);
+    }
+  };
 
   return (
     <div className="bg-[#0a192f] border border-gray-700/50 rounded-xl p-6 shadow-xl relative overflow-hidden">
@@ -44,21 +82,40 @@ const StepCard = ({ step, idx }: { step: any, idx: number }) => {
       </div>
       
       <div className="flex flex-col items-center gap-4 bg-[#112240] p-6 rounded-lg border border-gray-700/30 relative">
-        {step.drops.length > 1 && (
+        {step.drops.length > 0 && (
           <div className="flex w-full justify-between items-center px-2 mb-2">
             <button 
               onClick={() => setActiveDrop(Math.max(0, activeDrop - 1))}
-              disabled={activeDrop === 0}
+              disabled={activeDrop === 0 || isPlaying}
               className="p-2 bg-gray-700 rounded-full disabled:opacity-30 hover:bg-gray-600 transition-colors shadow-lg border border-gray-600"
             >
               ◀ 
             </button>
-            <span className="text-gray-400 font-bold text-sm bg-gray-800 px-3 py-1 rounded-full border border-gray-700">
-              Drop {activeDrop + 1}
-            </span>
+            
+            <div className="flex items-center gap-3">
+              <span className="text-gray-400 font-bold text-sm bg-gray-800 px-3 py-1 rounded-full border border-gray-700">
+                Drop {activeDrop + 1}
+                {(gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'waygame_qin') && (
+                  <span className="text-yellow-400 ml-2">X{currentDrop.multiplier}</span>
+                )}
+              </span>
+              
+              <button
+                onClick={togglePlay}
+                className={`p-1.5 rounded-full shadow-lg border transition-all ${
+                  isPlaying 
+                    ? 'bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30' 
+                    : 'bg-green-500/20 text-green-400 border-green-500/50 hover:bg-green-500/30'
+                }`}
+                title={isPlaying ? '暫停播放' : '自動播放所有掉落'}
+              >
+                {isPlaying ? <Square size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
+              </button>
+            </div>
+
             <button 
               onClick={() => setActiveDrop(Math.min(step.drops.length - 1, activeDrop + 1))}
-              disabled={activeDrop === step.drops.length - 1}
+              disabled={activeDrop === step.drops.length - 1 || isPlaying}
               className="p-2 bg-gray-700 rounded-full disabled:opacity-30 hover:bg-gray-600 transition-colors shadow-lg border border-gray-600"
             >
               ▶
@@ -71,12 +128,23 @@ const StepCard = ({ step, idx }: { step: any, idx: number }) => {
             gridMode="custom"
             gridSymbols={currentDrop.grid}
             winningCoords={currentDrop.winningCoords}
+            prevGridSymbols={previousDrop?.grid}
+            prevWinningCoords={previousDrop?.winningCoords}
+            hideEmptyCells={true}
+            animationStage={animationStage}
           />
         </div>
         
-        {step.drops.length > 1 && currentDrop.totalWin > 0 && (
-          <div className="text-sm font-bold text-green-400 mt-2 bg-green-900/20 px-4 py-2 rounded-full border border-green-500/30">
-            該次掉落贏分: {currentDrop.totalWin}
+        {step.drops.length > 0 && (
+          <div className={`text-sm font-bold mt-2 px-4 py-2 rounded-full border text-center flex flex-col ${currentDrop.totalWin > 0 ? 'text-green-400 bg-green-900/20 border-green-500/30' : 'text-gray-400 bg-gray-800/50 border-gray-700/50'}`}>
+            <span>該次掉落贏分</span>
+            {(gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'waygame_qin') ? (
+              <span className="text-lg">
+                {currentDrop.originalWin} <span className="text-gray-500 text-sm mx-1">×</span> {currentDrop.multiplier} <span className="text-gray-500 text-sm mx-1">=</span> {currentDrop.totalWin}
+              </span>
+            ) : (
+              <span className="text-lg">{currentDrop.totalWin}</span>
+            )}
           </div>
         )}
       </div>
@@ -93,6 +161,8 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
     drops: {
       grid: string[][];
       totalWin: number;
+      originalWin: number;
+      multiplier: number;
       winningCoords: Map<string, number[]>;
     }[];
   }[]>([]);
@@ -105,10 +175,28 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
     reelCount,
     currentPaytable,
     specialSymbolConfig,
-    isProjectLoaded
+    isProjectLoaded,
+    isProjectLoading,
+    projectName
   } = useGameStore();
-  const { bet, coin, gameType, setLoadTemplateTrigger } = useMachineStore();
+  const { bet, coin, gameType, loadTemplateTrigger, setLoadTemplateTrigger } = useMachineStore();
   const betMultiplier = coin > 0 ? bet / coin : 1;
+
+  const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+  React.useEffect(() => {
+    if (isProjectLoading) {
+      setLoadStatus('loading');
+    } else if (loadStatus === 'loading') {
+      if (isProjectLoaded) {
+        setLoadStatus('success');
+        setTimeout(() => setLoadStatus('idle'), 2000);
+      } else {
+        setLoadStatus('error');
+        setTimeout(() => setLoadStatus('idle'), 2000);
+      }
+    }
+  }, [isProjectLoading, isProjectLoaded]);
 
   const templatesList = Object.keys(templateFiles).map(path => ({
     path,
@@ -201,11 +289,14 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
             initialTumbleMultiplier = isFreeGame ? 8 : 1;
          }
          
-         let winSum = evWins.reduce((sum, w) => sum + (w.totalWin * betMultiplier * initialTumbleMultiplier), 0);
+         let originalWinSum = evWins.reduce((sum, w) => sum + (w.totalWin * betMultiplier), 0);
+         let winSum = originalWinSum * initialTumbleMultiplier;
 
          const drops = [{
             grid: currentGrid,
             totalWin: winSum,
+            originalWin: originalWinSum,
+            multiplier: initialTumbleMultiplier,
             winningCoords: coords
          }];
 
@@ -278,11 +369,14 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
                  : Math.min(1024, 1 * Math.pow(2, dropCount));
             }
             
-            const winSumNext = evWinsNext.reduce((sum, w) => sum + (w.totalWin * betMultiplier * tumbleMultiplier), 0);
+            const originalWinSumNext = evWinsNext.reduce((sum, w) => sum + (w.totalWin * betMultiplier), 0);
+            const winSumNext = originalWinSumNext * tumbleMultiplier;
             
             drops.push({
                grid: nextGrid,
                totalWin: winSumNext,
+               originalWin: originalWinSumNext,
+               multiplier: tumbleMultiplier,
                winningCoords: coordsNext
             });
             
@@ -322,10 +416,15 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
               <select 
                 onChange={handleTemplateChange}
                 className="bg-[#0a192f] border border-dashboard-accent text-[#e6f1ff] font-bold rounded px-3 py-1.5 text-sm outline-none focus:border-blue-500 cursor-pointer shadow-lg hover:bg-[#112240] transition-colors"
-                value={isProjectLoaded ? "loaded" : ""}
+                value={isProjectLoaded || loadStatus !== 'idle' ? "loaded" : ""}
               >
-                <option value="" disabled>-- 請選擇 --</option>
-                <option value="loaded" disabled className="text-dashboard-accent">{isProjectLoaded ? "✅ 已載入當前專案" : "-- 請選擇 --"}</option>
+                <option value="" disabled hidden>-- 請選擇 --</option>
+                <option value="loaded" disabled hidden className={loadStatus === 'error' ? "text-red-400" : "text-dashboard-accent"}>
+                  {loadStatus === 'loading' ? '⏳ 載入中...' :
+                   loadStatus === 'success' ? '✅ 載入專案成功' :
+                   loadStatus === 'error' ? '❌ 載入專案失敗' :
+                   isProjectLoaded ? projectName : "-- 請選擇 --"}
+                </option>
                 {templatesList.map(tmpl => (
                   <option key={tmpl.path} value={tmpl.path}>{tmpl.name}</option>
                 ))}
@@ -358,7 +457,7 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
                 </label>
               </div>
               
-              {!isProjectLoaded && (
+              {!isProjectLoaded && !isProjectLoading && (
                 <div className="mt-2 p-3 bg-red-900/20 border border-red-500/50 rounded-lg flex flex-col items-center justify-center text-center">
                   <AlertCircle size={20} className="text-red-500 mb-1" />
                   <span className="text-red-400 text-xs font-bold">尚未載入專案，請先在上方選擇遊戲範本！</span>
@@ -400,10 +499,10 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
               </div>
             ) : (
               <div className="flex flex-col gap-10 max-w-4xl mx-auto pb-10">
-                {parsedSteps.map((step, idx) => (
-                  <StepCard key={idx} step={step} idx={idx} />
-                ))}
-              </div>
+              {parsedSteps.map((step, idx) => (
+                <StepCard key={idx} step={step} idx={idx} gameType={gameType} />
+              ))}
+            </div>
             )}
           </div>
 

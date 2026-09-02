@@ -11,9 +11,18 @@ interface RtpCalculatorProps {
   onClose: () => void;
 }
 
+const templateFiles = import.meta.glob('/templates/*.{xlsx,xls}', { query: '?url', eager: true, import: 'default' }) as Record<string, string>;
+const getTemplateName = (path: string) => {
+  const parts = path.split('/');
+  const filename = parts[parts.length - 1];
+  return filename.replace(/\.(xlsx|xls)$/, '').replace('範本-', '');
+};
+
 export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
   const {
     isProjectLoaded,
+    isProjectLoading,
+    projectName,
     currentStripSets,
     currentFreeStripSets,
     currentPaytable,
@@ -21,7 +30,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
     reelCount
   } = useGameStore();
 
-  const { gameType, bet, coin } = useMachineStore();
+  const { gameType, bet, coin, loadTemplateTrigger, setLoadTemplateTrigger } = useMachineStore();
   const betMultiplier = coin > 0 ? bet / coin : 1;
 
   const { isRunning, progress, currentSpins, result, runSimulation } = useSimulation();
@@ -70,6 +79,34 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
     runSimulation(targetStrips, currentPaytable, selectedSpins, rowCounts, gameConfig, coin, bet, isFreeGame, mode, mode === 'full_game' ? freeStrips : undefined);
   };
 
+  const templatesList = Object.keys(templateFiles).map(path => ({
+    path,
+    name: getTemplateName(path)
+  }));
+
+  const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const val = e.target.value;
+    if (val) {
+      setLoadTemplateTrigger(val);
+    }
+  };
+
+  const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+
+  React.useEffect(() => {
+    if (isProjectLoading) {
+      setLoadStatus('loading');
+    } else if (loadStatus === 'loading') {
+      if (isProjectLoaded) {
+        setLoadStatus('success');
+        setTimeout(() => setLoadStatus('idle'), 2000);
+      } else {
+        setLoadStatus('error');
+        setTimeout(() => setLoadStatus('idle'), 2000);
+      }
+    }
+  }, [isProjectLoading, isProjectLoaded]);
+
   const sortedMetrics = useMemo(() => {
     if (!result?.symbolMetrics) return [];
     return Object.values(result.symbolMetrics)
@@ -81,12 +118,34 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-[#0a192f] w-[95vw] max-w-[1400px] h-[90vh] rounded-xl shadow-2xl border border-blue-500/30 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-[#112240]">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/20 rounded-lg">
-              <Calculator className="w-5 h-5 text-blue-400" />
+        <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-[#112240] shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-500/20 rounded-lg">
+                <Calculator className="w-5 h-5 text-blue-400" />
+              </div>
+              <h2 className="text-lg font-bold text-white">RTP 模擬計算機</h2>
             </div>
-            <h2 className="text-lg font-bold text-white">RTP 模擬計算機</h2>
+            <div className="w-[1px] h-6 bg-gray-700/50"></div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-gray-400 uppercase tracking-wider">選擇遊戲範本:</span>
+              <select 
+                onChange={handleTemplateChange}
+                className="bg-[#0a192f] border border-blue-500/50 text-[#e6f1ff] font-bold rounded px-3 py-1.5 text-sm outline-none focus:border-blue-400 cursor-pointer shadow-lg hover:bg-[#112240] transition-colors"
+                value={isProjectLoaded || loadStatus !== 'idle' ? "loaded" : ""}
+              >
+                <option value="" disabled hidden>-- 請選擇 --</option>
+                <option value="loaded" disabled hidden className={loadStatus === 'error' ? "text-red-400" : "text-blue-400"}>
+                  {loadStatus === 'loading' ? '⏳ 載入中...' :
+                   loadStatus === 'success' ? '✅ 載入專案成功' :
+                   loadStatus === 'error' ? '❌ 載入專案失敗' :
+                   isProjectLoaded ? projectName : "-- 請選擇 --"}
+                </option>
+                {templatesList.map(tmpl => (
+                  <option key={tmpl.path} value={tmpl.path}>{tmpl.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -99,7 +158,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
         <div className="flex-1 flex overflow-hidden">
           {/* Left Column: Settings */}
           <div className="w-[350px] border-r border-gray-700/50 p-6 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
-            {!isProjectLoaded && (
+            {!isProjectLoaded && !isProjectLoading && (
               <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                 <p className="text-sm text-red-400">請先載入專案 (Excel 範本) 後再執行模擬計算。</p>
