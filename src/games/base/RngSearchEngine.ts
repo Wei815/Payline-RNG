@@ -565,12 +565,18 @@ export class RngSearchEngine {
     _stripSets?: Record<string, string[][]>,
   ): Promise<(number[] | null)[]> {
     const results: (number[] | null)[] = [];
-    const ATTEMPTS = 10000;
+    const ATTEMPTS = isFreeGame ? 200000 : 400000;
     const yieldIfNeeded = this.gameInstance.createTimeSlicer(16);
 
     const candidateRng = new Array(reelCount).fill(0);
+    let maxFoundCombo = 0;
 
     for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+      // Early exit if we found a highly satisfactory combo to save time
+      if ((!isFreeGame && maxFoundCombo >= 15) || (isFreeGame && maxFoundCombo >= 12)) {
+        break;
+      }
+      
       if (attempt % 200 === 0) await yieldIfNeeded();
 
       let currentGrid: string[][] = new Array(reelCount);
@@ -664,11 +670,14 @@ export class RngSearchEngine {
       }
 
       if (cascadeCount > 0) {
+        if (cascadeCount > maxFoundCombo) {
+          maxFoundCombo = cascadeCount;
+        }
         while (results.length < cascadeCount) {
           results.push(null);
         }
         if (results[cascadeCount - 1] === null) {
-          results[cascadeCount - 1] = candidateRng;
+          results[cascadeCount - 1] = [...candidateRng];
         }
       }
     }

@@ -9,6 +9,8 @@ export interface IGameEnvironment {
   getDefaultReelStrips(): ReelStrips;
   evaluate(grid: string[][], paytable: PaytableRule[], config: GameConfig, customPaylines?: number[][], includeZeroPayout?: boolean): WinResult[];
   
+  isSymbolUnremovable?(sym: string, isFreeGame: boolean): boolean;
+
   findRngForCombos(
     currentStrips: string[][],
     rowCounts: number[],

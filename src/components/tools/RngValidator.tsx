@@ -4,6 +4,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { useMachineStore } from '../../store/useMachineStore';
 import { SlotGridDisplay } from '../SlotGridDisplay';
 import { evaluateGrid, getWinningPositions } from '../../utils/evaluation';
+import { GameRegistry } from '../../core/GameRegistry';
 
 const templateFiles = import.meta.glob('/templates/*.{xlsx,xls}', { query: '?url', eager: true, import: 'default' }) as Record<string, string>;
 const getTemplateName = (path: string) => {
@@ -223,12 +224,16 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
                const strip = activeStrips[c] || ['-'];
                const stripLen = strip.length;
                
+               const gameInstance = GameRegistry.getGame(gameType);
+               
                const keptSymbols: string[] = [];
                for (let r = 0; r < colLen; r++) {
-                  if (!lastCoords.has(`${c}-${r}`)) {
-                     keptSymbols.push(lastGrid[c][r]);
+                  const symId = lastGrid[c][r];
+                  const isUnremovable = gameInstance.isSymbolUnremovable?.(symId, isFreeGame) ?? false;
+                  // We also shouldn't eliminate if the win index is 999, but checking isUnremovable is the authoritative way.
+                  if (!lastCoords.has(`${c}-${r}`) || isUnremovable) {
+                     keptSymbols.push(symId);
                   } else {
-                     const symId = lastGrid[c][r];
                      if ((gameType === 'waygame' || gameType === 'waygame_qin' || gameType === 'waygame_elephant') && symId.startsWith('G') && symId !== 'G') {
                         keptSymbols.push('WX');
                      }

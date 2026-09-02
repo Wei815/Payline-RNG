@@ -10,7 +10,8 @@ export class ScatterStrategy implements EvaluationStrategy {
 
     for (const col of grid) {
       for (const cell of col) {
-        let isMatch = cell === sym || (!rule.isWild && context.wildSymbols?.has(cell));
+        // In slot games, Wilds generally do NOT substitute for Scatters/Bonus symbols.
+        let isMatch = cell === sym;
         
         if (!isMatch && gameConfig.specialRules?.derivativeSymbols?.[sym]) {
            const derivatives = gameConfig.specialRules.derivativeSymbols[sym];

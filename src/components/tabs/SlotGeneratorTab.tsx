@@ -4,8 +4,8 @@ import { formatAmount } from '../../utils/formatters';
 import { getWinColorClass, calculateSVGPaths } from '../../utils/svgPaths';
 import { getWinningPositions } from '../../utils/evaluation';
 import type { SVGPathResult } from '../../utils/svgPaths';
-import { evaluateGrid } from '../../utils/evaluation';
-import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
+import { evaluateGrid, defaultPaylines } from '../../utils/evaluation';
+import { MULTIPLIER_BALLS, LUCKY_BALLS, isGoldSymbol } from '../../utils/evaluation/GameConstants';
 import { useRngSearch } from '../../hooks/useRngSearch';
 
 export interface SlotGeneratorTabProps {
@@ -58,6 +58,12 @@ const DEFAULT_MULTIPLIER_INTERVALS: import('../../types').MultiplierInterval[] =
   { id: '5', name: 'Legend Win', min: 1000, max: null },
 ];
 
+const ELEPHANT_MULTIPLIER_INTERVALS: import('../../types').MultiplierInterval[] = [
+  { id: '1', name: 'Big Win', min: 20, max: 50 },
+  { id: '2', name: 'Mega Win', min: 50, max: 300 },
+  { id: '3', name: 'SuperMega Win', min: 300, max: null },
+];
+
 export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, setActiveStripId,
   reelCount, rowCounts, onRowCountsChange,
   manualIndicesOther, setManualIndicesOther, topTrackerOther, setTopTrackerOther,
@@ -71,14 +77,14 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
   const gridContainerRefOther = useRef<HTMLDivElement>(null);
   const [linePathsOther, setLinePathsOther] = useState<SVGPathResult[]>([]);
   const [multiplierIntervals, setMultiplierIntervals] = useState<import('../../types').MultiplierInterval[]>(() =>
-    gameType === 'linegame_set2' ? LUXE_MULTIPLIER_INTERVALS : DEFAULT_MULTIPLIER_INTERVALS
+    gameType === 'linegame_set2' ? LUXE_MULTIPLIER_INTERVALS : (gameType === 'waygame_elephant' ? ELEPHANT_MULTIPLIER_INTERVALS : DEFAULT_MULTIPLIER_INTERVALS)
   );
   const [activeSearchIntervals, setActiveSearchIntervals] = useState<import('../../types').MultiplierInterval[]>(() =>
-    gameType === 'linegame_set2' ? LUXE_MULTIPLIER_INTERVALS : DEFAULT_MULTIPLIER_INTERVALS
+    gameType === 'linegame_set2' ? LUXE_MULTIPLIER_INTERVALS : (gameType === 'waygame_elephant' ? ELEPHANT_MULTIPLIER_INTERVALS : DEFAULT_MULTIPLIER_INTERVALS)
   );
 
   useEffect(() => {
-    const initial = gameType === 'linegame_set2' ? LUXE_MULTIPLIER_INTERVALS : DEFAULT_MULTIPLIER_INTERVALS;
+    const initial = gameType === 'linegame_set2' ? LUXE_MULTIPLIER_INTERVALS : (gameType === 'waygame_elephant' ? ELEPHANT_MULTIPLIER_INTERVALS : DEFAULT_MULTIPLIER_INTERVALS);
     setMultiplierIntervals(initial);
     setActiveSearchIntervals(initial);
   }, [gameType]);
@@ -298,7 +304,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
   const [isCloverMode, setIsCloverMode] = useState(false);
 
   // Copy feedback state
-  const [isCopiedAll, setIsCopiedAll] = useState(false);
+  const [isCopiedAll, setIsCopiedAll] = useState<boolean>(false);
+  const [isCopiedAllTestCases, setIsCopiedAllTestCases] = useState<boolean>(false);
 
   const combinedClassIdStr = useMemo(() => {
     const arr: number[] = [];
@@ -427,6 +434,145 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
     }
     return `[${currentFormattedRngArray.join(',')}],`;
   })();
+
+  const generateGridForComb = (rngStrArray: string[], stripId?: number) => {
+    const rawGrid = Array(reelCount).fill(null).map((_, colIndex) => {
+      const rowsForThisCol = rowCounts[colIndex] || 3;
+      if (gameType === 'megaway' && colIndex >= 1 && colIndex <= 4) {
+        return Array(rowsForThisCol + 1).fill('-');
+      }
+      return Array(rowsForThisCol).fill('-');
+    });
+
+    const parsedRng = rngStrArray.map(s => parseInt(s, 10));
+    
+    // Resolve which strip set to use for this combination
+    let targetStripSet = currentStrips;
+    if (stripId !== undefined) {
+      if (stripSets && stripSets[stripId]) {
+        targetStripSet = stripSets[stripId];
+      }
+    }
+
+    return rawGrid.map((col, colIndex) => {
+      const rowsForThisCol = rowCounts[colIndex] || 3;
+      const isMegawayTop = gameType === 'megaway' && colIndex >= 1 && colIndex <= 4;
+      const totalRows = isMegawayTop ? rowsForThisCol + 1 : rowsForThisCol;
+      
+      const strip = targetStripSet[colIndex];
+      const rngIndex = parsedRng[colIndex];
+      const startIdx = rngIndex !== undefined ? rngIndex : 0;
+      
+      let res = Array(totalRows).fill('-');
+      let writeIdx = 0;
+      if (strip && strip.length > 0) {
+        for (let r = 0; r < rowsForThisCol; r++) {
+          res[writeIdx++] = strip[(startIdx + r) % strip.length];
+        }
+      }
+      if (isMegawayTop) {
+        res[writeIdx++] = topTrackerOther[colIndex - 1] || 'WX';
+      }
+      return res;
+    });
+  };
+
+  const calculateCombinationWin = (comb: any) => {
+    let rng = comb.rng;
+    if (!rng || rng.length === 0) return { formula: 'Win=0', totalWin: 0 };
+    
+    // We only support normal ways game cascading format for now
+    if (gameType !== 'waygame' && gameType !== 'waygame_elephant' && gameType !== 'megaway' && gameType !== 'waygame_qin') {
+       const config = { gameType, paylines: customPaylines, effectiveBet: bet, goldFrames, specialRules: { derivativeSymbols: { 'B1': ['B2'] } } };
+       const grid = generateGridForComb(rng, comb.stripId);
+       const wins = evaluateGrid(grid, currentPaytable, config, undefined, true);
+       const validWins = wins.filter(w => w.totalWin > 0);
+       const formulaStr = validWins.map(w => `${w.symbolId}*${w.matchCount}=${w.totalWin}`).join('+') || '0';
+       const totalWin = validWins.reduce((s, w) => s + w.totalWin, 0);
+       return { formula: totalWin > 0 ? `Win=${formulaStr}=${totalWin}` : 'Win=0', totalWin };
+    }
+
+    const config = { gameType, paylines: customPaylines, effectiveBet: bet, goldFrames, specialRules: { derivativeSymbols: { 'B1': ['B2'] }, unremovableSymbols: ['S1', 'B1'] } };
+    
+    let grid = generateGridForComb(rng, comb.stripId);
+    
+    let totalWinAccumulated = 0;
+    let cascadeCount = 0;
+    let keepCascading = true;
+    let formulaParts: string[] = [];
+    
+    const parsedRng = rng.map((s:any) => parseInt(s, 10));
+    const drawIndices = parsedRng.map((r:any) => r !== undefined ? r - 1 : 0);
+    
+    while(keepCascading && cascadeCount < 20) {
+      const wins = evaluateGrid(grid, currentPaytable, config, undefined, true);
+      if (wins.length === 0) break;
+      
+      let tumbleMultiplier = 1;
+      if (gameType === 'waygame' || gameType === 'waygame_elephant') {
+        tumbleMultiplier = isFreeGame 
+          ? Math.min(1024, 8 * Math.pow(2, cascadeCount)) 
+          : Math.min(1024, 1 * Math.pow(2, cascadeCount));
+      }
+      
+      const validWins = wins.filter(w => w.totalWin > 0);
+      let dropWinSum = 0;
+      let dropFormula = validWins.map(w => `${w.symbolId}*${w.matchCount}${tumbleMultiplier > 1 ? `(x${tumbleMultiplier})` : ''}=${w.totalWin * tumbleMultiplier}`).join('+');
+      
+      validWins.forEach(w => {
+         dropWinSum += w.totalWin * tumbleMultiplier;
+      });
+      
+      if (dropFormula) {
+        totalWinAccumulated += dropWinSum;
+        formulaParts.push(dropFormula);
+      }
+      
+      // Stop cascading if this drop contains the target symbol
+      if (wins.some(w => w.symbolId === selectedSymbol)) {
+        keepCascading = false;
+      }
+      
+      const winningCoordsMap = getWinningPositions(grid, wins, currentPaytable, gameType, undefined, customPaylines);
+      
+      // Resolve which strip set to use for cascading
+      let targetStripSet = currentStrips;
+      if (comb.stripId !== undefined) {
+        if (stripSets && stripSets[comb.stripId]) {
+          targetStripSet = stripSets[comb.stripId];
+        }
+      }
+      
+      for (let c = 0; c < grid.length; c++) {
+        const strip = targetStripSet[c];
+        if (!strip || strip.length === 0) continue;
+        const rows = rowCounts[c] || 3;
+        for (let r = rows - 1; r >= 0; r--) {
+           if (winningCoordsMap.has(`${c}-${r}`)) {
+             const sym = grid[c][r];
+             if (gameType === 'waygame_elephant' && isGoldSymbol(sym)) {
+               grid[c][r] = 'WX';
+               continue;
+             }
+             
+             const hasRealWin = winningCoordsMap.get(`${c}-${r}`)?.some((idx:number) => idx !== 999);
+             if (hasRealWin) {
+                const len = strip.length;
+                const actualDrawIndex = (((drawIndices[c] % len) + len) % len);
+                grid[c][r] = strip[actualDrawIndex];
+                drawIndices[c]--;
+             }
+           }
+        }
+      }
+      cascadeCount++;
+    }
+    
+    if (formulaParts.length > 0) {
+      return { formula: `Win=${formulaParts.join('+')}=${totalWinAccumulated}`, totalWin: totalWinAccumulated };
+    }
+    return { formula: 'Win=0', totalWin: 0 };
+  };
 
   const pulseClass = pulseToggle ? 'animate-sync-pulse-1' : 'animate-sync-pulse-2';
 
@@ -703,7 +849,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                           rngStr += `[${dropMathIds.slice(0, dropCount).join(',')}],`;
                         }
                       } else {
-                        const finalRng = (gameType === 'waygame' || gameType === 'megaway')
+                        const finalRng = (gameType.includes('waygame') || gameType.includes('megaway'))
                           ? [...(c.rng?.slice(0, 6) || []), (c as any).stripId !== undefined ? Number((c as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)]
                           : c.rng;
                         rngStr = `[${finalRng?.join(',')}],`;
@@ -722,6 +868,39 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                 }`}
               >
                 {isCopiedAll ? '✅ 已複製！' : '📋 複製全部腳本'}
+              </button>
+              <button
+                disabled={isSearching || combinations.length === 0}
+                onClick={() => {
+                  const items = [...combinations]
+                    .map(c => {
+                      if (!c.rng) {
+                        return `${c.name}\t-\t-`;
+                      }
+                      let rngStr = '';
+                      const finalRng = (gameType.includes('waygame') || gameType.includes('megaway'))
+                        ? [...(c.rng?.slice(0, 6) || []), (c as any).stripId !== undefined ? Number((c as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)]
+                        : c.rng;
+                      rngStr = `[${finalRng?.join(',')}],`;
+                      
+                      const winInfo = calculateCombinationWin(c);
+                      return `${c.name}\t${rngStr}\t${winInfo.formula}`;
+                    });
+                    
+                  if (items.length > 0) {
+                    const textToCopy = items.join('\n');
+                    navigator.clipboard.writeText(textToCopy);
+                  }
+                  setIsCopiedAllTestCases(true);
+                  setTimeout(() => setIsCopiedAllTestCases(false), 2000);
+                }}
+                className={`px-2 py-1 text-xs font-bold rounded border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isCopiedAllTestCases 
+                    ? 'bg-blue-500/20 text-blue-400 border-blue-500/50' 
+                    : 'bg-blue-400/10 hover:bg-blue-400/20 text-blue-400 border-blue-400/30'
+                }`}
+              >
+                {isCopiedAllTestCases ? '✅ 已複製測案！' : '📋 複製全部測案'}
               </button>
             </div>
             {isSearching && (
@@ -790,7 +969,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                         if (isManualEdited && selectedCombIndex === globalIdx) {
                           finalCopy = currentRngString;
                         } else {
-                          const finalRng = (gameType === 'waygame' || gameType === 'megaway')
+                          const finalRng = (gameType.includes('waygame') || gameType.includes('megaway'))
                             ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)]
                             : comb.rng;
                           finalCopy = `[${finalRng.join(',')}],`;
@@ -856,6 +1035,14 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                   {selectedSymbol === 'WIN_MULTIPLIER'
                     ? '參數已修改，請點擊上方「產生最大 RNG」重新產生結果'
                     : '沒有可用的 Symbol，請確認是否載入滾輪表 (Reel Strips)'}
+                </div>
+              );
+            }
+
+            if (wxCombinations.length === 0) {
+              return (
+                <div className="grid grid-cols-2 gap-x-2 gap-y-1 max-h-[180px] overflow-y-auto pr-1">
+                  {combinations.map((comb, i) => renderCombButton(comb, i))}
                 </div>
               );
             }

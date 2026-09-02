@@ -1,5 +1,6 @@
 import { BaseWayGame } from '../base/BaseWayGame';
 import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+import { getBaseSymbol } from '../../utils/evaluation/GameConstants';
 
 export class RoyalElephantGame extends BaseWayGame {
   readonly id: GameType = 'waygame_elephant';
@@ -22,6 +23,14 @@ export class RoyalElephantGame extends BaseWayGame {
 
   public override getMaxRandomAttempts(): number {
     return 30000;
+  }
+
+  public override isSymbolUnremovable(sym: string, _isFreeGame: boolean): boolean {
+    const base = getBaseSymbol(sym);
+    if (base === 'B1' || base === 'B2') {
+      return true;
+    }
+    return false;
   }
 
   // 皇家金象專屬邏輯：只有 R3 (colIndex === 2) 和 R4 (colIndex === 3) 會有金色符號轉百搭

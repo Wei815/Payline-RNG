@@ -809,8 +809,8 @@ export function useRngSearch(
               let name = "";
               if (isSelScatter) {
                 name = W === 0
-                  ? `${selectedSymbol} * ${len} 個 (任意位置)`
-                  : `${selectedSymbol} * ${len - W} + WX (任意位置)`;
+                  ? `${selectedSymbol} * ${len} 個`
+                  : `${selectedSymbol} * ${len - W} + WX`;
               } else {
                 name = W === 0
                   ? `${selectedSymbol} * ${len} 連線 (Line 1)`
@@ -856,8 +856,8 @@ export function useRngSearch(
             if (isSelScatter) {
               name =
                 W === 0
-                  ? `${selectedSymbol} * ${L} 個 (任意位置)`
-                  : `${selectedSymbol} * ${L - W} + WX (任意位置)`;
+                  ? `${selectedSymbol} * ${L} 個`
+                  : `${selectedSymbol} * ${L - W} + WX`;
             } else {
               name =
                 W === 0
