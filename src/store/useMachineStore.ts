@@ -31,6 +31,13 @@ export interface MachineState {
   setJiraReportData: (data: string[][] | null) => void;
   setJiraReportFileName: (name: string | null) => void;
   setJiraIssuesByProject: (data: Record<string, JiraIssueDetail[]> | null) => void;
+  
+  jiraReportWebData: string[][] | null;
+  jiraReportWebFileName: string | null;
+  jiraIssuesWebByProject: Record<string, JiraIssueDetail[]> | null;
+  setJiraReportWebData: (data: string[][] | null) => void;
+  setJiraReportWebFileName: (name: string | null) => void;
+  setJiraIssuesWebByProject: (data: Record<string, JiraIssueDetail[]> | null) => void;
 }
 
 export const useMachineStore = create<MachineState>((set) => ({
@@ -54,4 +61,11 @@ export const useMachineStore = create<MachineState>((set) => ({
   setJiraReportData: (data) => set({ jiraReportData: data }),
   setJiraReportFileName: (name) => set({ jiraReportFileName: name }),
   setJiraIssuesByProject: (data) => set({ jiraIssuesByProject: data }),
+  
+  jiraReportWebData: null,
+  jiraReportWebFileName: null,
+  jiraIssuesWebByProject: null,
+  setJiraReportWebData: (data) => set({ jiraReportWebData: data }),
+  setJiraReportWebFileName: (name) => set({ jiraReportWebFileName: name }),
+  setJiraIssuesWebByProject: (data) => set({ jiraIssuesWebByProject: data }),
 }));

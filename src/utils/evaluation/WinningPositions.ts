@@ -59,6 +59,17 @@ export function getWinningPositions(
             }
           }
         }
+      } else if (win.isJackpot) {
+        // For Jackpots or S1 Collection, highlight the source symbols
+        if (win.symbolId === 'S1 收集') {
+          for (let col = 0; col < grid.length; col++) {
+            for (let row = 0; row < grid[col].length; row++) {
+              if (grid[col][row] === 'S1') {
+                addCoord(`${col}-${row}`, w);
+              }
+            }
+          }
+        }
       }
     } else {
       for (let col = 0; col < win.matchCount; col++) {

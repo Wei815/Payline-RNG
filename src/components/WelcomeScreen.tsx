@@ -118,15 +118,26 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectTemplate }
                 <span className="font-bold text-[#e6f1ff] group-hover:text-dashboard-accent transition-colors">測試腳本暫存庫</span>
               </div>
 
-              {/* Jira Report Generator Tool */}
+              {/* Jira CSV Report */}
               <div 
                 onClick={() => useMachineStore.getState().setActiveModalTool('jiraReport')}
-                className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-blue-500 transition-colors shadow-lg group"
+                className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-blue-500/50 hover:-translate-y-1 transition-all duration-200 group shadow-lg"
               >
                 <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center text-[#8892b0] group-hover:text-blue-500 group-hover:border-blue-500/50 transition-colors">
                   <FileSpreadsheet size={18} />
                 </div>
-                <span className="font-bold text-[#e6f1ff] group-hover:text-blue-500 transition-colors">Jira CSV 報表轉換器</span>
+                <span className="font-bold text-[#e6f1ff] group-hover:text-blue-500 transition-colors">Jira CSV 報表轉換器(機台)</span>
+              </div>
+
+              {/* Jira CSV Report (WEB) */}
+              <div 
+                onClick={() => useMachineStore.getState().setActiveModalTool('jiraReportWeb')}
+                className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-blue-500/50 hover:-translate-y-1 transition-all duration-200 group shadow-lg"
+              >
+                <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center text-[#8892b0] group-hover:text-blue-500 group-hover:border-blue-500/50 transition-colors">
+                  <FileSpreadsheet size={18} />
+                </div>
+                <span className="font-bold text-[#e6f1ff] group-hover:text-blue-500 transition-colors">Jira CSV 報表轉換器(WEB)</span>
               </div>
 
               {/* RNG Validator */}

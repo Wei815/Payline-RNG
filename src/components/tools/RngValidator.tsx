@@ -4,6 +4,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { useMachineStore } from '../../store/useMachineStore';
 import { SlotGridDisplay } from '../SlotGridDisplay';
 import { evaluateGrid, getWinningPositions } from '../../utils/evaluation';
+import type { GameConfig } from '../../types';
 import { GameRegistry } from '../../core/GameRegistry';
 
 const templateFiles = import.meta.glob('/templates/*.{xlsx,xls}', { query: '?url', eager: true, import: 'default' }) as Record<string, string>;
@@ -132,12 +133,32 @@ const StepCard = ({ step, idx, gameType }: { step: any, idx: number, gameType: s
             prevWinningCoords={previousDrop?.winningCoords}
             hideEmptyCells={true}
             animationStage={animationStage}
+            goldFrames={currentDrop.goldFrames}
+            jackpots={currentDrop.jackpots}
+            renderCellInner={(symbol, _colIndex, _rowIndex, displaySymbol, hasGoldFrame, goldMultiplier, hasJackpot, jackpotValue) => (
+              <div className="flex flex-col items-center justify-center pointer-events-none w-full h-full relative">
+                <span>{displaySymbol}</span>
+                {symbol.match(/^[F|L][1-4]_/) && (
+                   <span className="text-[10px] text-gray-500 font-mono mt-1 leading-none">{symbol.split('_')[0]}</span>
+                )}
+                {hasGoldFrame && (
+                  <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-[#0a192f] text-[10px] font-black px-1 rounded-sm shadow border border-yellow-600 z-10">
+                    {goldMultiplier}
+                  </div>
+                )}
+                {hasJackpot && (
+                  <div className="absolute -bottom-1 left-0 right-0 mx-1 bg-red-500 text-white text-[9px] font-black px-1 rounded-sm shadow border border-red-700 z-10 truncate text-center">
+                    {jackpotValue}
+                  </div>
+                )}
+              </div>
+            )}
           />
         </div>
         
         {step.drops.length > 0 && (
           <div className={`text-sm font-bold mt-2 px-4 py-2 rounded-full border text-center flex flex-col ${currentDrop.totalWin > 0 ? 'text-green-400 bg-green-900/20 border-green-500/30' : 'text-gray-400 bg-gray-800/50 border-gray-700/50'}`}>
-            <span>該次掉落贏分</span>
+            <span>{(GameRegistry.getGame(gameType as any)?.hasCascadeFeature?.() ?? true) ? '該次掉落贏分' : '連線贏分'}</span>
             {(gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'waygame_qin') ? (
               <span className="text-lg">
                 {currentDrop.originalWin} <span className="text-gray-500 text-sm mx-1">×</span> {currentDrop.multiplier} <span className="text-gray-500 text-sm mx-1">=</span> {currentDrop.totalWin}
@@ -175,6 +196,7 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
     reelCount,
     currentPaytable,
     specialSymbolConfig,
+    customPaylines,
     isProjectLoaded,
     isProjectLoading,
     projectName
@@ -281,7 +303,39 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
             });
          }
 
-         let evWins = evaluateGrid(currentGrid, currentPaytable, gameType, undefined, false);
+           let gameConfig: any = {
+              gameType: gameType as any,
+              paylines: customPaylines || [],
+              effectiveBet: bet,
+           };
+
+           if (isCoordinateClassId && flatClassIds.length > 0) {
+              const newGoldFrames: Record<string, number> = {};
+              const newJackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'> = {};
+              const poolIndexToMultiplier: Record<number, number> = {
+                0: 2, 1: 3, 2: 4, 3: 5, 4: 6, 5: 7, 6: 8, 7: 9, 8: 10, 9: 25, 10: 50, 11: 100
+              };
+              const idToType: Record<number, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'> = {
+                12: 'MINI', 13: 'MAJOR', 14: 'MEGA', 15: 'MAXWIN'
+              };
+              for (let i = 0; i < flatClassIds.length; i += 3) {
+                 const c = flatClassIds[i];
+                 const r = flatClassIds[i+1];
+                 const v = flatClassIds[i+2];
+                 if (v !== undefined) {
+                    const key = `${c}-${r}`;
+                    if (v >= 0 && v <= 11) {
+                       newGoldFrames[key] = poolIndexToMultiplier[v];
+                    } else if (v >= 12 && v <= 15) {
+                       newJackpots[key] = idToType[v];
+                    }
+                 }
+              }
+              gameConfig.goldFrames = newGoldFrames;
+              gameConfig.jackpots = newJackpots;
+           }
+
+         let evWins = evaluateGrid(currentGrid, currentPaytable, gameConfig, undefined, false);
          let coords = getWinningPositions(currentGrid, evWins, currentPaytable, gameType);
          
          const gameInstance = GameRegistry.getGame(gameType);
@@ -295,7 +349,9 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
             totalWin: winSum,
             originalWin: originalWinSum,
             multiplier: initialTumbleMultiplier,
-            winningCoords: coords
+            winningCoords: coords,
+            goldFrames: gameConfig.goldFrames,
+            jackpots: gameConfig.jackpots
          }];
 
          // Simulate tumbling
@@ -304,96 +360,78 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
          let lastGrid = currentGrid;
          let lastCoords = coords;
 
-         while (hasWins && dropCount < 30) {
-            dropCount++;
-            
-            const gameInstance = GameRegistry.getGame(gameType);
-            const nextGrid = gameInstance.calculateNextDropGrid(
-               lastGrid,
-               lastCoords,
-               isFreeGame,
-               (c, dropIndex, totalDropped) => {
-                  const strip = activeStrips[c] || ['-'];
-                  const stripLen = strip.length;
-                  let sym = '-';
-                  if (isMathId) {
-                     if (idIndex < rngArray.length) {
-                        const val = rngArray[idIndex++];
-                        sym = mathIdToSymbol[val] || '-';
-                        if (sym && !isCoordinateClassId && (sym.startsWith('F') || sym.startsWith('L'))) {
-                           const mult = flatClassIds[classIdIndex++];
-                           if (mult !== undefined) sym = `${sym}_${mult}X`;
+         if (gameInstance.hasCascadeFeature?.()) {
+            while (hasWins && dropCount < 30) {
+               dropCount++;
+               
+               const nextGrid = gameInstance.calculateNextDropGrid(
+                  lastGrid,
+                  lastCoords,
+                  isFreeGame,
+                  (c, dropIndex, totalDropped) => {
+                     const strip = activeStrips[c] || ['-'];
+                     const stripLen = strip.length;
+                     let sym = '-';
+                     if (isMathId) {
+                        if (idIndex < rngArray.length) {
+                           const val = rngArray[idIndex++];
+                           sym = mathIdToSymbol[val] || '-';
+                           if (sym && !isCoordinateClassId && (sym.startsWith('F') || sym.startsWith('L'))) {
+                              const mult = flatClassIds[classIdIndex++];
+                              if (mult !== undefined) sym = `${sym}_${mult}X`;
+                           }
+                        } else {
+                           sym = '0';
                         }
                      } else {
-                        sym = '0';
+                        currentTopCursors[c] = (currentTopCursors[c] - 1 + stripLen) % stripLen;
+                        sym = strip[currentTopCursors[c]];
                      }
-                  } else {
-                     currentTopCursors[c] = (currentTopCursors[c] - 1 + stripLen) % stripLen;
-                     sym = strip[currentTopCursors[c]];
+                     return sym;
                   }
-                  return sym;
-               }
-            );
-
-            // 如果是 Strip，因為 pullNextSymbol 是一次拿一個最新的頂端符號，
-            // 拿到的是 [頂部1, 頂部2]，但實際上第一個拿到的應該是放在盤面最上面。
-            // 剛剛的 strip 邏輯裡 currentTopCursors 一路往上減，代表最先拔出來的是原先盤面最上面的「上一格」。
-            // 而計算 calculateNextDropGrid 時也是從 i=0 開始放到 newSymbols[0]，代表最先拔出來的在最上面，這是正確的。
-            // Wait, 原版條帶的邏輯是: for(i=0) 拿出 top-1, push 到 newSymbols。然後 newSymbols.reverse()，再放到盤面上方。
-            // 為什麼要 reverse？因為如果 top=10, 拿 top-1=9 (放 newSymbols[0])，拿 top-2=8 (放 newSymbols[1])。
-            // 陣列看起來是 [9, 8]。然後 [...newSymbols, ...keptSymbols] 放到畫面上，9 在第一排(上)，8 在第二排(下)。
-            // 但實際上條帶 index 越小，應該在畫面的越上方。
-            // 所以 8 應該在 9 的上面！這就是原版為什麼 reverse 的原因！
-            // 所以我們必須在 pull 的時候，直接把順序調對！
-            // 當 i=0 (最上面的一格), 它應該拿到的是最遠的那個 cursor，也就是 (top - totalDropped + i)！
-            
-            if (!isMathId) {
-               // 修正: 重新排列 newly generated Strip symbols, 由於 calculateNextDropGrid 會把
-               // i=0 當作 newSymbols 的第0項 (盤面最上)，這格應該對應條帶最遠 (最小 index) 的那格。
-               // 在迴圈外統一更新 cursor，迴圈內直接計算位置即可
-               for (let c = 0; c < reelCount; c++) {
-                  const strip = activeStrips[c] || ['-'];
-                  const stripLen = strip.length;
-                  const colWins = lastCoords.get(c.toString()) || [];
-                  let keptCount = 0;
-                  for (let r = 0; r < lastGrid[c].length; r++) {
-                     if (!colWins.includes(r) || gameInstance.isSymbolUnremovable?.(lastGrid[c][r], isFreeGame)) {
-                        keptCount++;
-                     } else if ((gameInstance as any).isGoldSymbol?.(lastGrid[c][r])) {
-                        keptCount++;
+               );
+               
+               if (!isMathId) {
+                  for (let c = 0; c < reelCount; c++) {
+                     const colWins = lastCoords.get(c.toString()) || [];
+                     let keptCount = 0;
+                     for (let r = 0; r < lastGrid[c].length; r++) {
+                        if (!colWins.includes(r) || gameInstance.isSymbolUnremovable?.(lastGrid[c][r], isFreeGame)) {
+                           keptCount++;
+                        }
+                     }
+                     const removedCount = lastGrid[c].length - keptCount;
+                     
+                     if (removedCount > 0) {
+                        const newSymbols = nextGrid[c].slice(0, removedCount);
+                        newSymbols.reverse();
+                        nextGrid[c].splice(0, removedCount, ...newSymbols);
                      }
                   }
-                  const removedCount = lastGrid[c].length - keptCount;
-                  
-                  if (removedCount > 0) {
-                     // 顛倒新符號順序: i=0 (最上面) 應該拿 8, i=1 (下面) 應該拿 9
-                     // 這在迴圈外無法對 nextGrid 作用，我們需要在 nextGrid 產生後，對每一軸前 removedCount 個符號做 reverse！
-                     const newSymbols = nextGrid[c].slice(0, removedCount);
-                     newSymbols.reverse();
-                     nextGrid[c].splice(0, removedCount, ...newSymbols);
-                  }
                }
+               
+               const evWinsNext = evaluateGrid(nextGrid, currentPaytable, gameConfig, undefined, false);
+               const coordsNext = getWinningPositions(nextGrid, evWinsNext, currentPaytable, gameType);
+               
+               let tumbleMultiplier = gameInstance.getTumbleMultiplier(dropCount, isFreeGame);
+               
+               const originalWinSumNext = evWinsNext.reduce((sum, w) => sum + (w.totalWin * betMultiplier), 0);
+               const winSumNext = originalWinSumNext * tumbleMultiplier;
+               
+               drops.push({
+                  grid: nextGrid,
+                  totalWin: winSumNext,
+                  originalWin: originalWinSumNext,
+                  multiplier: tumbleMultiplier,
+                  winningCoords: coordsNext,
+                  goldFrames: gameConfig.goldFrames,
+                  jackpots: gameConfig.jackpots
+               });
+               
+               lastGrid = nextGrid;
+               lastCoords = coordsNext;
+               hasWins = coordsNext.size > 0;
             }
-            
-            const evWinsNext = evaluateGrid(nextGrid, currentPaytable, gameType, undefined, false);
-            const coordsNext = getWinningPositions(nextGrid, evWinsNext, currentPaytable, gameType);
-            
-            let tumbleMultiplier = gameInstance.getTumbleMultiplier(dropCount, isFreeGame);
-            
-            const originalWinSumNext = evWinsNext.reduce((sum, w) => sum + (w.totalWin * betMultiplier), 0);
-            const winSumNext = originalWinSumNext * tumbleMultiplier;
-            
-            drops.push({
-               grid: nextGrid,
-               totalWin: winSumNext,
-               originalWin: originalWinSumNext,
-               multiplier: tumbleMultiplier,
-               winningCoords: coordsNext
-            });
-            
-            lastGrid = nextGrid;
-            lastCoords = coordsNext;
-            hasWins = coordsNext.size > 0;
          }
 
          const stepTotalWin = drops.reduce((sum, drop) => sum + drop.totalWin, 0);

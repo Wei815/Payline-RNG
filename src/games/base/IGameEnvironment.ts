@@ -4,6 +4,7 @@ import type { WinResult } from '../../utils/evaluation';
 export interface IGameEnvironment {
   readonly id: GameType;
   readonly name: string;
+  hasCascadeFeature?(): boolean;
   getDefaultConfig(): GameConfig;
   getDefaultPaytable(): PaytableRule[];
   getDefaultReelStrips(): ReelStrips;

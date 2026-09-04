@@ -4,52 +4,225 @@ import { useMachineStore } from '../../store/useMachineStore';
 import type { JiraIssueDetail } from '../../store/useMachineStore';
 import Papa from 'papaparse';
 
-interface JiraReportGeneratorProps {
+interface JiraReportGeneratorWebProps {
   onClose: () => void;
 }
 
 const orderedProjects = [
-  'RSG.Console.Lobby\n(大廳)',
-  'RSG.Console.Machine.Common\n(硬體共用)',
-  'RSG.Console.Slot.Common\n(遊戲共用)',
-  'RSG.Console.Slot.BattleOfSet2Awakening\n(決戰賽特2)',
-  'RSG.Console.Slot.BountyHunter\n(賞金獵人)',
-  'RSG.Console.Slot.CaishenComing\n(有請財神)',
-  'RSG.Console.Slot.ChinShiHuang\n(秦皇傳說)',
-  'RSG.Console.Slot.ChineseNewYear3\n(大過年3)',
-  'RSG.Console.Slot.FortuneOfAztecs\n(勇闖黃金城)',
-  'RSG.Console.Slot.GoldChicken\n(金雞有喜)',
-  'RSG.Console.Slot.HappyFarm\n(開心農場)',
-  'RSG.Console.Slot.LegendOfLuBu\n(戰神呂布)',
-  'RSG.Console.Slot.LuckyDog\n(狗來富)',
-  'RSG.Console.Slot.PowerOfThor\n(雷神之錘)',
-  'RSG.Console.Slot.PowerOfThor2\n(雷神之錘 II：雷霆風暴)',
-  'RSG.Console.Slot.RichMahjong\n(麻將發了)',
-  'RSG.Console.Slot.RichMahjong2\n(麻將發了2)',
-  'RSG.Console.Slot.SuperAce2\n(超級王牌2)',
-  'RSG.Console.Slot.TheLuxe\n(奢華)'
+  'RSG.Web.Slot.Common\n(電子共用)',
+  'RSG.Web.Fish.Common\n(魚機共用)',
+  'RSG.Web.EventIssues\n(活動)',
+  'RSG.Web.Slot.FortuneThai\n(泰有錢)',
+  'RSG.Web.Slot.MagicGem\n(魔法石)',
+  'RSG.Web.Slot.Royal777\n(皇家777)',
+  'RSG.Web.Slot.LoveCity\n(慾望城市)',
+  'RSG.Web.Slot.GoldChicken\n(金鷄報喜)',
+  'RSG.Web.Slot.Pharaoh\n(法老王)',
+  'RSG.Web.Slot.Alibaba\n(阿里巴巴)',
+  'RSG.Web.Slot.LuckyFruits\n(幸運水果)',
+  'RSG.Web.Slot.Jungle\n(動物叢林)',
+  'RSG.Web.Slot.CaptainHook\n(虎克船長)',
+  'RSG.Web.Slot.HUCA\n(野蠻遊戲)',
+  'RSG.Web.Slot.SweetCandy\n(甜蜜糖果)',
+  'RSG.Web.Slot.FireSpin\n(烈焰轉輪)',
+  'RSG.Web.Slot.Popeye\n(大力水手)',
+  'RSG.Web.Slot.CrazyDoctor\n(瘋狂博士)',
+  'RSG.Web.Slot.Nonstop\n(永不停止)',
+  'RSG.Web.Slot.5Dragons\n(五龍爭霸)',
+  'RSG.Web.Slot.72Changes\n(七十二變)',
+  'RSG.Web.Slot.Mermaid\n(人魚傳說)',
+  'RSG.Web.Slot.Buffalo\n(荒野水牛)',
+  'RSG.Web.Slot.WildPanda\n(竹林熊貓)',
+  'RSG.Web.Slot.LuckyThailand\n(泰好運)',
+  'RSG.Web.Slot.GodofWealth\n(財神到)',
+  'RSG.Web.Slot.LuckyDragon\n(行運一條龍)',
+  'RSG.Web.Slot.HUSA\n(HUSA)',
+  'RSG.Web.Slot.DragonKing\n(龍王)',
+  'RSG.Web.Slot.TikiParty\n(提金派對)',
+  'RSG.Web.Slot.GoblinMiner\n(礦工哥布林)',
+  'RSG.Web.Slot.LuckyBar\n(幸運拉霸)',
+  'RSG.Web.Slot.Africa\n(非洲)',
+  'RSG.Web.Slot.WizardStore\n(巫師商店)',
+  'RSG.Web.Slot.MrDoggy\n(家犬先生)',
+  'RSG.Web.Slot.DiscoNight\n(迪斯可之夜)',
+  'RSG.Web.Slot.HorrorNights\n(農場夜驚魂)',
+  'RSG.Web.Slot.ChinaEmpress\n(武媚娘)',
+  'RSG.Web.Slot.FuWaFaFa\n(福娃發發)',
+  'RSG.Web.Slot.Tarzan\n(泰山)',
+  'RSG.Web.Slot.Jalapeno\n(墨西哥辣椒)',
+  'RSG.Web.Slot.PiggyPunch\n(金豬爆吉)',
+  'RSG.Web.Slot.SevensHigh\n(七起來)',
+  'RSG.Web.Slot.Kunoichi\n(女忍者)',
+  'RSG.Web.Slot.Ninja\n(忍者)',
+  'RSG.Web.Slot.Jelly27\n(果凍27)',
+  'RSG.Web.Slot.AngryBear\n(暴怒棕熊)',
+  'RSG.Web.Slot.Poseidon\n(海神)',
+  'RSG.Web.Slot.DancingLion\n(跳跳獅)',
+  'RSG.Web.Slot.Medusa\n(美杜莎)',
+  'RSG.Web.Slot.Medea\n(美狄亞)',
+  'RSG.Web.Slot.NeonCircle\n(霓虹圓)',
+  'RSG.Web.Slot.GetHigh\n(嗨起來)',
+  'RSG.Web.Slot.Cowboy\n(西部牛仔)',
+  'RSG.Web.Slot.TheLittleMatchGirl\n(賣火柴的小女孩)',
+  'RSG.Web.Slot.MysteryPanda\n(秘林熊貓)',
+  'RSG.Web.Slot.HipHopMonkey\n(嘻哈金剛)',
+  'RSG.Web.Slot.BookofGold\n(黃金之書)',
+  'RSG.Web.Slot.TaiChi\n(太極)',
+  'RSG.Web.Slot.GoldenLeafClover\n(金色幸運草)',
+  'RSG.Web.Slot.WizardStoreGold\n(巫師商店黃金版)',
+  'RSG.Web.Slot.RatsMoney\n(鼠來寶)',
+  'RSG.Web.Slot.Songkran\n(潑水節)',
+  'RSG.Web.Slot.ElfArcher\n(精靈射手)',
+  'RSG.Web.Slot.Luchadors\n(黃金摔角手)',
+  'RSG.Web.Slot.BearKingdom\n(小熊王國)',
+  'RSG.Web.Slot.Royal7777\n(皇家7777)',
+  'RSG.Web.Slot.DragonKing2\n(龍王2)',
+  'RSG.Web.Slot.PharaohII\n(法老王 II)',
+  'RSG.Web.Slot.DragonFight\n(龍行天下)',
+  'RSG.Web.Slot.Roma\n(羅馬競技場)',
+  'RSG.Web.Slot.HappyFarm\n(開心農場)',
+  'RSG.Web.Slot.PowerOfThor\n(雷神之錘)',
+  'RSG.Web.Slot.ChinShiHuang\n(秦皇傳說)',
+  'RSG.Web.Slot.CaishenWins\n(聚寶財神)',
+  'RSG.Web.Slot.FortuneOfAztecs\n(勇闖黃金城)',
+  'RSG.Web.Slot.MahjongWays\n(麻將發了)',
+  'RSG.Web.Slot.DragonLegend\n(魔龍傳奇)',
+  'RSG.Web.Slot.CaishenComing\n(有請財神)',
+  'RSG.Web.Slot.LegendOfLuBu\n(戰神呂布)',
+  'RSG.Web.Slot.LuckyDog\n(狗來富)',
+  'RSG.Web.Slot.JurassicTreasure\n(侏羅紀寶藏)',
+  'RSG.Web.Slot.FortuneGems4\n(迦羅寶石4)',
+  'RSG.Web.Slot.NightMarket3\n(逛夜市3)',
+  'RSG.Web.Slot.ChineseNewYear3\n(大過年3)',
+  'RSG.Web.Slot.SuperAce2\n(超級王牌2)',
+  'RSG.Web.Slot.Power of Thor Thunder Storm\n(雷神之錘2)',
+  'RSG.Web.Slot.BountyHunter\n(賞金獵人)',
+  'RSG.Web.Slot.RoyalGanesha\n(皇家金象)',
+  'RSG.Web.Cascading.EnergyCombo\n(能量外星人)',
+  'RSG.Web.Slot.Racing Master\n(極速巔峰)',
+  'RSG.Web.Slot.Tsar Showdown\n(沙皇對決)',
+  'RSG.Web.Slot.Trumpo\n(Trumpo)',
+  'RSG.Web.Slot.ModernWar\n(現代戰爭)',
+  'RSG.Web.Slot.Atlantis\n(亞特蘭提斯)',
+  'RSG.Web.Slot.ColorCircle\n(ColorCircle)',
+  'RSG.Web.Slot.NinjaBoy\n(NinjaBoy)',
+  'RSG.Web.Slot.GodOfWarsThorVsSeth\n(諸神之戰：雷神VS戰神)',
+  'RSG.Web.Slot.TheLuxe\n(奢華)',
+  'RSG.Web.Slot.BattleOfSet2Awakening\n(決戰賽特2：全面覺醒)',
+  'RSG.Web.Slot.DeluxeStorm\n(黑金風暴)',
+  'RSG.Web.Slot.StormOfSeth2Awakening\n(戰神賽特2：覺醒之力)',
+  'RSG.Web.Fish.OceanEmperor\n(八爪天下海霸王)',
+  'RSG.Web.Fish.FuwaFishing\n(福娃捕魚)',
+  'RSG.Web.Poker.Crown5PK\n(皇冠5PK)',
 ];
 
 const projectKeyMap: Record<string, string> = {
-  'RSGCL': 'RSG.Console.Lobby\n(大廳)',
-  'RSGCMC': 'RSG.Console.Machine.Common\n(硬體共用)',
-  'RSGCSC': 'RSG.Console.Slot.Common\n(遊戲共用)',
-  'RSGCBOS2': 'RSG.Console.Slot.BattleOfSet2Awakening\n(決戰賽特2)',
-  'RSGCBH': 'RSG.Console.Slot.BountyHunter\n(賞金獵人)',
-  'RSGCCC': 'RSG.Console.Slot.CaishenComing\n(有請財神)',
-  'RSGCCHN': 'RSG.Console.Slot.ChinShiHuang\n(秦皇傳說)',
-  'RSGCCNY3': 'RSG.Console.Slot.ChineseNewYear3\n(大過年3)',
-  'RSGCFA': 'RSG.Console.Slot.FortuneOfAztecs\n(勇闖黃金城)',
-  'RSGCGC': 'RSG.Console.Slot.GoldChicken\n(金雞有喜)',
-  'RSGCHF': 'RSG.Console.Slot.HappyFarm\n(開心農場)',
-  'RSGCLEG': 'RSG.Console.Slot.LegendOfLuBu\n(戰神呂布)',
-  'RSGCLD': 'RSG.Console.Slot.LuckyDog\n(狗來富)',
-  'RSGCPOW': 'RSG.Console.Slot.PowerOfThor\n(雷神之錘)',
-  'RSGCPOW2': 'RSG.Console.Slot.PowerOfThor2\n(雷神之錘 II：雷霆風暴)',
-  'RSGCRM': 'RSG.Console.Slot.RichMahjong\n(麻將發了)',
-  'RSGCRM2': 'RSG.Console.Slot.RichMahjong2\n(麻將發了2)',
-  'RSGCSA2': 'RSG.Console.Slot.SuperAce2\n(超級王牌2)',
-  'RSGCLUXE': 'RSG.Console.Slot.TheLuxe\n(奢華)',
+  'SC': 'RSG.Web.Slot.Common\n(電子共用)',
+  'RSGFC': 'RSG.Web.Fish.Common\n(魚機共用)',
+  'EV': 'RSG.Web.EventIssues\n(活動)',
+  'FOR': 'RSG.Web.Slot.FortuneThai\n(泰有錢)',
+  'MAG': 'RSG.Web.Slot.MagicGem\n(魔法石)',
+  'RL': 'RSG.Web.Slot.Royal7777\n(皇家7777)',
+  'ROYAL': 'RSG.Web.Slot.Royal777\n(皇家777)',
+  'LOV': 'RSG.Web.Slot.LoveCity\n(慾望城市)',
+  'GOL': 'RSG.Web.Slot.GoldChicken\n(金鷄報喜)',
+  'PHAR': 'RSG.Web.Slot.Pharaoh\n(法老王)',
+  'AL': 'RSG.Web.Slot.Alibaba\n(阿里巴巴)',
+  'LCKFRTS': 'RSG.Web.Slot.LuckyDragon\n(行運一條龍)',
+  'JUN': 'RSG.Web.Slot.Jungle\n(動物叢林)',
+  'CAP': 'RSG.Web.Slot.CaptainHook\n(虎克船長)',
+  'HUCA': 'RSG.Web.Slot.HUCA\n(野蠻遊戲)',
+  'SWEET': 'RSG.Web.Slot.SweetCandy\n(甜蜜糖果)',
+  'FIR': 'RSG.Web.Slot.FireSpin\n(烈焰轉輪)',
+  'POP': 'RSG.Web.Slot.Popeye\n(大力水手)',
+  'CRAZ': 'RSG.Web.Slot.CrazyDoctor\n(瘋狂博士)',
+  'NON': 'RSG.Web.Slot.Nonstop\n(永不停止)',
+  'KBWE': 'RSG.Web.Slot.5Dragons\n(五龍爭霸)',
+  'TWCH': 'RSG.Web.Slot.72Changes\n(七十二變)',
+  'MER': 'RSG.Web.Slot.Mermaid\n(人魚傳說)',
+  'BUF': 'RSG.Web.Slot.Buffalo\n(荒野水牛)',
+  'WIL': 'RSG.Web.Slot.WildPanda\n(竹林熊貓)',
+  'LUC': 'RSG.Web.Slot.LuckyThailand\n(泰好運)',
+  'GOD': 'RSG.Web.Slot.GodofWealth\n(財神到)',
+  'HUSA': 'RSG.Web.Slot.HUSA\n(HUSA)',
+  'DRAG': 'RSG.Web.Slot.DragonKing\n(龍王)',
+  'TIK': 'RSG.Web.Slot.TikiParty\n(提金派對)',
+  'GOB': 'RSG.Web.Slot.GoblinMiner\n(礦工哥布林)',
+  'LCKBR': 'RSG.Web.Slot.LuckyBar\n(幸運拉霸)',
+  'AF': 'RSG.Web.Slot.Africa\n(非洲)',
+  'WIZ': 'RSG.Web.Slot.WizardStore\n(巫師商店)',
+  'MRDOG': 'RSG.Web.Slot.MrDoggy\n(家犬先生)',
+  'DIS': 'RSG.Web.Slot.DiscoNight\n(迪斯可之夜)',
+  'HOR': 'RSG.Web.Slot.HorrorNights\n(農場夜驚魂)',
+  'CHIN': 'RSG.Web.Slot.ChinaEmpress\n(武媚娘)',
+  'FUW': 'RSG.Web.Slot.FuWaFaFa\n(福娃發發)',
+  'TAR': 'RSG.Web.Slot.Tarzan\n(泰山)',
+  'JAL': 'RSG.Web.Slot.Jalapeno\n(墨西哥辣椒)',
+  'PIG': 'RSG.Web.Slot.PiggyPunch\n(金豬爆吉)',
+  'SEV': 'RSG.Web.Slot.SevensHigh\n(七起來)',
+  'KUN': 'RSG.Web.Slot.Kunoichi\n(女忍者)',
+  'NIN': 'RSG.Web.Slot.Ninja\n(忍者)',
+  'JEL': 'RSG.Web.Slot.Jelly27\n(果凍27)',
+  'AN': 'RSG.Web.Slot.AngryBear\n(暴怒棕熊)',
+  'POS': 'RSG.Web.Slot.Poseidon\n(海神)',
+  'DAN': 'RSG.Web.Slot.DancingLion\n(跳跳獅)',
+  'MED': 'RSG.Web.Slot.Medusa\n(美杜莎)',
+  'MD': 'RSG.Web.Slot.Medea\n(美狄亞)',
+  'NEON': 'RSG.Web.Slot.NeonCircle\n(霓虹圓)',
+  'GET': 'RSG.Web.Slot.GetHigh\n(嗨起來)',
+  'COW': 'RSG.Web.Slot.Cowboy\n(西部牛仔)',
+  'THEL': 'RSG.Web.Slot.TheLittleMatchGirl\n(賣火柴的小女孩)',
+  'MYS': 'RSG.Web.Slot.MysteryPanda\n(秘林熊貓)',
+  'HIP': 'RSG.Web.Slot.HipHopMonkey\n(嘻哈金剛)',
+  'BOOK': 'RSG.Web.Slot.BookofGold\n(黃金之書)',
+  'TAIC': 'RSG.Web.Slot.TaiChi\n(太極)',
+  'GL': 'RSG.Web.Slot.GoldenLeafClover\n(金色幸運草)',
+  'WZ': 'RSG.Web.Slot.WizardStoreGold\n(巫師商店黃金版)',
+  'RAT': 'RSG.Web.Slot.RatsMoney\n(鼠來寶)',
+  'SON': 'RSG.Web.Slot.Songkran\n(潑水節)',
+  'EL': 'RSG.Web.Slot.ElfArcher\n(精靈射手)',
+  'LCHDRS': 'RSG.Web.Slot.Luchadors\n(黃金摔角手)',
+  'BEAR': 'RSG.Web.Slot.BearKingdom\n(小熊王國)',
+  'DRG2': 'RSG.Web.Slot.DragonKing2\n(龍王2)',
+  'PHR': 'RSG.Web.Slot.PharaohII\n(法老王 II)',
+  'DRGNFGHT': 'RSG.Web.Slot.DragonFight\n(龍行天下)',
+  'ROMA': 'RSG.Web.Slot.Roma\n(羅馬競技場)',
+  'HAP': 'RSG.Web.Slot.HappyFarm\n(開心農場)',
+  'POW': 'RSG.Web.Slot.PowerOfThor\n(雷神之錘)',
+  'CHN': 'RSG.Web.Slot.ChinShiHuang\n(秦皇傳說)',
+  'CAIS': 'RSG.Web.Slot.CaishenWins\n(聚寶財神)',
+  'FRTNFZTCS': 'RSG.Web.Slot.FortuneOfAztecs\n(勇闖黃金城)',
+  'MAH': 'RSG.Web.Slot.MahjongWays\n(麻將發了)',
+  'MH': 'RSG.Web.Slot.MahjongWays2\n(麻將發了)',
+  'DRGNLGND': 'RSG.Web.Slot.DragonLegend\n(魔龍傳奇)',
+  'CSHNCMNG': 'RSG.Web.Slot.CaishenComing\n(有請財神)',
+  'LEG': 'RSG.Web.Slot.LegendOfLuBu\n(戰神呂布)',
+  'LCKDG': 'RSG.Web.Slot.LuckyDog\n(狗來富)',
+  'RSGJT': 'RSG.Web.Slot.JurassicTreasure\n(侏羅紀寶藏)',
+  'RWSF': 'RSG.Web.Slot.FortuneGems4\n(迦羅寶石4)',
+  'RWSN': 'RSG.Web.Slot.NightMarket3\n(逛夜市3)',
+  'RWSC': 'RSG.Web.Slot.ChineseNewYear3\n(大過年3)',
+  'RWSS': 'RSG.Web.Slot.SuperAce2\n(超級王牌2)',
+  'RSGPOW2': 'RSG.Web.Slot.Power of Thor Thunder Storm\n(雷神之錘2)',
+  'RSGBH': 'RSG.Web.Slot.BountyHunter\n(賞金獵人)',
+  'RSGRG': 'RSG.Web.Slot.RoyalGanesha\n(皇家金象)',
+  'EN': 'RSG.Web.Cascading.EnergyCombo\n(能量外星人)',
+  'RSGRM': 'RSG.Web.Slot.Racing Master\n(極速巔峰)',
+  'RSGTS': 'RSG.Web.Slot.Tsar Showdown\n(沙皇對決)',
+  'TRUM': 'RSG.Web.Slot.Trumpo\n(Trumpo)',
+  'MOD': 'RSG.Web.Slot.ModernWar\n(現代戰爭)',
+  'AT': 'RSG.Web.Slot.Atlantis\n(亞特蘭提斯)',
+  'COL': 'RSG.Web.Slot.ColorCircle\n(ColorCircle)',
+  'NN': 'RSG.Web.Slot.NinjaBoy\n(NinjaBoy)',
+  'RSGGOW': 'RSG.Web.Slot.GodOfWarsThorVsSeth\n(諸神之戰：雷神VS戰神)',
+  'RSGLUXE': 'RSG.Web.Slot.TheLuxe\n(奢華)',
+  'RSGBOS2': 'RSG.Web.Slot.BattleOfSet2Awakening\n(決戰賽特2：全面覺醒)',
+  'RSGDS': 'RSG.Web.Slot.DeluxeStorm\n(黑金風暴)',
+  'RSGSOS2A': 'RSG.Web.Slot.StormOfSeth2Awakening\n(戰神賽特2：覺醒之力)',
+  'OC': 'RSG.Web.Fish.OceanEmperor\n(八爪天下海霸王)',
+  'FW': 'RSG.Web.Fish.FuwaFishing\n(福娃捕魚)',
+  'RWPC': 'RSG.Web.Poker.Crown5PK\n(皇冠5PK)',
+  'RWSR': 'RSG.Web.Slot.RichMahjong2\n(麻將發了2)',
 };
 
 const statusMap: Record<string, string> = {
@@ -63,9 +236,14 @@ const statusMap: Record<string, string> = {
 
 const COLUMNS = ['專案', '未解決', '待辦', '待優化', '觀察中', '後續安排進測(已解決)'];
 
-export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClose }) => {
-  const { jiraReportData = [], jiraReportFileName, setJiraReportData, setJiraReportFileName, jiraIssuesByProject, setJiraIssuesByProject } = useMachineStore();
+export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ onClose }) => {
+  const { jiraReportWebData = [], jiraReportWebFileName, setJiraReportWebData, setJiraReportWebFileName, jiraIssuesWebByProject, setJiraIssuesWebByProject } = useMachineStore();
   const [copySuccess, setCopySuccess] = useState(false);
+  const [hideEmpty, setHideEmpty] = useState(true);
+  
+  const displayData = hideEmpty 
+    ? (jiraReportWebData || []).filter(row => row.some((cell, idx) => idx > 0 && cell && cell.trim() !== '')) 
+    : (jiraReportWebData || []);
   const [errorMsg, setErrorMsg] = useState('');
   
   // MR form states
@@ -84,7 +262,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
       const xlsx = await import('xlsx');
       
       const projectsToRender = selectedProjectDetails === 'ALL' 
-        ? Object.keys(jiraIssuesByProject || {})
+        ? Object.keys(jiraIssuesWebByProject || {})
         : [selectedProjectDetails];
       
       const rows: any[][] = [
@@ -96,7 +274,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
 
       projectsToRender.forEach(proj => {
         if (!proj) return;
-        const pIssues = jiraIssuesByProject?.[proj] || [];
+        const pIssues = jiraIssuesWebByProject?.[proj] || [];
         const filteredPIssues = pIssues.filter(issue => 
           (reporterFilter === 'All' || issue.reporter === reporterFilter) &&
           (assigneeFilter === 'All' || issue.assignee === assigneeFilter) &&
@@ -168,8 +346,8 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
     setCopySuccess(false);
     setErrorMsg('');
     if (!csvText.trim()) {
-      setJiraReportData([]);
-      setJiraIssuesByProject(null);
+      setJiraReportWebData([]);
+      setJiraIssuesWebByProject(null);
       return;
     }
 
@@ -313,7 +491,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
       finalRows.push(row);
     });
     
-    setJiraReportData(finalRows);
+    setJiraReportWebData(finalRows);
     
     // Sort the detailed issues for the modal view from smallest to largest number
     Object.keys(issuesByProj).forEach(proj => {
@@ -324,11 +502,11 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
       });
     });
     
-    setJiraIssuesByProject(issuesByProj);
+    setJiraIssuesWebByProject(issuesByProj);
   };
 
   const generateTableHtml = () => {
-    if (!jiraReportData || !jiraReportData.length) return '';
+    if (!displayData || !displayData.length) return '';
     let html = '<table style="border-collapse: collapse; font-family: sans-serif; width: 100%;">';
     // Header
     html += '<tr>';
@@ -337,7 +515,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
     });
     html += '</tr>';
     // Rows
-    (jiraReportData || []).forEach(row => {
+    displayData.forEach(row => {
       html += '<tr>';
       row.forEach((cell, idx) => {
         let cellContent = cell.replace(/\n/g, '<br/>');
@@ -365,7 +543,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
     // Reset input value to allow selecting the same file again
     e.target.value = '';
     
-    setJiraReportFileName(file.name);
+    setJiraReportWebFileName(file.name);
     const reader = new FileReader();
     reader.onload = (evt) => {
       const text = evt.target?.result as string;
@@ -376,11 +554,11 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
   };
 
   const handleCopy = async () => {
-    if (!jiraReportData || !jiraReportData.length) return;
+    if (!jiraReportWebData || !jiraReportWebData.length) return;
     const html = generateTableHtml();
     
     // Fallback TSV string
-    const safeData = jiraReportData || [];
+    const safeData = displayData || [];
     const tsv = [COLUMNS.join('\t'), ...safeData.map(row => row.map(cell => {
       if (cell.includes('\n') || cell.includes('\t') || cell.includes('"')) {
         return `"${cell.replace(/"/g, '""')}"`;
@@ -407,9 +585,9 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
   };
 
   const generateMrText = () => {
-    if (!jiraReportData) return '';
+    if (!jiraReportWebData) return '';
     return mrSelectedProjects.map(proj => {
-      const row = jiraReportData.find(r => r[0] === proj);
+      const row = jiraReportWebData.find(r => r[0] === proj);
       if (!row) return '';
       let text = `${proj}\n`;
       let hasData = false;
@@ -441,7 +619,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
             <div className="p-2 bg-blue-500/20 rounded-lg">
               <FileSpreadsheet className="w-5 h-5 text-blue-400" />
             </div>
-            <h2 className="text-lg font-bold text-white">Jira CSV 報表轉換器(機台)</h2>
+            <h2 className="text-lg font-bold text-white">Jira CSV 報表轉換器(WEB)</h2>
           </div>
           <button 
             onClick={onClose}
@@ -468,8 +646,8 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
               <ExternalLink className="w-5 h-5" />
               開啟目標追蹤表
             </button>
-            <span className={`text-sm font-bold ${jiraReportFileName ? 'text-green-300' : 'text-gray-400'} ml-2`}>
-              {jiraReportFileName ? `已上傳檔案: ${jiraReportFileName}` : '尚未上傳任何檔案'}
+            <span className={`text-sm font-bold ${jiraReportWebFileName ? 'text-green-300' : 'text-gray-400'} ml-2`}>
+              {jiraReportWebFileName ? `已上傳檔案: ${jiraReportWebFileName}` : '尚未上傳任何檔案'}
             </span>
           </div>
           {errorMsg && (
@@ -491,14 +669,18 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                 預覽並複製轉換結果 (TSV 格式)
               </label>
               <div className="flex items-center gap-3">
-                <button
+                <label className="flex items-center gap-2 text-gray-300 cursor-pointer">
+                  <input type="checkbox" checked={hideEmpty} onChange={(e) => setHideEmpty(e.target.checked)} className="w-4 h-4 rounded bg-[#0a192f] border-gray-600 text-blue-500" />
+                  <span className="text-sm font-bold">隱藏無資料專案</span>
+                </label>
+<button
                   onClick={() => {
                     setSelectedProjectDetails('ALL');
                     setReporterFilter('All');
                     setAssigneeFilter('All');
                     setStatusFilter('All');
                   }}
-                  disabled={!jiraReportData || jiraReportData.length === 0}
+                  disabled={!displayData || displayData.length === 0}
                   className="flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-bold rounded-lg transition-colors shadow-lg"
                 >
                   👁️ 查看所有專案細項
@@ -508,14 +690,14 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                     setMrSelectedProjects([]);
                     setShowMrModal(true);
                   }}
-                  disabled={!jiraReportData || jiraReportData.length === 0}
+                  disabled={!displayData || displayData.length === 0}
                   className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-bold rounded-lg transition-colors shadow-lg"
                 >
                   📝 產生 MR 表單
                 </button>
                 <button
                   onClick={handleCopy}
-                  disabled={!jiraReportData || jiraReportData.length === 0}
+                  disabled={!displayData || displayData.length === 0}
                   className={`flex items-center gap-2 px-4 py-2 text-white text-sm font-bold rounded-lg transition-colors shadow-lg ${
                     copySuccess 
                       ? 'bg-green-500 hover:bg-green-600'
@@ -528,8 +710,8 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
               </div>
             </div>
             {/* Visual Table Preview */}
-            <div className={`w-full flex-1 min-h-[400px] border rounded-lg overflow-auto ${jiraReportData && jiraReportData.length > 0 ? 'bg-white border-gray-700 p-1' : 'bg-[#0a192f]/50 border-gray-700 border-dashed flex flex-col items-center justify-center p-8'}`}>
-              {jiraReportData && jiraReportData.length > 0 ? (
+            <div className={`w-full flex-1 min-h-[400px] border rounded-lg overflow-auto ${displayData && displayData.length > 0 ? 'bg-white border-gray-700 p-1' : 'bg-[#0a192f]/50 border-gray-700 border-dashed flex flex-col items-center justify-center p-8'}`}>
+              {displayData && displayData.length > 0 ? (
                 <table className="w-full text-black border-collapse border border-gray-300">
                   <thead className="bg-gray-100">
                     <tr>
@@ -539,7 +721,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                     </tr>
                   </thead>
                   <tbody>
-                    {(jiraReportData || []).map((row, idx) => (
+                    {displayData.map((row, idx) => (
                       <tr key={idx} className="hover:bg-blue-50/50">
                         {row.map((cell, cIdx) => (
                           <td key={cIdx} className="border border-gray-300 p-1" style={
@@ -613,12 +795,12 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                 <div className="flex justify-between items-center shrink-0">
                   <span className="text-white font-bold">選擇專案</span>
                   <div className="flex gap-2">
-                    <button className="text-xs bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 px-2 py-1 rounded transition-colors" onClick={() => setMrSelectedProjects((jiraReportData || []).map(r => r[0]))}>全選</button>
+                    <button className="text-xs bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 px-2 py-1 rounded transition-colors" onClick={() => setMrSelectedProjects((jiraReportWebData || []).map(r => r[0]))}>全選</button>
                     <button className="text-xs bg-gray-500/20 hover:bg-gray-500/40 text-gray-300 px-2 py-1 rounded transition-colors" onClick={() => setMrSelectedProjects([])}>全不選</button>
                   </div>
                 </div>
                 <div className="flex flex-col gap-2 overflow-y-auto flex-1 pr-2 min-h-0">
-                  {(jiraReportData || []).map(row => (
+                  {(jiraReportWebData || []).map(row => (
                     <label key={row[0]} className="flex items-start gap-2 text-sm text-gray-300 cursor-pointer hover:text-white py-1">
                       <input type="checkbox" checked={mrSelectedProjects.includes(row[0])} onChange={(e) => {
                         if (e.target.checked) setMrSelectedProjects([...mrSelectedProjects, row[0]]);
@@ -643,7 +825,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                 </div>
                 <div className="flex-1 w-full min-h-0 bg-[#050b14] text-sm p-4 rounded-lg border border-gray-700 overflow-y-auto font-mono">
                   {mrSelectedProjects.map((proj) => {
-                    const row = jiraReportData?.find(r => r[0] === proj);
+                    const row = jiraReportWebData?.find(r => r[0] === proj);
                     if (!row) return null;
                     let hasData = false;
                     const items = [];
@@ -694,7 +876,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
         let modalTitle = '';
         if (selectedProjectDetails === 'ALL') {
           modalTitle = '所有專案議題狀態';
-          projectIssues = Object.values(jiraIssuesByProject || {}).flat();
+          projectIssues = Object.values(jiraIssuesWebByProject || {}).flat();
           projectIssues.sort((a, b) => {
             const numA = parseInt(a.issueKey.split('-')[1]) || 0;
             const numB = parseInt(b.issueKey.split('-')[1]) || 0;
@@ -702,7 +884,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
           });
         } else {
           modalTitle = `專案議題狀態 - ${selectedProjectDetails.split('\n')[0]}`;
-          projectIssues = jiraIssuesByProject?.[selectedProjectDetails] || [];
+          projectIssues = jiraIssuesWebByProject?.[selectedProjectDetails] || [];
         }
 
         const uniqueReporters = Array.from(new Set(projectIssues.map(issue => issue.reporter))).filter(name => name && name !== '未知');
@@ -773,11 +955,11 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
             <div className="p-6 flex-1 overflow-auto">
               {(() => {
                 const projectsToRender = selectedProjectDetails === 'ALL' 
-                  ? Object.keys(jiraIssuesByProject || {})
+                  ? Object.keys(jiraIssuesWebByProject || {})
                   : [selectedProjectDetails];
 
                 const renderedProjects = projectsToRender.map(proj => {
-                  const pIssues = jiraIssuesByProject?.[proj] || [];
+                  const pIssues = jiraIssuesWebByProject?.[proj] || [];
                   
                   const filteredPIssues = pIssues.filter(issue => 
                     (reporterFilter === 'All' || issue.reporter === reporterFilter) &&
