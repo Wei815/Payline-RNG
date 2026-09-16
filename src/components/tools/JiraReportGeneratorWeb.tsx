@@ -250,12 +250,20 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
   const [showMrModal, setShowMrModal] = useState(false);
   const [mrSelectedProjects, setMrSelectedProjects] = useState<string[]>([]);
   const [mrCopySuccess, setMrCopySuccess] = useState(false);
+  const [mrSearchQuery, setMrSearchQuery] = useState('');
+  
+  const filteredMrProjects = displayData.filter(row => 
+    row[0].toLowerCase().includes(mrSearchQuery.toLowerCase())
+  );
   
   // Project Details Modal states
   const [selectedProjectDetails, setSelectedProjectDetails] = useState<string | null>(null);
   const [reporterFilter, setReporterFilter] = useState('All');
   const [assigneeFilter, setAssigneeFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [projectsFilter, setProjectsFilter] = useState<string[]>([]);
+  const [projectsSearchQuery, setProjectsSearchQuery] = useState('');
+  const [isProjectsFilterOpen, setIsProjectsFilterOpen] = useState(false);
   
   const handleExportExcel = async () => {
     try {
@@ -615,11 +623,26 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
       <div className="bg-[#0a192f] w-[95vw] max-w-[1600px] rounded-xl shadow-2xl border border-blue-500/30 flex flex-col overflow-hidden max-h-[95vh]">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-[#112240]">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <div className="p-2 bg-blue-500/20 rounded-lg">
               <FileSpreadsheet className="w-5 h-5 text-blue-400" />
             </div>
-            <h2 className="text-lg font-bold text-white">Jira CSV 報表轉換器(WEB)</h2>
+            <h2 className="text-lg font-bold text-white flex items-center gap-4">
+              Jira CSV 報表轉換器
+              <div className="flex items-center bg-[#0a192f] p-1 rounded-lg border border-gray-700">
+                <button 
+                  onClick={() => useMachineStore.getState().setActiveModalTool('jiraReport')}
+                  className="px-4 py-1 rounded text-gray-400 hover:text-white text-sm font-bold transition-colors"
+                >
+                  機台
+                </button>
+                <button 
+                  className="px-4 py-1 rounded bg-blue-500 text-white text-sm font-bold shadow-sm"
+                >
+                  WEB
+                </button>
+              </div>
+            </h2>
           </div>
           <button 
             onClick={onClose}
@@ -679,6 +702,8 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
                     setReporterFilter('All');
                     setAssigneeFilter('All');
                     setStatusFilter('All');
+                    setProjectsFilter(Object.keys(jiraIssuesWebByProject || {}) || []);
+                    setProjectsFilter(Object.keys(jiraIssuesWebByProject || {}) || []);
                   }}
                   disabled={!displayData || displayData.length === 0}
                   className="flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-bold rounded-lg transition-colors shadow-lg"
@@ -795,12 +820,22 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
                 <div className="flex justify-between items-center shrink-0">
                   <span className="text-white font-bold">選擇專案</span>
                   <div className="flex gap-2">
-                    <button className="text-xs bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 px-2 py-1 rounded transition-colors" onClick={() => setMrSelectedProjects((jiraReportWebData || []).map(r => r[0]))}>全選</button>
+                    <button className="text-xs bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 px-2 py-1 rounded transition-colors" onClick={() => setMrSelectedProjects(filteredMrProjects.map(r => r[0]))}>全選</button>
                     <button className="text-xs bg-gray-500/20 hover:bg-gray-500/40 text-gray-300 px-2 py-1 rounded transition-colors" onClick={() => setMrSelectedProjects([])}>全不選</button>
                   </div>
                 </div>
+                
+                <div className="px-0 pb-2">
+                  <input
+                    type="text"
+                    placeholder="🔍 搜尋專案名稱..."
+                    value={mrSearchQuery}
+                    onChange={(e) => setMrSearchQuery(e.target.value)}
+                    className="w-full bg-[#112240] border border-gray-600 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 shrink-0"
+                  />
+                </div>
                 <div className="flex flex-col gap-2 overflow-y-auto flex-1 pr-2 min-h-0">
-                  {(jiraReportWebData || []).map(row => (
+                  {filteredMrProjects.map(row => (
                     <label key={row[0]} className="flex items-start gap-2 text-sm text-gray-300 cursor-pointer hover:text-white py-1">
                       <input type="checkbox" checked={mrSelectedProjects.includes(row[0])} onChange={(e) => {
                         if (e.target.checked) setMrSelectedProjects([...mrSelectedProjects, row[0]]);
@@ -900,7 +935,51 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
                   {modalTitle}
                 </h2>
                 <div className="flex items-center gap-2">
-                  {uniqueStatuses.length > 0 && (
+                  
+                                                      {selectedProjectDetails === 'ALL' && (() => {
+                    const allProjects = Object.keys(jiraIssuesWebByProject || {});
+                    const filteredProjects = allProjects.filter(p => p.toLowerCase().includes(projectsSearchQuery.toLowerCase()));
+                    
+                    return (
+                    <div className="relative">
+                      <button onClick={() => setIsProjectsFilterOpen(prev => !prev)} className="bg-[#0a192f] text-sm text-yellow-300 border border-gray-600 rounded px-3 py-1 focus:outline-none hover:border-yellow-500 transition-colors">
+                        篩選專案 ({projectsFilter.length})
+                      </button>
+                      {isProjectsFilterOpen && (
+                      <div className="absolute flex flex-col bg-[#0a192f] border border-gray-600 rounded-lg p-2 top-full left-0 mt-1 z-50 w-64 max-h-[400px] shadow-2xl">
+                        <div className="flex justify-between items-center mb-2 px-2 pb-1 shrink-0">
+                          <button onClick={() => setProjectsFilter(filteredProjects)} className="text-xs font-bold text-blue-400 hover:text-blue-300">全選</button>
+                          <button onClick={() => setProjectsFilter([])} className="text-xs font-bold text-gray-400 hover:text-white">全不選</button>
+                        </div>
+                        <div className="px-2 pb-2 mb-2 border-b border-gray-700 shrink-0">
+                          <input
+                            type="text"
+                            placeholder="🔍 搜尋專案名稱..."
+                            value={projectsSearchQuery}
+                            onChange={(e) => setProjectsSearchQuery(e.target.value)}
+                            className="w-full bg-[#112240] border border-gray-600 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500"
+                          />
+                        </div>
+                        <div className="flex-1 overflow-y-auto flex flex-col min-h-0 custom-scrollbar">
+                          {filteredProjects.map(proj => (
+                            <label key={proj} className="flex items-center gap-2 px-2 py-1.5 hover:bg-[#112240] rounded cursor-pointer text-sm text-gray-300 shrink-0">
+                              <input 
+                                type="checkbox" 
+                                checked={projectsFilter.includes(proj)} 
+                                onChange={(e) => {
+                                  if (e.target.checked) setProjectsFilter(prev => [...prev, proj]);
+                                  else setProjectsFilter(prev => prev.filter(p => p !== proj));
+                                }} 
+                                className="rounded border-gray-600 text-blue-500 focus:ring-blue-500 bg-gray-800"
+                              />
+                              <span className="truncate">{proj.split('\n')[0]}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                      )}
+                    </div>
+                  );})()}                  {uniqueStatuses.length > 0 && (
                     <select 
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}
@@ -955,8 +1034,8 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
             <div className="p-6 flex-1 overflow-auto">
               {(() => {
                 const projectsToRender = selectedProjectDetails === 'ALL' 
-                  ? Object.keys(jiraIssuesWebByProject || {})
-                  : [selectedProjectDetails];
+                    ? projectsFilter 
+                    : [selectedProjectDetails];
 
                 const renderedProjects = projectsToRender.map(proj => {
                   const pIssues = jiraIssuesWebByProject?.[proj] || [];

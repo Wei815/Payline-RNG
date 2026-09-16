@@ -38,6 +38,11 @@ export interface MachineState {
   setJiraReportWebData: (data: string[][] | null) => void;
   setJiraReportWebFileName: (name: string | null) => void;
   setJiraIssuesWebByProject: (data: Record<string, JiraIssueDetail[]> | null) => void;
+
+  jiraBugListData: string[][] | null;
+  jiraBugListFileName: string | null;
+  setJiraBugListData: (data: string[][] | null) => void;
+  setJiraBugListFileName: (name: string | null) => void;
 }
 
 export const useMachineStore = create<MachineState>((set) => ({
@@ -68,4 +73,9 @@ export const useMachineStore = create<MachineState>((set) => ({
   setJiraReportWebData: (data) => set({ jiraReportWebData: data }),
   setJiraReportWebFileName: (name) => set({ jiraReportWebFileName: name }),
   setJiraIssuesWebByProject: (data) => set({ jiraIssuesWebByProject: data }),
+
+  jiraBugListData: null,
+  jiraBugListFileName: null,
+  setJiraBugListData: (data) => set({ jiraBugListData: data }),
+  setJiraBugListFileName: (name) => set({ jiraBugListFileName: name }),
 }));

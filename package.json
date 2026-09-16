@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.3.0",
+    "exceljs": "^4.4.0",
+    "file-saver": "^2.0.5",
     "lucide-react": "^1.17.0",
     "papaparse": "^5.7.0",
     "react": "^19.2.6",
@@ -22,6 +24,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/file-saver": "^2.0.7",
     "@types/node": "^24.12.3",
     "@types/papaparse": "^5.5.2",
     "@types/react": "^19.2.14",

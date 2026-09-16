@@ -94,8 +94,18 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectTemplate }
           {/* Section 3: Tools */}
           <section className="flex flex-col gap-4 mb-10">
             <h2 className="text-xl font-bold text-[#e6f1ff] border-b border-gray-700/50 pb-2">小工具 (Tools)</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Jira Bug List Generator */}
+              <div 
+                onClick={() => useMachineStore.getState().setActiveModalTool('jiraBugList')}
+                className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-dashboard-accent hover:-translate-y-1 transition-all duration-200 shadow-lg group"
+              >
+                <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center text-[#8892b0] group-hover:text-dashboard-accent group-hover:border-dashboard-accent/50 transition-colors">
+                  <FileSpreadsheet size={18} />
+                </div>
+                <span className="font-bold text-[#e6f1ff] group-hover:text-dashboard-accent transition-colors">JIRA 出測 Bug list 工具</span>
+              </div>
+
               {/* JIRA Tool */}
               <div 
                 onClick={() => useMachineStore.getState().setActiveModalTool('jira')}
@@ -115,7 +125,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectTemplate }
                 <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center text-[#8892b0] group-hover:text-dashboard-accent group-hover:border-dashboard-accent/50 transition-colors">
                   <FileBox size={18} />
                 </div>
-                <span className="font-bold text-[#e6f1ff] group-hover:text-dashboard-accent transition-colors">測試腳本暫存庫</span>
+                <span className="font-bold text-[#e6f1ff] group-hover:text-dashboard-accent transition-colors">測試腳本庫</span>
               </div>
 
               {/* Jira CSV Report */}
@@ -126,18 +136,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectTemplate }
                 <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center text-[#8892b0] group-hover:text-blue-500 group-hover:border-blue-500/50 transition-colors">
                   <FileSpreadsheet size={18} />
                 </div>
-                <span className="font-bold text-[#e6f1ff] group-hover:text-blue-500 transition-colors">Jira CSV 報表轉換器(機台)</span>
-              </div>
-
-              {/* Jira CSV Report (WEB) */}
-              <div 
-                onClick={() => useMachineStore.getState().setActiveModalTool('jiraReportWeb')}
-                className="bg-[#112240] border border-gray-700/50 rounded-xl p-5 flex items-center gap-4 cursor-pointer hover:border-blue-500/50 hover:-translate-y-1 transition-all duration-200 group shadow-lg"
-              >
-                <div className="w-10 h-10 rounded-full bg-[#0a192f] border border-gray-700/50 flex items-center justify-center text-[#8892b0] group-hover:text-blue-500 group-hover:border-blue-500/50 transition-colors">
-                  <FileSpreadsheet size={18} />
-                </div>
-                <span className="font-bold text-[#e6f1ff] group-hover:text-blue-500 transition-colors">Jira CSV 報表轉換器(WEB)</span>
+                <span className="font-bold text-[#e6f1ff] group-hover:text-blue-500 transition-colors">Jira CSV 報表轉換器</span>
               </div>
 
               {/* RNG Validator */}

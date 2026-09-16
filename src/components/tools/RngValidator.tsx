@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Play, AlertCircle, Square } from 'lucide-react';
+import { X, Play, AlertCircle, Square, Bookmark } from 'lucide-react';
 import { useGameStore } from '../../store/useGameStore';
 import { useMachineStore } from '../../store/useMachineStore';
+import { useSnippetStore } from '../../store/useSnippetStore';
 import { SlotGridDisplay } from '../SlotGridDisplay';
 import { evaluateGrid, getWinningPositions } from '../../utils/evaluation';
 import type { GameConfig } from '../../types';
@@ -203,6 +204,33 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
   } = useGameStore();
   const { bet, coin, gameType, loadTemplateTrigger, setLoadTemplateTrigger } = useMachineStore();
   const betMultiplier = coin > 0 ? bet / coin : 1;
+
+  const snippets = useSnippetStore(state => state.snippets);
+  const projectSnippets = snippets.filter(s => (s.projectName || s.gameType) === projectName);
+
+  const format2DArray = (arr: number[][]) => {
+    if (!arr || arr.length === 0) return '[]';
+    return `[\n${arr.map(subArr => `[${subArr.join(',')}]`).join(',\n')}\n]`;
+  };
+
+  const stringifyQA = (qaData: any) => {
+    if (!qaData.QA || qaData.QA.length === 0) return JSON.stringify(qaData, null, 2);
+    const qa = qaData.QA[0];
+    return `{
+ "QA":[
+ {
+ "RNGs":
+${format2DArray(qa.RNGs)},
+ "ClassIDs":
+${format2DArray(qa.ClassIDs)},
+ "LuckySelects":
+${format2DArray(qa.LuckySelects)},
+ "Selection":
+${format2DArray(qa.Selection)}
+ }
+ ]
+}`;
+  };
 
   const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
 
@@ -554,6 +582,43 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
             </div>
             )}
           </div>
+
+          {/* Far Right Panel: Saved Scripts */}
+          {isProjectLoaded && (
+            <div className="w-[300px] border-l border-gray-700/50 flex flex-col bg-[#0a192f] shrink-0">
+              <div className="p-4 border-b border-gray-700/50">
+                <h3 className="text-sm font-bold text-[#e6f1ff] flex items-center gap-2">
+                  <Bookmark size={18} className="text-dashboard-accent" />
+                  已儲存腳本
+                </h3>
+                <p className="text-xs text-gray-400 mt-1">
+                  點擊快速載入腳本內容至左側
+                </p>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 custom-scrollbar">
+                {projectSnippets.length === 0 ? (
+                  <div className="text-gray-500 text-sm text-center py-8">
+                    目前專案沒有儲存的腳本
+                  </div>
+                ) : (
+                  projectSnippets.map(snippet => (
+                    <button
+                      key={snippet.id}
+                      onClick={() => setJsonInput(stringifyQA(snippet.qaData))}
+                      className="text-left bg-[#112240] hover:bg-[#152e4b] border border-gray-700 hover:border-dashboard-accent rounded-lg p-3 transition-colors flex flex-col gap-2 shadow-sm"
+                    >
+                      <div className="text-sm font-bold text-blue-300 w-full whitespace-normal break-words leading-tight">
+                        {snippet.title}
+                      </div>
+                      <div className="text-xs text-gray-500 line-clamp-3 font-mono leading-tight">
+                        {JSON.stringify(snippet.qaData).substring(0, 150)}...
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
 
         </div>
       </div>

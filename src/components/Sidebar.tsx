@@ -8,7 +8,7 @@ export const Sidebar: React.FC = () => {
   const clearProject = useGameStore(state => state.clearProject);
   const setLoadTemplateTrigger = useMachineStore(state => state.setLoadTemplateTrigger);
   const setGameType = useMachineStore(state => state.setGameType);
-  
+
   const handleSelectTemplate = (templateName: string) => {
     const engineMap: Record<string, GameType> = {
       'Line Game': 'linegame',
@@ -52,7 +52,7 @@ export const Sidebar: React.FC = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
-        <button 
+        <button
           onClick={() => clearProject()}
           className="flex items-center gap-3 px-4 py-2.5 bg-[#112240] text-dashboard-text-primary rounded-full hover:bg-dashboard-accent/10 hover:text-dashboard-accent border border-gray-700/50 hover:border-dashboard-accent transition-all w-full text-left font-bold mb-6 shadow-sm group"
         >
@@ -76,11 +76,11 @@ export const Sidebar: React.FC = () => {
           { name: '皇家金象', icon: <FileBox size={16} />, action: () => handleSelectTemplate('皇家金象') },
         ])}
 
-        <input 
-          type="file" 
-          id="sidebar-file-upload" 
-          accept=".xlsx,.xls" 
-          className="hidden" 
+        <input
+          type="file"
+          id="sidebar-file-upload"
+          accept=".xlsx,.xls"
+          className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) {
@@ -91,10 +91,10 @@ export const Sidebar: React.FC = () => {
         />
 
         {menuSection('小工具 (Tools)', [
+          { name: 'JIRA 出測 Bug list 工具', icon: <FileSpreadsheet size={16} />, action: () => useMachineStore.getState().setActiveModalTool('jiraBugList') },
           { name: 'JIRA 出測 BUG 備註工具', icon: <LinkIcon size={16} />, action: () => useMachineStore.getState().setActiveModalTool('jira') },
-          { name: '測試腳本暫存庫', icon: <FileBox size={16} />, action: () => useMachineStore.getState().setActiveModalTool('snippet') },
-          { name: 'Jira CSV 報表轉換(機台)', icon: <FileSpreadsheet size={16} />, action: () => useMachineStore.getState().setActiveModalTool('jiraReport') },
-          { name: 'Jira CSV 報表轉換(WEB)', icon: <FileSpreadsheet size={16} />, action: () => useMachineStore.getState().setActiveModalTool('jiraReportWeb') },
+          { name: '測試腳本庫', icon: <FileBox size={16} />, action: () => useMachineStore.getState().setActiveModalTool('snippet') },
+          { name: 'Jira CSV 報表轉換器', icon: <FileSpreadsheet size={16} />, action: () => useMachineStore.getState().setActiveModalTool('jiraReport') },
           { name: 'RTP 模擬計算機', icon: <Calculator size={16} />, action: () => useMachineStore.getState().setActiveModalTool('rtpCalculator') },
           { name: 'RNG 腳本驗證', icon: <FileCheck2 size={16} />, action: () => useMachineStore.getState().setActiveModalTool('rngValidator') },
         ])}
