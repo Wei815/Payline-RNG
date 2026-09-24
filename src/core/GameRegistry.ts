@@ -1,7 +1,7 @@
 import type { IGameEnvironment } from '../games/base/IGameEnvironment';
 import type { GameType } from '../types';
 
-import { MermaidGame } from '../games/Mermaid/MermaidGame';
+import { MermaidGame } from '../games/mermaid/MermaidGame';
 import { QinGame } from '../games/Chin Shi Huang/QinGame';
 import { BattleSet2Game } from '../games/Battle of Set 2Awakening/BattleSet2Game';
 import { LuxeGame } from '../games/The Luxe/LuxeGame';

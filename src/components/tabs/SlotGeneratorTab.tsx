@@ -544,8 +544,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
 
     const config = { gameType, paylines: customPaylines, effectiveBet: bet, goldFrames, wyConfigs, specialRules: { derivativeSymbols: { 'B1': ['B2'] }, unremovableSymbols: ['S1', 'B1'] } };
     
-    const isMathIdGrid = gameType === 'linegame_set2' || gameType === 'linegame_gods' || gameType === 'payanywhere_set2';
-    let grid = isMathIdGrid ? generateGridFromMathIds(rng) : generateGridForComb(rng, comb.stripId);
+    let grid = generateGridForComb(rng, comb.stripId);
     
     let totalWinAccumulated = 0;
     let cascadeCount = 0;
