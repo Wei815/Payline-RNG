@@ -368,7 +368,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                     return (
                       <div key={idx} className={`flex flex-col px-3 py-2 rounded border ${selectedSymbol && isInterference ? 'bg-[#2b1616] border-red-900/50' : 'bg-[#112240] border-dashboard-accent/30'}`}>
                         <span className="text-xs text-yellow-400 font-mono font-bold truncate">
-                          {w.symbolId} {gameType === 'payanywhere' || gameType === 'payanywhere_set2' ? `出現 ${w.matchCount} 個` : (gameType === 'linegame' || gameType === 'linegame_set2') ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
+                          {w.symbolId} {gameType === 'payanywhere' || gameType === 'payanywhere_set2' ? `出現 ${w.matchCount} 個` : (gameType === 'linegame' || gameType === 'linegame_set2' || gameType === 'linegame_gods') ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
                         </span>
                         <span className="text-xs text-gray-300 font-mono mt-0.5">
                           {formatAmount(betMultiplier)} × {w.payout}{w.ways > 1 ? ` × ${w.ways}` : ''}{baseMultiplier > 1 ? ` × ${baseMultiplier}` : ''} = <span className="font-bold text-dashboard-accent">{formatAmount(w.totalWin * betMultiplier * baseMultiplier)}</span>
@@ -415,7 +415,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                         return (
                           <div key={idx} className={`flex flex-col px-3 py-2 rounded border ${selectedSymbol && isInterference ? 'bg-[#2b1616] border-red-900/50' : 'bg-[#0f1c34] border-gray-700/30'}`}>
                             <span className={`text-xs font-mono truncate ${selectedSymbol && isInterference ? 'text-red-400' : 'text-gray-400'}`}>
-                              {w.symbolId} {gameType === 'payanywhere' || gameType === 'payanywhere_set2' ? `出現 ${w.matchCount} 個` : (gameType === 'linegame' || gameType === 'linegame_set2') ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
+                              {w.symbolId} {gameType === 'payanywhere' || gameType === 'payanywhere_set2' ? `出現 ${w.matchCount} 個` : (gameType === 'linegame' || gameType === 'linegame_set2' || gameType === 'linegame_gods') ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
                             </span>
                             <span className={`text-xs font-mono mt-0.5 ${selectedSymbol && isInterference ? 'text-red-500/80' : 'text-gray-600'}`}>
                               payout = 0{w.ways > 1 ? ` × ${w.ways} ways` : ''}

@@ -67,7 +67,7 @@ export function calculateSVGPaths(
     const isScatter = currentPaytable.some(p => p.symbolId === win.symbolId && p.isScatter);
     if (isScatter) continue;
 
-    if (gameType === 'linegame' || gameType === 'linegame_set2') {
+    if (gameType === 'linegame' || gameType === 'linegame_set2' || gameType === 'linegame_gods') {
       if (win.lineIndex === undefined) continue;
       const line = customPaylines && customPaylines.length > 0 ? customPaylines[win.lineIndex] : defaultPaylines[win.lineIndex];
       if (!line) continue;

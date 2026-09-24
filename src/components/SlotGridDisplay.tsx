@@ -22,6 +22,9 @@ export interface SlotGridDisplayProps {
   pulseClass?: string;
   hideEmptyCells?: boolean;
 
+  // Header render prop
+  renderColumnHeader?: (colIndex: number) => React.ReactNode;
+
   // Render prop for inside the cell
   renderCellInner?: (
     symbol: string, 
@@ -50,6 +53,7 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
   gridMode = 'custom',
   pulseClass = '',
   hideEmptyCells = false,
+  renderColumnHeader,
   renderCellInner
 }) => {
   const containerClass = gridMode === 'tumble' 
@@ -90,6 +94,7 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
     <div className={containerClass}>
       {gridSymbols.map((col, colIndex) => (
         <div key={colIndex} className="flex flex-col justify-center gap-3">
+          {renderColumnHeader && renderColumnHeader(colIndex)}
           {col.map((symbol, rowIndex) => {
             const winIndices = winningCoords.get(`${colIndex}-${rowIndex}`);
             const isWinning = !!winIndices;

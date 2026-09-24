@@ -7,7 +7,8 @@ import { defaultPaylines } from '../utils/evaluation';
 import { useMachineStore } from '../store/useMachineStore';
 import { useGameStore } from '../store/useGameStore';
 
-const templateFiles = import.meta.glob('/templates/*.{xlsx,xls}', { query: '?url', eager: true, import: 'default' }) as Record<string, string>;
+const rawTemplateFiles = import.meta.glob('/templates/*.{xlsx,xls}', { query: '?url', eager: true, import: 'default' }) as Record<string, string>;
+const templateFiles = Object.fromEntries(Object.entries(rawTemplateFiles).filter(([path]) => !path.includes('/~$')));
 const getTemplateName = (path: string) => {
   const parts = path.split('/');
   const filename = parts[parts.length - 1];
@@ -565,7 +566,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
       }
 
       const emptyReels = parsedStrips.findIndex(strip => strip.length === 0);
-      if (emptyReels !== -1 && gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2') {
+      if (emptyReels !== -1 && gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2' && gameType !== 'linegame_gods') {
         throw new Error(`R${emptyReels + 1} 沒有任何資料，請檢查表格內容。`);
       }
 
@@ -709,15 +710,15 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
   };
 
   return (
-    <div className="h-full bg-dashboard-card p-4 flex flex-col gap-4 border-r border-gray-700/50 relative">
-      <div className="flex flex-col 2xl:flex-row items-start 2xl:items-center justify-between gap-3">
+    <div className="h-full bg-dashboard-card p-4 flex flex-col gap-4 border-r border-gray-700/50 relative overflow-hidden">
+      <div className="flex flex-col items-start gap-3 w-full shrink-0">
         <h2 className="text-xl font-bold text-dashboard-text-primary">Configuration</h2>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full">
           <select 
             value={selectedTemplate}
             onChange={(e) => setSelectedTemplate(e.target.value)}
             disabled={isRunning}
-            className="bg-[#0f1d35] border border-gray-700 text-dashboard-accent rounded px-2 py-1.5 outline-none focus:border-dashboard-accent cursor-pointer text-sm font-bold font-mono"
+            className="bg-[#0f1d35] border border-gray-700 text-dashboard-accent rounded px-2 py-1.5 outline-none focus:border-dashboard-accent cursor-pointer text-sm font-bold font-mono max-w-full truncate"
           >
             {templateKeys.map(path => (
               <option key={path} value={path}>{getTemplateName(path)}</option>
@@ -791,19 +792,13 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
               }}
             />
           </label>
-          <button 
-            onClick={handleLoadDefaults}
-            disabled={isRunning}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-900/40 text-blue-300 hover:bg-blue-800/50 rounded-md transition-colors disabled:opacity-50"
-          >
-            <Database size={16} /> Load Defaults
-          </button>
+
         </div>
       </div>
 
       <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
 
-        <div className={`flex flex-col gap-2 ${gameType === 'linegame' || gameType === 'linegame_set2' ? 'h-[450px] shrink-0' : gameType === 'payanywhere_set2' ? 'shrink-0' : 'flex-1 min-h-[450px]'}`}>
+        <div className={`flex flex-col gap-2 ${gameType === 'linegame' || gameType === 'linegame_set2' || gameType === 'linegame_gods' ? 'h-[450px] shrink-0' : gameType === 'payanywhere_set2' ? 'shrink-0' : 'flex-1 min-h-[450px]'}`}>
           <div className="flex flex-col gap-2 border-b border-gray-800/60 pb-3">
             {/* Row 1: Game Settings */}
             <div className="flex flex-wrap items-center gap-3 text-xs">
@@ -829,6 +824,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                 <optgroup label="連線機台 (Line Game)">
                   <option value="linegame">Line Game (通用基底)</option>
                   <option value="linegame_set2">Line Game (奢華)</option>
+                  <option value="linegame_gods">Line Game (諸神之戰)</option>
                 </optgroup>
                 </select>
               </div>
@@ -892,9 +888,9 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
             {/* Row 3: Title & Tabs */}
             <div className="flex items-center justify-between gap-2 pt-1 mt-1 border-t border-gray-800/60">
               <label className="text-sm text-dashboard-text-secondary font-bold whitespace-nowrap">
-                {gameType === 'payanywhere_set2' || gameType === 'linegame_set2' ? '參數設定' : 'Reel Strips 表格'}
+                {gameType === 'payanywhere_set2' || gameType === 'linegame_set2' || gameType === 'linegame_gods' ? '參數設定' : 'Reel Strips 表格'}
               </label>
-              {(gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2') && (
+              {(gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2' && gameType !== 'linegame_gods') && (
                 <div className="flex items-center gap-1 bg-[#112240] p-0.5 rounded border border-gray-700/50">
                   <button
                     onClick={() => setActiveStripTab('base')}
@@ -939,7 +935,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
             </div>
           </div>
 
-          {(gameType === 'payanywhere_set2' || gameType === 'linegame_set2') && (
+          {(gameType === 'payanywhere_set2' || gameType === 'linegame_set2' || gameType === 'linegame_gods') && (
             <div className="flex-1 border border-gray-700 rounded-lg overflow-hidden flex flex-col bg-[#0a192f] mt-2">
               <div className="flex justify-between items-center bg-[#0f1d35] border-b border-gray-700 p-3 shrink-0">
                 <span className="text-sm text-dashboard-text-secondary font-bold">MathID 映射表</span>
@@ -993,7 +989,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
             </div>
           )}
 
-          {(gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2') && (
+          {(gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2' && gameType !== 'linegame_gods') && (
             <div
               className="flex-1 border border-gray-700 rounded-lg overflow-hidden flex flex-col bg-[#0a192f] focus-within:ring-1 focus-within:ring-dashboard-accent focus-within:border-dashboard-accent transition-all relative"
               tabIndex={0}
@@ -1045,7 +1041,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
           )}
         </div>
 
-        {(gameType === 'linegame' || gameType === 'linegame_set2') && (
+        {(gameType === 'linegame' || gameType === 'linegame_set2' || gameType === 'linegame_gods') && (
           <div className="flex flex-col gap-2 h-[220px] shrink-0">
             <div className="flex justify-between items-center">
               <label className="text-sm text-dashboard-text-secondary font-medium">線路規則 表格 (Line Rules)</label>
@@ -1127,7 +1123,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
       {/* 暫時隱藏單次試轉功能 (待後續開發開放)
       <button
         onClick={handleTestSpin}
-        disabled={isRunning || (isGridEmpty && gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2')}
+        disabled={isRunning || (isGridEmpty && gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2' && gameType !== 'linegame_gods')}
         className="mt-auto w-full py-3 flex items-center justify-center gap-2 bg-[#112240] border border-dashboard-accent text-dashboard-accent font-bold rounded-lg hover:bg-dashboard-accent hover:text-[#0a192f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isRunning ? (

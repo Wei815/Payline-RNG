@@ -111,7 +111,7 @@ function App() {
         <div 
           className={`
             ${!isProjectLoaded ? 'hidden' : 'block'}
-            w-full h-full transition-all duration-300 ${gameType === 'payanywhere_set2' || gameType === 'linegame_set2' ? 'md:w-[360px] shrink-0' : 'md:w-[35%]'}
+            w-full h-full transition-all duration-300 ${gameType === 'payanywhere_set2' || gameType === 'linegame_set2' || gameType === 'linegame_gods' ? 'md:w-[360px] shrink-0' : 'md:w-[35%]'}
           `}
         >
           <ConfigPanel 

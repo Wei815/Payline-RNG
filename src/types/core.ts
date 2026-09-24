@@ -1,4 +1,4 @@
-export type GameType = 'waygame' | 'megaway' | 'payanywhere' | 'payanywhere_set2' | 'waygame_qin' | 'waygame_elephant' | 'linegame' | 'linegame_set2';
+export type GameType = 'waygame' | 'megaway' | 'payanywhere' | 'payanywhere_set2' | 'waygame_qin' | 'waygame_elephant' | 'linegame' | 'linegame_set2' | 'linegame_gods';
 
 export type ReelStrips = string[][];
 export type ReelStripsList = ReelStrips[];
@@ -12,6 +12,7 @@ export interface SpecialSymbolConfig {
   multiplierCounts: Record<string, number>; // key: e.g. "F1_2X", value: count
   luckyBallsEnabled: boolean;
   luckyCounts: Record<string, number>; // key: e.g. "L1_2X", value: count
+  wyEnabled?: boolean;
 }
 
 export interface GameConfig {
@@ -21,6 +22,7 @@ export interface GameConfig {
   effectiveBet?: number; // Added for B1/B2 base bet multiplication
   goldFrames?: Record<string, number>; // e.g. '0-0': 2
   jackpots?: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>; // e.g. '0-0': 'MINI'
+  wyConfigs?: Record<number, { a: number, b: number, z: 0 | 1 }>; // e.g. { 1: { a: 2, b: 10, z: 0 } }
   specialRules?: {
     derivativeSymbols?: Record<string, string[]>; // e.g. { 'B1': ['B2'] }
     payAnywhereThresholds?: { match3: number; match4: number; match5: number };

@@ -2,7 +2,7 @@ import * as xlsx from 'xlsx';
 import type { PaytableRule } from '../types';
 
 export interface ExcelParsedData {
-  gameType?: 'waygame' | 'linegame' | 'payanywhere' | 'linegame_set2' | 'payanywhere_set2' | 'waygame_qin' | 'waygame_elephant';
+  gameType?: 'waygame' | 'linegame' | 'payanywhere' | 'linegame_set2' | 'payanywhere_set2' | 'waygame_qin' | 'waygame_elephant' | 'linegame_gods';
   coin?: number;
   bet?: number;
   paylines?: number[][];
@@ -57,6 +57,8 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
       result.paylines = paylines;
       if (file.name.includes('奢華')) {
         result.gameType = 'linegame_set2';
+      } else if (file.name.includes('雷神') || file.name.includes('諸神')) {
+        result.gameType = 'linegame_gods';
       } else {
         result.gameType = 'linegame'; // if there's a line table, it's likely a linegame
       }
@@ -534,6 +536,12 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
       }
       result.paytable = Object.values(paytableMap).filter(rule => {
         if (rule.isWild || rule.isScatter) return true;
+        if (rule.mathId !== undefined) {
+          if (Object.keys(rule.payouts).length === 0) {
+            rule.isEnabled = false;
+          }
+          return true;
+        }
         return Object.keys(rule.payouts).length > 0;
       });
   }
@@ -555,6 +563,8 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
       result.rowCounts = [4, 4, 4, 4, 4, 4];
     } else if (file.name.includes('奢華')) {
       result.gameType = 'linegame_set2';
+    } else if (file.name.includes('雷神') || file.name.includes('諸神')) {
+      result.gameType = 'linegame_gods';
     } else if (file.name.includes('家') || file.name.includes('象')) {
       result.gameType = 'waygame_elephant';
     } else if (!result.paylines || result.paylines.length === 0) {

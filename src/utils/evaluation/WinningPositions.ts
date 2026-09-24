@@ -48,7 +48,7 @@ export function getWinningPositions(
       scatterPayAnywhereWins.push({ w, symbolId: win.symbolId });
       scatterPayAnywhereSet.add(win.symbolId);
       if (win.symbolId === 'B1') scatterPayAnywhereSet.add('B2');
-    } else if (gameType === 'linegame' || gameType === 'linegame_set2') {
+    } else if (gameType === 'linegame' || gameType === 'linegame_set2' || gameType === 'linegame_gods') {
       if (win.lineIndex !== undefined) {
         const line = customPaylines && customPaylines.length > 0 ? customPaylines[win.lineIndex] : defaultPaylines[win.lineIndex];
         if (line) {

@@ -282,7 +282,7 @@ ${format2DArray(qa.Selection)}
         }
       });
 
-      const isCoordinateClassId = gameType === 'linegame_set2' || gameType === 'linegame';
+      const isCoordinateClassId = gameType === 'linegame_set2' || gameType === 'linegame_gods' || gameType === 'linegame';
 
       const newSteps = rngSteps.map((rngArray, stepIndex) => {
          const isMathId = isCoordinateClassId || rngArray.length > reelCount + 4;

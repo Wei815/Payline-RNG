@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import type { PaytableRule } from '../types';
+import { useGameStore } from '../store/useGameStore';
 import { GameTypes, SpecialSymbols, SymbolGroupOrder, SymbolCategories } from '../constants/GameConstants';
 
 const SymbolGroupOrderMap = new Map<string, number>(
@@ -33,6 +34,8 @@ export function useSymbolGrouping(
       .join(',');
   }, [currentPaytable]);
 
+  const wyEnabled = useGameStore(state => state.specialSymbolConfig.wyEnabled);
+
   return useMemo(() => {
     const disabledSymbols = new Set(disabledSymbolsStr ? disabledSymbolsStr.split(',') : []);
 
@@ -51,7 +54,11 @@ export function useSymbolGrouping(
       allPaytableSymbolsStr.split(',').forEach(sym => allSyms.add(sym));
     }
 
-    const symList = Array.from(allSyms).filter(sym => !/^G[1-9A-Z]/.test(sym));
+    const symList = Array.from(allSyms).filter(sym => {
+      if (/^G[1-9A-Z]/.test(sym)) return false;
+      if (sym === 'WY' || sym === 'WZ') return wyEnabled;
+      return true;
+    });
 
     const getBase = (sym: string): string => {
       const s = sym.toUpperCase();
@@ -64,6 +71,12 @@ export function useSymbolGrouping(
     };
 
     const getOrderScore = (sym: string): number => {
+      const rule = currentPaytable.find(p => p.symbolId === sym);
+      if (rule && rule.mathId !== undefined && rule.mathId !== '') {
+        const match = String(rule.mathId).match(/\d+/);
+        if (match) return parseInt(match[0], 10);
+      }
+
       const base = getBase(sym);
       const idx = SymbolGroupOrderMap.get(base);
       return idx !== undefined ? idx : 999;
@@ -89,7 +102,7 @@ export function useSymbolGrouping(
         others.push(sym);
       } else if (/^M\d+$/.test(b)) {
         mnum.push(sym);
-      } else if (['A', 'K', 'Q', 'J', SpecialSymbols.TE, SpecialSymbols.NI, 'T', 'N'].includes(b)) {
+      } else if (['A', 'K', 'Q', 'J', '10', SpecialSymbols.TE, SpecialSymbols.NI, 'T', 'N'].includes(b)) {
         mlet.push(sym);
       } else {
         others.push(sym);
@@ -112,5 +125,5 @@ export function useSymbolGrouping(
       { id: SymbolCategories.M_NUM, title: '第二區塊 (M數字)', list: mnum },
       { id: SymbolCategories.M_LET, title: '第三區塊 (M字母)', list: mlet }
     ].filter(g => g.list.length > 0);
-  }, [currentStrips, disabledSymbolsStr, allPaytableSymbolsStr, gameType]);
+  }, [currentStrips, disabledSymbolsStr, allPaytableSymbolsStr, gameType, wyEnabled]);
 }

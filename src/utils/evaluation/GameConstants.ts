@@ -1,4 +1,4 @@
-export const DEFAULT_WILD_SYMBOLS = ['WILD', 'W', 'WX'];
+export const DEFAULT_WILD_SYMBOLS = ['WILD', 'W', 'WX', 'WY', 'WZ'];
 
 export const DEFAULT_PAY_ANYWHERE_THRESHOLDS = {
   match3: 8,

@@ -48,8 +48,12 @@ export function evaluateGrid(
     ? { gameType: gameConfigOrType, paylines }
     : gameConfigOrType;
 
+  const actualPaylines = (typeof gameConfigOrType !== 'string' && gameConfigOrType.paylines && gameConfigOrType.paylines.length > 0) 
+    ? gameConfigOrType.paylines 
+    : paylines;
+
   const game = GameRegistry.getGame(gameConfig.gameType);
-  return game.evaluate(grid, paytable, gameConfig, paylines, includeZeroPayout);
+  return game.evaluate(grid, paytable, gameConfig, actualPaylines, includeZeroPayout);
 }
 
 export * from './evaluation/WinningPositions';

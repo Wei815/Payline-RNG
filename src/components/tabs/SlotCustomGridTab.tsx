@@ -34,6 +34,8 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   const [isJackpotMode, setIsJackpotMode] = useState(false);
   const jackpots = useGameStore(state => state.customGridJackpots);
   const setJackpots = useGameStore(state => state.setCustomGridJackpots);
+  const wyConfigs = useGameStore(state => state.customGridWyConfigs);
+  const setWyConfigs = useGameStore(state => state.setCustomGridWyConfigs);
   const specialSymbolConfig = useGameStore(state => state.specialSymbolConfig);
   const setSpecialSymbolConfig = useGameStore(state => state.setSpecialSymbolConfig);
   const [selectedJackpot, setSelectedJackpot] = useState<'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>('MINI');
@@ -100,8 +102,9 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
       gameType,
       paylines: customPaylines || [],
       effectiveBet: effectiveBetValue,
-      goldFrames,
-      jackpots,
+      goldFrames: gameType === 'linegame_set2' ? goldFrames : {},
+      jackpots: gameType === 'linegame_set2' ? jackpots : {},
+      wyConfigs: gameType === 'linegame_gods' ? wyConfigs : undefined,
       specialRules: { derivativeSymbols: { 'B1': ['B2'] } }
     };
     const wins = evaluateGrid(gridSymbols, currentPaytable, config, undefined, true);
@@ -184,6 +187,20 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   };
 
   const combinedClassIdStr = useMemo(() => {
+    if (gameType === 'linegame_gods') {
+      const output: number[] = [];
+      for (let c = 0; c < reelCount; c++) {
+        const hasWy = gridSymbols[c] && gridSymbols[c].includes('WY');
+        if (hasWy) {
+          const config = wyConfigs[c] || { a: 2, b: 10, z: 0 };
+          output.push(config.a, config.b, config.z);
+        }
+      }
+      if (output.length === 0) return '';
+      return `[${output.join(',')}],`; // Commas at the end
+    }
+
+    if (gameType !== 'linegame_set2') return '';
     const keys = Array.from(new Set([...Object.keys(goldFrames), ...Object.keys(jackpots)]));
     if (keys.length === 0) return '';
     const output: number[] = [];
@@ -218,7 +235,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     });
 
     return `[${output.join(',')}]`;
-  }, [goldFrames, jackpots]);
+  }, [goldFrames, jackpots, gameType, reelCount, gridSymbols, wyConfigs]);
 
   // Multiplier ClassID String
   const multiplierClassIdStr = useMemo(() => {
@@ -237,7 +254,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
 
   // Handle Drag & Drops Generation
   const dropRng = useMemo(() => {
-    if (gameType === 'linegame_set2' || gameType === 'linegame' || gameType.startsWith('waygame')) return '';
+    if (gameType === 'linegame_set2' || gameType === 'linegame_gods' || gameType === 'linegame' || gameType.startsWith('waygame')) return '';
     if (winningCoords.size === 0) return '';
     
     // Calculate current symbol counts to avoid secondary wins
@@ -291,7 +308,11 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
         if (sym.includes('_')) {
           [baseSym] = sym.split('_');
         }
-        flatIds.push(symbolToMathId[baseSym] || 0);
+        let mathId = symbolToMathId[baseSym];
+        if (mathId === undefined && (baseSym === 'WY' || baseSym === 'WZ')) {
+          mathId = symbolToMathId['WX'];
+        }
+        flatIds.push(mathId || 0);
       });
     });
     
@@ -333,6 +354,14 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     if (!symbol) return;
 
     const newGrid = gridSymbols.map(col => [...col]);
+
+    if (symbol === 'WY') {
+      for (let r = 0; r < newGrid[targetCol].length; r++) {
+        if (newGrid[targetCol][r] === 'WY') {
+          newGrid[targetCol][r] = '-';
+        }
+      }
+    }
 
     if (isFromPalette) {
       newGrid[targetCol][targetRow] = symbol;
@@ -427,6 +456,16 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     const newSym = isSpecial ? `${selectedPaletteSymbol}_${selectedMultiplier}X` : selectedPaletteSymbol;
     
     const newGrid = gridSymbols.map(col => [...col]);
+    
+    // WY constraint: Only one WY per column
+    if (newSym === 'WY') {
+      for (let r = 0; r < newGrid[colIndex].length; r++) {
+        if (newGrid[colIndex][r] === 'WY') {
+          newGrid[colIndex][r] = '-';
+        }
+      }
+    }
+
     newGrid[colIndex][rowIndex] = newSym;
     setGridSymbols(newGrid);
   };
@@ -562,6 +601,26 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
         <h2 className="text-sm font-bold text-dashboard-text-secondary border-b border-gray-700/50 pb-2">方塊調色盤 (Palette)</h2>
         
         {/* Special Symbol Multiplier Config */}
+        {gameType === 'linegame_gods' && (
+          <div className="bg-[#112240] p-3 rounded-md border border-gray-700/50">
+             <label className="flex items-center gap-2 cursor-pointer group">
+               <div className="relative">
+                 <input 
+                   type="checkbox" 
+                   className="sr-only" 
+                   checked={specialSymbolConfig.wyEnabled || false}
+                   onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, wyEnabled: e.target.checked }))}
+                 />
+                 <div className={`block w-10 h-6 rounded-full transition-colors ${specialSymbolConfig.wyEnabled ? 'bg-dashboard-accent' : 'bg-gray-600'}`}></div>
+                 <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${specialSymbolConfig.wyEnabled ? 'translate-x-4' : ''}`}></div>
+               </div>
+               <span className="text-sm font-bold text-gray-300 group-hover:text-white transition-colors">
+                 啟用 WY (延伸百搭)
+               </span>
+             </label>
+          </div>
+        )}
+        
         {gameType === 'linegame_set2' && (
           <div className="bg-[#112240] p-3 rounded-md border border-gray-700/50">
             <span className="text-xs text-dashboard-accent font-bold mb-2 block">特殊設定預設倍數:</span>
@@ -787,8 +846,65 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
             onCellClick={handleCellClick}
             onDragStart={(e, symbol, colIndex, rowIndex) => handleDragStart(e, symbol, false, colIndex, rowIndex)}
             onDrop={handleDrop}
-            goldFrames={goldFrames}
-            jackpots={jackpots}
+            goldFrames={gameType === 'linegame_set2' ? goldFrames : {}}
+            jackpots={gameType === 'linegame_set2' ? jackpots : {}}
+            renderColumnHeader={(colIndex) => {
+              if (gameType !== 'linegame_gods') return null;
+              
+              const hasWy = gridSymbols[colIndex]?.includes('WY');
+              if (!hasWy) return <div className="h-[90px]"></div>;
+
+              const currentConfig = wyConfigs[colIndex] || { a: 2, b: 10, z: 0 };
+              const opts = [2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 25, 50, 100, 250];
+
+              return (
+                <div className="flex flex-col items-center mb-1 h-[90px] justify-end w-full">
+                  <div className="bg-[#112240]/90 backdrop-blur-md border border-dashboard-accent/30 rounded-lg p-1.5 flex flex-col gap-1 w-[110%] min-w-[70px] shadow-lg shadow-black/40 ring-1 ring-black/20">
+                    <label className={`flex items-center gap-1 p-1 rounded-md cursor-pointer transition-all ${currentConfig.z === 0 ? 'bg-dashboard-accent/20 ring-1 ring-dashboard-accent/50' : 'hover:bg-white/5 opacity-60 hover:opacity-100'}`}>
+                      <div className={`w-2.5 h-2.5 rounded-full border-[1.5px] shrink-0 flex items-center justify-center transition-colors ${currentConfig.z === 0 ? 'border-dashboard-accent' : 'border-gray-500'}`}>
+                        {currentConfig.z === 0 && <div className="w-1.5 h-1.5 bg-dashboard-accent rounded-full" />}
+                      </div>
+                      <input 
+                        type="radio" 
+                        checked={currentConfig.z === 0} 
+                        onChange={() => setWyConfigs(prev => ({...prev, [colIndex]: {...currentConfig, z: 0}}))}
+                        className="hidden"
+                      />
+                      <select 
+                        value={currentConfig.a} 
+                        onChange={e => setWyConfigs(prev => ({...prev, [colIndex]: {...currentConfig, a: Number(e.target.value)}}))}
+                        className="bg-transparent text-xs font-bold text-white outline-none w-full cursor-pointer appearance-none text-center"
+                        style={{ textAlignLast: 'center' }}
+                      >
+                        {opts.map(o => <option key={`a-${o}`} value={o} className="bg-[#112240] text-center">{o}X</option>)}
+                      </select>
+                    </label>
+                    
+                    <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-gray-600/50 to-transparent"></div>
+                    
+                    <label className={`flex items-center gap-1 p-1 rounded-md cursor-pointer transition-all ${currentConfig.z === 1 ? 'bg-dashboard-accent/20 ring-1 ring-dashboard-accent/50' : 'hover:bg-white/5 opacity-60 hover:opacity-100'}`}>
+                      <div className={`w-2.5 h-2.5 rounded-full border-[1.5px] shrink-0 flex items-center justify-center transition-colors ${currentConfig.z === 1 ? 'border-dashboard-accent' : 'border-gray-500'}`}>
+                        {currentConfig.z === 1 && <div className="w-1.5 h-1.5 bg-dashboard-accent rounded-full" />}
+                      </div>
+                      <input 
+                        type="radio" 
+                        checked={currentConfig.z === 1} 
+                        onChange={() => setWyConfigs(prev => ({...prev, [colIndex]: {...currentConfig, z: 1}}))}
+                        className="hidden"
+                      />
+                      <select 
+                        value={currentConfig.b} 
+                        onChange={e => setWyConfigs(prev => ({...prev, [colIndex]: {...currentConfig, b: Number(e.target.value)}}))}
+                        className="bg-transparent text-xs font-bold text-white outline-none w-full cursor-pointer appearance-none text-center"
+                        style={{ textAlignLast: 'center' }}
+                      >
+                        {opts.map(o => <option key={`b-${o}`} value={o} className="bg-[#112240] text-center">{o}X</option>)}
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              );
+            }}
             renderCellInner={(symbol, _colIndex, _rowIndex, displaySymbol, hasGoldFrame, goldMultiplier, hasJackpot, jackpotValue) => (
               <div className="flex flex-col items-center justify-center pointer-events-none w-full h-full relative">
                 <span>{displaySymbol}</span>

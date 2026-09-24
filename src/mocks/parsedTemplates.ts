@@ -491,6 +491,7 @@ export const parsedTemplates: Record<string, ParsedTemplate> = {
     ]
   },
   "奢華": {},
+  "範本-諸神之戰：雷神VS戰神": {},
   "決戰賽特2_全面覺醒": {
     "strips": [
       [

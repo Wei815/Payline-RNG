@@ -269,7 +269,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
     metric.contributionRTP = (metric.totalPayout / (totalSpins * effectiveBet)) * 100;
   });
 
-  const usedPaylines = effectivePaylines ? effectivePaylines.length : ((gameConfig.gameType === 'linegame' || gameConfig.gameType === 'linegame_set2') ? 20 : 0);
+  const usedPaylines = effectivePaylines ? effectivePaylines.length : ((gameConfig.gameType === 'linegame' || gameConfig.gameType === 'linegame_set2' || gameConfig.gameType === 'linegame_gods') ? 20 : 0);
 
   self.postMessage({
     type: 'DONE',

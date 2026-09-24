@@ -106,7 +106,7 @@ export class RngSearchEngine {
     let hcAttempts = 0;
     const hcLockedReels = new Set<number>();
     const isTargetScatter = currentPaytable.some(p => p.symbolId === targetSymbol && p.isScatter);
-    const isPositionDependent = gameType === 'linegame' || gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'linegame_set2';
+    const isPositionDependent = gameType === 'linegame' || gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'linegame_set2' || gameType === 'linegame_gods';
 
     const targetIndicesForReel: number[][] = [];
     const goldIndicesForReel: number[][] = [];
@@ -251,7 +251,7 @@ export class RngSearchEngine {
           break;
         }
         
-        const isPositionDependent = gameType === 'linegame' || gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'linegame_set2';
+        const isPositionDependent = gameType === 'linegame' || gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'linegame_set2' || gameType === 'linegame_gods';
         const isScatter = targetSymbol === 'S1' || targetSymbol === 'S2' || targetSymbol === 'SCATTER' || targetSymbol === 'B1' || targetSymbol === 'B2';
         
         if (c < length && !hasTargetOrWild && isPositionDependent && !isScatter && !requireGoldCascade) {

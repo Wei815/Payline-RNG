@@ -21,6 +21,7 @@ export interface GameState {
   customGridGoldFrames: Record<string, number>;
   customGridJackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>;
   customGridClovers: Record<string, boolean>;
+  customGridWyConfigs: Record<number, { a: number, b: number, z: 0 | 1 }>;
 
   manualIndices: string[];
   manualIndicesOther: string[];
@@ -50,6 +51,7 @@ export interface GameState {
   setCustomGridGoldFrames: (frames: Record<string, number> | ((prev: Record<string, number>) => Record<string, number>)) => void;
   setCustomGridJackpots: (jackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'> | ((prev: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>) => Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'>)) => void;
   setCustomGridClovers: (clovers: Record<string, boolean> | ((prev: Record<string, boolean>) => Record<string, boolean>)) => void;
+  setCustomGridWyConfigs: (configs: Record<number, { a: number, b: number, z: 0 | 1 }> | ((prev: Record<number, { a: number, b: number, z: 0 | 1 }>) => Record<number, { a: number, b: number, z: 0 | 1 }>)) => void;
   
   setManualIndices: (indices: string[]) => void;
   setManualIndicesOther: (indices: string[]) => void;
@@ -71,7 +73,8 @@ export const defaultSpecialSymbolConfig: SpecialSymbolConfig = {
   s1Enabled: false, s1Count: 0,
   s2Enabled: false, s2Count: 0,
   multipliersEnabled: false, multiplierCounts: {},
-  luckyBallsEnabled: false, luckyCounts: {}
+  luckyBallsEnabled: false, luckyCounts: {},
+  wyEnabled: false
 };
 
 export const extractSpecialConfigFromGrid = (grid: string[][], baseConfig: SpecialSymbolConfig, gameType: string): SpecialSymbolConfig => {
@@ -138,6 +141,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   customGridGoldFrames: {},
   customGridJackpots: {},
   customGridClovers: {},
+  customGridWyConfigs: {},
 
   manualIndices: ['1', '1', '1', '1', '1'],
   manualIndicesOther: Array(5).fill(''),
@@ -191,6 +195,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   setCustomGridClovers: (clovers) => set((state) => ({
     customGridClovers: typeof clovers === 'function' ? clovers(state.customGridClovers) : clovers
   })),
+  setCustomGridWyConfigs: (configs) => set((state) => ({
+    customGridWyConfigs: typeof configs === 'function' ? configs(state.customGridWyConfigs) : configs
+  })),
   
   setManualIndices: (indices) => set({ manualIndices: indices }),
   setManualIndicesOther: (indices) => set({ manualIndicesOther: indices }),
@@ -226,11 +233,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     const flatClassIds = (qa.ClassIDs && qa.ClassIDs.length > 0) ? qa.ClassIDs[0] : [];
     
     const gameType = snippet.gameType || useMachineStore.getState().gameType || '';
-    const isCoordinateClassId = gameType === 'linegame_set2' || gameType === 'linegame';
+    const isCoordinateClassId = gameType === 'linegame_set2' || gameType === 'linegame_gods' || gameType === 'linegame';
     const newGoldFrames: Record<string, number> = {};
     const newJackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'> = {};
+    const newWyConfigs: Record<number, { a: number, b: number, z: 0 | 1 }> = {};
 
-    if (isCoordinateClassId && flatClassIds.length > 0) {
+    if (gameType === 'linegame_gods') {
+      // In GodsGame, classId is used purely for WY configs (A, B, Z)
+      // We will parse it AFTER newGrid is generated, so leave it here empty for now
+    } else if (isCoordinateClassId && flatClassIds.length > 0) {
       const poolIndexToMultiplier: Record<number, number> = {
         0: 2, 1: 3, 2: 4, 3: 5, 4: 6, 5: 7, 6: 8, 7: 9, 8: 10, 9: 25, 10: 50, 11: 100
       };
@@ -289,6 +300,22 @@ export const useGameStore = create<GameState>((set, get) => ({
       });
     }
     
+    // Parse WY Configs for GodsGame
+    if (gameType === 'linegame_gods' && flatClassIds.length > 0) {
+      let wyClassIdIndex = 0;
+      for (let c = 0; c < reelCount; c++) {
+        const hasWy = newGrid[c].includes('WY');
+        if (hasWy && wyClassIdIndex + 2 < flatClassIds.length) {
+           newWyConfigs[c] = {
+             a: Number(flatClassIds[wyClassIdIndex]) || 2,
+             b: Number(flatClassIds[wyClassIdIndex+1]) || 10,
+             z: Number(flatClassIds[wyClassIdIndex+2]) === 1 ? 1 : 0
+           };
+           wyClassIdIndex += 3;
+        }
+      }
+    }
+    
     let newTopTracker: string[] = [];
     if (flatIds.length > reelCount && !isMathId) {
        // Optional: populate top tracker if they provided it in flatIds
@@ -297,7 +324,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     
     const newSpecialConfig = extractSpecialConfigFromGrid(newGrid, store.specialSymbolConfig, gameType);
 
-    set({ customGridData: newGrid, activeTab: 'customGrid', goldFrames: newGoldFrames, jackpots: newJackpots, specialSymbolConfig: newSpecialConfig });
+    set({ customGridData: newGrid, activeTab: 'customGrid', goldFrames: newGoldFrames, jackpots: newJackpots, customGridWyConfigs: newWyConfigs, specialSymbolConfig: newSpecialConfig });
   },
 
   resetGameSpecifics: () => set({

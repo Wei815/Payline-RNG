@@ -42,7 +42,7 @@ export function useRngSearch(
     }
     if (
       gameType !== "payanywhere_set2" &&
-      gameType !== "linegame_set2" &&
+      gameType !== "linegame_set2" && gameType !== "linegame_gods" &&
       (currentStrips.length === 0 ||
         currentStrips.every((s) => !s || s.length === 0))
     ) {
@@ -51,7 +51,7 @@ export function useRngSearch(
       return;
     }
 
-    const isInstantGenerator = gameType === "linegame_set2" || gameType === "payanywhere_set2";
+    const isInstantGenerator = gameType === "linegame_set2" || gameType === "payanywhere_set2" || gameType === "linegame_gods";
     if (!isInstantGenerator) {
       setIsSearching(true);
     }
@@ -97,7 +97,7 @@ export function useRngSearch(
           setIsSearching(false);
           return;
         }
-        if (gameType === 'linegame_set2') {
+        if (gameType === 'linegame_set2' || gameType === 'linegame_gods') {
           const mathIdMap: Record<string, string> = {};
           currentPaytable.forEach((p) => {
             if (p.mathId !== undefined) {
@@ -109,7 +109,7 @@ export function useRngSearch(
           });
 
           const excludeSymbols = [
-            "W", "W1", "W2", "WX", "WILD", "B1", "B2", "S1", "S2", "NI",
+            "W", "W1", "W2", "WX", "WY", "WZ", "WILD", "B1", "B2", "S1", "S2", "NI",
             "F1", "F2", "F3", "F4", "L1", "L2",
           ];
           const nonScatters = currentPaytable
@@ -179,7 +179,7 @@ export function useRngSearch(
             }
 
             const wins = evaluateGrid(grid, currentPaytable, {
-              gameType: "linegame_set2",
+              gameType: gameType,
               paylines: linesToUse,
               effectiveBet: bet,
               goldFrames,
@@ -384,8 +384,8 @@ export function useRngSearch(
         // Get all available regular symbols (not target, not scatters) to fill the grid without wins
         const excludeSymbols =
           selectedSymbol === "B1/B2"
-            ? ["B1", "B2", "WX", "NI", "F1", "F2", "F3", "F4", "L1", "L2"]
-            : [selectedSymbol, "WX", "NI", "F1", "F2", "F3", "F4", "L1", "L2"];
+            ? ["B1", "B2", "WX", "WY", "WZ", "NI", "F1", "F2", "F3", "F4", "L1", "L2"]
+            : [selectedSymbol, "WX", "WY", "WZ", "NI", "F1", "F2", "F3", "F4", "L1", "L2"];
         const nonScatters = currentPaytable
           .filter(
             (p) =>
@@ -657,7 +657,8 @@ export function useRngSearch(
               newCombs.push({
                 name:
                   gameType === "payanywhere_set2" ||
-                  gameType === "linegame_set2"
+                  gameType === "linegame_set2" ||
+                  gameType === "linegame_gods"
                     ? N < minWinCount
                       ? `無贏分 (1)\n${selectedSymbol} 個數 ${N}`
                       : `有贏分 (1)\n${selectedSymbol} 個數 ${N}`
@@ -673,11 +674,13 @@ export function useRngSearch(
             }
           }
         }
-      } else if (gameType === "linegame_set2") {
+      } else if (gameType === "linegame_set2" || gameType === "linegame_gods") {
         // --- LINE GAME SET 2 GENERATOR ---
         const excludeSymbols = [
           selectedSymbol,
           "WX",
+          "WY",
+          "WZ",
           "NI",
           "F1",
           "F2",
@@ -719,7 +722,7 @@ export function useRngSearch(
           });
 
           targetLengths.forEach((len) => {
-            const maxWild = isSelScatter ? 0 : Math.min(1, len - 1);
+            const maxWild = Math.min(1, len - 1);
             for (let W = 0; W <= maxWild; W++) {
               const line = linesToUse[0];
 
@@ -767,19 +770,26 @@ export function useRngSearch(
                 );
               }
 
-              let nsIdx = 0;
-              const emptySpots = flatGrid.filter((cell) => cell.val === "-");
-              emptySpots.sort(() => Math.random() - 0.5);
-
               const safeNonScatters = nonScatters.filter((sym) => sym !== selectedSymbol);
 
-              for (let i = 0; i < emptySpots.length; i++) {
-                if (specialSymbolsToPlace.length > 0) {
-                  emptySpots[i].val = specialSymbolsToPlace.shift()!;
-                } else {
-                  emptySpots[i].val = safeNonScatters[nsIdx % safeNonScatters.length];
-                  nsIdx++;
-                }
+              // 1. Place special symbols randomly
+              let emptySpots = flatGrid.filter((cell) => cell.val === "-");
+              emptySpots.sort(() => Math.random() - 0.5);
+              for (let i = 0; i < specialSymbolsToPlace.length; i++) {
+                 if (emptySpots.length > 0) {
+                    emptySpots[0].val = specialSymbolsToPlace[i];
+                    emptySpots.shift();
+                 }
+              }
+
+              // 2. Place dummy symbols column by column, using a fixed unique dummy symbol per column to prevent ANY wild bridging
+              for (let c = 0; c < reelCount; c++) {
+                 // Use a stable, unique dummy symbol for each column based on its index
+                 const dummySym = safeNonScatters[c % safeNonScatters.length];
+                 const colEmptySpots = flatGrid.filter(cell => cell.c === c && cell.val === "-");
+                 for (const spot of colEmptySpots) {
+                    spot.val = dummySym;
+                 }
               }
 
               const fullMathIds: string[] = [];
@@ -809,12 +819,12 @@ export function useRngSearch(
               let name = "";
               if (isSelScatter) {
                 name = W === 0
-                  ? `${selectedSymbol} * ${len} 個`
+                  ? `${selectedSymbol} * ${len}`
                   : `${selectedSymbol} * ${len - W} + WX`;
               } else {
                 name = W === 0
-                  ? `${selectedSymbol} * ${len} 連線 (Line 1)`
-                  : `${selectedSymbol} * ${len - W} + WX (Line 1)`;
+                  ? `${selectedSymbol} * ${len}`
+                  : `${selectedSymbol} * ${len - W} + WX`;
               }
 
               newCombs.push({

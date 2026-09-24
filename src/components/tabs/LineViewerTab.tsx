@@ -37,13 +37,17 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
   const computedLines = React.useMemo(() => {
     return linesToRender.map((line, lineIdx) => {
       const { rng, actualTotalWin, mathIdRng } = (() => {
-              if (gameType === 'linegame_set2') {
+              if (gameType === 'linegame_set2' || gameType === 'linegame_gods') {
                 const grid: string[][] = Array.from({ length: reelCount }, (_, c) => Array(rowCounts[c] || 3).fill('-'));
                 for (let c = 0; c < line.length; c++) {
-                  grid[c][line[c]] = activeLineViewerSymbol;
+                  if (useWxInLines && (c === 1 || c === 3)) {
+                    grid[c][line[c]] = 'WX';
+                  } else {
+                    grid[c][line[c]] = activeLineViewerSymbol;
+                  }
                 }
 
-                const excludeSymbols = [activeLineViewerSymbol, 'WX', 'NI', 'F1', 'F2', 'F3', 'F4', 'L1', 'L2'];
+                const excludeSymbols = [activeLineViewerSymbol, 'WX', 'WY', 'WZ', 'NI', 'F1', 'F2', 'F3', 'F4', 'L1', 'L2'];
                 const nonScatters = currentPaytable.filter(p => p.isEnabled !== false && !p.isScatter && !excludeSymbols.includes(p.symbolId)).map(p => p.symbolId);
 
                 let nsIdx = 0;
@@ -180,9 +184,21 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                   onChange={(e) => setLineViewerSymbolState(e.target.value)}
                   className="bg-[#112240] border border-gray-700 text-yellow-400 rounded px-2.5 py-1 outline-none focus:border-yellow-500 text-xs font-mono font-bold cursor-pointer"
                 >
-                  {symbols.map(sym => (
-                    <option key={sym} value={sym}>{sym}</option>
-                  ))}
+                  {symbols
+                    .map(sym => {
+                      const rule = currentPaytable.find(p => p.symbolId === sym);
+                      const parseId = (val: string | number | undefined) => {
+                        if (val === undefined || val === '') return 999;
+                        if (typeof val === 'number') return val;
+                        const match = String(val).match(/\\d+/);
+                        return match ? parseInt(match[0], 10) : 999;
+                      };
+                      return { sym, mathId: rule ? parseId(rule.mathId) : 999 };
+                    })
+                    .sort((a, b) => a.mathId - b.mathId)
+                    .map(({ sym }) => (
+                      <option key={sym} value={sym}>{sym}</option>
+                    ))}
                 </select>
               </div>
               <label className="flex items-center gap-2 cursor-pointer hover:text-dashboard-accent transition-colors font-bold select-none text-dashboard-text-secondary text-xs">

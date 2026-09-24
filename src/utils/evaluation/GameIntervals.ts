@@ -23,10 +23,20 @@ export const WAYGAME_MULTIPLIER_INTERVALS: MultiplierInterval[] = [
   { id: '3', name: 'SuperMega Win', min: 300, max: null },
 ];
 
+export const GODS_MULTIPLIER_INTERVALS: MultiplierInterval[] = [
+  { id: '1', name: 'Big Win', min: 20, max: 35 },
+  { id: '2', name: 'Super Win', min: 35, max: 50 },
+  { id: '3', name: 'Mega Win', min: 50, max: 100 },
+  { id: '4', name: 'Ultra Win', min: 100, max: 300 },
+  { id: '5', name: 'Legend Win', min: 300, max: null },
+];
+
 export function getGameIntervals(gameType: GameType): MultiplierInterval[] {
   switch (gameType) {
     case 'linegame_set2':
       return LUXE_MULTIPLIER_INTERVALS;
+    case 'linegame_gods':
+      return GODS_MULTIPLIER_INTERVALS;
     case 'waygame':
       return WAYGAME_MULTIPLIER_INTERVALS;
     default:
