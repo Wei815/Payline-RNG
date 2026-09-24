@@ -707,7 +707,8 @@ export function useRngSearch(
               ? customPaylines
               : [Array(reelCount).fill(0)];
           const targetLengths = [];
-          for (let l = startLen; l <= reelCount; l++) {
+          const maxLen = (gameType === 'linegame_gods' && isSelScatter) ? 3 : reelCount;
+          for (let l = startLen; l <= maxLen; l++) {
              targetLengths.push(l);
           }
 
@@ -731,11 +732,15 @@ export function useRngSearch(
               );
 
               // Place targets and wilds
+              const wildSymbol = (gameType === "linegame_gods" && isFreeGame) ? "WY" : "WX";
+              const isGodsScatter = gameType === "linegame_gods" && isSelScatter;
               for (let c = 0; c < len; c++) {
+                const targetCol = isGodsScatter ? c * 2 : c;
+                if (targetCol >= reelCount) continue;
                 if (W === 1 && c === 1) {
-                   grid[c][line[c]] = "WX";
+                   grid[targetCol][line[targetCol]] = wildSymbol;
                 } else {
-                   grid[c][line[c]] = selectedSymbol;
+                   grid[targetCol][line[targetCol]] = selectedSymbol;
                 }
               }
 
@@ -817,14 +822,20 @@ export function useRngSearch(
               }
 
               let name = "";
-              if (isSelScatter) {
+              const wildSymbolStr = (gameType === "linegame_gods" && isFreeGame) ? "WY" : "WX";
+              if (isGodsScatter) {
                 name = W === 0
                   ? `${selectedSymbol} * ${len}`
-                  : `${selectedSymbol} * ${len - W} + WX`;
+                  : `${selectedSymbol} * ${len - W} + ${wildSymbolStr}`;
               } else {
                 name = W === 0
                   ? `${selectedSymbol} * ${len}`
-                  : `${selectedSymbol} * ${len - W} + WX`;
+                  : `${selectedSymbol} * ${len - W} + ${wildSymbolStr}`;
+              }
+              
+              let defaultClassStr = '';
+              if (gameType === "linegame_gods" && isFreeGame) {
+                 defaultClassStr = '[2,10,0]';
               }
 
               newCombs.push({
@@ -837,7 +848,7 @@ export function useRngSearch(
                 goldFrames: {},
                 jackpots: {},
                 clovers: {},
-                classStr: '',
+                classStr: defaultClassStr,
               } as any);
             }
           });

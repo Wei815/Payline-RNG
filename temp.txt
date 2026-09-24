@@ -1,0 +1,5 @@
+            </select>
+          </div>
+          <span className="text-xs text-dashboard-text-secondary sm:text-right leading-relaxed">
+            ?��??�出該符?�在?��?滾輪表�??�干?�單一????�置
+          </span>
