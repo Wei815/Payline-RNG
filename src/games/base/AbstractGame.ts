@@ -68,6 +68,19 @@ export abstract class AbstractGame implements IGameEnvironment {
   }
 
   /**
+   * 允許特定遊戲自訂候選 RNG 驗證 (例如 RomaGame 需驗證消除掉落與遞補後 100% 0 連線)
+   */
+  public validateCandidateRng?(
+    candidateRng: number[],
+    initialGrid: string[][],
+    initialWins: WinResult[],
+    currentPaytable: PaytableRule[],
+    customPaylines?: number[][],
+    stripSets?: Record<string, string[][]>,
+    isFreeGame?: boolean
+  ): { valid: boolean; allRngs?: number[][] } | boolean;
+
+  /**
    * 掉落演算法，供子類別覆寫 (例如決戰賽特2的平移掉落)
    */
   public applyCascade(

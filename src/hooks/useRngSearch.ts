@@ -27,12 +27,17 @@ export function useRngSearch(
       isInterfered: boolean;
       hasS1Drop?: boolean;
       stripId?: number;
+      allRngs?: number[][];
     }[]
   >([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
 
 
   const multiplierIntervalsStr = JSON.stringify(multiplierIntervals);
+  const stripsSignature = (currentStrips || []).map(s => s ? s.length : 0).join(',') + '_' + ((currentStrips && currentStrips[0]) ? currentStrips[0].slice(0, 3).join('-') : '');
+  const paytableSignature = (currentPaytable || []).map(p => `${p.symbolId}:${p.isEnabled}`).join(',');
+  const paylinesSignature = (customPaylines || []).length;
+  const stripSetsSignature = stripSets ? Object.keys(stripSets).length : 0;
 
   useEffect(() => {
     if (!selectedSymbol) {
@@ -68,7 +73,8 @@ export function useRngSearch(
           gameType,
           topTrackerOther,
           customPaylines,
-          isFreeGame
+          isFreeGame,
+          stripSets
         );
         
         for (let i = 0; i < results.length; i++) {
@@ -79,7 +85,8 @@ export function useRngSearch(
               wildCount: 0,
               rng: results[i],
               isInterfered: false,
-              hasS1Drop: false
+              hasS1Drop: false,
+              allRngs: (results[i] as any)?.allRngs || (results[i] ? [results[i]] : undefined)
             } as any);
           }
         }
@@ -105,8 +112,12 @@ export function useRngSearch(
                 .split(",")
                 .map((s) => s.trim());
               mathIdMap[p.symbolId] = ids[0];
+              }
+            });
+            // Inject WY mathId based on W
+            if (mathIdMap['W']) {
+               mathIdMap['WY'] = mathIdMap['W'];
             }
-          });
 
           const excludeSymbols = [
             "W", "W1", "W2", "WX", "WY", "WZ", "WILD", "B1", "B2", "S1", "S2", "NI",
@@ -146,45 +157,63 @@ export function useRngSearch(
 
           // Evaluate candidate grid
           const evaluateCandidate = (
-            hit0: { sym: string; len: number },
-            hit1: { sym: string; len: number },
-            hit2: { sym: string; len: number },
-            goldFrames: Record<string, number> = {},
-            jackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'> = {}
-          ) => {
-            const grid: string[][] = Array.from({ length: reelCount }, (_, c) =>
-              Array(rowCounts[c] || 3).fill("-")
-            );
-            if (hit0.len > 0) {
-              for (let c = 0; c < hit0.len; c++) grid[c][0] = hit0.sym;
-            }
-            if (hit1.len > 0) {
-              for (let c = 0; c < hit1.len; c++) grid[c][1] = hit1.sym;
-            }
-            if (hit2.len > 0) {
-              for (let c = 0; c < hit2.len; c++) grid[c][2] = hit2.sym;
-            }
+              hit0: { sym: string; len: number },
+              hit1: { sym: string; len: number },
+              hit2: { sym: string; len: number },
+              goldFrames: Record<string, number> = {},
+              jackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'> = {}
+            ) => {
+              const grid: string[][] = Array.from({ length: reelCount }, (_, c) =>
+                Array(rowCounts[c] || 3).fill("-")
+              );
+              if (hit0.len > 0) {
+                for (let c = 0; c < hit0.len; c++) grid[c][0] = hit0.sym;
+              }
+              if (hit1.len > 0) {
+                for (let c = 0; c < hit1.len; c++) grid[c][1] = hit1.sym;
+              }
+              if (hit2.len > 0) {
+                for (let c = 0; c < hit2.len; c++) grid[c][2] = hit2.sym;
+              }
 
-            const dummyPool = nonScatters.filter(
-              (s) => s !== hit0.sym && s !== hit1.sym && s !== hit2.sym
-            );
-            let dIdx = 0;
-            for (let c = 0; c < reelCount; c++) {
-              for (let r = 0; r < (rowCounts[c] || 3); r++) {
-                if (grid[c][r] === "-") {
-                  grid[c][r] = dummyPool[dIdx % dummyPool.length] || "J";
-                  dIdx++;
+              const dummyPool = nonScatters.filter(
+                (s) => s !== hit0.sym && s !== hit1.sym && s !== hit2.sym
+              );
+              let dIdx = 0;
+              for (let c = 0; c < reelCount; c++) {
+                for (let r = 0; r < (rowCounts[c] || 3); r++) {
+                  if (grid[c][r] === "-") {
+                    grid[c][r] = dummyPool[dIdx % dummyPool.length] || "J";
+                    dIdx++;
+                  }
                 }
               }
-            }
 
-            const wins = evaluateGrid(grid, currentPaytable, {
-              gameType: gameType,
-              paylines: linesToUse,
-              effectiveBet: bet,
-              goldFrames,
-              jackpots,
-            });
+              let wyConfigs: Record<number, {a: number, b: number, z: 0 | 1}> | undefined = undefined;
+              if (gameType === 'linegame_gods') {
+                 // Inject WY based on hijacked goldFrames
+                 const keys = Object.keys(goldFrames);
+                 for (const key of keys) {
+                    if (key.startsWith('WY-')) {
+                       const col = parseInt(key.split('-')[1], 10); // 0-indexed column
+                       const mult = goldFrames[key];
+                       if (!wyConfigs) wyConfigs = {};
+                       wyConfigs[col] = { a: mult, b: mult, z: 0 };
+                       for (let r = 0; r < (rowCounts[col] || 3); r++) {
+                         grid[col][r] = 'WY';
+                       }
+                    }
+                 }
+              }
+
+              const wins = evaluateGrid(grid, currentPaytable, {
+                gameType: gameType,
+                paylines: linesToUse,
+                effectiveBet: bet,
+                goldFrames,
+                jackpots,
+                wyConfigs,
+              });
 
             const totalWin = wins.reduce((sum, w) => sum + w.totalWin, 0);
             return { grid, totalWin, wins, goldFrames, jackpots };
@@ -211,6 +240,9 @@ export function useRngSearch(
                     // We want ratio < 10, maximized as close to 10 as possible
                     if (cand.totalWin > 0 && ratio < 10) {
                       if (ratio > bestScore) {
+                        if (gameType === 'linegame_gods') {
+                           console.log('Phase2 New Best:', { ratio, hit0: hit0.sym, totalWin: cand.totalWin });
+                        }
                         bestScore = ratio;
                         bestCandidate = cand;
                       }
@@ -483,8 +515,12 @@ export function useRngSearch(
                     .split(",")
                     .map((s) => s.trim());
                   mathIdMap[p.symbolId] = ids[0];
-                }
-              });
+              }
+            });
+            // Inject WY mathId based on W
+            if (mathIdMap['W']) {
+               mathIdMap['WY'] = mathIdMap['W'];
+            }
 
               const columnStrings: string[] = [];
               let cellPointer = 0;
@@ -616,8 +652,12 @@ export function useRngSearch(
                     .split(",")
                     .map((s) => s.trim());
                   mathIdMap[p.symbolId] = ids[0];
-                }
-              });
+              }
+            });
+            // Inject WY mathId based on W
+            if (mathIdMap['W']) {
+               mathIdMap['WY'] = mathIdMap['W'];
+            }
 
               // Convert to column-based strings for manualIndicesOther
               const columnStrings: string[] = [];
@@ -719,8 +759,12 @@ export function useRngSearch(
                 .split(",")
                 .map((s) => s.trim());
               mathIdMap[p.symbolId] = ids[0];
+              }
+            });
+            // Inject WY mathId based on W
+            if (mathIdMap['W']) {
+               mathIdMap['WY'] = mathIdMap['W'];
             }
-          });
 
           targetLengths.forEach((len) => {
             const maxWild = Math.min(1, len - 1);
@@ -902,7 +946,7 @@ export function useRngSearch(
                 customPaylines,
                 isFreeGame,
                 stripSets,
-                W > 0  // requireGoldCascade 當需要 WX 時，透過消除黃金符號產生
+                (gameType === 'waygame_elephant' || gameType === 'waygame_qin') && W > 0
               ),
             });
           }
@@ -920,6 +964,7 @@ export function useRngSearch(
             isInterfered: res.isInterfered,
             hasS1Drop: res.hasS1Drop,
             stripId: (res as any).stripId,
+            allRngs: (res as any)?.allRngs,
           });
         }
 
@@ -935,7 +980,12 @@ export function useRngSearch(
   }, [
     selectedSymbol,
     multiplierIntervalsStr,
-    isFreeGame
+    isFreeGame,
+    gameType,
+    stripsSignature,
+    paytableSignature,
+    paylinesSignature,
+    stripSetsSignature
   ]);
 
   return { isSearching, combinations };

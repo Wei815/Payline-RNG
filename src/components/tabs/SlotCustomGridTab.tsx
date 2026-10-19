@@ -186,6 +186,21 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     });
   };
 
+  const luckySelectsStr = useMemo(() => {
+    if (gameType !== 'linegame_gods') return '';
+    const keys = Object.keys(goldFrames);
+    if (keys.length === 0) return '';
+    const selects: number[] = [];
+    keys.forEach(k => {
+      const [cStr, rStr] = k.split('-');
+      const c = parseInt(cStr, 10);
+      const r = parseInt(rStr, 10);
+      selects.push(c * 5 + r);
+    });
+    selects.sort((a,b) => a - b);
+    return `[${selects.join(',')}]`;
+  }, [goldFrames, gameType]);
+
   const combinedClassIdStr = useMemo(() => {
     if (gameType === 'linegame_gods') {
       const output: number[] = [];
@@ -254,7 +269,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
 
   // Handle Drag & Drops Generation
   const dropRng = useMemo(() => {
-    if (gameType === 'linegame_set2' || gameType === 'linegame_gods' || gameType === 'linegame' || gameType.startsWith('waygame')) return '';
+    if (gameType === 'linegame_set2' || gameType === 'linegame_gods' || gameType === 'linegame' || gameType === 'linegame_roma' || gameType.startsWith('waygame')) return '';
     if (winningCoords.size === 0) return '';
     
     // Calculate current symbol counts to avoid secondary wins
@@ -414,10 +429,15 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     if (isGoldFrameMode) {
       setGoldFrames(prev => {
         const next = { ...prev };
-        if (next[key] === selectedMultiplier) {
-          delete next[key];
+        if (gameType === 'linegame_gods') {
+          if (next[key]) delete next[key];
+          else next[key] = 1;
         } else {
-          next[key] = selectedMultiplier;
+          if (next[key] === selectedMultiplier) {
+            delete next[key];
+          } else {
+            next[key] = selectedMultiplier;
+          }
         }
         return next;
       });
@@ -602,7 +622,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
         
         {/* Special Symbol Multiplier Config */}
         {gameType === 'linegame_gods' && (
-          <div className="bg-[#112240] p-3 rounded-md border border-gray-700/50">
+          <div className="bg-[#112240] p-3 rounded-md border border-gray-700/50 flex flex-col gap-3">
              <label className="flex items-center gap-2 cursor-pointer group">
                <div className="relative">
                  <input 
@@ -618,6 +638,20 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
                  啟用 WY (延伸百搭)
                </span>
              </label>
+             <button
+                onClick={() => {
+                  const next = !isGoldFrameMode;
+                  setIsGoldFrameMode(next);
+                  if (next) setSelectedPaletteSymbol(null);
+                }}
+                className={`w-full py-1.5 px-2 rounded text-xs font-bold transition-all border flex justify-center items-center gap-1 ${
+                  isGoldFrameMode 
+                    ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500 ring-1 ring-yellow-400' 
+                    : 'bg-[#0a192f] text-gray-400 border-gray-600 hover:border-gray-400'
+                }`}
+              >
+                👑 金框編輯模式 {isGoldFrameMode ? '(ON)' : '(OFF)'}
+              </button>
           </div>
         )}
         
@@ -846,7 +880,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
             onCellClick={handleCellClick}
             onDragStart={(e, symbol, colIndex, rowIndex) => handleDragStart(e, symbol, false, colIndex, rowIndex)}
             onDrop={handleDrop}
-            goldFrames={gameType === 'linegame_set2' ? goldFrames : {}}
+            goldFrames={gameType === 'linegame_set2' || gameType === 'linegame_gods' ? goldFrames : {}}
             jackpots={gameType === 'linegame_set2' ? jackpots : {}}
             renderColumnHeader={(colIndex) => {
               if (gameType !== 'linegame_gods') return null;
@@ -911,11 +945,11 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
                 {symbol.match(/^[F|L][1-4]_/) && (
                    <span className="text-[10px] text-gray-500 font-mono mt-1 leading-none">{symbol.split('_')[0]}</span>
                 )}
-                {hasGoldFrame && (
-                  <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-[#0a192f] text-[10px] font-black px-1 rounded-sm shadow border border-yellow-600 z-10">
-                    {goldMultiplier}
-                  </div>
-                )}
+                {hasGoldFrame && gameType !== 'linegame_gods' && (
+                    <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-[#0a192f] text-[10px] font-black px-1 rounded-sm shadow border border-yellow-600 z-10">
+                      {goldMultiplier}
+                    </div>
+                  )}
                 {hasJackpot && (
                   <div className="absolute -bottom-1 left-0 right-0 mx-1 bg-red-500 text-white text-[9px] font-black px-1 rounded-sm shadow border border-red-700 z-10 truncate text-center">
                     {jackpotValue}
@@ -974,29 +1008,44 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
           </button>
 
           {/* ClassID Button */}
-          {(multiplierClassIdStr || combinedClassIdStr) && (
-            <button
-              onClick={() => {
-                let text = '';
-                if (multiplierClassIdStr) text += `${multiplierClassIdStr}`;
-                if (combinedClassIdStr) text += `${combinedClassIdStr}`;
-                navigator.clipboard.writeText(text);
-              }}
-              className="w-full flex flex-col items-center justify-center gap-0.5 bg-[#112240] border border-gray-700/50 hover:border-yellow-400 hover:bg-[#112240]/80 rounded p-2.5 cursor-pointer transition-all mt-1"
-              title="點擊自動複製 ClassID"
-            >
-               {multiplierClassIdStr && (
-                 <span className="text-purple-400 text-[10px] font-mono leading-tight opacity-75 truncate max-w-full text-center" title={multiplierClassIdStr}>
-                   {multiplierClassIdStr.length > 30 ? multiplierClassIdStr.slice(0, 30) + '...' : multiplierClassIdStr} (ClassID)
+            {(multiplierClassIdStr || combinedClassIdStr) && (
+              <button
+                onClick={() => {
+                  let text = '';
+                  if (multiplierClassIdStr) text += `${multiplierClassIdStr}`;
+                  if (combinedClassIdStr) text += `${combinedClassIdStr}`;
+                  navigator.clipboard.writeText(text);
+                }}
+                className="w-full flex flex-col items-center justify-center gap-0.5 bg-[#112240] border border-gray-700/50 hover:border-yellow-400 hover:bg-[#112240]/80 rounded p-2.5 cursor-pointer transition-all mt-1"
+                title="點擊自動複製 ClassID"
+              >
+                 {multiplierClassIdStr && (
+                   <span className="text-purple-400 text-[10px] font-mono leading-tight opacity-75 truncate max-w-full text-center" title={multiplierClassIdStr}>
+                     {multiplierClassIdStr.length > 30 ? multiplierClassIdStr.slice(0, 30) + '...' : multiplierClassIdStr} (ClassID)
+                   </span>
+                 )}
+                 {combinedClassIdStr && (
+                   <span className="text-yellow-400 text-[10px] font-mono leading-tight opacity-75 truncate max-w-full text-center" title={combinedClassIdStr}>
+                     {combinedClassIdStr.length > 30 ? combinedClassIdStr.slice(0, 30) + '...' : combinedClassIdStr} (ClassID)
+                   </span>
+                 )}
+              </button>
+            )}
+
+            {/* LuckySelects Button */}
+            {luckySelectsStr && (
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(luckySelectsStr);
+                }}
+                className="w-full flex flex-col items-center justify-center gap-0.5 bg-[#112240] border border-gray-700/50 hover:border-orange-400 hover:bg-[#112240]/80 rounded p-2.5 cursor-pointer transition-all mt-1"
+                title="點擊自動複製 LuckySelects"
+              >
+                 <span className="text-orange-400 text-[10px] font-mono leading-tight opacity-75 truncate max-w-full text-center" title={luckySelectsStr}>
+                   {luckySelectsStr.length > 30 ? luckySelectsStr.slice(0, 30) + '...' : luckySelectsStr} (LuckySelects)
                  </span>
-               )}
-               {combinedClassIdStr && (
-                 <span className="text-yellow-400 text-[10px] font-mono leading-tight opacity-75 truncate max-w-full text-center" title={combinedClassIdStr}>
-                   {combinedClassIdStr.length > 30 ? combinedClassIdStr.slice(0, 30) + '...' : combinedClassIdStr} (ClassID)
-                 </span>
-               )}
-            </button>
-          )}
+              </button>
+            )}
 
           {/* Save to Snippet Button */}
           <button
@@ -1098,6 +1147,15 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
                     }
                   } catch (e) {
                     console.error("Failed to parse ClassID", e);
+                  }
+                  
+                  try {
+                    if (luckySelectsStr) {
+                      let c = luckySelectsStr.replace(/,$/, '');
+                      luckySelectData = [JSON.parse(c)];
+                    }
+                  } catch (e) {
+                    console.error("Failed to parse LuckySelects", e);
                   }
     
                   useSnippetStore.getState().addSnippet({

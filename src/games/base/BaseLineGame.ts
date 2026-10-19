@@ -27,10 +27,16 @@ export abstract class BaseLineGame extends AbstractGame {
     const configuredWilds = config.wildSymbols || DEFAULT_WILD_SYMBOLS;
     configuredWilds.forEach(w => wildSymbols.add(w));
 
+    const effectivePaylines = (customPaylines && customPaylines.length > 0)
+      ? customPaylines
+      : (config.paylines && config.paylines.length > 0)
+        ? config.paylines
+        : this.getDefaultConfig().paylines;
+
     const context = {
       grid,
       paytable,
-      gameConfig: config,
+      gameConfig: { ...config, paylines: effectivePaylines },
       wildSymbols,
       includeZeroPayout
     };

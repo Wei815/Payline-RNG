@@ -1,7 +1,7 @@
 import type { IGameEnvironment } from '../games/base/IGameEnvironment';
 import type { GameType } from '../types';
 
-import { MermaidGame } from '../games/mermaid/MermaidGame';
+import { MermaidGame } from '../games/Mermaid/MermaidGame';
 import { QinGame } from '../games/Chin Shi Huang/QinGame';
 import { BattleSet2Game } from '../games/Battle of Set 2Awakening/BattleSet2Game';
 import { LuxeGame } from '../games/The Luxe/LuxeGame';
@@ -10,6 +10,7 @@ import { ClassicLineGame } from '../games/linegame/ClassicLineGame';
 import { ClassicPayAnywhere } from '../games/payanywhere/ClassicPayAnywhere';
 
 import { RoyalElephantGame } from '../games/Royal Ganesha/RoyalElephantGame';
+import { RomaGame } from '../games/Roma/RomaGame';
 
 export class GameRegistry {
   private static games = new Map<GameType, IGameEnvironment>();
@@ -25,6 +26,7 @@ export class GameRegistry {
     this.register(new ClassicLineGame());
     this.register(new ClassicPayAnywhere());
     this.register(new RoyalElephantGame());
+    this.register(new RomaGame());
     this.initialized = true;
   }
 

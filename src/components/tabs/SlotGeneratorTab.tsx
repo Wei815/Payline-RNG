@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import type { GameType, PaytableRule, GameConfig } from '../../types';
 import { formatAmount } from '../../utils/formatters';
 import { getWinColorClass, calculateSVGPaths } from '../../utils/svgPaths';
+import { getGameIntervals } from '../../utils/evaluation/GameIntervals';
 import { getWinningPositions } from '../../utils/evaluation';
 import type { SVGPathResult } from '../../utils/svgPaths';
 import { evaluateGrid, defaultPaylines } from '../../utils/evaluation';
 import { MULTIPLIER_BALLS, LUCKY_BALLS, isGoldSymbol } from '../../utils/evaluation/GameConstants';
 import { useRngSearch } from '../../hooks/useRngSearch';
 import { useGameStore } from '../../store/useGameStore';
+import { GameRegistry } from '../../core/GameRegistry';
 
 export interface SlotGeneratorTabProps {
   reelCount: number;
@@ -76,17 +78,47 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
   currentStrips, currentGrid, currentPaytable, customPaylines, bet, isFreeGame
 }) => {
   const { setIsFreeGame } = useGameStore();
+  const currentStripSets = useGameStore(state => state.currentStripSets);
   const gridContainerRefOther = useRef<HTMLDivElement>(null);
-  const [linePathsOther, setLinePathsOther] = useState<SVGPathResult[]>([]);
-  const [multiplierIntervals, setMultiplierIntervals] = useState<import('../../types').MultiplierInterval[]>(() =>
-    gameType === 'linegame_set2' ? LUXE_MULTIPLIER_INTERVALS : (gameType === 'waygame_elephant' ? ELEPHANT_MULTIPLIER_INTERVALS : DEFAULT_MULTIPLIER_INTERVALS)
-  );
-  const [activeSearchIntervals, setActiveSearchIntervals] = useState<import('../../types').MultiplierInterval[]>(() =>
-    gameType === 'linegame_set2' ? LUXE_MULTIPLIER_INTERVALS : (gameType === 'waygame_elephant' ? ELEPHANT_MULTIPLIER_INTERVALS : DEFAULT_MULTIPLIER_INTERVALS)
-  );
+
+  // Roma FreeGame Trigger Setup states
+  const [selectedTriggerCombo, setSelectedTriggerCombo] = useState<number>(4);
+  const [triggerRngSequence, setTriggerRngSequence] = useState<number[][] | null>(null);
+  const [isGeneratingTrigger, setIsGeneratingTrigger] = useState<boolean>(false);
+  const [isCopiedTrigger, setIsCopiedTrigger] = useState<boolean>(false);
+
+  const regenerateTriggerSequence = useCallback(async () => {
+    if (gameType !== 'linegame_roma') return;
+    setIsGeneratingTrigger(true);
+    try {
+      const { GameRegistry } = await import('../../core/GameRegistry');
+      const romaGame = GameRegistry.getGame('linegame_roma') as any;
+      if (romaGame && romaGame.generateTriggerSequence) {
+        const seq = await romaGame.generateTriggerSequence(
+          selectedTriggerCombo,
+          currentStripSets,
+          rowCounts,
+          currentPaytable,
+          customPaylines
+        );
+        setTriggerRngSequence(seq);
+      }
+    } finally {
+      setIsGeneratingTrigger(false);
+    }
+  }, [gameType, selectedTriggerCombo, currentStripSets, rowCounts, currentPaytable, customPaylines]);
 
   useEffect(() => {
-    const initial = gameType === 'linegame_set2' ? LUXE_MULTIPLIER_INTERVALS : (gameType === 'waygame_elephant' ? ELEPHANT_MULTIPLIER_INTERVALS : DEFAULT_MULTIPLIER_INTERVALS);
+    if (gameType === 'linegame_roma' && isFreeGame) {
+      regenerateTriggerSequence();
+    }
+  }, [gameType, isFreeGame, selectedTriggerCombo, regenerateTriggerSequence]);
+  const [linePathsOther, setLinePathsOther] = useState<SVGPathResult[]>([]);
+  const [multiplierIntervals, setMultiplierIntervals] = useState<import('../../types').MultiplierInterval[]>(() => getGameIntervals(gameType));
+  const [activeSearchIntervals, setActiveSearchIntervals] = useState<import('../../types').MultiplierInterval[]>(() => getGameIntervals(gameType));
+
+  useEffect(() => {
+    const initial = getGameIntervals(gameType);
     setMultiplierIntervals(initial);
     setActiveSearchIntervals(initial);
   }, [gameType]);
@@ -308,6 +340,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
   // Copy feedback state
   const [isCopiedAll, setIsCopiedAll] = useState<boolean>(false);
   const [isCopiedAllTestCases, setIsCopiedAllTestCases] = useState<boolean>(false);
+  const [isCopiedRomaChain, setIsCopiedRomaChain] = useState<boolean>(false);
 
   const combinedClassIdStr = useMemo(() => {
     const arr: number[] = [];
@@ -360,7 +393,14 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
 
   useEffect(() => {
     if (!isSearching && combinations.length > 0) {
-      const targetIdx = selectedCombIndex < combinations.length ? selectedCombIndex : 0;
+      let targetIdx = selectedCombIndex < combinations.length ? selectedCombIndex : 0;
+      if (!combinations[targetIdx]?.rng) {
+        const firstValidIdx = combinations.findIndex(c => c.rng !== null && c.rng !== undefined);
+        if (firstValidIdx !== -1) {
+          targetIdx = firstValidIdx;
+          setSelectedCombIndex(firstValidIdx);
+        }
+      }
       const comb = combinations[targetIdx];
       if (comb && comb.rng) {
         setManualIndicesOther(comb.rng.map((val: any) => String(val)));
@@ -428,8 +468,42 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
     return formattedRngArray;
   }, [gameType, combinations, selectedCombIndex, isManualEdited, manualIndicesOther, clovers, currentPaytable, rowCounts]);
 
+  const romaManualSafeRng1 = useMemo(() => {
+    if (gameType !== 'linegame_roma' || !isManualEdited || winsOther.length === 0) return null;
+    const strips1 = (!isFreeGame && currentStripSets && currentStripSets[1]) ? currentStripSets[1] : currentStrips;
+    try {
+      const romaGame = GameRegistry.getGame('linegame_roma') as any;
+      if (romaGame && romaGame.findSafeReplacementRng) {
+        return romaGame.findSafeReplacementRng(
+          displayGridOther, winsOther, currentPaytable, strips1, rowCounts, customPaylines
+        );
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  }, [gameType, isManualEdited, winsOther, currentStripSets, currentStrips, displayGridOther, currentPaytable, rowCounts, customPaylines, isFreeGame]);
+
   const currentRngString = (() => {
     const targetComb = combinations[selectedCombIndex < combinations.length ? selectedCombIndex : 0];
+    if (gameType === 'linegame_roma') {
+      if (isManualEdited) {
+        if (romaManualSafeRng1) {
+          return `[${currentFormattedRngArray.slice(0, 5).join(',')}],\n[${romaManualSafeRng1.slice(0, 5).join(',')}],`;
+        }
+        return `[${currentFormattedRngArray.slice(0, 5).join(',')}],`;
+      }
+      const fgRngs = (targetComb as any)?.allRngs || (targetComb?.rng ? [targetComb.rng] : []);
+      if (isFreeGame && triggerRngSequence && triggerRngSequence.length > 0) {
+        const triggerStr = triggerRngSequence.map(r => `[${r.slice(0, 5).join(',')}],`).join('\n');
+        const fgStr = fgRngs.map((r: number[]) => `[${r.slice(0, 5).join(',')}],`).join('\n');
+        return `${triggerStr}\n${fgStr}`;
+      } else if ((targetComb as any)?.allRngs) {
+        return (targetComb as any).allRngs.map((r: number[]) => `[${r.slice(0, 5).join(',')}],`).join('\n');
+      } else if (targetComb?.rng) {
+        return `[${targetComb.rng.slice(0, 5).join(',')}],`;
+      }
+    }
     if (gameType.includes('waygame') || gameType.includes('megaway')) {
       const extraId = (targetComb as any)?.stripId !== undefined && !isManualEdited ? Number((targetComb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0);
       return `[${[...currentFormattedRngArray, extraId].join(',')}],`;
@@ -733,8 +807,110 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                 {isFreeGame ? 'FG 模式 (WY)' : 'BG 模式 (WX)'}
               </button>
             )}
+            {gameType === 'linegame_roma' && (
+              <div className="flex items-center gap-1.5 bg-[#112240] p-1 rounded-lg border border-purple-500/40 shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => setIsFreeGame(false)}
+                  className={`px-3 py-1 rounded text-xs font-bold transition-all ${!isFreeGame ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                >
+                  🛡️ 一般模式 (Base)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsFreeGame(true)}
+                  className={`px-3 py-1 rounded text-xs font-bold transition-all ${isFreeGame ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                >
+                  ⚔️ 免遊模式 (Free Game)
+                </button>
+              </div>
+            )}
           </div>
         </div>
+
+        {gameType === 'linegame_roma' && isFreeGame && (
+          <div className="w-full max-w-3xl flex flex-col bg-[#0f172a] p-4 rounded-xl border border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.15)] gap-3">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-purple-500/30 pb-2.5 gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-base">⚔️</span>
+                <span className="text-sm font-bold text-purple-300">
+                  Free Game 觸發機制 (由 BaseGame 連鎖消除觸發)
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={regenerateTriggerSequence}
+                  disabled={isGeneratingTrigger}
+                  className="px-2.5 py-1 text-xs font-bold rounded bg-purple-500/20 text-purple-300 border border-purple-500/40 hover:bg-purple-500/30 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                >
+                  {isGeneratingTrigger ? '產生中...' : '🔄 換一組觸發 RNG'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (triggerRngSequence) {
+                      const text = triggerRngSequence.map(r => `[${r.join(',')}],`).join('\n');
+                      navigator.clipboard.writeText(text);
+                      setIsCopiedTrigger(true);
+                      setTimeout(() => setIsCopiedTrigger(false), 2000);
+                    }
+                  }}
+                  disabled={!triggerRngSequence}
+                  className="px-2.5 py-1 text-xs font-bold rounded bg-[#64ffda]/10 text-[#64ffda] border border-[#64ffda]/30 hover:bg-[#64ffda]/20 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                >
+                  {isCopiedTrigger ? '✅ 已複製！' : '📋 僅複製觸發 RNG'}
+                </button>
+              </div>
+            </div>
+
+            {/* 4 5 6 7 選擇按鈕 */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs text-gray-300 font-bold">選擇觸發條件 (連續消除次數 / 獲得免遊場數)：</span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { combo: 4, spins: 4, label: 'Combo 4', desc: '觸發 4 場 FG' },
+                  { combo: 5, spins: 5, label: 'Combo 5', desc: '觸發 5 場 FG' },
+                  { combo: 6, spins: 10, label: 'Combo 6', desc: '觸發 10 場 FG' },
+                  { combo: 7, spins: 20, label: 'Combo 7', desc: '觸發 20 場 FG' },
+                ].map(item => (
+                  <button
+                    key={item.combo}
+                    type="button"
+                    onClick={() => setSelectedTriggerCombo(item.combo)}
+                    className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg border text-center transition-all cursor-pointer ${
+                      selectedTriggerCombo === item.combo
+                        ? 'bg-purple-600/30 border-purple-400 text-white ring-2 ring-purple-500 shadow-md'
+                        : 'bg-[#112240] border-gray-700/60 text-gray-400 hover:text-gray-200 hover:border-gray-500'
+                    }`}
+                  >
+                    <span className="text-xs font-bold">{item.label}</span>
+                    <span className="text-[11px] text-purple-300 font-mono mt-0.5">{item.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 預覽觸發 RNG 序列 */}
+            <div className="flex flex-col gap-1 bg-[#0a101f] p-2.5 rounded-lg border border-purple-900/40">
+              <span className="text-[11px] text-gray-400 font-bold flex justify-between">
+                <span>預先準備之 BaseGame 觸發序列 (共 {triggerRngSequence ? triggerRngSequence.length : 0} 組 RNG)：</span>
+                <span className="text-yellow-400/80 font-mono text-[10px]">點擊卡片將自動包含下方測試連線一併輸出</span>
+              </span>
+              <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto font-mono text-xs text-yellow-300">
+                {triggerRngSequence ? (
+                  triggerRngSequence.map((r, i) => (
+                    <span key={i} className="bg-[#112240] px-1.5 py-0.5 rounded border border-gray-700">
+                      Step {i === triggerRngSequence.length - 1 ? 'End' : i}: [{r.join(',')}]
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-gray-500 text-xs italic">正在生成觸發序列中...</span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {selectedSymbol === 'WIN_MULTIPLIER' && (
           <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 shadow-inner">
@@ -916,10 +1092,23 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                           rngStr += `[${dropMathIds.slice(0, dropCount).join(',')}],`;
                         }
                       } else {
-                        const finalRng = (gameType.includes('waygame') || gameType.includes('megaway'))
-                          ? [...(c.rng?.slice(0, 6) || []), (c as any).stripId !== undefined ? Number((c as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)]
-                          : c.rng;
-                        rngStr = `[${finalRng?.join(',')}],`;
+                        if (gameType === 'linegame_roma') {
+                          const fgRngs = (c as any)?.allRngs || (c.rng ? [c.rng] : []);
+                          if (isFreeGame && triggerRngSequence && triggerRngSequence.length > 0) {
+                            const triggerStr = triggerRngSequence.map(r => `[${r.slice(0, 5).join(',')}],`).join('\n');
+                            const fgStr = fgRngs.map((r: number[]) => `[${r.slice(0, 5).join(',')}],`).join('\n');
+                            rngStr = `${triggerStr}\n${fgStr}`;
+                          } else if ((c as any)?.allRngs) {
+                            rngStr = (c as any).allRngs.map((r: number[]) => `[${r.slice(0, 5).join(',')}],`).join('\n');
+                          } else if (c.rng) {
+                            rngStr = `[${c.rng.slice(0, 5).join(',')}],`;
+                          }
+                        } else {
+                          const finalRng = (gameType.includes('waygame') || gameType.includes('megaway'))
+                            ? [...(c.rng?.slice(0, 6) || []), (c as any).stripId !== undefined ? Number((c as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)]
+                            : c.rng;
+                          rngStr = `[${finalRng?.join(',')}],`;
+                        }
                       }
                       return `${rngStr}`;
                     })
@@ -951,7 +1140,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                       let rngStr = '';
                       const finalRng = (gameType.includes('waygame') || gameType.includes('megaway'))
                         ? [...(c.rng?.slice(0, 6) || []), (c as any).stripId !== undefined ? Number((c as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)]
-                        : c.rng;
+                        : (gameType === 'linegame_roma' ? c.rng.slice(0, 5) : c.rng);
                       rngStr = `[${finalRng?.join(',')}],`;
                       if (gameType === 'linegame_gods' && isFreeGame) {
                           rngStr += `\t[2,10,0],`;
@@ -978,6 +1167,65 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
               >
                 {isCopiedAllTestCases ? '✅ 已複製測案！' : '📋 複製全部測案'}
               </button>
+              {gameType === 'linegame_roma' && (
+                <button
+                  disabled={isSearching || combinations.length === 0}
+                  onClick={() => {
+                    // 真機實測精確對齊腳本：
+                    // 1. 官方進入 FG 固定範本：4 場消除（Line 2 J*3）+ 1 遞補無贏分
+                    const triggerLines = [
+                      '[13,0,0,0,0],',
+                      '[13,0,0,0,0],',
+                      '[13,0,0,0,0],',
+                      '[13,0,0,0,0],',
+                      '[0,0,0,0,0],'
+                    ].join('\n');
+
+                    // 2. 取出當前畫面上選中 Symbol 的純連線組（長度 2 ~ 5）
+                    const pureCombs = combinations
+                      .filter(c => c.wildCount === 0 && c.rng)
+                      .sort((a, b) => a.length - b.length);
+
+                    // 3. 取出當前畫面上選中 Symbol 的含 WX 連線組（長度 2 ~ 5）
+                    const wxCombs = combinations
+                      .filter(c => c.wildCount > 0 && c.rng)
+                      .sort((a, b) => a.length - b.length);
+
+                    // 格式化單一測案：若無消除（如 2 連線）僅輸出初始 1 行；若有消除輸出初始 + 遞補
+                    const formatCombBlock = (comb: any) => {
+                      const rngs: number[][] = (comb.allRngs && comb.allRngs.length > 0)
+                        ? comb.allRngs
+                        : (comb.rng ? [comb.rng] : []);
+                      return rngs.map(r => `[${r.slice(0, 5).join(',')}],`).join('\n');
+                    };
+
+                    const pureBlocks = pureCombs.map(formatCombBlock).join('\n\n');
+                    const wxBlocks = wxCombs.map(formatCombBlock).join('\n\n');
+
+                    let text = [
+                      triggerLines,
+                      pureBlocks,
+                      triggerLines,
+                      wxBlocks
+                    ].filter(Boolean).join('\n\n');
+
+                    // 移除最後一行的逗號以符合標準格式
+                    text = text.replace(/,$/, '');
+
+                    navigator.clipboard.writeText(text);
+                    setIsCopiedRomaChain(true);
+                    setTimeout(() => setIsCopiedRomaChain(false), 2000);
+                  }}
+                  className={`px-2 py-1 text-xs font-bold rounded border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                    isCopiedRomaChain
+                      ? 'bg-purple-500/20 text-purple-400 border-purple-500/50'
+                      : 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border-purple-500/30'
+                  }`}
+                  title={`一鍵複製「觸發免遊 (5組) + 4場純${selectedSymbol || ''}測案 + 觸發免遊 (5組) + 4場${selectedSymbol || ''}+WX測案」完整實測腳本`}
+                >
+                  {isCopiedRomaChain ? '✅ 已複製免遊串接！' : '⚔️ 複製免遊連鎖實測腳本'}
+                </button>
+              )}
             </div>
             {isSearching && (
               <span className="text-xs text-yellow-400 font-mono animate-pulse">搜尋可能配置中...</span>
@@ -1047,6 +1295,17 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                         let finalCopy = '';
                         if (isManualEdited && selectedCombIndex === globalIdx) {
                           finalCopy = currentRngString;
+                        } else if (gameType === 'linegame_roma') {
+                          const fgRngs = (comb as any)?.allRngs || (comb.rng ? [comb.rng] : []);
+                          if (isFreeGame && triggerRngSequence && triggerRngSequence.length > 0) {
+                            const triggerStr = triggerRngSequence.map(r => `[${r.slice(0, 5).join(',')}],`).join('\n');
+                            const fgStr = fgRngs.map((r: number[]) => `[${r.slice(0, 5).join(',')}],`).join('\n');
+                            finalCopy = `${triggerStr}\n${fgStr}`;
+                          } else if ((comb as any)?.allRngs) {
+                            finalCopy = (comb as any).allRngs.map((r: number[]) => `[${r.slice(0, 5).join(',')}],`).join('\n');
+                          } else if (comb.rng) {
+                            finalCopy = `[${comb.rng.slice(0, 5).join(',')}],`;
+                          }
                         } else {
                           const finalRng = (gameType.includes('waygame') || gameType.includes('megaway'))
                             ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)]
@@ -1088,7 +1347,17 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                           ) : null}
                         </div>
                       ) : (() => {
-                        const rawStr = `RNG: ${selectedCombIndex === globalIdx && isManualEdited ? currentRngString : `[${(gameType.includes('waygame') || gameType.includes('megaway')) ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)].join(',') : comb.rng.join(',')}]${gameType === 'linegame_gods' && isFreeGame ? ',\t[2,10,0],' : ''}`} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`;
+                        const isRomaFG = gameType === 'linegame_roma' && isFreeGame && triggerRngSequence;
+                        const isRomaMulti = gameType === 'linegame_roma' && !isFreeGame && (comb as any)?.allRngs?.length > 1;
+                        const romaMultiSuffix = isRomaFG 
+                          ? ` (觸發${selectedTriggerCombo}連鎖+FG 共 ${triggerRngSequence.length + ((comb as any)?.allRngs?.length || 1)} 組)` 
+                          : isRomaMulti 
+                            ? ` (+遞補 0 消除)` 
+                            : '';
+                        const formattedCombRng = (gameType.includes('waygame') || gameType.includes('megaway'))
+                          ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)].join(',')
+                          : (gameType === 'linegame_roma' ? comb.rng.slice(0, 5).join(',') : comb.rng.join(','));
+                        const rawStr = `RNG: ${selectedCombIndex === globalIdx && isManualEdited ? currentRngString : `[${formattedCombRng}]${gameType === 'linegame_gods' && isFreeGame ? ',\t[2,10,0],' : ''}`}${romaMultiSuffix} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`;
                         const parts = rawStr.split('\t');
                         return (
                           <div className="flex flex-col w-full text-right gap-0.5">
@@ -1198,6 +1467,45 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                       <div className="flex items-center gap-1 w-full justify-between">
                         <code className="text-xs text-yellow-400 font-mono truncate max-w-[150px] sm:max-w-[300px]" title={currentRngString}>
                           {(() => {
+                            if (gameType === 'linegame_roma') {
+                              const hasPayingWin = winsOther.some(w => (w.payout && w.payout > 0) || (w.totalWin && w.totalWin > 0));
+                              if (isManualEdited) {
+                                if (romaManualSafeRng1) {
+                                  return (
+                                    <div className="flex flex-col text-[10.5px] leading-tight">
+                                      <span className="text-yellow-400">初始: [{currentFormattedRngArray.slice(0, 5).join(',')}],</span>
+                                      <span className="text-[#64ffda]">遞補: [{romaManualSafeRng1.slice(0, 5).join(',')}], <span className="text-green-400 font-bold">(0消除)</span></span>
+                                    </div>
+                                  );
+                                }
+                                return <span>[{currentFormattedRngArray.slice(0, 5).join(',')}], <span className="text-gray-400 text-[10px]">{hasPayingWin ? '(掉落連線/無安全遞補)' : '(無消除)'}</span></span>;
+                              }
+                              const fgRngs = (targetComb as any)?.allRngs || (targetComb?.rng ? [targetComb.rng] : []);
+                              if (isFreeGame && triggerRngSequence && triggerRngSequence.length > 0) {
+                                return (
+                                  <div className="flex flex-col text-[10.5px] leading-tight">
+                                    <span className="text-purple-300 font-bold">觸發免遊 ({triggerRngSequence.length}組):</span>
+                                    {triggerRngSequence.map((r: number[], idx: number) => (
+                                      <span key={`trig-${idx}`} className="opacity-90">[{r.slice(0, 5).join(',')}],</span>
+                                    ))}
+                                    <span className="text-[#64ffda] font-bold mt-1">FG測試 ({fgRngs.length}組):</span>
+                                    {fgRngs.map((r: number[], idx: number) => (
+                                      <span key={`fg-${idx}`}>[{r.slice(0, 5).join(',')}],</span>
+                                    ))}
+                                  </div>
+                                );
+                              } else if ((targetComb as any)?.allRngs?.length > 1) {
+                                const all = (targetComb as any).allRngs;
+                                return (
+                                  <div className="flex flex-col text-[10.5px] leading-tight">
+                                    <span className="text-yellow-400">初始: [{all[0].slice(0, 5).join(',')}],</span>
+                                    <span className="text-[#64ffda]">遞補: [{all[1].slice(0, 5).join(',')}], <span className="text-green-400 font-bold">(0消除)</span></span>
+                                  </div>
+                                );
+                              } else if ((targetComb as any)?.allRngs?.length === 1) {
+                                return <span>[{(targetComb as any).allRngs[0].slice(0, 5).join(',')}], <span className="text-gray-400 text-[10px]">{hasPayingWin ? '(掉落連線/無安全遞補)' : '(無消除)'}</span></span>;
+                              }
+                            }
                             const parts = currentRngString.split('\t');
                             return (
                               <div className="flex flex-col">
@@ -1531,7 +1839,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                         }`}
                       >
                         <span className={`text-xs font-mono font-bold truncate ${isInterference ? 'text-red-400' : 'text-yellow-400'}`}>
-                          {w.symbolId} {w.matchCount > 0 && (gameType === 'payanywhere' || gameType === 'payanywhere_set2' ? `個數 ${w.matchCount}` : gameType === 'linegame' || gameType === 'linegame_set2' || gameType === 'linegame_gods' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`)}
+                          {w.symbolId} {w.matchCount > 0 && (gameType === 'payanywhere' || gameType === 'payanywhere_set2' ? `個數 ${w.matchCount}` : (gameType === 'linegame' || gameType === 'linegame_roma' || gameType === 'linegame_set2' || gameType === 'linegame_gods') ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`)}
                           {isInterference && <span className="ml-1 text-[10px] opacity-80"> (干擾)</span>}
                         </span>
                         <span className={`text-xs font-mono mt-0.5 ${isInterference ? 'text-red-300' : 'text-gray-300'}`}>
@@ -1602,7 +1910,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                     noWinHits.length > 0 ? noWinHits.map((w, idx) => (
                       <div key={idx} className="flex flex-col bg-[#0f1c34] px-3 py-2 rounded border border-gray-700/30">
                         <span className="text-xs font-mono font-bold truncate text-gray-400">
-                          {w.symbolId} {gameType === 'payanywhere' || gameType === 'payanywhere_set2' ? `個數 ${w.matchCount}` : gameType === 'linegame' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
+                          {w.symbolId} {gameType === 'payanywhere' || gameType === 'payanywhere_set2' ? `個數 ${w.matchCount}` : (gameType === 'linegame' || gameType === 'linegame_roma' || gameType === 'linegame_set2' || gameType === 'linegame_gods') ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
                         </span>
                         <span className="text-xs text-gray-600 font-mono mt-0.5">
                           payout = 0{w.ways > 1 ? ` × ${w.ways} ways` : ''}

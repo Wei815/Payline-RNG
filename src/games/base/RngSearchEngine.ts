@@ -31,6 +31,7 @@ export class RngSearchEngine {
     isInterfered: boolean;
     hasS1Drop?: boolean;
     stripId?: number;
+    allRngs?: number[][];
   }> {
     if (stripSets && Object.keys(stripSets).length > 0) {
       const stripIds = Object.keys(stripSets).map(Number);
@@ -40,6 +41,7 @@ export class RngSearchEngine {
         isInterfered: boolean;
         hasS1Drop?: boolean;
         stripId?: number;
+        allRngs?: number[][];
       } | null = null;
 
       for (const sid of stripIds) {
@@ -99,6 +101,7 @@ export class RngSearchEngine {
     let minInterferenceCount = Infinity;
     let bestTargetPresence = Infinity;
     let bestCandidateRng: number[] | null = null;
+    let bestAllRngs: number[][] | undefined = undefined;
     
     // Hill Climbing Optimization
     let hcBestRng: number[] | null = null;
@@ -106,7 +109,7 @@ export class RngSearchEngine {
     let hcAttempts = 0;
     const hcLockedReels = new Set<number>();
     const isTargetScatter = currentPaytable.some(p => p.symbolId === targetSymbol && p.isScatter);
-    const isPositionDependent = gameType === 'linegame' || gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'linegame_set2' || gameType === 'linegame_gods';
+    const isPositionDependent = gameType === 'linegame' || gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'linegame_set2' || gameType === 'linegame_gods' || gameType === 'linegame_roma';
 
     const targetIndicesForReel: number[][] = [];
     const goldIndicesForReel: number[][] = [];
@@ -179,6 +182,32 @@ export class RngSearchEngine {
 
       let globalHasAnyGold = false;
 
+      const isLineGame = (gameType === 'linegame' || gameType === 'linegame_roma' || gameType === 'linegame_set2' || gameType === 'linegame_gods') && !isTargetScatter && Boolean(customPaylines && customPaylines.length > 0);
+      let targetPayline: number[] | null = null;
+      let wildReelIndices: Set<number> | null = null;
+
+      if (isLineGame && !requireGoldCascade && Math.random() < 0.90) {
+        // 優先順序：優先嘗試最直觀的水平直線 (Line 1: [1,1,1,1,1], Line 2: [0,0,0,0,0], Line 3: [2,2,2,2,2])
+        // 確保產出的連線在畫面上由左至右平直相連，最直觀清晰、最符合肉眼與常規線路驗證
+        const straightLines = customPaylines!.filter(l => l.every(r => r === l[0]));
+        if (straightLines.length > 0 && Math.random() < 0.85) {
+          targetPayline = straightLines[Math.floor(Math.random() * straightLines.length)];
+        } else {
+          targetPayline = customPaylines![Math.floor(Math.random() * customPaylines!.length)];
+        }
+
+        if (wildCount > 0) {
+          wildReelIndices = new Set();
+          const availableReels: number[] = [];
+          for (let rIdx = 0; rIdx < length; rIdx++) availableReels.push(rIdx);
+          for (let w = 0; w < wildCount && availableReels.length > 0; w++) {
+            const pickedIdx = Math.floor(Math.random() * availableReels.length);
+            wildReelIndices.add(availableReels[pickedIdx]);
+            availableReels.splice(pickedIdx, 1);
+          }
+        }
+      }
+
       for (let c = 0; c < reelCount; c++) {
         let chosenIdx = 0;
         let len = currentStrips[c]?.length || 1;
@@ -195,6 +224,39 @@ export class RngSearchEngine {
 
         if (isLocked) {
           chosenIdx = hcBestRng![c];
+          candidateRng[c] = chosenIdx;
+        } else if (targetPayline) {
+          const targetRow = targetPayline[c] !== undefined ? targetPayline[c] : 0;
+          if (c < length) {
+            const isWildNeeded = Boolean(wildReelIndices && wildReelIndices.has(c));
+            const validLineIndices: number[] = [];
+            for (let i = 0; i < len; i++) {
+              const sym = currentStrips[c][(i + targetRow) % len];
+              if (isWildNeeded) {
+                if (wildSymbolSet.has(sym)) validLineIndices.push(i);
+              } else {
+                if (sym === targetSymbol) validLineIndices.push(i);
+              }
+            }
+            if (validLineIndices.length > 0) {
+              chosenIdx = validLineIndices[Math.floor(Math.random() * validLineIndices.length)];
+            } else {
+              chosenIdx = Math.floor(Math.random() * len);
+            }
+          } else {
+            const avoidTargetIndices: number[] = [];
+            for (let i = 0; i < len; i++) {
+              const sym = currentStrips[c][(i + targetRow) % len];
+              if (sym !== targetSymbol && !wildSymbolSet.has(sym)) {
+                avoidTargetIndices.push(i);
+              }
+            }
+            if (avoidTargetIndices.length > 0) {
+              chosenIdx = avoidTargetIndices[Math.floor(Math.random() * avoidTargetIndices.length)];
+            } else {
+              chosenIdx = Math.floor(Math.random() * len);
+            }
+          }
           candidateRng[c] = chosenIdx;
         } else {
           let useGoldList = false;
@@ -233,7 +295,7 @@ export class RngSearchEngine {
         let hasTargetOrWild = false;
         for (let r = 0; r < rows; r++) {
           const sym = currentStrips[c][(chosenIdx + r) % len];
-          if (sym === "B1" && targetSymbol !== "B1") {
+          if (gameType !== 'linegame_roma' && sym === "B1" && targetSymbol !== "B1") {
             hasB1 = true;
           }
           if ((sym === "S1" || sym === "S2") && targetSymbol !== "S1" && targetSymbol !== "S2" && targetSymbol !== "SCATTER") {
@@ -251,7 +313,7 @@ export class RngSearchEngine {
           break;
         }
         
-        const isPositionDependent = gameType === 'linegame' || gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'linegame_set2' || gameType === 'linegame_gods';
+        const isPositionDependent = gameType === 'linegame' || gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'linegame_set2' || gameType === 'linegame_gods' || gameType === 'linegame_roma';
         const isScatter = targetSymbol === 'S1' || targetSymbol === 'S2' || targetSymbol === 'SCATTER' || targetSymbol === 'B1' || targetSymbol === 'B2';
         
         if (c < length && !hasTargetOrWild && isPositionDependent && !isScatter && !requireGoldCascade) {
@@ -468,6 +530,7 @@ export class RngSearchEngine {
         }
 
       } else {
+        const isLineGame = (gameType === 'linegame' || gameType === 'linegame_roma' || gameType === 'linegame_set2' || gameType === 'linegame_gods');
         const initialWinsWithZero = this.gameInstance.evaluate(
           initialEvalGrid,
           currentPaytable,
@@ -475,14 +538,40 @@ export class RngSearchEngine {
           customPaylines,
           true,
         );
-        const targetWins = initialWinsWithZero.filter((w) => w.symbolId === targetSymbol);
-        const currentMatchCount = targetWins.length === 1 ? targetWins[0].matchCount : 0;
-        
+
+        let targetWin: any = null;
+        let currentMatchCount = 0;
         let wildReelsValid = false;
         let positionValid = true;
+
+        if (isLineGame) {
+          const payingTargetWins = initialWins.filter((w) => w.symbolId === targetSymbol && w.payout > 0);
+          if (payingTargetWins.length > 0) {
+            const matched = payingTargetWins.find(w => w.matchCount === length);
+            if (matched) {
+              targetWin = matched;
+              currentMatchCount = length;
+            }
+          } else {
+            const targetMatches = initialWinsWithZero.filter((w) => w.symbolId === targetSymbol);
+            const maxMatch = Math.max(0, ...targetMatches.map((w) => w.matchCount));
+            if (maxMatch === length) {
+              const matched = targetMatches.find(w => w.matchCount === length);
+              if (matched) {
+                targetWin = matched;
+                currentMatchCount = length;
+              }
+            }
+          }
+        } else {
+          const targetWins = initialWinsWithZero.filter((w) => w.symbolId === targetSymbol);
+          if (targetWins.length === 1) {
+            targetWin = targetWins[0];
+            currentMatchCount = targetWin.matchCount;
+          }
+        }
         
-        if (currentMatchCount > 0) {
-            const targetWin = targetWins[0];
+        if (targetWin) {
             if (targetWin.ways !== 1) positionValid = false;
             
             const winningCoordsMap = getWinningPositions(
@@ -510,14 +599,35 @@ export class RngSearchEngine {
             if (!hasGoldInWin && wildReels.size === wildCount) wildReelsValid = true;
         }
 
+        const payingTargetWinsCount = isLineGame ? initialWins.filter(w => w.symbolId === targetSymbol && w.payout > 0).length : 0;
+        const extraTargetWinsCount = Math.max(0, payingTargetWinsCount - 1);
         const otherWinsCount = initialWins.filter(
           (w) =>
             w.symbolId !== targetSymbol &&
             !wildSymbolSet.has(w.symbolId) &&
             w.payout > 0,
-        ).length;
+        ).length + extraTargetWinsCount;
 
         if (otherWinsCount === 0 && wildReelsValid && positionValid && currentMatchCount === length) {
+          if (this.gameInstance.validateCandidateRng) {
+            const check = this.gameInstance.validateCandidateRng(
+              candidateRng,
+              initialEvalGrid,
+              initialWins,
+              currentPaytable,
+              customPaylines,
+              stripSets,
+              isFreeGame
+            );
+            if (typeof check === 'boolean') {
+              if (!check) continue;
+              return { rng: [...candidateRng], isInterfered: false };
+            } else if (check && !check.valid) {
+              continue;
+            } else if (check && check.valid) {
+              return { rng: [...candidateRng], isInterfered: false, allRngs: check.allRngs };
+            }
+          }
           return { rng: [...candidateRng], isInterfered: false };
         }
 
@@ -538,16 +648,36 @@ export class RngSearchEngine {
         }
 
         if (wildReelsValid && positionValid && currentMatchCount === length) {
-          if (otherWinsCount < minInterferenceCount) {
+          let isValidCandidate = true;
+          let candidateAllRngs: number[][] | undefined = undefined;
+          if (this.gameInstance.validateCandidateRng) {
+            const check = this.gameInstance.validateCandidateRng(
+              candidateRng,
+              initialEvalGrid,
+              initialWins,
+              currentPaytable,
+              customPaylines,
+              stripSets,
+              isFreeGame
+            );
+            if (typeof check === 'boolean') {
+              isValidCandidate = check;
+            } else if (check) {
+              isValidCandidate = check.valid;
+              candidateAllRngs = check.allRngs;
+            }
+          }
+          if (isValidCandidate && otherWinsCount < minInterferenceCount) {
             minInterferenceCount = otherWinsCount;
             bestCandidateRng = [...candidateRng];
+            bestAllRngs = candidateAllRngs;
           }
         }
       }
     }
 
     if (bestCandidateRng) {
-      return { rng: bestCandidateRng, isInterfered: (minInterferenceCount > 0) };
+      return { rng: bestCandidateRng, isInterfered: (minInterferenceCount > 0), allRngs: bestAllRngs };
     }
 
     return { rng: null, isInterfered: false };

@@ -21,6 +21,14 @@ c:\github\Payline-RNG\
 │   ├── hooks/              # 自訂 React Hooks
 │   │   ├── useSimulation.ts      # 負責維護 Web Worker 實例生命週期與非同步運算管理
 │   │   └── useRngSearch.ts       # 負責透過 Web Worker/Async 尋找特定組合對應的 RNG
+│   ├── core/               # 核心遊戲註冊與工廠模式 (GameRegistry.ts)
+│   ├── games/              # 遊戲環境獨立模組 (Game Environment Isolation)
+│   │   ├── base/                 # 基礎抽象類別 (AbstractGame, BaseLineGame 等)
+│   │   ├── linegame/             # 經典線遊戲
+│   │   ├── Roma/                 # 羅馬競技場 (RomaGame.ts - 連線消除型老虎機)
+│   │   ├── The Luxe/             # 奢華
+│   │   ├── God of WarsThor VS Seth/ # 諸神之戰
+│   │   └── ...
 │   ├── mocks/              # Mock 測試資料
 │   │   └── defaultData.ts        # 預設 ReelStrips 與 PaytableRule
 │   ├── types/              # TypeScript 型別定義
@@ -48,6 +56,11 @@ c:\github\Payline-RNG\
 
 ## 5. 遊戲環境獨立與擴充規範 (SOP)
 為了確保不同遊戲（如 linegame, payanywhere）的核心邏輯與設定不互相干擾，專案導入了 **Game Environment Isolation** 架構。
+- **LineGame 系列**：
+  - `ClassicLineGame`: 經典純連線基底。
+  - `RomaGame`: 以 `BaseLineGame` 為基底擴充之連線消除 (Cascade) 老虎機，支援 15 paylines、重力向下掉落且空缺由下一個盤面位置直接覆蓋遞補、每次消除給予獨立新 RNG、4 組滾輪表輪替機制（Combo 0~3 依序套用，後續依奇偶循環）、Base Game 嚴格控制 Combo < 4 避免誤入免遊，以及 B1 < 3 伴隨消除機制。免遊觸發條件為 BaseGame 連續消除 4、5、6、7 次以上分別獲得 4、5、10、20 場 FreeGame（無 Retrigger）；連線產生器支援 FG 模式切換、預先生成 Combo 4~7 觸發序列並與後續 FG 連線 RNG 自動組裝輸出。在連線測試產生器與贏分線路一覽中，若盤面有任何消除，系統透過兩道防線（第一道防線：過濾掉落後殘留符號自連線；第二道防線：滾輪表 1 安全遞補抽樣）保證提供 100% 不再消除（0 贏分）的安全遞補盤面。
+  - `LuxeGame` (`linegame_set2`): 金框翻倍、Jackpot 與 S1 幸運草收集。
+  - `GodsGame` (`linegame_gods`): WY 展開與滾輪乘數。
 
 ## 6. 狀態管理規範
 - **`useMachineStore.ts`**：負責管理「基礎機台狀態」，包含：目前的 `gameType`、餘額 (`coin`)、投注額 (`bet`) 以及機台是否正在運轉 (`isRunning`)。

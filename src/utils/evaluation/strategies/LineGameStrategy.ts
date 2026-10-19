@@ -20,7 +20,7 @@ export class LineGameStrategy implements EvaluationStrategy {
         
         const cell = grid[colIdx][targetRow];
         const baseCell = cell.split('_')[0];
-        let isMatch = cell === sym || baseCell === sym || (!rule.isWild && wildSymbols.has(baseCell));
+        let isMatch = cell === sym || baseCell === sym || (!rule.isWild && !rule.isScatter && sym !== 'B1' && sym !== 'B2' && wildSymbols.has(baseCell));
         
         if (!isMatch && derivatives) {
            if (derivatives.includes(baseCell)) {

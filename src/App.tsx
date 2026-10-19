@@ -44,10 +44,22 @@ function App() {
       'Pay Anywhere': 'payanywhere',
       'Megaway': 'megaway'
     };
+    const templateGameTypeMap: Record<string, GameType> = {
+      '人魚傳說': 'waygame',
+      '決戰賽特2': 'payanywhere_set2',
+      '秦皇傳說': 'waygame_qin',
+      '奢華': 'linegame_set2',
+      '皇家金象': 'waygame_elephant',
+      '諸神之戰：雷神VS戰神': 'linegame_gods',
+      '羅馬競技場': 'linegame_roma',
+    };
     if (engineMap[templateName]) {
       setGameType(engineMap[templateName]);
       setLoadTemplateTrigger('預設泛用');
     } else {
+      if (templateGameTypeMap[templateName]) {
+        setGameType(templateGameTypeMap[templateName]);
+      }
       setLoadTemplateTrigger(templateName);
     }
   }, [setGameType, setLoadTemplateTrigger]);

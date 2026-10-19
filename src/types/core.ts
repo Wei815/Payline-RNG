@@ -1,4 +1,4 @@
-export type GameType = 'waygame' | 'megaway' | 'payanywhere' | 'payanywhere_set2' | 'waygame_qin' | 'waygame_elephant' | 'linegame' | 'linegame_set2' | 'linegame_gods';
+export type GameType = 'waygame' | 'megaway' | 'payanywhere' | 'payanywhere_set2' | 'waygame_qin' | 'waygame_elephant' | 'linegame' | 'linegame_set2' | 'linegame_gods' | 'linegame_roma';
 
 export type ReelStrips = string[][];
 export type ReelStripsList = ReelStrips[];

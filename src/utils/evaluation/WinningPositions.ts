@@ -48,7 +48,7 @@ export function getWinningPositions(
       scatterPayAnywhereWins.push({ w, symbolId: win.symbolId });
       scatterPayAnywhereSet.add(win.symbolId);
       if (win.symbolId === 'B1') scatterPayAnywhereSet.add('B2');
-    } else if (gameType === 'linegame' || gameType === 'linegame_set2' || gameType === 'linegame_gods') {
+    } else if (gameType === 'linegame' || gameType === 'linegame_set2' || gameType === 'linegame_gods' || gameType === 'linegame_roma') {
       if (win.lineIndex !== undefined) {
         const line = customPaylines && customPaylines.length > 0 ? customPaylines[win.lineIndex] : defaultPaylines[win.lineIndex];
         if (line) {
@@ -124,6 +124,29 @@ export function getWinningPositions(
         if (!winningCoords.get(`${col}-${row}`)!.includes(999)) {
           winningCoords.get(`${col}-${row}`)!.push(999);
         }
+      }
+    }
+  }
+
+  // Roma Rule 8: 若版面上的免費遊戲符號 B1 數量少於 3 顆時，若版面上有贏分出現時，會連同免費遊戲符號 B1 一起消除
+  const hasRealWin = wins.some(w => {
+    if (w.symbolId === 'B1') return false;
+    return (w.totalWin !== undefined ? w.totalWin > 0 : (w.payout !== undefined ? w.payout > 0 : false));
+  });
+  if (gameType === 'linegame_roma' && hasRealWin) {
+    let b1Count = 0;
+    const b1Coords: { col: number; row: number }[] = [];
+    for (let col = 0; col < grid.length; col++) {
+      for (let row = 0; row < grid[col].length; row++) {
+        if (getBaseSymbol(grid[col][row]) === 'B1') {
+          b1Count++;
+          b1Coords.push({ col, row });
+        }
+      }
+    }
+    if (b1Count > 0 && b1Count < 3) {
+      for (const pos of b1Coords) {
+        addCoord(`${pos.col}-${pos.row}`, 0);
       }
     }
   }

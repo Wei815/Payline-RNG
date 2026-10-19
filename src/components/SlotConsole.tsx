@@ -84,7 +84,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
   }, [isFreeGame, currentFreeStripSets, currentStripSets]);
 
   useEffect(() => {
-    if (gameType !== 'linegame' && gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2' && gameType !== 'linegame_gods' && activeTab === 'lines') {
+    if (gameType !== 'linegame' && gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2' && gameType !== 'linegame_gods' && gameType !== 'linegame_roma' && activeTab === 'lines') {
       setActiveTab('manual');
     }
   }, [gameType, activeTab]);
@@ -173,7 +173,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
         >
           連線測試產生器
         </button>
-        {(gameType === 'linegame' || gameType === 'payanywhere_set2' || gameType === 'linegame_set2' || gameType === 'linegame_gods') && (
+        {(gameType === 'linegame' || gameType === 'linegame_roma' || gameType === 'payanywhere_set2' || gameType === 'linegame_set2' || gameType === 'linegame_gods') && (
           <button
             onClick={() => setActiveTab('lines')}
             className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-all duration-200 cursor-pointer ${activeTab === 'lines'
@@ -181,7 +181,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
                 : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-[#112240]/20'
               }`}
           >
-            {(gameType === 'linegame' || gameType === 'linegame_set2' || gameType === 'linegame_gods') ? '贏分線路一覽' : '消除掉落測試'}
+            {(gameType === 'linegame' || gameType === 'linegame_roma' || gameType === 'linegame_set2' || gameType === 'linegame_gods') ? '贏分線路一覽' : '消除掉落測試'}
           </button>
         )}
         <button
@@ -237,7 +237,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
               setJackpots={setJackpots}
               clovers={clovers}
               setClovers={setClovers}
-              currentStrips={currentStrips}
+              currentStrips={isFreeGame && currentFreeStripSets && currentFreeStripSets.length > 0 ? currentFreeStripSets[0] : currentStrips}
               currentGrid={currentGrid}
               currentPaytable={currentPaytable}
               customPaylines={customPaylines}
@@ -246,10 +246,11 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
             />
           </div>
         )}
-        {(gameType === 'linegame' || gameType === 'linegame_set2' || gameType === 'linegame_gods') && activeTab === 'lines' && (
+        {(gameType === 'linegame' || gameType === 'linegame_roma' || gameType === 'linegame_set2' || gameType === 'linegame_gods') && activeTab === 'lines' && (
           <div className="w-full flex-1 flex flex-col">
             <LineViewerTab 
               reelCount={reelCount} rowCounts={rowCounts} currentStrips={currentStrips}
+              stripSets={formattedStripSets}
               activeLineViewerSymbol={activeLineViewerSymbol} setLineViewerSymbolState={setLineViewerSymbolState}
               symbols={symbols} useWxInLines={useWxInLines} setUseWxInLines={setUseWxInLines}
               lineViewerPayout={lineViewerPayout} betMultiplier={betMultiplier}

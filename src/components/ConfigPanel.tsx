@@ -279,13 +279,18 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
         const res = await fetch(url);
         if (!res.ok) throw new Error('Network response was not ok');
         const blob = await res.blob();
-        const filename = targetTemplate.split('/').pop() || 'template.xlsx';
+        const rawFilename = targetTemplate.split('/').pop() || 'template.xlsx';
+        const filename = decodeURIComponent(rawFilename);
         const file = new File([blob], filename, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         
         const { parseExcelData } = await import('../utils/excelParser');
         const tmpl = await parseExcelData(file);
 
-        if (tmpl.gameType) onGameTypeChange(tmpl.gameType);
+        if (tmpl.gameType) {
+          onGameTypeChange(tmpl.gameType);
+        } else if (filename.includes('羅馬') || filename.includes('Roma') || filename.includes('roma')) {
+          onGameTypeChange('linegame_roma');
+        }
         if (tmpl.coin) onCoinChange(tmpl.coin);
         if (tmpl.bet) onBetChange(tmpl.bet);
         if (tmpl.reelCount) onReelCountChange(tmpl.reelCount);
@@ -823,6 +828,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                 </optgroup>
                 <optgroup label="連線機台 (Line Game)">
                   <option value="linegame">Line Game (通用基底)</option>
+                  <option value="linegame_roma">Line Game (羅馬競技場)</option>
                   <option value="linegame_set2">Line Game (奢華)</option>
                   <option value="linegame_gods">Line Game (諸神之戰)</option>
                 </optgroup>

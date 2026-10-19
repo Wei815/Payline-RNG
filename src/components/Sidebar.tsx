@@ -16,10 +16,22 @@ export const Sidebar: React.FC = () => {
       'Pay Anywhere': 'payanywhere',
       'Megaway': 'megaway'
     };
+    const templateGameTypeMap: Record<string, GameType> = {
+      '人魚傳說': 'waygame',
+      '決戰賽特2': 'payanywhere_set2',
+      '秦皇傳說': 'waygame_qin',
+      '奢華': 'linegame_set2',
+      '皇家金象': 'waygame_elephant',
+      '諸神之戰：雷神VS戰神': 'linegame_gods',
+      '羅馬競技場': 'linegame_roma',
+    };
     if (engineMap[templateName]) {
       setGameType(engineMap[templateName]);
       setLoadTemplateTrigger('預設泛用');
     } else {
+      if (templateGameTypeMap[templateName]) {
+        setGameType(templateGameTypeMap[templateName]);
+      }
       setLoadTemplateTrigger(templateName);
     }
   };
@@ -75,6 +87,7 @@ export const Sidebar: React.FC = () => {
           { name: '奢華', icon: <FileBox size={16} />, action: () => handleSelectTemplate('奢華') },
           { name: '皇家金象', icon: <FileBox size={16} />, action: () => handleSelectTemplate('皇家金象') },
           { name: '諸神之戰：雷神VS戰神', icon: <FileBox size={16} />, action: () => handleSelectTemplate('諸神之戰：雷神VS戰神') },
+          { name: '羅馬競技場', icon: <FileBox size={16} />, action: () => handleSelectTemplate('羅馬競技場') },
         ])}
 
         <input

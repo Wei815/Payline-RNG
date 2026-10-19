@@ -2,11 +2,13 @@ import React from 'react';
 import { evaluateGrid } from '../../utils/evaluation';
 import { formatAmount } from '../../utils/formatters';
 import type { GameType, PaytableRule } from '../../types';
+import { GameRegistry } from '../../core/GameRegistry';
 
 export interface LineViewerTabProps {
   reelCount: number;
   rowCounts: number[];
   currentStrips: string[][];
+  stripSets?: Record<string, string[][]>;
   activeLineViewerSymbol: string;
   setLineViewerSymbolState: (val: string) => void;
   symbols: string[];
@@ -25,7 +27,7 @@ export interface LineViewerTabProps {
 }
 
 export const LineViewerTab: React.FC<LineViewerTabProps> = ({
-  reelCount, rowCounts, currentStrips, activeLineViewerSymbol, setLineViewerSymbolState,
+  reelCount, rowCounts, currentStrips, stripSets, activeLineViewerSymbol, setLineViewerSymbolState,
   symbols, useWxInLines, setUseWxInLines, lineViewerPayout, betMultiplier,
   customPaylines, defaultPaylines, setManualIndices, setManualIndicesOther,
   copiedIndex, setCopiedIndex, currentPaytable, gameType
@@ -36,7 +38,12 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
 
   const computedLines = React.useMemo(() => {
     return linesToRender.map((line, lineIdx) => {
-      const { rng, actualTotalWin, mathIdRng } = (() => {
+      const { rng, allRngs, actualTotalWin, mathIdRng } = ((): {
+        rng: number[] | null;
+        allRngs?: number[][];
+        actualTotalWin: number;
+        mathIdRng: string[] | null;
+      } => {
               if (gameType === 'linegame_set2' || gameType === 'linegame_gods') {
                 const grid: string[][] = Array.from({ length: reelCount }, (_, c) => Array(rowCounts[c] || 3).fill('-'));
                 for (let c = 0; c < line.length; c++) {
@@ -100,13 +107,15 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
               }
 
               let bestRng: number[] | null = null;
+              let bestSafeRng1: number[] | null = null;
               let bestTotalWin = 0;
               let minInterference = Infinity;
+              let foundPerfect = false;
               let searchCount = 0;
-              const MAX_SEARCH = 200;
+              const MAX_SEARCH = 2500;
 
               const search = (colIdx: number, currentRng: number[]) => {
-                if (minInterference === 0 || searchCount >= MAX_SEARCH) return;
+                if (foundPerfect || searchCount >= MAX_SEARCH) return;
 
                 if (colIdx === reelCount) {
                   searchCount++;
@@ -116,59 +125,114 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                     return Array.from({ length: r }).map((_, ri) => s[(start + ri) % s.length]);
                   });
 
-                  const evWins = evaluateGrid(testGrid, currentPaytable, gameType, customPaylines, true);
+                  // 評估真實贏分 (includeZeroPayout: false)
+                  const evWins = evaluateGrid(testGrid, currentPaytable, gameType, customPaylines, false);
+                  const payingWins = evWins.filter(w => w.payout > 0);
+                  const targetWin = payingWins.find(w => w.lineIndex === lineIdx);
 
-                  let interference = 0;
-                  let totalWin = 0;
-                  for (const w of evWins) {
-                    totalWin += w.totalWin;
-                    if (w.payout > 0 && w.lineIndex !== lineIdx) {
-                      interference++;
+                  // 規則 1 檢查：必須有目標線路贏分
+                  if (!targetWin) return;
+                  const interferenceWins = payingWins.filter(w => w.lineIndex !== lineIdx);
+                  const interference = interferenceWins.length;
+
+                  let currentSafeRng1: number[] | null = null;
+                  if (gameType === 'linegame_roma') {
+                    const strips1 = (stripSets && stripSets[1]) ? stripSets[1] : currentStrips;
+                    const romaGame = GameRegistry.getGame('linegame_roma') as any;
+                    if (romaGame && romaGame.findSafeReplacementRng) {
+                      // 只有在 0 干擾時進行掉落殘留自連線與滾輪表 2 遞補驗證
+                      if (interference === 0) {
+                        currentSafeRng1 = romaGame.findSafeReplacementRng(
+                          testGrid, payingWins, currentPaytable, strips1, rowCounts, linesToRender, 300
+                        );
+                        if (currentSafeRng1) {
+                          // 完美達成：規則 1 (0干擾) + 規則 2A (殘留0連線) + 規則 2B (遞補0消除)！
+                          foundPerfect = true;
+                          bestRng = [...currentRng];
+                          bestTotalWin = targetWin.totalWin;
+                          bestSafeRng1 = currentSafeRng1;
+                          return;
+                        }
+                      }
+                    }
+                  } else {
+                    if (interference === 0) {
+                      foundPerfect = true;
+                      bestRng = [...currentRng];
+                      bestTotalWin = targetWin.totalWin;
+                      return;
                     }
                   }
 
-                  if (interference < minInterference) {
+                  if (!foundPerfect && interference < minInterference) {
                     minInterference = interference;
                     bestRng = [...currentRng];
-                    bestTotalWin = totalWin;
+                    bestTotalWin = targetWin.totalWin;
+                    bestSafeRng1 = currentSafeRng1;
                   }
                   return;
                 }
 
-                // 最多嘗試 5 個候選位置
-                const limit = Math.min(candidatesPerReel[colIdx].length, 5);
-                for (let i = 0; i < limit; i++) {
-                  currentRng.push(candidatesPerReel[colIdx][i]);
+                const cands = candidatesPerReel[colIdx];
+                for (let i = 0; i < cands.length; i++) {
+                  currentRng.push(cands[i]);
                   search(colIdx + 1, currentRng);
                   currentRng.pop();
-                  if (minInterference === 0 || searchCount >= MAX_SEARCH) break;
+                  if (foundPerfect || searchCount >= MAX_SEARCH) break;
                 }
               };
 
               search(0, []);
 
-              if (!bestRng) {
+              let finalRng: number[] | null = bestRng ? (bestRng as number[]).slice(0, 5) : null;
+              let finalTotalWin = bestTotalWin;
+
+              if (!finalRng) {
                 const fallbackRng = candidatesPerReel.map(c => c[0]);
                 const testGrid = fallbackRng.map((start, cIdx) => {
                   const r = rowCounts[cIdx] || 3;
                   const s = currentStrips[cIdx];
                   return Array.from({ length: r }).map((_, ri) => s[(start + ri) % s.length]);
                 });
-                const evWins = evaluateGrid(testGrid, currentPaytable, gameType, customPaylines, true);
-                return {
-                  rng: fallbackRng,
-                  actualTotalWin: evWins.reduce((sum, w) => sum + w.totalWin, 0),
-                  mathIdRng: null
-                };
+                const evWins = evaluateGrid(testGrid, currentPaytable, gameType, customPaylines, false);
+                finalRng = fallbackRng.slice(0, 5);
+                finalTotalWin = evWins.reduce((sum, w) => sum + w.totalWin, 0);
               }
 
-              return { rng: bestRng, actualTotalWin: bestTotalWin, mathIdRng: null };
+              let allRngs: number[][] | undefined = undefined;
+              if (gameType === 'linegame_roma' && finalRng && finalTotalWin > 0) {
+                if (bestSafeRng1) {
+                  allRngs = [finalRng, (bestSafeRng1 as number[]).slice(0, 5)];
+                } else {
+                  try {
+                    const testGrid = finalRng.map((start, cIdx) => {
+                      const r = rowCounts[cIdx] || 3;
+                      const s = currentStrips[cIdx];
+                      return Array.from({ length: r }).map((_, ri) => s[(start + ri) % s.length]);
+                    });
+                    const evWins = evaluateGrid(testGrid, currentPaytable, gameType, customPaylines, false);
+                    const strips1 = (stripSets && stripSets[1]) ? stripSets[1] : currentStrips;
+                    const romaGame = GameRegistry.getGame('linegame_roma') as any;
+                    if (romaGame && romaGame.findSafeReplacementRng) {
+                      const safeRng1 = romaGame.findSafeReplacementRng(
+                        testGrid, evWins, currentPaytable, strips1, rowCounts, linesToRender, 1500
+                      );
+                      if (safeRng1) {
+                        allRngs = [finalRng, (safeRng1 as number[]).slice(0, 5)];
+                      }
+                    }
+                  } catch {
+                    // ignore
+                  }
+                }
+              }
+
+              return { rng: finalRng, allRngs, actualTotalWin: finalTotalWin, mathIdRng: null };
             })();
 
-            
-      return { line, lineIdx, rng, actualTotalWin, mathIdRng };
+      return { line, lineIdx, rng, allRngs, actualTotalWin, mathIdRng };
     });
-  }, [linesToRender, gameType, reelCount, rowCounts, activeLineViewerSymbol, currentPaytable, currentStrips, useWxInLines, lineViewerPayout, customPaylines]);
+  }, [linesToRender, gameType, reelCount, rowCounts, activeLineViewerSymbol, currentPaytable, currentStrips, stripSets, useWxInLines, lineViewerPayout, customPaylines]);
   
   return (
     <>
@@ -222,9 +286,12 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
               onClick={() => {
                 const textToCopy = computedLines.map(c => {
                   if (c.mathIdRng) return `[${c.mathIdRng.join(',')}]`;
-                  if (c.rng) return `[${c.rng.join(',')}]`;
+                  if (c.allRngs && c.allRngs.length > 1) {
+                    return c.allRngs.map(r => `[${r.slice(0, 5).join(',')}]`).join(',\n');
+                  }
+                  if (c.rng) return `[${c.rng.slice(0, 5).join(',')}]`;
                   return '';
-                }).filter(Boolean).map(c => c + ',').join('\n');
+                }).filter(Boolean).map(c => c.endsWith(',') ? c : c + ',').join('\n');
                 navigator.clipboard.writeText(textToCopy);
                 setIsCopiedAll(true);
                 setTimeout(() => setIsCopiedAll(false), 2000);
@@ -242,7 +309,7 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {computedLines.map(({ line, lineIdx, rng, actualTotalWin, mathIdRng }) => {
+          {computedLines.map(({ line, lineIdx, rng, allRngs, actualTotalWin, mathIdRng }) => {
 return (
               <div key={lineIdx} className="bg-[#0a192f] border border-gray-700/50 rounded-lg p-3 flex flex-col items-center gap-3 hover:border-dashboard-accent/50 transition-colors">
                 <div className="flex justify-between w-full text-xs font-mono border-b border-gray-800 pb-1.5">
@@ -280,9 +347,9 @@ return (
                             className={`w-7 h-7 shrink-0 rounded flex items-center justify-center text-xs font-bold transition-all duration-300 ${
                               isActive
                                 ? isWild
-                                  ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border border-pink-400 shadow-[0_0_8px_rgba(236,72,153,0.6)]'
-                                  : 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border border-yellow-300 shadow-[0_0_8px_rgba(234,179,8,0.5)]'
-                                : 'bg-[#112240]/40 text-gray-700 border border-gray-800/20'
+                                ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border border-pink-400 shadow-[0_0_8px_rgba(236,72,153,0.6)]'
+                                : 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border border-yellow-300 shadow-[0_0_8px_rgba(234,179,8,0.5)]'
+                              : 'bg-[#112240]/40 text-gray-700 border border-gray-800/20'
                             }`}
                           >
                             {isActive ? displaySym : ''}
@@ -305,11 +372,16 @@ return (
                           setManualIndices(mathIdRng);
                           setManualIndicesOther(mathIdRng);
                           text = `[${mathIdRng.join(',')}],`;
-                        } else if (rng) {
-                          const strRng = rng.map(String);
+                        } else if (allRngs && allRngs.length > 1) {
+                          const strRng = rng!.slice(0, 5).map(String);
                           setManualIndices(strRng);
                           setManualIndicesOther(strRng);
-                          text = `[${rng.join(',')}],`;
+                          text = allRngs.map(r => `[${r.slice(0, 5).join(',')}]`).join(',\n') + ',';
+                        } else if (rng) {
+                          const strRng = rng.slice(0, 5).map(String);
+                          setManualIndices(strRng);
+                          setManualIndicesOther(strRng);
+                          text = `[${rng.slice(0, 5).join(',')}],`;
                         }
                         
                         navigator.clipboard.writeText(text);
@@ -326,12 +398,20 @@ return (
                     >
                       {copiedIndex === lineIdx ? (
                         <div className="w-full text-center text-[#64ffda] font-bold py-1">COPIED!</div>
+                      ) : allRngs && allRngs.length > 1 ? (
+                        <div className="flex flex-col items-center justify-center gap-0.5 w-full text-[10.5px]">
+                          <span className="text-yellow-400 font-mono truncate max-w-full">
+                            初始: [{rng?.slice(0, 5).join(',')}],
+                          </span>
+                          <span className="text-[#64ffda] font-mono truncate max-w-full">
+                            遞補: [{allRngs[1]?.slice(0, 5).join(',')}], <span className="text-[9px] text-green-400 font-bold">(0消除)</span>
+                          </span>
+                        </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center gap-0.5 w-full">
                           <span className="text-[#64ffda] leading-tight truncate max-w-full text-center" title={mathIdRng ? `[${mathIdRng.join(',')}]` : `[${rng?.join(',')}]`}>
                             {mathIdRng ? `[${mathIdRng.join(',').slice(0, 20)}...],` : `[${rng?.join(',')}],`}
                           </span>
-                          
                         </div>
                       )}
                     </button>
