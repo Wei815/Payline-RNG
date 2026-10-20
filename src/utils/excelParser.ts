@@ -117,7 +117,9 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
         for (let c = 0; c < reelCountFound; c++) {
           const sym = row[r1ColIdx + c];
           if (sym !== undefined && sym !== null && sym !== '') {
-            strips[c].push(String(sym).trim());
+            const trimmed = String(sym).trim();
+            const normalized = trimmed.toUpperCase() === 'WX' ? 'WX' : trimmed;
+            strips[c].push(normalized);
           }
         }
       }

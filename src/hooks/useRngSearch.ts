@@ -911,14 +911,19 @@ export function useRngSearch(
 
         // 先跑所有「純連線」（W=0，由少到多），再跑所有「+WX」（W=1，由少到多）
         // 這樣清單左欄是純連線（上到下），右欄是含WX（上到下）
-        for (let W = 0; W <= 1; W++) {
+        const isTargetWild = selectedSymbol.toUpperCase() === 'WX' || selectedSymbol.toUpperCase() === 'WILD' || selectedSymbol.toUpperCase() === 'WW';
+        const maxW = isTargetWild ? 0 : 1;
+
+        for (let W = 0; W <= maxW; W++) {
           for (let L = startLen; L <= reelCount; L++) {
             if (W === 1 && L < 2) continue; // WX 至少需要 L>=2（1個symbol+1個WX）
             const maxWild = Math.min(1, L - 1);
             if (W > maxWild) continue;
 
             let name = "";
-            if (isSelScatter) {
+            if (isTargetWild) {
+              name = `${selectedSymbol} * ${L} 連線`;
+            } else if (isSelScatter) {
               name =
                 W === 0
                   ? `${selectedSymbol} * ${L} 個`

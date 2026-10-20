@@ -550,6 +550,90 @@ export class RomaGame extends BaseLineGame {
     return null;
   }
 
+  /**
+   * 羅馬競技場專屬百搭 (WX) 連線搜尋：
+   * 根據官方規則：
+   * - WX 5連線：給予 M1 5連線分數
+   * - WX 4連線/3連線/2連線：看後面接的是什麼符號，給該符號的 5/4/3 連線分數（絕不會是 M1 短連線分數）
+   * 並且確保掉落殘留零自連，配對 0 消除安全遞補。
+   */
+  public searchWxCombination(
+    length: number,
+    strips0: string[][],
+    strips1: string[][],
+    currentPaytable: PaytableRule[],
+    rowCounts: number[],
+    paylinesToUse: number[][]
+  ): { rng: number[]; allRngs: number[][] } | null {
+    const reelCount = strips0.length;
+    const expectedMatch = length === 5 ? 5 : (length + 1);
+
+    for (let lineIdx = 0; lineIdx < paylinesToUse.length; lineIdx++) {
+      const line = paylinesToUse[lineIdx];
+      const starts = strips0.map((s, c) => {
+        const row = line[c];
+        const res: number[] = [];
+        for (let i = 0; i < s.length; i++) {
+          const isWx = s[(i + row) % s.length] === 'WX';
+          if (c < length && isWx) res.push(i);
+          if (c >= length && !isWx) res.push(i);
+        }
+        return res;
+      });
+
+      if (starts.some(a => a.length === 0)) continue;
+
+      for (let att = 0; att < 2000; att++) {
+        const cand = starts.map(arr => arr[Math.floor(Math.random() * arr.length)]);
+        const grid = this.buildGridFromRng(cand, strips0, rowCounts, reelCount);
+
+        // 檢查該線路開頭連續 WX 是否恰好為 length
+        let actualWx = 0;
+        for (let c = 0; c < 5; c++) {
+          if (grid[c][line[c]] === 'WX') actualWx++; else break;
+        }
+        if (actualWx !== length) continue;
+
+        const wins = this.evaluate(grid, currentPaytable, { gameType: this.id, paylines: paylinesToUse }, paylinesToUse, false);
+        const payingWins = wins.filter(w => w.payout > 0);
+
+        // 目標線路必須在此贏分清單中，且連線數恰好為 expectedMatch
+        const targetWin = payingWins.find(w => w.lineIndex === lineIdx && w.matchCount === expectedMatch);
+        if (!targetWin) continue;
+
+        // 檢查掉落殘留自連
+        const winCoords = new Set<string>();
+        for (const w of payingWins) for (const c of (w as any).winCoords || []) winCoords.add(c);
+        
+        const keptGrid: string[][] = [];
+        for (let c = 0; c < reelCount; c++) {
+          const col: string[] = [];
+          for (let r = 0; r < rowCounts[c]; r++) {
+            if (!winCoords.has(`${c}-${r}`)) col.push(grid[c][r]);
+          }
+          while (col.length < rowCounts[c]) col.unshift('DUMMY');
+          keptGrid.push(col);
+        }
+
+        const selfWins = this.evaluate(keptGrid, currentPaytable, { gameType: this.id, paylines: paylinesToUse }, paylinesToUse, false);
+        if (selfWins.some(w => w.payout > 0)) continue;
+
+        // 尋找 100% 零消除 safe 遞補
+        const safeRng1 = this.findSafeReplacementRng(
+          grid, payingWins, currentPaytable, strips1, rowCounts, paylinesToUse, 1500
+        );
+        if (safeRng1) {
+          return {
+            rng: cand,
+            allRngs: [cand, safeRng1.slice(0, 5)]
+          };
+        }
+      }
+    }
+
+    return null;
+  }
+
   public override async findRngForCombination(
     targetSymbol: string,
     length: number,
@@ -577,6 +661,22 @@ export class RomaGame extends BaseLineGame {
     const strips0 = (!isFreeGame && stripSets && stripSets[0]) ? stripSets[0] : currentStrips;
     const strips1 = (!isFreeGame && stripSets && stripSets[1]) ? stripSets[1] : currentStrips;
     const paylinesToUse: number[][] = (customPaylines && customPaylines.length > 0) ? customPaylines : (this.getDefaultConfig().paylines || []);
+
+    // 若目標符號為百搭 (WX)，使用專屬百搭連線搜尋
+    const isTargetWx = targetSymbol.toUpperCase() === 'WX' || targetSymbol.toUpperCase() === 'WILD' || targetSymbol.toUpperCase() === 'WW';
+    if (isTargetWx) {
+      const wxResult = this.searchWxCombination(
+        length, strips0, strips1, currentPaytable, rowCounts, paylinesToUse
+      );
+      if (wxResult) {
+        return {
+          rng: wxResult.rng.slice(0, 5),
+          isInterfered: false,
+          stripId: undefined,
+          allRngs: wxResult.allRngs
+        };
+      }
+    }
 
     // 凡 length >= 3（有贏分消除需求），優先使用 100% 零干擾純淨搜尋（驗證殘留零自連與遞補零消除）
     if (length >= 3) {
@@ -888,15 +988,157 @@ export class RomaGame extends BaseLineGame {
     customPaylines?: number[][],
     includeZeroPayout: boolean = false
   ): WinResult[] {
-    const baseWins = super.evaluate(grid, paytable, config, customPaylines, includeZeroPayout);
+    if (!grid || grid.length === 0 || !paytable || paytable.length === 0) return [];
 
-    // 檢查是否有 3 顆 B1 在連線上觸發獅子特色 (Rule 7)
-    for (const win of baseWins) {
-      if (win.symbolId === 'B1' && win.matchCount >= 3) {
-        win.multiplier = undefined;
+    const effectivePaylines = (customPaylines && customPaylines.length > 0)
+      ? customPaylines
+      : (config.paylines && config.paylines.length > 0)
+        ? config.paylines
+        : (this.getDefaultConfig().paylines || []);
+
+    const results: WinResult[] = [];
+    const paytableMap = new Map<string, PaytableRule>();
+    for (const r of paytable) paytableMap.set(r.symbolId, r);
+
+    // M1 規則（用於 WX 5 連線比照 M1 5 連線派彩）
+    const m1Rule = paytableMap.get('M1');
+
+    effectivePaylines.forEach((line, lineIdx) => {
+      // 提取該線路上的 5 個符號
+      const lineSyms: string[] = [];
+      const lineCells: string[] = [];
+      for (let c = 0; c < grid.length; c++) {
+        const r = line[c];
+        if (r === undefined || r < 0 || r >= grid[c].length) break;
+        const cell = grid[c][r];
+        lineCells.push(cell);
+        lineSyms.push((cell || '').split('_')[0]);
       }
-    }
 
-    return baseWins;
+      if (lineSyms.length < grid.length) return;
+
+      // 檢查金框倍數
+      const getMultiplier = (count: number) => {
+        let goldFrameMultipliers = 0;
+        for (let c = 0; c < count; c++) {
+          const r = line[c];
+          const posKey = `${c}-${r}`;
+          const cell = lineCells[c];
+          if (config.goldFrames && config.goldFrames[posKey]) {
+            goldFrameMultipliers += config.goldFrames[posKey];
+          }
+          if (cell && cell.includes('_') && cell.match(/^[F|L][1-4]_/)) {
+            const valStr = cell.split('_')[1];
+            const num = parseInt(valStr.replace('X', ''), 10);
+            if (!isNaN(num)) goldFrameMultipliers += num;
+          }
+        }
+        return goldFrameMultipliers;
+      };
+
+      // 1. 特色符號 B1（獅子）：WX 不能代替 B1，需自第 0 輪開始連續 B1
+      if (lineSyms[0] === 'B1') {
+        let b1Count = 0;
+        for (let c = 0; c < lineSyms.length; c++) {
+          if (lineSyms[c] === 'B1') b1Count++;
+          else break;
+        }
+        if (b1Count >= 3) {
+          const coords = line.slice(0, b1Count).map((r, c) => `${c}-${r}`);
+          results.push({
+            symbolId: 'B1',
+            matchCount: b1Count,
+            ways: 1,
+            payout: 0,
+            totalWin: 0,
+            lineIndex: lineIdx,
+            winCoords: coords
+          } as any);
+        }
+        return; // B1 該線不再判定其他普通符號
+      }
+
+      // 2. 計算開頭連續 WX 數量
+      let wxPrefix = 0;
+      for (let c = 0; c < lineSyms.length; c++) {
+        if (lineSyms[c] === 'WX') wxPrefix++;
+        else break;
+      }
+
+      // 情況 A：整條線 5 顆都是 WX -> 官方規格給予 M1 5 連線分數
+      if (wxPrefix === 5) {
+        const payout = m1Rule?.payouts?.match5 || 1000;
+        const mult = getMultiplier(5);
+        const totalWin = mult > 0 ? payout * mult : payout;
+        const coords = line.map((r, c) => `${c}-${r}`);
+        results.push({
+          symbolId: 'M1', // 以 M1 5 連線計
+          matchCount: 5,
+          ways: 1,
+          payout,
+          totalWin,
+          lineIndex: lineIdx,
+          multiplier: mult > 0 ? mult : undefined,
+          winCoords: coords
+        } as any);
+        return;
+      }
+
+      // 情況 B：前 1~4 顆是 WX，看後面接什麼符號（給該符號連線分數，絕非 M1 短連線）
+      let targetSym = '';
+      let matchCount = 0;
+
+      if (wxPrefix > 0) {
+        const nextSym = lineSyms[wxPrefix];
+        if (nextSym === 'B1') {
+          // WX 不能代替 B1，且未達 5 顆 WX，無法成線
+          return;
+        }
+        targetSym = nextSym;
+        matchCount = wxPrefix + 1;
+        // 繼續檢查後續符號是否為 targetSym 或 WX
+        for (let c = wxPrefix + 1; c < lineSyms.length; c++) {
+          if (lineSyms[c] === targetSym || lineSyms[c] === 'WX') {
+            matchCount++;
+          } else {
+            break;
+          }
+        }
+      } else {
+        // 情況 C：開頭第 0 顆不是 WX
+        targetSym = lineSyms[0];
+        matchCount = 1;
+        for (let c = 1; c < lineSyms.length; c++) {
+          if (lineSyms[c] === targetSym || lineSyms[c] === 'WX') {
+            matchCount++;
+          } else {
+            break;
+          }
+        }
+      }
+
+      // 判斷 targetSym 連線是否達有效連線數 (一般中獎 >= 3，若 includeZeroPayout 則涵蓋未達中獎之 2 連線)
+      if (matchCount >= 3 || (includeZeroPayout && matchCount >= 2)) {
+        const rule = paytableMap.get(targetSym);
+        const payout = matchCount >= 3 ? (rule?.payouts?.[`match${matchCount}` as keyof typeof rule.payouts] || 0) : 0;
+        if (payout > 0 || includeZeroPayout) {
+          const mult = getMultiplier(matchCount);
+          const totalWin = mult > 0 ? payout * mult : payout;
+          const coords = line.slice(0, matchCount).map((r, c) => `${c}-${r}`);
+          results.push({
+            symbolId: targetSym,
+            matchCount,
+            ways: 1,
+            payout,
+            totalWin,
+            lineIndex: lineIdx,
+            multiplier: mult > 0 ? mult : undefined,
+            winCoords: coords
+          } as any);
+        }
+      }
+    });
+
+    return results;
   }
 }

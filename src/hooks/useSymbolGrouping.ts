@@ -45,7 +45,8 @@ export function useSymbolGrouping(
       if (!strip) return;
       strip.forEach(s => {
         if (s && s !== '-' && s !== '' && !disabledSymbols.has(s)) {
-          allSyms.add(s);
+          const norm = s.toUpperCase() === 'WX' ? 'WX' : s;
+          allSyms.add(norm);
         }
       });
     });

@@ -308,6 +308,10 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
 
   useEffect(() => {
     const updatePaths = () => {
+      if (!selectedSymbol) {
+        setLinePathsOther([]);
+        return;
+      }
       const p = calculateSVGPaths(displayGridOther, winsOther, currentPaytable, gridContainerRefOther.current, 'other', gameType, gameType === 'megaway' ? topTrackerOther : undefined, customPaylines);
       setLinePathsOther(p);
     };
@@ -317,7 +321,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
       clearTimeout(timer);
       window.removeEventListener('resize', updatePaths);
     };
-  }, [displayGridOther, winsOther, currentPaytable, gameType, topTrackerOther, customPaylines]);
+  }, [displayGridOther, winsOther, currentPaytable, gameType, topTrackerOther, customPaylines, selectedSymbol]);
 
   const [noWinCollapsed, setNoWinCollapsed] = useState(false);
   const [pulseToggle, setPulseToggle] = useState(false);
@@ -1606,7 +1610,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
           className="bg-dashboard-card p-6 rounded-xl shadow-2xl border border-gray-700/30 w-full max-w-3xl overflow-hidden flex justify-center items-center"
         >
           <div ref={gridContainerRefOther} className="relative inline-flex flex-col items-center justify-center">
-          {linePathsOther.length > 0 && (
+          {Boolean(selectedSymbol && linePathsOther.length > 0) && (
             <svg className="absolute inset-0 pointer-events-none w-full h-full z-20">
               <defs>
                 <filter id="glow-other" filterUnits="userSpaceOnUse" x="0" y="0" width="100%" height="100%">
