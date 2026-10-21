@@ -1,6 +1,7 @@
 import type { GameType, MultiplierInterval } from '../../types';
 import type { IGameEnvironment } from './IGameEnvironment';
 import type { ScriptFormatter } from './ScriptFormat';
+import type { InstantGenerator } from './InstantGenerator';
 
 /** 遊戲家族：決定共用層使用哪一套連線判定 / SVG 繪線 / 顯示文字 */
 export type GameFamily = 'line' | 'way' | 'payanywhere' | 'megaway';
@@ -83,6 +84,8 @@ export interface GameManifest {
   templateWays?: number;
   /** 只靠檔名辨識時套用的固定盤面配置 */
   templateLayout?: { reelCount: number; rowCounts: number[] };
+  /** MathID 即時產生器（未設定則使用滾輪表反向搜尋） */
+  instantGenerator?: InstantGenerator;
   /** QA 測試腳本格式（未設定則使用 DefaultScriptFormatter） */
   script?: ScriptFormatter;
   /** 大獎倍數區間（未設定則使用 DEFAULT_MULTIPLIER_INTERVALS） */

@@ -1,14 +1,3 @@
-export const GameTypes = {
-  LINE_GAME: 'linegame',
-  LINE_GAME_SET2: 'linegame_set2',
-  LINE_GAME_GODS: 'linegame_gods',
-  PAY_ANYWHERE: 'payanywhere',
-  PAY_ANYWHERE_SET2: 'payanywhere_set2',
-  WAY_GAME: 'waygame',
-  WAY_GAME_QIN: 'waygame_qin',
-  MEGAWAY: 'megaway',
-} as const;
-
 export const SpecialSymbols = {
   S1: 'S1',
   S2: 'S2',

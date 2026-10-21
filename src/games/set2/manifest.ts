@@ -1,4 +1,5 @@
 import { defineGame } from '../base/GameManifest';
+import { set2Generator } from './generator';
 import { set2ScriptFormatter } from './script';
 import { BattleSet2Game } from './BattleSet2Game';
 
@@ -20,6 +21,7 @@ export default defineGame({
     combinedBonusSymbol: true,
     simulationCascade: true,
   },
+  instantGenerator: set2Generator,
   script: set2ScriptFormatter,
   create: () => new BattleSet2Game(),
 });

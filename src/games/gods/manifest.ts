@@ -1,4 +1,5 @@
 import { defineGame } from '../base/GameManifest';
+import { lineMathIdGenerator } from '../base/generators/lineMathIdGenerator';
 import { godsScriptFormatter } from './script';
 import { GodsGame } from './GodsGame';
 
@@ -22,6 +23,7 @@ export default defineGame({
     { id: '4', name: 'Ultra Win', min: 100, max: 300 },
     { id: '5', name: 'Legend Win', min: 300, max: null },
   ],
+  instantGenerator: lineMathIdGenerator,
   script: godsScriptFormatter,
   create: () => new GodsGame(),
 });

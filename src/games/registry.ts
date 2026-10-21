@@ -31,6 +31,9 @@ export const GAMES: readonly GameManifest[] = [
   roma,
 ];
 
+/** App 開啟時預設選取的遊戲 */
+export const DEFAULT_GAME_ID: GameType = luxe.id;
+
 /** Megaway 尚無遊戲實作，只保留在選單中 */
 const MEGAWAY: { id: GameType; label: string; engineName: string; traits: GameTraits } = {
   id: 'megaway',

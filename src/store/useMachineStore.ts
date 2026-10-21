@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { DEFAULT_GAME_ID } from '../games/registry';
 import type { GameType } from '../types';
 
 export interface JiraIssueDetail {
@@ -46,7 +47,7 @@ export interface MachineState {
 }
 
 export const useMachineStore = create<MachineState>((set) => ({
-  gameType: 'linegame_set2',
+  gameType: DEFAULT_GAME_ID,
   bet: 50,
   coin: 1,
   isRunning: false,
