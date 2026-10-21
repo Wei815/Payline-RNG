@@ -3,7 +3,8 @@ import { ConfigPanel } from './components/ConfigPanel';
 import { SlotConsole } from './components/SlotConsole';
 import { MetricsDashboard } from './components/MetricsDashboard';
 import { useSimulation } from './hooks/useSimulation';
-import { BarChart3, Menu, X } from 'lucide-react';
+import { useTheme } from './hooks/useTheme';
+import { BarChart3, Menu, Moon, PanelLeftOpen, PanelLeftClose, SlidersHorizontal, Sun, X } from 'lucide-react';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { Sidebar } from './components/Sidebar';
 import { JiraLinkGenerator } from './components/tools/JiraLinkGenerator';
@@ -44,6 +45,18 @@ function App() {
     try { return localStorage.getItem('rngpay.sidebarCollapsed') === '1'; } catch { return false; }
   });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+
+  // 設定面板可收合（設定通常一次調好，之後專注在主控台），偏好記在 localStorage；收合時保持掛載以保留狀態
+  const [configCollapsed, setConfigCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem('rngpay.configCollapsed') === '1'; } catch { return false; }
+  });
+  const toggleConfig = useCallback(() => {
+    setConfigCollapsed(prev => {
+      try { localStorage.setItem('rngpay.configCollapsed', prev ? '0' : '1'); } catch { /* 無痕模式 */ }
+      return !prev;
+    });
+  }, []);
   const toggleSidebar = useCallback(() => {
     setSidebarCollapsed(prev => {
       try { localStorage.setItem('rngpay.sidebarCollapsed', prev ? '0' : '1'); } catch { /* 無痕模式 */ }
@@ -125,7 +138,18 @@ function App() {
             </div>
           )}
         </div>
-        <span className="hidden md:block text-[11px] font-mono text-dashboard-text-muted shrink-0">Slot Math QA Toolkit</span>
+        <div className="flex items-center gap-1 shrink-0">
+          <span className="hidden xl:block mr-2 text-[11px] font-mono text-dashboard-text-muted">Slot Math QA Toolkit</span>
+          <button
+            onClick={toggleTheme}
+            title={theme === 'dark' ? '切換為淺色主題' : '切換為深色主題'}
+            aria-label="切換日夜主題"
+            className="h-8 px-2.5 inline-flex items-center gap-1.5 rounded-md border border-dashboard-border bg-dashboard-card text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-dashboard-hover text-xs font-medium"
+          >
+            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            <span className="hidden sm:inline">{theme === 'dark' ? '淺色' : '深色'}</span>
+          </button>
+        </div>
         {/* 暫時隱藏 RTP 測試報告按鈕 (待後續開發開放)
         <button 
           onClick={() => setIsMetricsOpen(true)}
@@ -139,16 +163,38 @@ function App() {
 
         {/* Main Grid Layout：寬螢幕左右並排，窄螢幕上下堆疊並整頁捲動 */}
         <main className="flex-1 w-full flex flex-col lg:flex-row min-h-0 overflow-y-auto lg:overflow-hidden custom-scrollbar">
-          {/* Left: ConfigPanel */}
+          {/* Left: ConfigPanel（桌面可收合為窄欄） */}
         <div 
           className={`
             ${!isProjectLoaded ? 'hidden' : 'block'}
-            w-full shrink-0 h-[80dvh] lg:h-full transition-[width] duration-200 ${getTraits(gameType).mathIdGenerator ? 'lg:w-[340px]' : 'lg:w-[clamp(340px,34%,480px)]'}
+            relative w-full shrink-0 h-[80dvh] lg:h-full transition-[width] duration-200
+            ${configCollapsed ? 'lg:w-11' : getTraits(gameType).mathIdGenerator ? 'lg:w-[340px]' : 'lg:w-[clamp(340px,32%,460px)]'}
           `}
         >
-          <ConfigPanel 
-            onTestSpin={handleTestSpin}
-          />
+          <div className={`h-full ${configCollapsed ? 'lg:hidden' : ''}`}>
+            <ConfigPanel 
+              onTestSpin={handleTestSpin}
+            />
+          </div>
+          {configCollapsed ? (
+            <button
+              onClick={toggleConfig}
+              title="展開遊戲設定"
+              className="hidden lg:flex h-full w-full flex-col items-center gap-3 pt-3 bg-dashboard-card border-r border-dashboard-border text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-dashboard-hover"
+            >
+              <PanelLeftOpen size={17} />
+              <SlidersHorizontal size={15} />
+              <span className="[writing-mode:vertical-rl] text-xs font-medium tracking-widest">遊戲設定</span>
+            </button>
+          ) : (
+            <button
+              onClick={toggleConfig}
+              title="收合遊戲設定"
+              className="hidden lg:inline-flex absolute top-3 right-3 z-10 p-1.5 rounded-md text-dashboard-text-muted hover:text-dashboard-text-primary hover:bg-dashboard-hover"
+            >
+              <PanelLeftClose size={16} />
+            </button>
+          )}
         </div>
 
         {/* Center: SlotConsole or WelcomeScreen */}
@@ -175,7 +221,7 @@ function App() {
               </div>
               <button 
                 onClick={() => setIsMetricsOpen(false)} 
-                className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-gray-800 transition-colors"
+                className="text-gray-400 hover:text-dashboard-text-primary p-1 rounded-md hover:bg-gray-800 transition-colors"
               >
                 <X size={24} />
               </button>

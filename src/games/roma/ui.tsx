@@ -7,14 +7,14 @@ const FreeGameToggle: React.FC<FreeGameToggleProps> = ({ isFreeGame, setIsFreeGa
     <button
       type="button"
       onClick={() => setIsFreeGame(false)}
-      className={`px-3 py-1 rounded text-xs font-bold transition-all ${!isFreeGame ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+      className={`px-3 py-1 rounded text-xs font-bold transition-all ${!isFreeGame ? 'bg-blue-600 text-dashboard-on-accent shadow-md' : 'text-gray-400 hover:text-dashboard-text-primary'}`}
     >
       🛡️ 一般模式 (Base)
     </button>
     <button
       type="button"
       onClick={() => setIsFreeGame(true)}
-      className={`px-3 py-1 rounded text-xs font-bold transition-all ${isFreeGame ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+      className={`px-3 py-1 rounded text-xs font-bold transition-all ${isFreeGame ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-dashboard-on-accent shadow-md' : 'text-gray-400 hover:text-dashboard-text-primary'}`}
     >
       ⚔️ 免遊模式 (Free Game)
     </button>
@@ -75,7 +75,7 @@ const TriggerPanel: React.FC<TriggerPanelProps> = ({ selectedTriggerCombo, setSe
               onClick={() => setSelectedTriggerCombo(item.combo)}
               className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg border text-center transition-all cursor-pointer ${
                 selectedTriggerCombo === item.combo
-                  ? 'bg-purple-600/30 border-purple-400 text-white ring-2 ring-purple-500 shadow-md'
+                  ? 'bg-purple-600/30 border-purple-400 text-dashboard-text-primary ring-2 ring-purple-500 shadow-md'
                   : 'bg-dashboard-card border-gray-700/60 text-gray-400 hover:text-gray-200 hover:border-gray-500'
               }`}
             >

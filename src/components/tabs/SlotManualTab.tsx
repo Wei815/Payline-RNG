@@ -6,6 +6,7 @@ import { getWinColorClass, calculateSVGPaths } from '../../utils/svgPaths';
 import { evaluateGrid, getWinningPositions } from '../../utils/evaluation';
 import { getTraits } from '../../games/registry';
 import { useLinePaths } from '../../hooks/useLinePaths';
+import { symbolToneClass } from '../ui/symbolTone';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
 
 export interface SlotManualTabProps {
@@ -119,10 +120,10 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
       <div className="flex-1 flex flex-col items-center justify-center gap-8">
 
         {/* Controls */}
-        <div className="w-full max-w-3xl flex flex-col bg-dashboard-bg p-3 rounded-lg border border-gray-700/50 shadow-inner gap-3">
+        <div className="w-full max-w-3xl flex flex-col bg-dashboard-card p-3 rounded-xl border border-dashboard-border gap-3">
           <div className="flex justify-between items-center border-b border-gray-700/50 pb-2">
             <div className="flex items-center gap-3">
-              <span className="text-sm text-dashboard-text-secondary font-bold pl-2">Reel Settings</span>
+              <span className="text-sm text-dashboard-text-secondary font-bold pl-2">滾輪位置 / RNG</span>
               {stripSets && stripSets.length > 1 && (
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-dashboard-text-primary">滾輪表:</span>
@@ -276,7 +277,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                           newTracker[idx] = e.target.value.toUpperCase();
                           setTopTracker(newTracker);
                         }}
-                        className="w-full text-center bg-transparent border-none outline-none text-base font-bold text-white uppercase focus:text-dashboard-accent"
+                        className="w-full text-center bg-transparent border-none outline-none text-base font-bold text-dashboard-text-primary uppercase focus:text-dashboard-accent"
                       />
                     </div>
                   );
@@ -314,11 +315,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                         className={`
                           slot-cell rounded-lg flex items-center justify-center font-bold
                           shadow-lg transform transition-all duration-300 relative border
-                          ${customBg ? customBg :
-                            symbol === '-' ? 'bg-dashboard-bg text-gray-700 border-2 border-gray-800 border-dashed' :
-                            symbol === 'WILD' || symbol.startsWith('W') || symbol === 'WX' ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border-yellow-300' :
-                              symbol === 'SCATTER' ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border-pink-300' :
-                                'bg-dashboard-card text-dashboard-text-primary border-dashboard-accent/30'}
+                          ${customBg ? customBg : symbolToneClass(symbol)}
                           ${isWinning
                             ? `z-10 ring-2 scale-105 ${winColorClass}`
                             : hasAnyWin
@@ -340,8 +337,8 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
         </div>
 
         {/* Evaluation Output */}
-        <div className="w-full max-w-3xl flex flex-col bg-dashboard-bg p-4 rounded-lg border border-gray-700/50 shadow-inner">
-          <span className="text-sm text-dashboard-text-secondary font-bold border-b border-gray-700/50 pb-2 mb-3">連線結果 (Evaluation)</span>
+        <div className="w-full max-w-3xl flex flex-col bg-dashboard-card p-4 rounded-xl border border-dashboard-border">
+          <span className="text-sm text-dashboard-text-secondary font-bold border-b border-gray-700/50 pb-2 mb-3">連線結果</span>
 
           {wins.length > 0 ? (() => {
             const winHits   = wins.filter(w => w.totalWin > 0);
@@ -373,7 +370,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                   )}
                   {winHits.length > 0 && (
                     <div className="mt-1 pt-2 border-t border-dashboard-accent/20 flex justify-between items-center px-1">
-                      <span className="text-white font-bold text-xs">Total Win</span>
+                      <span className="text-dashboard-text-primary font-bold text-xs">Total Win</span>
                       <span className="text-dashboard-accent font-bold text-lg">{formatAmount(winHits.reduce((sum, w) => sum + w.totalWin, 0) * betMultiplier * baseMultiplier)}</span>
                     </div>
                   )}

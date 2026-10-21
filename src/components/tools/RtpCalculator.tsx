@@ -124,7 +124,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
               <div className="p-2 bg-blue-500/20 rounded-lg">
                 <Calculator className="w-5 h-5 text-blue-400" />
               </div>
-              <h2 className="text-lg font-bold text-white">RTP 模擬計算機</h2>
+              <h2 className="text-lg font-bold text-dashboard-text-primary">RTP 模擬計算機</h2>
             </div>
             <div className="w-[1px] h-6 bg-gray-700/50"></div>
             <div className="flex items-center gap-2">
@@ -149,7 +149,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-dashboard-text-primary"
           >
             <X className="w-5 h-5" />
           </button>
@@ -171,7 +171,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
                 <select
                   value={selectedStripKey}
                   onChange={(e) => setSelectedStripKey(e.target.value)}
-                  className="w-full bg-dashboard-bg border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
+                  className="w-full bg-dashboard-bg border border-gray-600 rounded-lg px-3 py-2 text-dashboard-text-primary focus:border-blue-500 focus:outline-none"
                   disabled={!isProjectLoaded || isRunning}
                 >
                   <optgroup label="全流程模擬 (Base + Free)">
@@ -211,8 +211,8 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
                       onClick={() => setSelectedSpins(spins)}
                       disabled={!isProjectLoaded || isRunning}
                       className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${selectedSpins === spins
-                        ? 'bg-blue-600 text-white border-blue-500'
-                        : 'bg-dashboard-card text-gray-400 border-gray-700 hover:border-gray-500 hover:text-white'
+                        ? 'bg-blue-600 text-dashboard-on-accent border-blue-500'
+                        : 'bg-dashboard-card text-gray-400 border-gray-700 hover:border-gray-500 hover:text-dashboard-text-primary'
                         } border disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       {spins.toLocaleString()} 局
@@ -229,7 +229,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
                 ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
                 : !isProjectLoaded
                   ? 'bg-blue-600/50 text-blue-200/50 cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-500/25'
+                  : 'bg-blue-600 text-dashboard-on-accent hover:bg-blue-500 shadow-lg shadow-blue-500/25'
                 }`}
             >
               {isRunning ? (
@@ -386,7 +386,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
                 <div>
                   <div className="flex items-center gap-2 mb-4">
                     <ArrowDownWideNarrow className="w-5 h-5 text-gray-400" />
-                    <h3 className="text-lg font-bold text-white">符號 RTP 貢獻度分析</h3>
+                    <h3 className="text-lg font-bold text-dashboard-text-primary">符號 RTP 貢獻度分析</h3>
                   </div>
                   <div className="bg-dashboard-card rounded-xl border border-gray-700/50 overflow-hidden">
                     <table className="w-full text-sm text-left">

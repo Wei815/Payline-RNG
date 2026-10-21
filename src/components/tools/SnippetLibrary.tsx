@@ -102,7 +102,7 @@ ${format2DArray(qa.Selection)}
           </div>
           <button 
             onClick={onClose} 
-            className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-gray-800 transition-colors"
+            className="text-gray-400 hover:text-dashboard-text-primary p-1 rounded-md hover:bg-gray-800 transition-colors"
           >
             <X size={24} />
           </button>
@@ -227,7 +227,7 @@ ${format2DArray(qa.Selection)}
             <div className="flex justify-end gap-2">
               <button 
                 onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })} 
-                className="px-3 py-1.5 rounded text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                className="px-3 py-1.5 rounded text-sm text-gray-400 hover:text-dashboard-text-primary hover:bg-gray-800 transition-colors"
               >
                 取消
               </button>
@@ -250,7 +250,7 @@ ${format2DArray(qa.Selection)}
               <h3 className="text-dashboard-text-primary font-bold">檢視 / 編輯內文</h3>
               <button 
                 onClick={() => setEditingContentId(null)} 
-                className="text-gray-400 hover:text-white"
+                className="text-gray-400 hover:text-dashboard-text-primary"
               >
                 <X size={20} />
               </button>
@@ -259,7 +259,7 @@ ${format2DArray(qa.Selection)}
               <textarea 
                 value={editingContentValue}
                 onChange={e => setEditingContentValue(e.target.value)}
-                className="w-full h-full bg-dashboard-card border border-gray-600 rounded p-3 text-white font-mono text-sm outline-none focus:border-dashboard-accent resize-none custom-scrollbar"
+                className="w-full h-full bg-dashboard-card border border-gray-600 rounded p-3 text-dashboard-text-primary font-mono text-sm outline-none focus:border-dashboard-accent resize-none custom-scrollbar"
                 spellCheck={false}
               />
               {editingContentError && <p className="text-red-400 text-xs font-bold">{editingContentError}</p>}
@@ -267,7 +267,7 @@ ${format2DArray(qa.Selection)}
             <div className="flex justify-end gap-2 p-4 border-t border-gray-700 bg-dashboard-raised shrink-0">
               <button 
                 onClick={() => setEditingContentId(null)} 
-                className="px-4 py-2 rounded text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+                className="px-4 py-2 rounded text-sm text-gray-400 hover:text-dashboard-text-primary hover:bg-gray-800 transition-colors"
               >
                 取消
               </button>

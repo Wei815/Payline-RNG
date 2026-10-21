@@ -8,6 +8,7 @@ import { GameRegistry } from '../../core/GameRegistry';
 import type { GameType, PaytableRule } from '../../types';
 import { useGameStore } from '../../store/useGameStore';
 import { getTraits } from '../../games/registry';
+import { symbolToneClass } from '../ui/symbolTone';
 import { SpecialSymbols } from '../../constants/GameConstants';
 
 const ALL_SPECIAL_BALLS = [...MULTIPLIER_BALLS, ...LUCKY_BALLS];
@@ -212,7 +213,7 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
         
         {/* 右側：輸入區與狀態 */}
         <div className="flex-1 flex flex-col gap-4">
-          <div className="flex flex-col gap-2 bg-dashboard-bg p-4 rounded-lg border border-gray-700/50 flex-1">
+          <div className="flex flex-col gap-2 bg-dashboard-card p-4 rounded-xl border border-dashboard-border flex-1">
             <div className="flex justify-between items-center">
               <span className="text-sm text-dashboard-text-secondary font-bold">輸入 RNGs (從上到下、從左到右)</span>
               <span className="text-xs text-gray-500">剩餘可遞補符號數: <span className="text-dashboard-accent font-bold">{mathIdSequence.length}</span></span>
@@ -270,10 +271,10 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
         </div>
 
       {/* 下半部：盤面與控制 */}
-      <div className="flex-1 flex flex-col gap-4 bg-dashboard-bg p-4 rounded-lg border border-gray-700/50 overflow-hidden relative">
+      <div className="flex-1 flex flex-col gap-4 bg-dashboard-card p-4 rounded-xl border border-dashboard-border overflow-hidden relative">
         <div className="flex justify-between items-start shrink-0 relative z-50">
           <div className="flex items-start gap-4 text-sm text-gray-400">
-            <span className="pt-0.5">消除次數: <span className="text-white font-bold">{tumbleCount}</span></span>
+            <span className="pt-0.5">消除次數: <span className="text-dashboard-text-primary font-bold">{tumbleCount}</span></span>
             {getTraits(gameType).doublingTumbleMultiplier && <span className="pt-0.5">目前倍數: <span className="text-purple-400 font-bold">x{currentMultiplier}</span></span>}
             <span className="pt-0.5">單次贏分: <span className="text-yellow-400 font-bold">{formatAmount(totalWin * betMultiplier)}</span></span>
             {(() => {
@@ -295,7 +296,7 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
               return (
                 <div className="flex flex-col gap-2 items-start">
                   <span className="flex items-center gap-2 mt-0.5 relative z-50">
-                    <span>目前累積贏分: <span className="text-white font-bold">{formatAmount(baseWin * betMultiplier)}</span></span>
+                    <span>目前累積贏分: <span className="text-dashboard-text-primary font-bold">{formatAmount(baseWin * betMultiplier)}</span></span>
                     {gridMultiplier > 0 && (
                       <span className="text-xs px-1.5 py-0.5 rounded bg-dashboard-bg border border-dashboard-accent text-dashboard-accent">
                         盤面倍數: {gridMultiplier}X
@@ -304,7 +305,7 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
                     {isEnd && gridMultiplier > 0 && baseWin > 0 && (
                       <div className="absolute top-full left-0 mt-3 bg-dashboard-raised border border-dashboard-accent/50 rounded-lg p-3 shadow-[0_0_20px_rgba(100,255,218,0.2)] flex flex-col items-end w-[220px] animate-fade-in-up">
                         <span className="text-xs text-gray-400 font-bold mb-0.5">Base Win</span>
-                        <span className="text-white font-bold text-sm mb-1">{formatAmount(baseWin * betMultiplier)}</span>
+                        <span className="text-dashboard-text-primary font-bold text-sm mb-1">{formatAmount(baseWin * betMultiplier)}</span>
                         <span className="text-xs text-gray-400 font-bold mb-0.5">Total Multiplier</span>
                         <span className="text-dashboard-accent font-bold text-sm mb-1">x{gridMultiplier}</span>
                         <div className="w-full h-px bg-gray-700/50 my-1"></div>
@@ -323,7 +324,7 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
               disabled={wins.length === 0}
               className={`px-6 py-2 rounded text-sm font-bold transition-all shadow-lg ${
                 wins.length > 0
-                  ? 'bg-dashboard-accent text-dashboard-bg hover:bg-white hover:shadow-[0_0_15px_rgba(100,255,218,0.5)]'
+                  ? 'bg-dashboard-accent text-dashboard-bg hover:bg-dashboard-accent-strong'
                   : 'bg-gray-700 text-gray-500 cursor-not-allowed'
               }`}
             >
@@ -372,11 +373,7 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
                           isWin
                             ? `z-10 ring-2 scale-105 ${winColorClass} ${pulseClass}`
                             : customBg ? customBg
-                            : isWild
-                            ? 'bg-dashboard-card text-purple-400 border border-purple-500/30'
-                            : isUnknown
-                            ? 'bg-red-900/30 text-red-400 border border-red-500/50'
-                            : 'bg-dashboard-card text-gray-300 border border-gray-700/50'
+                            : symbolToneClass(sym)
                         } ${!isWin && hasAnyWin && !customBg ? 'opacity-30 scale-95 border-transparent' : ''}`}
                       >
                         <span>{displaySymbol}</span>

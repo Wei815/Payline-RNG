@@ -627,17 +627,17 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
             <div className="p-2 bg-blue-500/20 rounded-lg">
               <FileSpreadsheet className="w-5 h-5 text-blue-400" />
             </div>
-            <h2 className="text-lg font-bold text-white flex items-center gap-4">
+            <h2 className="text-lg font-bold text-dashboard-text-primary flex items-center gap-4">
               Jira CSV 報表轉換器
               <div className="flex items-center bg-dashboard-bg p-1 rounded-lg border border-gray-700">
                 <button 
                   onClick={() => useMachineStore.getState().setActiveModalTool('jiraReport')}
-                  className="px-4 py-1 rounded text-gray-400 hover:text-white text-sm font-bold transition-colors"
+                  className="px-4 py-1 rounded text-gray-400 hover:text-dashboard-text-primary text-sm font-bold transition-colors"
                 >
                   機台
                 </button>
                 <button 
-                  className="px-4 py-1 rounded bg-blue-500 text-white text-sm font-bold shadow-sm"
+                  className="px-4 py-1 rounded bg-blue-500 text-dashboard-on-accent text-sm font-bold shadow-sm"
                 >
                   WEB
                 </button>
@@ -646,7 +646,7 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
           </div>
           <button 
             onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-dashboard-text-primary"
           >
             <X className="w-5 h-5" />
           </button>
@@ -706,7 +706,7 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
                     setProjectsFilter(Object.keys(jiraIssuesWebByProject || {}) || []);
                   }}
                   disabled={!displayData || displayData.length === 0}
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-bold rounded-lg transition-colors shadow-lg"
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-700 disabled:text-gray-500 text-dashboard-on-accent text-sm font-bold rounded-lg transition-colors shadow-lg"
                 >
                   👁️ 查看所有專案細項
                 </button>
@@ -716,14 +716,14 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
                     setShowMrModal(true);
                   }}
                   disabled={!displayData || displayData.length === 0}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-bold rounded-lg transition-colors shadow-lg"
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-700 disabled:text-gray-500 text-dashboard-on-accent text-sm font-bold rounded-lg transition-colors shadow-lg"
                 >
                   📝 產生 MR 表單
                 </button>
                 <button
                   onClick={handleCopy}
                   disabled={!displayData || displayData.length === 0}
-                  className={`flex items-center gap-2 px-4 py-2 text-white text-sm font-bold rounded-lg transition-colors shadow-lg ${
+                  className={`flex items-center gap-2 px-4 py-2 text-dashboard-text-primary text-sm font-bold rounded-lg transition-colors shadow-lg ${
                     copySuccess 
                       ? 'bg-green-500 hover:bg-green-600'
                       : 'bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500'
@@ -735,7 +735,7 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
               </div>
             </div>
             {/* Visual Table Preview */}
-            <div className={`w-full flex-1 min-h-[400px] border rounded-lg overflow-auto ${displayData && displayData.length > 0 ? 'bg-white border-gray-700 p-1' : 'bg-dashboard-bg/50 border-gray-700 border-dashed flex flex-col items-center justify-center p-8'}`}>
+            <div className={`paper w-full flex-1 min-h-[400px] border rounded-lg overflow-auto ${displayData && displayData.length > 0 ? 'bg-white border-gray-700 p-1' : 'bg-dashboard-bg/50 border-gray-700 border-dashed flex flex-col items-center justify-center p-8'}`}>
               {displayData && displayData.length > 0 ? (
                 <table className="w-full text-black border-collapse border border-gray-300">
                   <thead className="bg-gray-100">
@@ -818,7 +818,7 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
             <div className="p-6 h-[600px] flex gap-8">
               <div className="w-2/5 flex flex-col gap-4 border-r border-gray-700 pr-6 h-full overflow-hidden">
                 <div className="flex justify-between items-center shrink-0">
-                  <span className="text-white font-bold">選擇專案</span>
+                  <span className="text-dashboard-text-primary font-bold">選擇專案</span>
                   <div className="flex gap-2">
                     <button className="text-xs bg-blue-500/20 hover:bg-blue-500/40 text-blue-300 px-2 py-1 rounded transition-colors" onClick={() => setMrSelectedProjects(filteredMrProjects.map(r => r[0]))}>全選</button>
                     <button className="text-xs bg-gray-500/20 hover:bg-gray-500/40 text-gray-300 px-2 py-1 rounded transition-colors" onClick={() => setMrSelectedProjects([])}>全不選</button>
@@ -831,12 +831,12 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
                     placeholder="🔍 搜尋專案名稱..."
                     value={mrSearchQuery}
                     onChange={(e) => setMrSearchQuery(e.target.value)}
-                    className="w-full bg-dashboard-card border border-gray-600 rounded px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 shrink-0"
+                    className="w-full bg-dashboard-card border border-gray-600 rounded px-3 py-1.5 text-sm text-dashboard-text-primary focus:outline-none focus:border-blue-500 shrink-0"
                   />
                 </div>
                 <div className="flex flex-col gap-2 overflow-y-auto flex-1 pr-2 min-h-0">
                   {filteredMrProjects.map(row => (
-                    <label key={row[0]} className="flex items-start gap-2 text-sm text-gray-300 cursor-pointer hover:text-white py-1">
+                    <label key={row[0]} className="flex items-start gap-2 text-sm text-gray-300 cursor-pointer hover:text-dashboard-text-primary py-1">
                       <input type="checkbox" checked={mrSelectedProjects.includes(row[0])} onChange={(e) => {
                         if (e.target.checked) setMrSelectedProjects([...mrSelectedProjects, row[0]]);
                         else setMrSelectedProjects(mrSelectedProjects.filter(p => p !== row[0]));
@@ -852,8 +852,8 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
               </div>
               <div className="w-3/5 flex flex-col gap-4 h-full overflow-hidden">
                 <div className="flex justify-between items-center shrink-0">
-                  <span className="text-white font-bold">預覽 MR 表單</span>
-                  <button onClick={handleMrCopy} className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-sm font-bold rounded-lg transition-colors shadow-lg">
+                  <span className="text-dashboard-text-primary font-bold">預覽 MR 表單</span>
+                  <button onClick={handleMrCopy} className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-dashboard-on-accent text-sm font-bold rounded-lg transition-colors shadow-lg">
                     <Copy className="w-4 h-4" />
                     {mrCopySuccess ? '✅ 已複製' : '📋 複製內容'}
                   </button>
@@ -949,7 +949,7 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
                       <div className="absolute flex flex-col bg-dashboard-bg border border-gray-600 rounded-lg p-2 top-full left-0 mt-1 z-50 w-64 max-h-[400px] shadow-2xl">
                         <div className="flex justify-between items-center mb-2 px-2 pb-1 shrink-0">
                           <button onClick={() => setProjectsFilter(filteredProjects)} className="text-xs font-bold text-blue-400 hover:text-blue-300">全選</button>
-                          <button onClick={() => setProjectsFilter([])} className="text-xs font-bold text-gray-400 hover:text-white">全不選</button>
+                          <button onClick={() => setProjectsFilter([])} className="text-xs font-bold text-gray-400 hover:text-dashboard-text-primary">全不選</button>
                         </div>
                         <div className="px-2 pb-2 mb-2 border-b border-gray-700 shrink-0">
                           <input
@@ -957,7 +957,7 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
                             placeholder="🔍 搜尋專案名稱..."
                             value={projectsSearchQuery}
                             onChange={(e) => setProjectsSearchQuery(e.target.value)}
-                            className="w-full bg-dashboard-card border border-gray-600 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-blue-500"
+                            className="w-full bg-dashboard-card border border-gray-600 rounded px-2 py-1 text-xs text-dashboard-text-primary focus:outline-none focus:border-blue-500"
                           />
                         </div>
                         <div className="flex-1 overflow-y-auto flex flex-col min-h-0 custom-scrollbar">
@@ -1020,7 +1020,7 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
               <div className="flex items-center gap-2">
                 <button 
                   onClick={handleExportExcel}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded transition-colors shadow-lg"
+                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-dashboard-on-accent text-sm font-bold rounded transition-colors shadow-lg"
                   title="匯出目前篩選結果為 Excel"
                 >
                   <Download size={16} />
@@ -1085,7 +1085,7 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
                                       <span className="truncate" title={issue.issueKey}>{issue.issueKey}</span>
                                     </a>
                                     <div className="hidden sm:block w-px h-8 bg-gray-700 shrink-0"></div>
-                                    <div className="text-white font-medium text-sm leading-relaxed flex-1">
+                                    <div className="text-dashboard-text-primary font-medium text-sm leading-relaxed flex-1">
                                       {issue.summary || '無摘要'}
                                     </div>
                                     <div className="hidden sm:block w-px h-8 bg-gray-700 shrink-0"></div>

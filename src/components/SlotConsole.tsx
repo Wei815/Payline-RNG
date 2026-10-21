@@ -8,6 +8,7 @@ export interface SlotConsoleProps {
 }
 
 import { useShallow } from 'zustand/react/shallow';
+import { Calculator, Wand2, Route, Layers, LayoutGrid } from 'lucide-react';
 import { parsePasteRng } from '../utils/formatters';
 import { getTraits } from '../games/registry';
 import { useSymbolGrouping } from '../hooks/useSymbolGrouping';
@@ -170,7 +171,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
                 : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-dashboard-hover/60'
               }`}
           >
-            手動計算盤面
+            <span className="inline-flex items-center gap-1.5"><Calculator size={15} />手動計算盤面</span>
           </button>
         )}
         <button
@@ -182,7 +183,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
                 : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-dashboard-hover/60'
               }`}
         >
-          連線測試產生器
+          <span className="inline-flex items-center gap-1.5"><Wand2 size={15} />連線測試產生器</span>
         </button>
         {hasLinesTab && (
           <button
@@ -194,7 +195,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
                 : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-dashboard-hover/60'
               }`}
           >
-            {getTraits(gameType).family === 'line' ? '贏分線路一覽' : '消除掉落測試'}
+            <span className="inline-flex items-center gap-1.5">{getTraits(gameType).family === 'line' ? <><Route size={15} />贏分線路一覽</> : <><Layers size={15} />消除掉落測試</>}</span>
           </button>
         )}
         {hasCustomGridTab && (
@@ -207,7 +208,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
                 : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-dashboard-hover/60'
               }`}
         >
-          自定義盤面
+          <span className="inline-flex items-center gap-1.5"><LayoutGrid size={15} />自定義盤面</span>
         </button>
         )}
       </div>

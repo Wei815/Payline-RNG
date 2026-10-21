@@ -1,35 +1,163 @@
 @import "tailwindcss";
 
 /*
- * 設計 Token：所有顏色請使用這裡的語意名稱，不要在元件寫死色碼。
- * canvas(最底) < inset(凹陷區) < card(面板) < raised(標題列/分頁) < hover(互動)
+ * 設計 Token（日 / 夜雙主題）
+ * 元件只能使用語意色：dashboard-*（介面）、sym-*（符號分類）、ok / warn / danger（狀態）。
+ * 主題由 <html data-theme="dark|light"> 切換；變數值定義在下方 :root 與 [data-theme="light"]。
+ * 深淺層次：bg(頁面) < inset(凹陷) < card(面板) < raised(標題列/分頁) < hover(互動)
  */
 @theme {
   --font-sans: "Inter", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
 
-  --color-dashboard-bg: #0b1120;
-  --color-dashboard-inset: #070b15;
-  --color-dashboard-card: #111a2c;
-  --color-dashboard-raised: #162238;
-  --color-dashboard-hover: #1c2a44;
-  --color-dashboard-border: #24324a;
-  --color-dashboard-accent: #2dd4bf;
-  --color-dashboard-accent-strong: #14b8a6;
-  --color-dashboard-text-primary: #e6edf7;
-  --color-dashboard-text-secondary: #94a3b8;
-  --color-dashboard-text-muted: #64748b;
+  --color-dashboard-bg: var(--t-bg);
+  --color-dashboard-inset: var(--t-inset);
+  --color-dashboard-card: var(--t-card);
+  --color-dashboard-raised: var(--t-raised);
+  --color-dashboard-hover: var(--t-hover);
+  --color-dashboard-border: var(--t-border);
+  --color-dashboard-border-strong: var(--t-border-strong);
+  --color-dashboard-accent: var(--t-accent);
+  --color-dashboard-accent-strong: var(--t-accent-strong);
+  --color-dashboard-on-accent: var(--t-on-accent);
+  --color-dashboard-text-primary: var(--t-text);
+  --color-dashboard-text-secondary: var(--t-text-2);
+  --color-dashboard-text-muted: var(--t-text-3);
 
-  /* 灰階改用帶藍調的 slate，與深藍底色一致 */
-  --color-gray-100: #f1f5f9;
-  --color-gray-200: #e2e8f0;
-  --color-gray-300: #cbd5e1;
-  --color-gray-400: #94a3b8;
-  --color-gray-500: #64748b;
-  --color-gray-600: #475569;
-  --color-gray-700: #2c3a52;
-  --color-gray-800: #1c2738;
-  --color-gray-900: #0f172a;
+  /* 符號分類色（盤面格子） */
+  --color-sym-high: var(--t-sym-high);
+  --color-sym-low: var(--t-sym-low);
+  --color-sym-wild: var(--t-sym-wild);
+  --color-sym-scatter: var(--t-sym-scatter);
+  --color-sym-bonus: var(--t-sym-bonus);
+
+  /* 狀態色 */
+  --color-ok: var(--t-ok);
+  --color-warn: var(--t-warn);
+  --color-danger: var(--t-danger);
+
+  /* 灰階：深色為中性灰，淺色主題時整組反轉（見 [data-theme="light"]） */
+  --color-white: var(--t-white);
+  --color-gray-100: var(--t-gray-100);
+  --color-gray-200: var(--t-gray-200);
+  --color-gray-300: var(--t-gray-300);
+  --color-gray-400: var(--t-gray-400);
+  --color-gray-500: var(--t-gray-500);
+  --color-gray-600: var(--t-gray-600);
+  --color-gray-700: var(--t-gray-700);
+  --color-gray-800: var(--t-gray-800);
+  --color-gray-900: var(--t-gray-900);
+
+  /* 品牌單一色相：介面裝飾用的藍 / 靛 / 紫 / 青色統一指向品牌紫色階（語意色紅 / 綠 / 黃 / 橘保留） */
+  --color-blue-50: var(--t-acc-50); --color-blue-100: var(--t-acc-100); --color-blue-200: var(--t-acc-200); --color-blue-300: var(--t-acc-300); --color-blue-400: var(--t-acc-400); --color-blue-500: var(--t-acc-500); --color-blue-600: var(--t-acc-600); --color-blue-700: var(--t-acc-700); --color-blue-800: var(--t-acc-800); --color-blue-900: var(--t-acc-900); --color-blue-950: var(--t-acc-950);
+  --color-indigo-50: var(--t-acc-50); --color-indigo-100: var(--t-acc-100); --color-indigo-200: var(--t-acc-200); --color-indigo-300: var(--t-acc-300); --color-indigo-400: var(--t-acc-400); --color-indigo-500: var(--t-acc-500); --color-indigo-600: var(--t-acc-600); --color-indigo-700: var(--t-acc-700); --color-indigo-800: var(--t-acc-800); --color-indigo-900: var(--t-acc-900); --color-indigo-950: var(--t-acc-950);
+  --color-purple-50: var(--t-acc-50); --color-purple-100: var(--t-acc-100); --color-purple-200: var(--t-acc-200); --color-purple-300: var(--t-acc-300); --color-purple-400: var(--t-acc-400); --color-purple-500: var(--t-acc-500); --color-purple-600: var(--t-acc-600); --color-purple-700: var(--t-acc-700); --color-purple-800: var(--t-acc-800); --color-purple-900: var(--t-acc-900); --color-purple-950: var(--t-acc-950);
+  --color-violet-50: var(--t-acc-50); --color-violet-100: var(--t-acc-100); --color-violet-200: var(--t-acc-200); --color-violet-300: var(--t-acc-300); --color-violet-400: var(--t-acc-400); --color-violet-500: var(--t-acc-500); --color-violet-600: var(--t-acc-600); --color-violet-700: var(--t-acc-700); --color-violet-800: var(--t-acc-800); --color-violet-900: var(--t-acc-900); --color-violet-950: var(--t-acc-950);
+  --color-cyan-50: var(--t-acc-50); --color-cyan-100: var(--t-acc-100); --color-cyan-200: var(--t-acc-200); --color-cyan-300: var(--t-acc-300); --color-cyan-400: var(--t-acc-400); --color-cyan-500: var(--t-acc-500); --color-cyan-600: var(--t-acc-600); --color-cyan-700: var(--t-acc-700); --color-cyan-800: var(--t-acc-800); --color-cyan-900: var(--t-acc-900); --color-cyan-950: var(--t-acc-950);
+  --color-teal-50: var(--t-acc-50); --color-teal-100: var(--t-acc-100); --color-teal-200: var(--t-acc-200); --color-teal-300: var(--t-acc-300); --color-teal-400: var(--t-acc-400); --color-teal-500: var(--t-acc-500); --color-teal-600: var(--t-acc-600); --color-teal-700: var(--t-acc-700); --color-teal-800: var(--t-acc-800); --color-teal-900: var(--t-acc-900); --color-teal-950: var(--t-acc-950);
+  --color-sky-50: var(--t-acc-50); --color-sky-100: var(--t-acc-100); --color-sky-200: var(--t-acc-200); --color-sky-300: var(--t-acc-300); --color-sky-400: var(--t-acc-400); --color-sky-500: var(--t-acc-500); --color-sky-600: var(--t-acc-600); --color-sky-700: var(--t-acc-700); --color-sky-800: var(--t-acc-800); --color-sky-900: var(--t-acc-900); --color-sky-950: var(--t-acc-950);
+}
+
+/* ---------- 深色：專業工作台（中性深灰 + 紫色品牌色） ---------- */
+:root {
+  color-scheme: dark;
+  --t-bg: #0d0e11;
+  --t-inset: #08090b;
+  --t-card: #14161b;
+  --t-raised: #1a1d23;
+  --t-hover: #22252d;
+  --t-border: #262a32;
+  --t-border-strong: #353a45;
+  --t-accent: #8b7bff;
+  --t-accent-strong: #7360ff;
+  --t-on-accent: #ffffff;
+  --t-text: #eceef2;
+  --t-text-2: #a2a7b3;
+  --t-text-3: #6c7180;
+
+  --t-sym-high: #f472b6;
+  --t-sym-low: #7dd3fc;
+  --t-sym-wild: #fbbf24;
+  --t-sym-scatter: #c084fc;
+  --t-sym-bonus: #fb923c;
+  --t-ok: #34d399;
+  --t-warn: #fbbf24;
+  --t-danger: #f87171;
+
+  --t-white: #ffffff;
+  --t-gray-100: #f2f3f5;
+  --t-gray-200: #e3e5e9;
+  --t-gray-300: #c6c9d0;
+  --t-gray-400: #9ca1ab;
+  --t-gray-500: #6e7380;
+  --t-gray-600: #4b4f59;
+  --t-gray-700: #2e323a;
+  --t-gray-800: #1e2127;
+  --t-gray-900: #131519;
+  --t-acc-50: #f5f3ff; --t-acc-100: #ede9fe; --t-acc-200: #ddd6fe; --t-acc-300: #c9bfff; --t-acc-400: #a99cff;
+  --t-acc-500: #8b7bff; --t-acc-600: #7360ff; --t-acc-700: #5d48e6; --t-acc-800: #3b2f8f; --t-acc-900: #241d55; --t-acc-950: #17133a;
+}
+
+/*
+ * .paper：永遠是白紙（JIRA 匯出預覽等），不隨主題變色。
+ * 注意：--color-* 已在 <html> 上計算完成，子樹必須直接覆寫 --color-*，覆寫 --t-* 無效。
+ */
+.paper {
+  color-scheme: light;
+  color: #111827;
+  --color-white: #ffffff;
+  --color-gray-100: #f3f4f6; --color-gray-200: #e5e7eb; --color-gray-300: #d1d5db; --color-gray-400: #9ca3af;
+  --color-gray-500: #6b7280; --color-gray-600: #4b5563; --color-gray-700: #374151; --color-gray-800: #1f2937; --color-gray-900: #111827;
+}
+
+/* ---------- 淺色：明亮辦公風 ---------- */
+[data-theme="light"] {
+  color-scheme: light;
+  --t-bg: #f5f6f8;
+  --t-inset: #eceef2;
+  --t-card: #ffffff;
+  --t-raised: #f8f9fb;
+  --t-hover: #eef0f4;
+  --t-border: #e1e4ea;
+  --t-border-strong: #cdd2da;
+  --t-accent: #5b45e0;
+  --t-accent-strong: #4a35cc;
+  --t-on-accent: #ffffff;
+  --t-text: #15171c;
+  --t-text-2: #4d5361;
+  --t-text-3: #7c8291;
+
+  --t-sym-high: #c0266f;
+  --t-sym-low: #0369a1;
+  --t-sym-wild: #b45309;
+  --t-sym-scatter: #7e22ce;
+  --t-sym-bonus: #c2410c;
+  --t-ok: #047857;
+  --t-warn: #b45309;
+  --t-danger: #dc2626;
+
+  /* 灰階反轉：既有的 border-gray-700 / text-gray-400 等在淺色下自動變成淺邊框與可讀的灰字 */
+  --t-white: #15171c;
+  --t-gray-100: #1b1d22;
+  --t-gray-200: #2c2f36;
+  --t-gray-300: #40444d;
+  --t-gray-400: #5c616d;
+  --t-gray-500: #7c818d;
+  --t-gray-600: #a3a8b2;
+  --t-gray-700: #d6d9df;
+  --t-gray-800: #e8eaee;
+  --t-gray-900: #f3f4f6;
+  --t-acc-50: #17133a; --t-acc-100: #241d55; --t-acc-200: #3b2f8f; --t-acc-300: #4a35cc; --t-acc-400: #5b45e0;
+  --t-acc-500: #6a55f0; --t-acc-600: #5b45e0; --t-acc-700: #4a35cc; --t-acc-800: #e4dfff; --t-acc-900: #efecff; --t-acc-950: #f6f4ff;
+
+  /* 深色背景用的亮色文字在白底太淡：淺色主題改用較深的同色系 */
+  --color-red-300: #b91c1c;   --color-red-400: #dc2626;   --color-red-900: #fee2e2;   --color-red-950: #fef2f2;
+  --color-orange-300: #c2410c; --color-orange-400: #ea580c;
+  --color-amber-300: #b45309;  --color-amber-400: #d97706;
+  --color-yellow-200: #854d0e; --color-yellow-300: #a16207; --color-yellow-400: #b45309; --color-yellow-500: #ca8a04; --color-yellow-900: #fef9c3;
+  --color-green-300: #047857;  --color-green-400: #059669;  --color-green-900: #dcfce7;
+  --color-emerald-300: #047857; --color-emerald-400: #059669;
+  --color-pink-300: #be185d;   --color-pink-400: #db2777;
 }
 
 @layer base {
@@ -46,6 +174,37 @@
   }
   ::selection {
     background: color-mix(in oklab, var(--color-dashboard-accent) 35%, transparent);
+  }
+  /* 表單控制項：統一圓角、下拉箭頭、勾選框品牌色（元件上的 utility 仍可覆寫顏色 / 尺寸） */
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    border-radius: 6px;
+    padding-right: 1.6rem !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888c99' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.45rem center;
+    background-size: 12px;
+    cursor: pointer;
+  }
+  select option, select optgroup {
+    background: var(--color-dashboard-card);
+    color: var(--color-dashboard-text-primary);
+  }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea {
+    border-radius: 6px;
+  }
+  input[type="checkbox"], input[type="radio"], input[type="range"] {
+    accent-color: var(--color-dashboard-accent);
+  }
+  input::placeholder, textarea::placeholder {
+    color: var(--color-dashboard-text-muted);
+  }
+
+  /* 切換日夜時短暫加上顏色過渡（由 useTheme 加上 / 移除 .theme-transition） */
+  .theme-transition body, .theme-transition body * {
+    transition-property: background-color, border-color, color, fill, stroke !important;
+    transition-duration: 180ms !important;
   }
 }
 
@@ -65,6 +224,46 @@
   .slot-gap {
     gap: var(--gap);
   }
+  /* 連線測試產生器工作台（依分頁寬度，不依視窗寬度） */
+  .gen-layout {
+    display: grid;
+    /* 列間距用 margin：條件區塊（免遊觸發、大獎區間）沒內容時 display:none，不留空列 */
+    column-gap: 1rem;
+    row-gap: 0;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "toolbar" "trigger" "intervals" "list" "settings" "board" "eval" "special";
+  }
+  .gen-toolbar { grid-area: toolbar; }
+  .gen-trigger { grid-area: trigger; }
+  .gen-intervals { grid-area: intervals; }
+  .gen-list { grid-area: list; }
+  .gen-settings { grid-area: settings; }
+  .gen-board { grid-area: board; }
+  .gen-eval { grid-area: eval; }
+  .gen-special { grid-area: special; }
+  .gen-layout > * { margin-bottom: 1rem; }
+  @container (min-width: 54rem) {
+    .gen-layout {
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+      grid-template-areas:
+        "toolbar toolbar"
+        "trigger trigger"
+        "intervals intervals"
+        "settings list"
+        "board list"
+        "eval list"
+        "special list";
+      align-items: start;
+    }
+    .gen-list {
+      position: sticky;
+      top: 0;
+      align-self: start;
+      max-height: calc(100dvh - 9rem);
+      overflow-y: auto;
+    }
+  }
+
   .slot-cell {
     width: var(--cell);
     height: var(--cell);

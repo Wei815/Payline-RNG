@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Database, Table, Edit3, X } from 'lucide-react';
+import { Database, Table, Edit3, X, Upload, SlidersHorizontal } from 'lucide-react';
 import type { ReelStrips, PaytableRule, GameType } from '../types';
 import { defaultPaytable, defaultExcelStripsString } from '../mocks/defaultData';
 import { defaultPaylines } from '../utils/evaluation';
@@ -714,15 +714,21 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
   };
 
   return (
-    <div className="h-full bg-dashboard-card p-4 flex flex-col gap-4 border-r border-gray-700/50 relative overflow-hidden">
+    <div className="h-full bg-dashboard-card p-4 flex flex-col gap-4 border-r border-dashboard-border relative overflow-hidden">
       <div className="flex flex-col items-start gap-3 w-full shrink-0">
-        <h2 className="text-xl font-bold text-dashboard-text-primary">Configuration</h2>
+        <div className="flex items-center gap-2 pr-8">
+          <span className="w-7 h-7 rounded-md bg-dashboard-accent/12 text-dashboard-accent inline-flex items-center justify-center"><SlidersHorizontal size={15} /></span>
+          <div className="leading-tight">
+            <h2 className="text-[15px] font-semibold text-dashboard-text-primary">遊戲設定</h2>
+            <p className="text-[11px] text-dashboard-text-muted">範本、滾輪表、賠率表與線路</p>
+          </div>
+        </div>
         <div className="flex flex-wrap items-center gap-2 w-full">
           <select 
             value={selectedTemplate}
             onChange={(e) => setSelectedTemplate(e.target.value)}
             disabled={isRunning}
-            className="bg-dashboard-raised border border-gray-700 text-dashboard-accent rounded px-2 py-1.5 outline-none focus:border-dashboard-accent cursor-pointer text-sm font-bold font-mono max-w-full truncate"
+            className="h-8 flex-1 min-w-[10rem] bg-dashboard-inset border border-dashboard-border text-dashboard-text-primary px-2.5 outline-none focus:border-dashboard-accent text-[13px] font-medium truncate"
           >
             {templateKeys.map(path => (
               <option key={path} value={path}>{getTemplateName(path)}</option>
@@ -732,12 +738,12 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
           <button 
             onClick={handleLoadDefaults}
             disabled={isRunning}
-            className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-900/40 text-blue-300 hover:bg-blue-800/50 rounded-md transition-colors disabled:opacity-50"
+            className="h-8 inline-flex items-center gap-1.5 px-3 text-[13px] font-medium rounded-md bg-dashboard-accent text-dashboard-on-accent hover:bg-dashboard-accent-strong transition-colors disabled:opacity-50"
           >
-            <Database size={16} /> 載入範本
+            <Database size={15} /> 載入範本
           </button>
-          <label className="flex items-center gap-2 px-3 py-1.5 text-sm bg-green-900/40 text-green-400 hover:bg-green-800/50 rounded-md transition-colors cursor-pointer disabled:opacity-50">
-            <Database size={16} /> 上傳 Excel
+          <label className="h-8 inline-flex items-center gap-1.5 px-3 text-[13px] font-medium rounded-md border border-dashboard-border bg-dashboard-raised text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-dashboard-hover transition-colors cursor-pointer">
+            <Upload size={15} /> 上傳 Excel
             <input 
               type="file" 
               accept=".xlsx,.xls" 
@@ -881,7 +887,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
             {/* Row 3: Title & Tabs */}
             <div className="flex items-center justify-between gap-2 pt-1 mt-1 border-t border-gray-800/60">
               <label className="text-sm text-dashboard-text-secondary font-bold whitespace-nowrap">
-                {getTraits(gameType).mathIdGenerator ? '參數設定' : 'Reel Strips 表格'}
+                {getTraits(gameType).mathIdGenerator ? '參數設定' : '滾輪表'}
               </label>
               {!getTraits(gameType).mathIdGenerator && (
                 <div className="flex items-center gap-1 bg-dashboard-card p-0.5 rounded border border-gray-700/50">
@@ -891,7 +897,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                     className={`px-3 py-1 text-xs font-bold rounded transition-colors ${
                       activeStripTab === 'base'
                         ? 'bg-dashboard-accent text-dashboard-bg'
-                        : 'text-gray-400 hover:text-white'
+                        : 'text-gray-400 hover:text-dashboard-text-primary'
                     }`}
                   >
                     Base Game
@@ -902,7 +908,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                     className={`px-3 py-1 text-xs font-bold rounded transition-colors ${
                       activeStripTab === 'free'
                         ? 'bg-dashboard-accent text-dashboard-bg'
-                        : 'text-gray-400 hover:text-white'
+                        : 'text-gray-400 hover:text-dashboard-text-primary'
                     }`}
                   >
                     Free Game
@@ -958,11 +964,11 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                       }}
                       className={`flex-1 min-w-0 border rounded px-3 py-1.5 text-xs outline-none transition-colors ${
                         rule.isEnabled !== false 
-                          ? 'bg-dashboard-card border-gray-600 text-white focus:border-dashboard-accent' 
+                          ? 'bg-dashboard-card border-gray-600 text-dashboard-text-primary focus:border-dashboard-accent' 
                           : 'bg-gray-800/50 border-gray-700/50 text-gray-500 cursor-not-allowed'
                       }`}
                     />
-                    <label className="flex items-center gap-1.5 shrink-0 cursor-pointer text-xs font-medium text-gray-400 hover:text-white transition-colors">
+                    <label className="flex items-center gap-1.5 shrink-0 cursor-pointer text-xs font-medium text-gray-400 hover:text-dashboard-text-primary transition-colors">
                       <input
                         type="checkbox"
                         checked={rule.isEnabled !== false}
@@ -1037,7 +1043,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
         {getTraits(gameType).showPaylineTable && (
           <div className="flex flex-col gap-2 h-[220px] shrink-0">
             <div className="flex justify-between items-center">
-              <label className="text-sm text-dashboard-text-secondary font-medium">線路規則 表格 (Line Rules)</label>
+              <label className="text-sm text-dashboard-text-secondary font-medium">線路規則</label>
               <span className="text-xs text-dashboard-text-secondary font-mono">已載入 {customPaylines.length} 條線</span>
             </div>
             <div
@@ -1088,7 +1094,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
         )}
 
         <div className="flex flex-col gap-2 mt-2">
-          <label className="text-sm text-dashboard-text-secondary font-medium">Paytable Rules</label>
+          <label className="text-sm text-dashboard-text-secondary font-medium">賠率表</label>
           <div className="bg-dashboard-raised border border-gray-700 rounded-lg p-4 flex items-center justify-between">
             <div className="flex flex-col">
               <span className="text-dashboard-text-primary font-bold">動態賠率表</span>
@@ -1147,7 +1153,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
               </div>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-gray-800 transition-colors"
+                className="text-gray-400 hover:text-dashboard-text-primary p-1 rounded-md hover:bg-gray-800 transition-colors"
               >
                 <X size={24} />
               </button>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { getWinColorClass } from '../utils/svgPaths';
+import { symbolToneClass } from './ui/symbolTone';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../utils/evaluation/GameConstants';
 
 export interface SlotGridDisplayProps {
@@ -160,10 +161,7 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
             }
 
             if (gridMode === 'custom') {
-              const defaultBg = symbol === '-' ? 'bg-dashboard-bg text-gray-700 border-2 border-gray-800 border-dashed hover:border-dashboard-accent' :
-                                isWild ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border border-yellow-300' :
-                                symbol === 'SCATTER' ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border border-pink-300' :
-                                'bg-dashboard-card text-dashboard-text-primary border border-dashboard-accent/30';
+              const defaultBg = `${symbolToneClass(symbol)} ${symbol === '-' ? 'hover:border-dashboard-accent' : ''}`;
               
               cellClassNames = `
                 slot-cell rounded-lg flex items-center justify-center font-bold
@@ -176,10 +174,7 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
                 ${animationClasses}
               `;
             } else if (gridMode === 'manual') {
-              const defaultBg = symbol === '-' ? 'bg-dashboard-bg text-gray-700 border-2 border-gray-800 border-dashed' :
-                                isWild ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border-yellow-300' :
-                                symbol === 'SCATTER' ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border-pink-300' :
-                                'bg-dashboard-card text-dashboard-text-primary border-dashboard-accent/30';
+              const defaultBg = symbolToneClass(symbol);
                                 
               cellClassNames = `
                 slot-cell rounded-lg flex items-center justify-center font-bold
@@ -189,9 +184,7 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
                 ${animationClasses}
               `;
             } else if (gridMode === 'tumble') {
-              const defaultBg = isWild ? 'bg-dashboard-card text-purple-400 border border-purple-500/30' :
-                                isUnknown ? 'bg-red-900/30 text-red-400 border border-red-500/50' :
-                                'bg-dashboard-card text-gray-300 border border-gray-700/50';
+              const defaultBg = symbolToneClass(symbol);
                                 
               cellClassNames = `
                 slot-cell flex flex-col items-center justify-center rounded-lg relative transform font-bold

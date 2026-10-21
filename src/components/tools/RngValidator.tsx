@@ -149,7 +149,7 @@ const StepCard = ({ step, idx, gameType }: { step: any, idx: number, gameType: s
                   </div>
                 )}
                 {hasJackpot && (
-                  <div className="absolute -bottom-1 left-0 right-0 mx-1 bg-red-500 text-white text-[9px] font-black px-1 rounded-sm shadow border border-red-700 z-10 truncate text-center">
+                  <div className="absolute -bottom-1 left-0 right-0 mx-1 bg-red-500 text-dashboard-on-accent text-[9px] font-black px-1 rounded-sm shadow border border-red-700 z-10 truncate text-center">
                     {jackpotValue}
                   </div>
                 )}
@@ -509,7 +509,7 @@ ${format2DArray(qa.Selection)}
               </select>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-gray-400 hover:text-dashboard-text-primary transition-colors">
             <X size={24} />
           </button>
         </div>
@@ -530,7 +530,7 @@ ${format2DArray(qa.Selection)}
                   onChange={(e) => setIsFreeGame(e.target.checked)}
                   className="w-4 h-4 rounded border-gray-600 text-dashboard-accent focus:ring-dashboard-accent focus:ring-offset-gray-900 bg-gray-800"
                 />
-                <label htmlFor="validator-freegame-toggle" className="text-sm text-gray-300 font-bold cursor-pointer hover:text-white">
+                <label htmlFor="validator-freegame-toggle" className="text-sm text-gray-300 font-bold cursor-pointer hover:text-dashboard-text-primary">
                   使用 Free Game 滾輪表 (免遊模式)
                 </label>
               </div>

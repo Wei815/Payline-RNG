@@ -408,11 +408,11 @@ export const JiraBugListGenerator: React.FC<JiraBugListGeneratorProps> = ({ onCl
             <div className="p-2 bg-blue-500/20 rounded-lg">
               <FileSpreadsheet className="w-5 h-5 text-blue-400" />
             </div>
-            <h2 className="text-lg font-bold text-white">JIRA 出測 Bug list 工具</h2>
+            <h2 className="text-lg font-bold text-dashboard-text-primary">JIRA 出測 Bug list 工具</h2>
           </div>
           <button 
             onClick={onClose}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
+            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-dashboard-text-primary"
           >
             <X className="w-5 h-5" />
           </button>
@@ -438,7 +438,7 @@ export const JiraBugListGenerator: React.FC<JiraBugListGeneratorProps> = ({ onCl
             <select 
               value={phase}
               onChange={(e) => handlePhaseChange(e.target.value)}
-              className="bg-dashboard-card border border-gray-600 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500"
+              className="bg-dashboard-card border border-gray-600 rounded-lg px-3 py-1.5 text-dashboard-text-primary text-sm focus:outline-none focus:border-blue-500"
             >
               <option value="R1">R1</option>
               <option value="R2">R2</option>
@@ -471,7 +471,7 @@ export const JiraBugListGenerator: React.FC<JiraBugListGeneratorProps> = ({ onCl
                 <button
                   onClick={handleExportExcel}
                   disabled={!jiraBugListData || jiraBugListData.length === 0}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-bold rounded-lg transition-colors shadow-lg"
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 text-dashboard-on-accent text-sm font-bold rounded-lg transition-colors shadow-lg"
                 >
                   <Download className="w-4 h-4" />
                   下載 Excel 檔案
@@ -479,7 +479,7 @@ export const JiraBugListGenerator: React.FC<JiraBugListGeneratorProps> = ({ onCl
                 <button
                   onClick={handleCopy}
                   disabled={!jiraBugListData || jiraBugListData.length === 0}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500 text-white text-sm font-bold rounded-lg transition-colors shadow-lg"
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500 text-dashboard-on-accent text-sm font-bold rounded-lg transition-colors shadow-lg"
                 >
                   <Copy className="w-4 h-4" />
                   {copySuccess ? '已複製！' : '一鍵複製為 Excel 格式 (TSV)'}
@@ -487,7 +487,7 @@ export const JiraBugListGenerator: React.FC<JiraBugListGeneratorProps> = ({ onCl
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border border-gray-300 overflow-hidden flex-1 relative min-h-[300px] shadow-inner">
+            <div className="paper bg-white rounded-xl border border-gray-300 overflow-hidden flex-1 relative min-h-[300px] shadow-inner">
               <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
                 <table className="w-full text-sm text-center whitespace-nowrap text-black">
                   <thead className="text-xs text-black uppercase bg-gray-200 sticky top-0 z-10 border-b border-gray-300">

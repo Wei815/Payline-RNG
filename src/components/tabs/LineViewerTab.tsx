@@ -3,6 +3,7 @@ import { evaluateGrid } from '../../utils/evaluation';
 import { formatAmount } from '../../utils/formatters';
 import type { GameType, PaytableRule } from '../../types';
 import { GameRegistry } from '../../core/GameRegistry';
+import { symbolToneClass } from '../ui/symbolTone';
 import { getTraits } from '../../games/registry';
 
 export interface LineViewerTabProps {
@@ -236,7 +237,7 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
   return (
     <>
       <div className="flex-1 flex flex-col gap-6">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-dashboard-bg p-4 rounded-lg border border-gray-700/50">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-dashboard-card p-4 rounded-xl border border-dashboard-border">
           <div className="flex flex-col gap-2.5">
             <span className="text-sm text-dashboard-text-secondary font-bold">自訂線路展示樣式</span>
             <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
@@ -346,9 +347,9 @@ return (
                             className={`w-7 h-7 shrink-0 rounded flex items-center justify-center text-xs font-bold transition-all duration-300 ${
                               isActive
                                 ? isWild
-                                ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border border-pink-400 shadow-[0_0_8px_rgba(236,72,153,0.6)]'
-                                : 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border border-yellow-300 shadow-[0_0_8px_rgba(234,179,8,0.5)]'
-                              : 'bg-dashboard-card/40 text-gray-700 border border-gray-800/20'
+                                ? symbolToneClass('WX')
+                                : 'bg-dashboard-accent text-dashboard-on-accent border border-dashboard-accent-strong'
+                              : 'bg-dashboard-inset text-dashboard-text-muted border border-dashboard-border'
                             }`}
                           >
                             {isActive ? displaySym : ''}

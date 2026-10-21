@@ -142,15 +142,16 @@ export function calculateSVGPaths(
   return paths;
 }
 
+// 多條贏分線的區分色：固定色碼，不受主題品牌色別名影響
 const WIN_COLORS = [
-  'ring-orange-500 shadow-[0_0_12px_rgba(249,115,22,0.45)]',
-  'ring-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.45)]',
-  'ring-green-500 shadow-[0_0_12px_rgba(34,197,94,0.45)]',
-  'ring-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.45)]',
-  'ring-pink-500 shadow-[0_0_12px_rgba(236,72,153,0.45)]',
-  'ring-teal-500 shadow-[0_0_12px_rgba(20,184,166,0.45)]',
-  'ring-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.45)]',
-  'ring-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.45)]'
+  'ring-[#f97316] shadow-[0_0_12px_rgba(249,115,22,0.45)]',
+  'ring-[#3b82f6] shadow-[0_0_12px_rgba(59,130,246,0.45)]',
+  'ring-[#22c55e] shadow-[0_0_12px_rgba(34,197,94,0.45)]',
+  'ring-[#a855f7] shadow-[0_0_12px_rgba(168,85,247,0.45)]',
+  'ring-[#ec4899] shadow-[0_0_12px_rgba(236,72,153,0.45)]',
+  'ring-[#14b8a6] shadow-[0_0_12px_rgba(20,184,166,0.45)]',
+  'ring-[#facc15] shadow-[0_0_12px_rgba(250,204,21,0.45)]',
+  'ring-[#22d3ee] shadow-[0_0_12px_rgba(34,211,238,0.45)]'
 ];
 
 export function getWinColorClass(winIndices: number[] | undefined): string {

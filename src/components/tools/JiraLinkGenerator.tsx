@@ -44,7 +44,7 @@ export const JiraLinkGenerator: React.FC<JiraLinkGeneratorProps> = ({ onClose })
           </div>
           <button 
             onClick={onClose} 
-            className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-gray-800 transition-colors"
+            className="text-gray-400 hover:text-dashboard-text-primary p-1 rounded-md hover:bg-gray-800 transition-colors"
           >
             <X size={24} />
           </button>
@@ -61,7 +61,7 @@ export const JiraLinkGenerator: React.FC<JiraLinkGeneratorProps> = ({ onClose })
                 type="text" 
                 value={baseUrl}
                 onChange={(e) => setBaseUrl(e.target.value)}
-                className="w-full bg-dashboard-card border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-dashboard-accent transition-colors"
+                className="w-full bg-dashboard-card border border-gray-700 rounded-lg px-3 py-2 text-sm text-dashboard-text-primary focus:outline-none focus:border-dashboard-accent transition-colors"
                 placeholder="https://auforce.atlassian.net/browse"
               />
             </div>
@@ -70,7 +70,7 @@ export const JiraLinkGenerator: React.FC<JiraLinkGeneratorProps> = ({ onClose })
               <textarea 
                 value={issues}
                 onChange={(e) => setIssues(e.target.value)}
-                className="w-full flex-1 bg-dashboard-card border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-dashboard-accent transition-colors resize-none font-mono custom-scrollbar"
+                className="w-full flex-1 bg-dashboard-card border border-gray-700 rounded-lg px-3 py-2 text-sm text-dashboard-text-primary focus:outline-none focus:border-dashboard-accent transition-colors resize-none font-mono custom-scrollbar"
                 placeholder={"RSGCLUXE-15\nRSGCLUXE-18\n..."}
               />
             </div>

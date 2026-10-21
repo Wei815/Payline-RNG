@@ -604,8 +604,8 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     <div className="w-full grid grid-cols-1 @2xl:grid-cols-2 @6xl:grid-cols-[18rem_minmax(0,1fr)_18rem] gap-4 items-start">
       {/* Left: Palette & Config */}
       {getTraits(gameType).family !== 'way' && (
-      <div className="order-2 @6xl:order-1 w-full min-w-0 flex flex-col gap-4 bg-dashboard-bg p-4 rounded-lg border border-gray-700/50 @6xl:max-h-[calc(100dvh-12rem)] overflow-y-auto custom-scrollbar">
-        <h2 className="text-sm font-bold text-dashboard-text-secondary border-b border-gray-700/50 pb-2">方塊調色盤 (Palette)</h2>
+      <div className="order-2 @6xl:order-1 w-full min-w-0 flex flex-col gap-4 bg-dashboard-card p-4 rounded-xl border border-dashboard-border @6xl:max-h-[calc(100dvh-12rem)] overflow-y-auto custom-scrollbar">
+        <h2 className="text-sm font-bold text-dashboard-text-secondary border-b border-gray-700/50 pb-2">符號調色盤</h2>
         
         {/* Special Symbol Multiplier Config */}
         {getTraits(gameType).wyReels && (
@@ -619,9 +619,9 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
                    onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, wyEnabled: e.target.checked }))}
                  />
                  <div className={`block w-10 h-6 rounded-full transition-colors ${specialSymbolConfig.wyEnabled ? 'bg-dashboard-accent' : 'bg-gray-600'}`}></div>
-                 <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${specialSymbolConfig.wyEnabled ? 'translate-x-4' : ''}`}></div>
+                 <div className={`absolute left-1 top-1 bg-dashboard-on-accent w-4 h-4 rounded-full transition-transform ${specialSymbolConfig.wyEnabled ? 'translate-x-4' : ''}`}></div>
                </div>
-               <span className="text-sm font-bold text-gray-300 group-hover:text-white transition-colors">
+               <span className="text-sm font-bold text-gray-300 group-hover:text-dashboard-text-primary transition-colors">
                  啟用 WY (延伸百搭)
                </span>
              </label>
@@ -648,7 +648,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
             <select 
               value={selectedMultiplier}
               onChange={e => setSelectedMultiplier(Number(e.target.value))}
-              className="w-full bg-dashboard-bg border border-dashboard-accent/30 text-white rounded px-2 py-1 text-sm outline-none focus:border-dashboard-accent cursor-pointer mb-3"
+              className="w-full bg-dashboard-bg border border-dashboard-accent/30 text-dashboard-text-primary rounded px-2 py-1 text-sm outline-none focus:border-dashboard-accent cursor-pointer mb-3"
             >
               {[2, 3, 4, 5, 6, 7, 8, 9, 10, 25, 50, 100].map(m => (
                 <option key={m} value={m}>{m}X</option>
@@ -677,7 +677,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
             <select 
               value={selectedJackpot}
               onChange={e => setSelectedJackpot(e.target.value as any)}
-              className="w-full bg-dashboard-bg border border-red-500/30 text-white rounded px-2 py-1 text-sm outline-none focus:border-red-500 cursor-pointer mb-3"
+              className="w-full bg-dashboard-bg border border-red-500/30 text-dashboard-text-primary rounded px-2 py-1 text-sm outline-none focus:border-red-500 cursor-pointer mb-3"
             >
               <option value="MINI">MINI (25x)</option>
               <option value="MAJOR">MAJOR (100x)</option>
@@ -768,7 +768,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
       )}
 
       {/* Center: Grid */}
-      <div className="order-1 @6xl:order-2 @2xl:col-span-2 @6xl:col-span-1 min-w-0 flex flex-col items-center gap-4 bg-dashboard-bg p-3 sm:p-6 rounded-lg border border-gray-700/50 shadow-inner">
+      <div className="order-1 @6xl:order-2 @2xl:col-span-2 @6xl:col-span-1 min-w-0 flex flex-col items-center gap-4 bg-dashboard-card p-3 sm:p-6 rounded-xl border border-dashboard-border">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between w-full border-b border-gray-700/50 pb-2 gap-2">
           <span className="text-sm font-bold text-dashboard-text-secondary">編輯盤面區 (自由拖曳)</span>
           <div className="flex items-center gap-2 flex-wrap">
@@ -794,7 +794,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleLoadRng();
               }}
-              className="bg-dashboard-card border border-gray-600 text-white text-xs px-2 py-1 rounded w-32 sm:w-40 focus:border-dashboard-accent outline-none font-mono"
+              className="bg-dashboard-card border border-gray-600 text-dashboard-text-primary text-xs px-2 py-1 rounded w-32 sm:w-40 focus:border-dashboard-accent outline-none font-mono"
             />
             <input
               type="text"
@@ -804,17 +804,17 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleLoadRng();
               }}
-              className="bg-dashboard-card border border-gray-600 text-white text-xs px-2 py-1 rounded w-32 sm:w-40 focus:border-dashboard-accent outline-none font-mono"
+              className="bg-dashboard-card border border-gray-600 text-dashboard-text-primary text-xs px-2 py-1 rounded w-32 sm:w-40 focus:border-dashboard-accent outline-none font-mono"
             />
             <button
                onClick={handleLoadRng}
-               className="text-xs px-2 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-500 hover:text-white transition-colors whitespace-nowrap font-bold"
+               className="text-xs px-2 py-1 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded hover:bg-blue-500 hover:text-dashboard-text-primary transition-colors whitespace-nowrap font-bold"
             >
               載入 RNG
             </button>
             <button 
               onClick={handleReset}
-              className="flex items-center gap-1 text-xs px-2 py-1 bg-red-500/10 text-red-400 border border-red-500/30 rounded hover:bg-red-500 hover:text-white transition-colors whitespace-nowrap"
+              className="flex items-center gap-1 text-xs px-2 py-1 bg-red-500/10 text-red-400 border border-red-500/30 rounded hover:bg-red-500 hover:text-dashboard-text-primary transition-colors whitespace-nowrap"
             >
               <RotateCcw size={12} />
               重置
@@ -894,7 +894,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
                       <select 
                         value={currentConfig.a} 
                         onChange={e => setWyConfigs(prev => ({...prev, [colIndex]: {...currentConfig, a: Number(e.target.value)}}))}
-                        className="bg-transparent text-xs font-bold text-white outline-none w-full cursor-pointer appearance-none text-center"
+                        className="bg-transparent text-xs font-bold text-dashboard-text-primary outline-none w-full cursor-pointer appearance-none text-center"
                         style={{ textAlignLast: 'center' }}
                       >
                         {opts.map(o => <option key={`a-${o}`} value={o} className="bg-dashboard-card text-center">{o}X</option>)}
@@ -916,7 +916,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
                       <select 
                         value={currentConfig.b} 
                         onChange={e => setWyConfigs(prev => ({...prev, [colIndex]: {...currentConfig, b: Number(e.target.value)}}))}
-                        className="bg-transparent text-xs font-bold text-white outline-none w-full cursor-pointer appearance-none text-center"
+                        className="bg-transparent text-xs font-bold text-dashboard-text-primary outline-none w-full cursor-pointer appearance-none text-center"
                         style={{ textAlignLast: 'center' }}
                       >
                         {opts.map(o => <option key={`b-${o}`} value={o} className="bg-dashboard-card text-center">{o}X</option>)}
@@ -938,7 +938,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
                     </div>
                   )}
                 {hasJackpot && (
-                  <div className="absolute -bottom-1 left-0 right-0 mx-1 bg-red-500 text-white text-[9px] font-black px-1 rounded-sm shadow border border-red-700 z-10 truncate text-center">
+                  <div className="absolute -bottom-1 left-0 right-0 mx-1 bg-red-500 text-dashboard-on-accent text-[9px] font-black px-1 rounded-sm shadow border border-red-700 z-10 truncate text-center">
                     {jackpotValue}
                   </div>
                 )}
@@ -970,7 +970,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
       </div>
 
       {/* Right: RNG Output & Evaluation */}
-      <div className="order-3 w-full min-w-0 flex flex-col gap-4 bg-dashboard-bg p-4 rounded-lg border border-gray-700/50 @6xl:max-h-[calc(100dvh-12rem)] overflow-y-auto custom-scrollbar">
+      <div className="order-3 w-full min-w-0 flex flex-col gap-4 bg-dashboard-card p-4 rounded-xl border border-dashboard-border @6xl:max-h-[calc(100dvh-12rem)] overflow-y-auto custom-scrollbar">
         <h2 className="text-sm font-bold text-dashboard-text-secondary border-b border-gray-700/50 pb-2">RNG 輸出結果</h2>
         
         <div className="flex flex-col gap-2">
@@ -1088,7 +1088,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
                   </div>
                 )}
                 <div className="flex justify-between items-center mt-1">
-                  <span className="text-white font-bold text-xs">Total Win</span>
+                  <span className="text-dashboard-text-primary font-bold text-xs">Total Win</span>
                   <span className="text-dashboard-accent font-bold text-sm">{formatAmount(grandTotalWin)}</span>
                 </div>
               </div>
@@ -1164,10 +1164,10 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
                   });
                 }
               }}
-              className="w-full bg-dashboard-card border border-gray-600 rounded px-3 py-2 text-white outline-none focus:border-dashboard-accent mb-4"
+              className="w-full bg-dashboard-card border border-gray-600 rounded px-3 py-2 text-dashboard-text-primary outline-none focus:border-dashboard-accent mb-4"
             />
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowPrompt(false)} className="px-3 py-1.5 rounded text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors">取消</button>
+              <button onClick={() => setShowPrompt(false)} className="px-3 py-1.5 rounded text-sm text-gray-400 hover:text-dashboard-text-primary hover:bg-gray-800 transition-colors">取消</button>
               <button 
                 onClick={() => {
                   if (promptTitle.trim() === '') return;
