@@ -1,8 +1,8 @@
 /**
  * 「消除掉落測試」(TumbleViewer)：載入 MathID 盤面、計算贏分、執行一次掉落
  *
- * 逐字搬自 TumbleViewerTab（handleLoadInitialGrid / currentGridSymbols / wins / handleTumble），
- * 狀態改為參數與回傳值。元件目前仍使用內嵌版本（待 UI 重構完成後改為呼叫此檔）。
+ * 搬自 TumbleViewerTab（handleLoadInitialGrid / currentGridSymbols / wins / handleTumble），
+ * 狀態改為參數與回傳值。TumbleViewerTab 直接呼叫此檔。
  */
 import type { GameType, PaytableRule } from '../types';
 import { evaluateGrid, getWinningPositions, type WinResult } from '../utils/evaluation';

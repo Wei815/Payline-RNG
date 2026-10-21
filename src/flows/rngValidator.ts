@@ -1,7 +1,7 @@
 /**
  * 「RNG 腳本驗證」：解析 QA JSON（RNGs / ClassIDs）並模擬每一步的盤面、掉落與贏分
  *
- * 逐字搬自 RngValidator.handleParse，改為純函式以便測試。元件目前仍使用內嵌版本（待 UI 重構完成後改為呼叫此檔）。
+ * 逐字搬自 RngValidator.handleParse，改為純函式以便測試。RngValidator 元件直接呼叫此檔。
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { GameType, PaytableRule } from '../types';
