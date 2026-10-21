@@ -1,14 +1,20 @@
 /**
  * 「複製全部測案」的贏分公式（Win=...）
  *
- * 逐字搬自 SlotGeneratorTab.calculateCombinationWin / generateGridFromMathIds / generateGridForComb，
- * 改為純函式以便測試。元件目前仍使用內嵌版本（待 UI 重構完成後改為呼叫此檔）。
+ * 依遊戲類別本身的規則計算（與搜尋引擎的 COMBO / 大獎區間搜尋同一套）：
+ * - 掉落：遊戲的 applyCascade（例如皇家金象只有第 3、4 軸金框轉 WX）
+ * - 不可消除符號：遊戲的 isSymbolUnremovable
+ * - 連續掉落倍數：遊戲的 getTumbleMultiplier
+ * - 只計有贏分的中獎，持續掉落直到沒有任何消除
+ * 遞補由腳本下一行 RNG 決定的遊戲（例如羅馬，實作 findRefillRng）與 MathID 遊戲只計算本盤。
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { GameType, PaytableRule } from '../types';
 import { evaluateGrid, getWinningPositions } from '../utils/evaluation';
-import { isGoldSymbol } from '../utils/evaluation/GameConstants';
 import { getTraits } from '../games/registry';
+import { GameRegistry } from '../core/GameRegistry';
+import type { AbstractGame } from '../games/base/AbstractGame';
+import type { IGameEnvironment } from '../games/base/IGameEnvironment';
 
 export interface CombinationWinContext {
   gameType: GameType;
@@ -99,106 +105,62 @@ export function generateGridForComb(ctx: CombinationWinContext, rngStrArray: any
 }
 
 export function calculateCombinationWin(ctx: CombinationWinContext, comb: any): { formula: string; totalWin: number } {
-  const { gameType, reelCount, rowCounts, currentStrips, stripSets, currentPaytable, customPaylines, bet, goldFrames, selectedSymbol, isFreeGame } = ctx;
+  const { gameType, reelCount, rowCounts, currentStrips, stripSets, currentPaytable, customPaylines, bet, goldFrames, isFreeGame, topTrackerOther } = ctx;
   const rng = comb.rng;
   if (!rng || rng.length === 0) return { formula: 'Win=0', totalWin: 0 };
 
+  const traits = getTraits(gameType);
   let wyConfigs: any = undefined;
-  if (getTraits(gameType).wyReels) {
+  if (traits.wyReels) {
     wyConfigs = {};
     for (let c = 0; c < reelCount; c++) {
       wyConfigs[c] = { a: 2, b: 10, z: 0 };
     }
   }
+  const config = { gameType, paylines: customPaylines, effectiveBet: bet, goldFrames, wyConfigs, specialRules: { derivativeSymbols: { 'B1': ['B2'] } } };
+  const fmt = (w: { symbolId: string; matchCount: number; multiplier?: number }, total: number, mult: number) =>
+    `${w.symbolId}*${w.matchCount}${w.multiplier ? `(x${w.multiplier})` : ''}${mult > 1 ? `(x${mult})` : ''}=${total}`;
 
-  if (!(getTraits(gameType).family === 'way' || getTraits(gameType).family === 'megaway')) {
-    const config = { gameType, paylines: customPaylines, effectiveBet: bet, goldFrames, wyConfigs, specialRules: { derivativeSymbols: { 'B1': ['B2'] } } };
-    const isMathIdGrid = getTraits(gameType).mathIdGenerator;
-    const grid = isMathIdGrid ? generateGridFromMathIds(ctx, rng) : generateGridForComb(ctx, rng, comb.stripId);
-    const wins = evaluateGrid(grid, currentPaytable, config, undefined, true);
-    const validWins = wins.filter(w => w.totalWin > 0);
-    const formulaStr = validWins.map(w => `${w.symbolId}*${w.matchCount}${w.multiplier ? `(x${w.multiplier})` : ''}=${w.totalWin}`).join('+') || '0';
-    const totalWin = validWins.reduce((s, w) => s + w.totalWin, 0);
-    return { formula: totalWin > 0 ? `Win=${formulaStr}=${totalWin}` : 'Win=0', totalWin };
+  const game = GameRegistry.tryGetGame(gameType) as (AbstractGame & IGameEnvironment) | undefined;
+  const cascades = !!game && game.hasCascadeFeature() && !game.findRefillRng && !traits.mathIdGenerator;
+
+  if (!cascades) {
+    const grid = traits.mathIdGenerator ? generateGridFromMathIds(ctx, rng) : generateGridForComb(ctx, rng, comb.stripId);
+    const wins = evaluateGrid(grid, currentPaytable, config, undefined, false).filter(w => w.totalWin > 0);
+    const totalWin = wins.reduce((s, w) => s + w.totalWin, 0);
+    return { formula: totalWin > 0 ? `Win=${wins.map(w => fmt(w, w.totalWin, 1)).join('+')}=${totalWin}` : 'Win=0', totalWin };
   }
 
-  const config = { gameType, paylines: customPaylines, effectiveBet: bet, goldFrames, wyConfigs, specialRules: { derivativeSymbols: { 'B1': ['B2'] }, unremovableSymbols: ['S1', 'B1'] } };
-
+  const strips = comb.stripId !== undefined && stripSets?.[comb.stripId] ? stripSets[comb.stripId] : currentStrips;
   const grid = generateGridForComb(ctx, rng, comb.stripId);
+  const drawIndices: number[] = rng.map((r: any) => parseInt(r, 10) - 1);
+  const parts: string[] = [];
+  let totalWin = 0;
 
-  let totalWinAccumulated = 0;
-  let cascadeCount = 0;
-  let keepCascading = true;
-  const formulaParts: string[] = [];
-
-  const parsedRng = rng.map((s: any) => parseInt(s, 10));
-  const drawIndices = parsedRng.map((r: any) => r !== undefined ? r - 1 : 0);
-
-  while (keepCascading && cascadeCount < 20) {
-    const wins = evaluateGrid(grid, currentPaytable, config, undefined, true);
+  for (let cascadeCount = 0; cascadeCount < 20; cascadeCount++) {
+    const evalGrid = game.getEvalGridForCombos(grid, topTrackerOther);
+    const wins = game.evaluate(evalGrid, currentPaytable, config, customPaylines, false).filter(w => w.payout > 0);
     if (wins.length === 0) break;
 
-    let tumbleMultiplier = 1;
-    if (getTraits(gameType).doublingTumbleMultiplier) {
-      tumbleMultiplier = isFreeGame
-        ? Math.min(1024, 8 * Math.pow(2, cascadeCount))
-        : Math.min(1024, 1 * Math.pow(2, cascadeCount));
-    }
+    const mult = game.getTumbleMultiplier(cascadeCount, isFreeGame);
+    parts.push(wins.map(w => fmt(w, (w.totalWin || w.payout || 0) * mult, mult)).join('+'));
+    totalWin += wins.reduce((s, w) => s + (w.totalWin || w.payout || 0), 0) * mult;
 
-    const validWins = wins.filter(w => w.totalWin > 0);
-    let dropWinSum = 0;
-    const dropFormula = validWins.map(w => `${w.symbolId}*${w.matchCount}${tumbleMultiplier > 1 ? `(x${tumbleMultiplier})` : ''}=${w.totalWin * tumbleMultiplier}`).join('+');
-
-    validWins.forEach(w => {
-      dropWinSum += w.totalWin * tumbleMultiplier;
-    });
-
-    if (dropFormula) {
-      totalWinAccumulated += dropWinSum;
-      formulaParts.push(dropFormula);
-    }
-
-    // Stop cascading if this drop contains the target symbol
-    if (wins.some(w => w.symbolId === selectedSymbol)) {
-      keepCascading = false;
-    }
-
-    const winningCoordsMap = getWinningPositions(grid, wins, currentPaytable, gameType, undefined, customPaylines);
-
-    let targetStripSet = currentStrips;
-    if (comb.stripId !== undefined) {
-      if (stripSets && stripSets[comb.stripId]) {
-        targetStripSet = stripSets[comb.stripId];
+    const coords = getWinningPositions(evalGrid, wins, currentPaytable, gameType, undefined, customPaylines);
+    let eliminated = false;
+    for (let c = 0; c < reelCount; c++) {
+      const rows: number[] = [];
+      for (let r = 0; r < (rowCounts[c] || 3); r++) {
+        if (game.isSymbolUnremovable(grid[c][r], isFreeGame)) continue;
+        if (coords.get(`${c}-${r}`)?.some(idx => idx !== 999)) rows.push(r);
+      }
+      if (rows.length > 0) {
+        eliminated = true;
+        game.applyCascade(grid, c, rows, strips[c], drawIndices, isFreeGame, gameType);
       }
     }
-
-    for (let c = 0; c < grid.length; c++) {
-      const strip = targetStripSet[c];
-      if (!strip || strip.length === 0) continue;
-      const rows = rowCounts[c] || 3;
-      for (let r = rows - 1; r >= 0; r--) {
-        if (winningCoordsMap.has(`${c}-${r}`)) {
-          const sym = grid[c][r];
-          if (getTraits(gameType).goldToWild && isGoldSymbol(sym)) {
-            grid[c][r] = 'WX';
-            continue;
-          }
-
-          const hasRealWin = winningCoordsMap.get(`${c}-${r}`)?.some((idx: number) => idx !== 999);
-          if (hasRealWin) {
-            const len = strip.length;
-            const actualDrawIndex = (((drawIndices[c] % len) + len) % len);
-            grid[c][r] = strip[actualDrawIndex];
-            drawIndices[c]--;
-          }
-        }
-      }
-    }
-    cascadeCount++;
+    if (!eliminated) break;
   }
 
-  if (formulaParts.length > 0) {
-    return { formula: `Win=${formulaParts.join('+')}=${totalWinAccumulated}`, totalWin: totalWinAccumulated };
-  }
-  return { formula: 'Win=0', totalWin: 0 };
+  return { formula: totalWin > 0 ? `Win=${parts.join('+')}=${totalWin}` : 'Win=0', totalWin };
 }

@@ -12,7 +12,7 @@ import { getScriptFormatter, getTraits } from '../../registry';
 import { expectKnownIssues } from './knownIssues';
 import { GENERATOR_KNOWN } from './knownIssues.data';
 import {
-  asScript, usesGoldCascade, cascadeOnce, checkRomaRefill, independentTotal, winCtx, checkSingleCombination, gridFromMathIds, gridFromScriptLine, parseScript, scriptCtx, type Violation,
+  asScript, usesGoldCascade, cascadeOnce, cascadeToEnd, checkRomaRefill, independentTotal, winCtx, checkSingleCombination, gridFromMathIds, gridFromScriptLine, parseScript, scriptCtx, type Violation,
 } from './flowRules';
 
 const CASES: [GameType, string][] = [
@@ -99,7 +99,11 @@ describe('產生器 → 複製腳本 → 規則檢查', () => {
           // F1：「複製全部測案」的 Win= 必須等於依遊戲規則獨立重算的總贏分
           const strips = c.stripId !== undefined && fx.stripSets?.[c.stripId] ? fx.stripSets[c.stripId] : fx.strips;
           const formula = calculateCombinationWin(winCtx(fx, symbol), c);
-          const expected = independentTotal(fx, grid, traits.mathIdGenerator ? [] : (c.rng as number[]), strips, symbol);
+          // 依遊戲類別規則：會從滾輪表掉落的遊戲連續掉落到無消除；遞補由腳本下一行決定（羅馬）或 MathID 遊戲只算本盤
+          const cascades = fx.game.hasCascadeFeature() && !(fx.game as { findRefillRng?: unknown }).findRefillRng && !traits.mathIdGenerator;
+          const expected = cascades
+            ? { total: cascadeToEnd(fx, grid, c.rng as number[], strips).total, steps: ['連續掉落至無消除'] }
+            : independentTotal(fx, grid, traits.mathIdGenerator ? [] : (c.rng as number[]), strips, symbol);
           if (Math.abs(formula.totalWin - expected.total) > 1e-6) {
             push('F1 測案贏分 = 規則重算', `${formula.formula} ／ 規則重算 ${expected.total} (${expected.steps.join(' → ')})`);
           }
