@@ -1,0 +1,1186 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`waygame_qin 黃金樣本 > Combo 搜尋 1`] = `
+[
+  "29,30,12,4,47,18",
+  "38,26,68,72,69,75",
+  "42,12,70,61,20,76",
+  "25,37,20,21,45,75",
+  "51,36,22,13,45,35",
+  "39,29,31,2,70,35",
+  "40,28,22,38,72,20",
+  "25,34,38,18,65,38",
+  "48,24,15,23,15,7",
+  "34,28,27,17,45,11",
+  "35,39,30,44,59,54",
+  "40,36,40,27,14,15",
+  "33,36,39,74,16,62",
+  "37,37,39,37,58,72",
+  "39,36,33,10,25,12",
+]
+`;
+
+exports[`waygame_qin 黃金樣本 > RNG 反向搜尋 1`] = `
+[
+  {
+    "case": "M1*3",
+    "grid": "K,Q,A,M1 | Q,M3,M4,M1 | M1,K,M4,Q | M2,A,M3,K | M1,M1,M1,M1 | M4,M1,Q,M4",
+    "isInterfered": true,
+    "rng": "77,25,36,62,2,27",
+    "wins": [
+      "M1x3 ways=1 pay=25 total=25",
+      "Qx3 ways=1 pay=2 total=2",
+    ],
+  },
+  {
+    "case": "M1*6",
+    "grid": "M3,J,K,M1 | J,M1,Q,J | M4,M1,Q,M4 | M3,J,K,M1 | A,M1,A,M2 | Q,M4,K,M1",
+    "isInterfered": false,
+    "rng": "21,40,27,21,73,29",
+    "wins": [
+      "M1x6 ways=1 pay=500 total=500",
+      "Jx2 ways=2 pay=0 total=0",
+    ],
+  },
+  {
+    "case": "M1*3+1W",
+    "isInterfered": false,
+    "rng": null,
+  },
+  {
+    "case": "M2*3",
+    "grid": "K,M2,K,J | M2,Q,M3,J | M3,Q,J,M2 | M4,Q,J,M3 | K,M1,Q,M4 | Q,M2,A,M3",
+    "isInterfered": true,
+    "rng": "59,19,41,38,31,73",
+    "wins": [
+      "M2x3 ways=1 pay=20 total=20",
+      "Jx4 ways=1 pay=5 total=5",
+    ],
+  },
+  {
+    "case": "M2*6",
+    "isInterfered": false,
+    "rng": null,
+  },
+  {
+    "case": "M2*3+1W",
+    "grid": "Q,J,M2,Q | J,M4,M2,J | Q,WX,A,M3 | M1,Q,M4,K | M3,J,K,M1 | A,M1,J,M2",
+    "isInterfered": true,
+    "rng": "42,55,9,28,21,51",
+    "wins": [
+      "M2x3 ways=1 pay=20 total=20",
+      "Jx3 ways=2 pay=1 total=2",
+    ],
+  },
+  {
+    "case": "M3*3",
+    "grid": "Q,K,M3,Q | M3,M4,M1,Q | M3,Q,J,M2 | M4,M1,Q,M4 | M3,J,K,M1 | M1,Q,M4,K",
+    "isInterfered": true,
+    "rng": "39,26,56,27,21,28",
+    "wins": [
+      "M3x3 ways=1 pay=12 total=12",
+      "Qx4 ways=2 pay=7 total=14",
+    ],
+  },
+  {
+    "case": "M3*6",
+    "grid": "M3,J,K,M1 | M1,Q,M3,M4 | J,M3,Q,J | M3,J,M2,K | M3,J,K,M1 | K,M4,Q,M3",
+    "isInterfered": false,
+    "rng": "21,24,40,76,21,18",
+    "wins": [
+      "M1x2 ways=1 pay=0 total=0",
+      "M3x6 ways=1 pay=200 total=200",
+    ],
+  },
+  {
+    "case": "M3*3+1W",
+    "grid": "Q,M4,J,M3 | Q,M3,J,K | M2,Q,WX,A | M1,Q,M4,J | M1,J,M4,A | A,M3,M2,A",
+    "isInterfered": true,
+    "rng": "49,20,8,32,54,42",
+    "wins": [
+      "M3x3 ways=1 pay=12 total=12",
+      "Qx4 ways=2 pay=7 total=14",
+      "Jx5 ways=1 pay=15 total=15",
+    ],
+  },
+]
+`;
+
+exports[`waygame_qin 黃金樣本 > 盤面評估 / 中獎座標 / 掉落 1`] = `
+{
+  "biased": [
+    {
+      "coords": "0-0:0 0-1:0 0-2:0 0-3:0 1-0:0 1-3:0 2-0:999 2-2:0 2-3:0 3-0:0 3-2:0 4-0:0 4-1:0 4-2:0 4-3:0 5-1:0 5-2:0",
+      "grid": "WX,A,GA,WX | A,M6,M1,A | S1,M5,A,A | A,B1,A,Q | A,WX,WX,A | 9,A,WX,M6",
+      "nextDrop": "~0.0/3,~0.1/3,~0.2/3,WX | ~1.0/2,~1.1/2,M6,M1 | ~2.0/3,~2.1/3,~2.2/3,M5 | ~3.0/2,~3.1/2,B1,Q | ~4.0/4,~4.1/4,~4.2/4,~4.3/4 | ~5.0/2,~5.1/2,9,M6",
+      "wins": [
+        "Ax6 ways=256 pay=100 total=25600",
+      ],
+      "winsZero": [
+        "B1x1 ways=1 pay=0 total=0",
+        "S1x1 ways=1 pay=0 total=0",
+        "M1x2 ways=2 pay=0 total=0",
+        "M6x2 ways=2 pay=0 total=0",
+        "Ax6 ways=256 pay=100 total=25600",
+      ],
+    },
+    {
+      "coords": "0-0:0 1-1:0 2-0:0 2-1:0 2-2:0 2-3:0 3-0:0 3-1:0 3-2:0 3-3:0 4-2:0 4-3:0 5-1:0 5-2:0 5-3:0",
+      "grid": "10,K,M3,K | Q,WX,M4,A | 10,10,10,10 | 10,10,10,10 | M3,J,WX,10 | J,10,10,WX",
+      "nextDrop": "~0.0/1,K,M3,K | ~1.0/1,Q,M4,A | ~2.0/4,~2.1/4,~2.2/4,~2.3/4 | ~3.0/4,~3.1/4,~3.2/4,~3.3/4 | ~4.0/2,~4.1/2,M3,J | ~5.0/3,~5.1/3,~5.2/3,J",
+      "wins": [
+        "10x6 ways=96 pay=0 total=0",
+      ],
+      "winsZero": [
+        "10x6 ways=96 pay=0 total=0",
+        "M3x2 ways=1 pay=0 total=0",
+        "Kx2 ways=2 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-0:0 0-1:0 0-2:0 0-3:0 1-0:0 1-1:0 1-2:0 2-0:0 2-1:0 2-2:0 2-3:0 3-0:0 3-1:0 3-2:0 4-0:0 5-1:0 5-2:0",
+      "grid": "M5,M5,M5,M5 | M5,M5,M5,G1 | M5,WX,M5,WX | M5,M5,M5,A | M5,10,M3,M3 | M2,M5,WX,G1",
+      "nextDrop": "~0.0/4,~0.1/4,~0.2/4,~0.3/4 | ~1.0/3,~1.1/3,~1.2/3,G1 | ~2.0/4,~2.1/4,~2.2/4,~2.3/4 | ~3.0/3,~3.1/3,~3.2/3,A | ~4.0/1,10,M3,M3 | ~5.0/2,~5.1/2,M2,G1",
+      "wins": [
+        "M5x6 ways=288 pay=0 total=0",
+      ],
+      "winsZero": [
+        "M5x6 ways=288 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-0:0 0-1:999 0-2:0 1-0:0 1-3:0 2-0:0 2-1:0 2-2:0 3-0:0 4-1:0 4-3:0 5-1:0 5-3:0",
+      "grid": "Q,S1,Q,M3 | Q,M3,M3,Q | Q,Q,Q,M2 | Q,M2,M3,J | G1,Q,M1,Q | M3,Q,M1,Q",
+      "nextDrop": "~0.0/3,~0.1/3,~0.2/3,M3 | ~1.0/2,~1.1/2,M3,M3 | ~2.0/3,~2.1/3,~2.2/3,M2 | ~3.0/1,M2,M3,J | ~4.0/2,~4.1/2,G1,M1 | ~5.0/2,~5.1/2,M3,M1",
+      "wins": [
+        "Qx6 ways=48 pay=50 total=2400",
+      ],
+      "winsZero": [
+        "S1x1 ways=1 pay=0 total=0",
+        "M3x2 ways=2 pay=0 total=0",
+        "Qx6 ways=48 pay=50 total=2400",
+      ],
+    },
+    {
+      "coords": "0-0:0 0-1:0 0-2:0 1-2:0 1-3:0 2-2:0 2-3:0 3-1:0 3-2:0 4-0:0 4-1:0 4-3:0 5-1:0",
+      "grid": "WX,M2,M2,Q | 10,9,M2,M2 | J,M4,M2,M2 | A,M2,M2,10 | M2,WX,GM1,WX | GM1,M2,A,M5",
+      "nextDrop": "~0.0/3,~0.1/3,~0.2/3,Q | ~1.0/2,~1.1/2,10,9 | ~2.0/2,~2.1/2,J,M4 | ~3.0/2,~3.1/2,A,10 | ~4.0/3,~4.1/3,~4.2/3,GM1 | ~5.0/1,GM1,A,M5",
+      "wins": [
+        "M2x6 ways=72 pay=300 total=21600",
+      ],
+      "winsZero": [
+        "9x2 ways=1 pay=0 total=0",
+        "10x2 ways=1 pay=0 total=0",
+        "M2x6 ways=72 pay=300 total=21600",
+      ],
+    },
+    {
+      "coords": "0-1:0/1 0-2:1 0-3:1 1-1:0 1-2:0 1-3:0/1 2-1:0 2-2:0 2-3:1 3-0:0 3-1:0/1 3-2:0/1 3-3:0/1 4-0:0 4-1:0 5-0:0 5-2:0 5-3:999",
+      "grid": "Q,WX,GA,GA | B1,M1,M1,WX | GM1,M1,M1,GA | M1,WX,WX,WX | M1,M1,M5,J | M1,GM1,WX,S1",
+      "nextDrop": "~0.0/1,Q,WX,WX | ~1.0/3,~1.1/3,~1.2/3,B1 | ~2.0/2,~2.1/2,GM1,WX | ~3.0/4,~3.1/4,~3.2/4,~3.3/4 | ~4.0/2,~4.1/2,M5,J | ~5.0/3,~5.1/3,~5.2/3,GM1",
+      "wins": [
+        "M1x6 ways=96 pay=500 total=48000",
+        "Ax4 ways=9 pay=15 total=135",
+      ],
+      "winsZero": [
+        "9x2 ways=1 pay=0 total=0",
+        "10x2 ways=1 pay=0 total=0",
+        "WXx2 ways=1 pay=0 total=0",
+        "B1x1 ways=1 pay=0 total=0",
+        "S1x1 ways=1 pay=0 total=0",
+        "M1x6 ways=96 pay=500 total=48000",
+        "M2x2 ways=1 pay=0 total=0",
+        "M3x2 ways=1 pay=0 total=0",
+        "M4x2 ways=1 pay=0 total=0",
+        "M5x2 ways=1 pay=0 total=0",
+        "M6x2 ways=1 pay=0 total=0",
+        "Ax4 ways=9 pay=15 total=135",
+        "Kx2 ways=1 pay=0 total=0",
+        "Qx2 ways=2 pay=0 total=0",
+        "Jx2 ways=1 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-0:0/1 0-2:1 1-0:1 1-1:0 1-2:1 1-3:1 2-0:1 2-1:0 2-3:0/1 3-1:1 3-2:1 3-3:1 4-0:1 4-2:1 4-3:1 5-0:1 5-2:1 5-3:1",
+      "grid": "WX,GM1,M2,GM1 | M2,M1,M2,M2 | M2,G1,M6,WX | K,M2,M2,M2 | M2,GM1,M2,WX | M2,Q,M2,M2",
+      "nextDrop": "~0.0/2,~0.1/2,GM1,GM1 | ~1.0/4,~1.1/4,~1.2/4,~1.3/4 | ~2.0/2,~2.1/2,WX,M6 | ~3.0/3,~3.1/3,~3.2/3,K | ~4.0/3,~4.1/3,~4.2/3,GM1 | ~5.0/3,~5.1/3,~5.2/3,Q",
+      "wins": [
+        "M1x3 ways=2 pay=25 total=50",
+        "M2x6 ways=324 pay=300 total=97200",
+      ],
+      "winsZero": [
+        "M1x3 ways=2 pay=25 total=50",
+        "M2x6 ways=324 pay=300 total=97200",
+      ],
+    },
+    {
+      "coords": "0-0:2 0-1:0/999 0-2:0/999 0-3:1 1-0:0/999 1-1:1/2/0 1-2:0/999 1-3:0/999 2-0:1/2/0 2-1:2 2-3:1 3-1:0/999 3-3:0/999 4-0:0/999 4-2:0/999 4-3:0/999 5-0:0/999 5-1:0/999 5-2:0/999",
+      "grid": "M5,S1,S1,M3 | S1,WX,S1,S1 | WX,M5,10,M3 | J,S1,M1,S1 | S1,GM1,S1,S1 | S1,S1,S1,M4",
+      "nextDrop": "~0.0/4,~0.1/4,~0.2/4,~0.3/4 | ~1.0/4,~1.1/4,~1.2/4,~1.3/4 | ~2.0/3,~2.1/3,~2.2/3,10 | ~3.0/2,~3.1/2,J,M1 | ~4.0/3,~4.1/3,~4.2/3,GM1 | ~5.0/3,~5.1/3,~5.2/3,M4",
+      "wins": [
+        "S1x13 ways=1 pay=9 total=9",
+        "M3x3 ways=2 pay=12 total=24",
+        "M5x3 ways=2 pay=0 total=0",
+      ],
+      "winsZero": [
+        "S1x13 ways=1 pay=9 total=9",
+        "M3x3 ways=2 pay=12 total=24",
+        "M5x3 ways=2 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-1:1 0-3:0/1/2 1-0:2 1-1:0 1-2:1 1-3:1 2-0:0/1/2 2-2:1 3-1:1 3-3:1 4-1:1 4-2:1 4-3:1 5-2:1 5-3:1",
+      "grid": "J,M4,9,WX | M6,G1,M4,M4 | WX,M3,M4,9 | 10,M4,A,M4 | M5,M4,WX,M4 | A,10,WX,M4",
+      "nextDrop": "~0.0/2,~0.1/2,J,9 | ~1.0/3,~1.1/3,~1.2/3,WX | ~2.0/2,~2.1/2,M3,9 | ~3.0/2,~3.1/2,10,A | ~4.0/3,~4.1/3,~4.2/3,M5 | ~5.0/2,~5.1/2,A,10",
+      "wins": [
+        "M1x3 ways=1 pay=25 total=25",
+        "M4x6 ways=96 pay=150 total=14400",
+        "M6x3 ways=1 pay=0 total=0",
+      ],
+      "winsZero": [
+        "M1x3 ways=1 pay=25 total=25",
+        "M4x6 ways=96 pay=150 total=14400",
+        "M6x3 ways=1 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-0:1 0-1:2 0-2:0 1-0:0 1-1:0/1/2 1-3:2 2-0:1 2-1:1 2-2:0 2-3:0/1/2 3-0:0 3-1:0/1/2 4-0:0 4-1:0/1/2 4-2:0 4-3:999 5-0:0 5-1:0/1/2 5-2:1",
+      "grid": "A,Q,M4,B1 | M4,WX,M2,Q | GA,GA,M4,WX | M4,WX,M6,M6 | M4,WX,M4,S1 | M4,WX,GA,B1",
+      "nextDrop": "~0.0/3,~0.1/3,~0.2/3,B1 | ~1.0/3,~1.1/3,~1.2/3,M2 | ~2.0/2,~2.1/2,WX,WX | ~3.0/2,~3.1/2,M6,M6 | ~4.0/4,~4.1/4,~4.2/4,~4.3/4 | ~5.0/2,~5.1/2,WX,B1",
+      "wins": [
+        "M4x6 ways=48 pay=150 total=7200",
+        "Ax6 ways=6 pay=100 total=600",
+        "Qx6 ways=2 pay=50 total=100",
+      ],
+      "winsZero": [
+        "B1x2 ways=1 pay=0 total=0",
+        "S1x1 ways=1 pay=0 total=0",
+        "M4x6 ways=48 pay=150 total=7200",
+        "Ax6 ways=6 pay=100 total=600",
+        "Qx6 ways=2 pay=50 total=100",
+      ],
+    },
+    {
+      "coords": "0-2:0 0-3:0 1-2:0 1-3:0 2-0:0 2-2:0 3-0:0 3-1:0 4-0:999 4-1:0 4-2:0 4-3:0 5-1:0",
+      "grid": "G1,M6,M3,M3 | 9,Q,M3,WX | M3,GM1,M3,K | M3,M3,B1,M5 | S1,M3,M3,M3 | 9,M3,B1,M1",
+      "nextDrop": "~0.0/2,~0.1/2,G1,M6 | ~1.0/2,~1.1/2,9,Q | ~2.0/2,~2.1/2,GM1,K | ~3.0/2,~3.1/2,B1,M5 | ~4.0/4,~4.1/4,~4.2/4,~4.3/4 | ~5.0/1,9,B1,M1",
+      "wins": [
+        "M3x6 ways=48 pay=200 total=9600",
+      ],
+      "winsZero": [
+        "B1x2 ways=1 pay=0 total=0",
+        "S1x1 ways=1 pay=0 total=0",
+        "M1x2 ways=1 pay=0 total=0",
+        "M3x6 ways=48 pay=200 total=9600",
+        "M6x2 ways=1 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-0:0/1/2/4/5/6/7/8/9/10/11/12/13/3 0-1:4 0-2:10 0-3:9 1-0:6 1-1:0/1/2/4/5/6/7/8/9/10/11/12/13/3 1-2:3 1-3:3 2-0:11 2-1:3 2-2:0/1/2/4/5/6/7/8/9/10/11/12/13/3 2-3:3 3-1:3 3-2:3 3-3:8 4-0:3 4-2:3 4-3:3 5-2:3 5-3:3",
+      "grid": "WX,G1,GA,M6 | M3,WX,B1,B1 | K,B1,WX,B1 | GM1,B1,B1,M5 | B1,GM1,B1,B1 | A,M4,B1,B1",
+      "nextDrop": "~0.0/2,~0.1/2,WX,WX | ~1.0/4,~1.1/4,~1.2/4,~1.3/4 | ~2.0/4,~2.1/4,~2.2/4,~2.3/4 | ~3.0/3,~3.1/3,~3.2/3,GM1 | ~4.0/3,~4.1/3,~4.2/3,GM1 | ~5.0/2,~5.1/2,A,M4",
+      "wins": [
+        "9x3 ways=1 pay=0 total=0",
+        "10x3 ways=1 pay=0 total=0",
+        "WXx3 ways=1 pay=0 total=0",
+        "B1x11 ways=1 pay=0 total=0",
+        "M1x3 ways=2 pay=25 total=50",
+        "M2x3 ways=1 pay=20 total=20",
+        "M3x3 ways=2 pay=12 total=24",
+        "M4x3 ways=1 pay=10 total=10",
+        "M5x4 ways=1 pay=0 total=0",
+        "M6x3 ways=2 pay=0 total=0",
+        "Ax3 ways=2 pay=5 total=10",
+        "Kx3 ways=2 pay=4 total=8",
+        "Qx3 ways=1 pay=2 total=2",
+        "Jx3 ways=1 pay=1 total=1",
+      ],
+      "winsZero": [
+        "9x3 ways=1 pay=0 total=0",
+        "10x3 ways=1 pay=0 total=0",
+        "WXx3 ways=1 pay=0 total=0",
+        "B1x11 ways=1 pay=0 total=0",
+        "M1x3 ways=2 pay=25 total=50",
+        "M2x3 ways=1 pay=20 total=20",
+        "M3x3 ways=2 pay=12 total=24",
+        "M4x3 ways=1 pay=10 total=10",
+        "M5x4 ways=1 pay=0 total=0",
+        "M6x3 ways=2 pay=0 total=0",
+        "Ax3 ways=2 pay=5 total=10",
+        "Kx3 ways=2 pay=4 total=8",
+        "Qx3 ways=1 pay=2 total=2",
+        "Jx3 ways=1 pay=1 total=1",
+      ],
+    },
+    {
+      "coords": "0-0:1/999 0-1:0/1 0-2:0 0-3:1/999 1-0:0 1-1:1/999 1-2:0 1-3:1/999 2-1:1/999 2-2:1/999 2-3:0/1 3-0:1/999 3-1:0/1 3-2:1/999 4-0:0/1 4-1:1/999 4-3:1/999 5-0:1/999 5-1:0/1 5-3:1/999",
+      "grid": "S1,WX,9,S1 | 9,S1,9,S1 | J,S1,S1,WX | S1,WX,S1,G1 | WX,S1,M3,S1 | S1,WX,K,S1",
+      "nextDrop": "~0.0/4,~0.1/4,~0.2/4,~0.3/4 | ~1.0/4,~1.1/4,~1.2/4,~1.3/4 | ~2.0/3,~2.1/3,~2.2/3,J | ~3.0/3,~3.1/3,~3.2/3,G1 | ~4.0/3,~4.1/3,~4.2/3,M3 | ~5.0/3,~5.1/3,~5.2/3,K",
+      "wins": [
+        "9x6 ways=4 pay=0 total=0",
+        "S1x12 ways=1 pay=9 total=9",
+      ],
+      "winsZero": [
+        "9x6 ways=4 pay=0 total=0",
+        "S1x12 ways=1 pay=9 total=9",
+      ],
+    },
+    {
+      "coords": "0-0:0 0-2:0 1-1:999 1-2:0 1-3:0 2-1:0 3-0:0 3-1:0 3-2:0 3-3:0 4-1:0 5-0:0 5-3:0",
+      "grid": "WX,A,M3,9 | 9,S1,M3,M3 | K,M3,M5,G1 | M3,M3,M3,M3 | A,M3,B1,M1 | M3,M6,K,M3",
+      "nextDrop": "~0.0/2,~0.1/2,A,9 | ~1.0/3,~1.1/3,~1.2/3,9 | ~2.0/1,K,M5,G1 | ~3.0/4,~3.1/4,~3.2/4,~3.3/4 | ~4.0/1,A,B1,M1 | ~5.0/2,~5.1/2,M6,K",
+      "wins": [
+        "M3x6 ways=32 pay=200 total=6400",
+      ],
+      "winsZero": [
+        "9x2 ways=2 pay=0 total=0",
+        "B1x1 ways=1 pay=0 total=0",
+        "S1x1 ways=1 pay=0 total=0",
+        "M3x6 ways=32 pay=200 total=6400",
+      ],
+    },
+    {
+      "coords": "0-0:1 0-1:2 0-2:3 0-3:0 1-0:0/1/2/3 1-1:999 1-2:2 1-3:0 2-0:0/1/2/3 2-1:0/1/2/3 2-2:2 3-0:2 3-2:3 3-3:0/1/2/3 4-0:3 4-1:2 4-2:2 4-3:0/1/2/3 5-0:2 5-1:2 5-3:0",
+      "grid": "M3,M4,A,M1 | WX,S1,M4,G1 | WX,WX,M4,9 | M4,K,A,WX | A,M4,M4,WX | M4,M4,M6,G1",
+      "nextDrop": "~0.0/4,~0.1/4,~0.2/4,~0.3/4 | ~1.0/3,~1.1/3,~1.2/3,WX | ~2.0/3,~2.1/3,~2.2/3,9 | ~3.0/3,~3.1/3,~3.2/3,K | ~4.0/4,~4.1/4,~4.2/4,~4.3/4 | ~5.0/2,~5.1/2,M6,WX",
+      "wins": [
+        "M1x6 ways=4 pay=500 total=2000",
+        "M3x5 ways=2 pay=75 total=150",
+        "M4x6 ways=72 pay=150 total=10800",
+        "Ax5 ways=8 pay=40 total=320",
+      ],
+      "winsZero": [
+        "S1x1 ways=1 pay=0 total=0",
+        "M1x6 ways=4 pay=500 total=2000",
+        "M3x5 ways=2 pay=75 total=150",
+        "M4x6 ways=72 pay=150 total=10800",
+        "Ax5 ways=8 pay=40 total=320",
+      ],
+    },
+    {
+      "coords": "0-0:1 0-1:2 0-2:3 0-3:0 1-2:1 1-3:0/2/3/1 2-1:1 2-2:0/2/3/1 2-3:1 3-0:1 3-2:3 4-0:1 4-1:1 4-2:1 4-3:1 5-0:1 5-1:1 5-2:1 5-3:1",
+      "grid": "B1,M3,M4,9 | M5,K,B1,WX | 10,B1,WX,B1 | B1,G1,M4,M2 | B1,B1,B1,B1 | B1,WX,B1,WX",
+      "nextDrop": "~0.0/4,~0.1/4,~0.2/4,~0.3/4 | ~1.0/2,~1.1/2,M5,K | ~2.0/3,~2.1/3,~2.2/3,10 | ~3.0/2,~3.1/2,G1,M2 | ~4.0/4,~4.1/4,~4.2/4,~4.3/4 | ~5.0/4,~5.1/4,~5.2/4,~5.3/4",
+      "wins": [
+        "9x3 ways=1 pay=0 total=0",
+        "B1x11 ways=1 pay=0 total=0",
+        "M3x3 ways=1 pay=12 total=12",
+        "M4x4 ways=1 pay=20 total=20",
+      ],
+      "winsZero": [
+        "9x3 ways=1 pay=0 total=0",
+        "B1x11 ways=1 pay=0 total=0",
+        "M3x3 ways=1 pay=12 total=12",
+        "M4x4 ways=1 pay=20 total=20",
+      ],
+    },
+    {
+      "coords": "0-2:0 0-3:0 1-0:0 1-1:0 2-0:0 2-1:0 2-2:0 2-3:0 3-0:0 3-1:0 3-2:999 3-3:0 4-0:0 4-1:0 5-0:0 5-2:0 5-3:0",
+      "grid": "M6,M4,Q,Q | Q,Q,M5,M1 | Q,WX,WX,Q | Q,Q,S1,WX | Q,Q,M2,B1 | WX,M4,Q,Q",
+      "nextDrop": "~0.0/2,~0.1/2,M6,M4 | ~1.0/2,~1.1/2,M5,M1 | ~2.0/4,~2.1/4,~2.2/4,~2.3/4 | ~3.0/4,~3.1/4,~3.2/4,~3.3/4 | ~4.0/2,~4.1/2,M2,B1 | ~5.0/3,~5.1/3,~5.2/3,M4",
+      "wins": [
+        "Qx6 ways=288 pay=50 total=14400",
+      ],
+      "winsZero": [
+        "B1x1 ways=1 pay=0 total=0",
+        "S1x1 ways=1 pay=0 total=0",
+        "Qx6 ways=288 pay=50 total=14400",
+      ],
+    },
+    {
+      "coords": "0-0:1 0-1:1 0-2:0/1/2 0-3:1 1-0:1 1-1:1 1-3:0/1/2 2-0:1 2-1:0 2-2:1 2-3:2 3-1:1 3-2:1 4-0:1 4-1:1 4-2:1 4-3:1 5-1:1",
+      "grid": "M4,M4,WX,M4 | M4,M4,GM1,WX | M4,M3,M4,K | 10,M4,M4,GM1 | M4,M4,M4,M4 | J,M4,M2,GA",
+      "nextDrop": "~0.0/4,~0.1/4,~0.2/4,~0.3/4 | ~1.0/3,~1.1/3,~1.2/3,GM1 | ~2.0/4,~2.1/4,~2.2/4,~2.3/4 | ~3.0/2,~3.1/2,10,GM1 | ~4.0/4,~4.1/4,~4.2/4,~4.3/4 | ~5.0/1,J,M2,GA",
+      "wins": [
+        "M3x3 ways=1 pay=12 total=12",
+        "M4x6 ways=192 pay=150 total=28800",
+        "Kx3 ways=1 pay=4 total=4",
+      ],
+      "winsZero": [
+        "9x2 ways=1 pay=0 total=0",
+        "10x2 ways=1 pay=0 total=0",
+        "WXx2 ways=1 pay=0 total=0",
+        "M1x2 ways=1 pay=0 total=0",
+        "M2x2 ways=1 pay=0 total=0",
+        "M3x3 ways=1 pay=12 total=12",
+        "M4x6 ways=192 pay=150 total=28800",
+        "M5x2 ways=1 pay=0 total=0",
+        "M6x2 ways=1 pay=0 total=0",
+        "Ax2 ways=1 pay=0 total=0",
+        "Kx3 ways=1 pay=4 total=4",
+        "Qx2 ways=1 pay=0 total=0",
+        "Jx2 ways=1 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-2:0 0-3:999 1-1:0 1-3:0 2-0:0 2-1:0 2-3:0 3-0:0 4-0:0 4-1:0 4-2:0 4-3:0 5-0:0 5-1:0 5-2:0 5-3:0",
+      "grid": "M2,A,10,S1 | 9,10,M3,10 | 10,10,K,10 | WX,GM1,M1,M6 | 10,WX,10,10 | 10,10,10,10",
+      "nextDrop": "~0.0/2,~0.1/2,M2,A | ~1.0/2,~1.1/2,9,M3 | ~2.0/3,~2.1/3,~2.2/3,K | ~3.0/1,GM1,M1,M6 | ~4.0/4,~4.1/4,~4.2/4,~4.3/4 | ~5.0/4,~5.1/4,~5.2/4,~5.3/4",
+      "wins": [
+        "10x6 ways=96 pay=0 total=0",
+      ],
+      "winsZero": [
+        "10x6 ways=96 pay=0 total=0",
+        "S1x1 ways=1 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-0:2 0-1:1 0-3:0/1/2 1-1:0 1-3:0/1/2 2-1:2 2-2:1 2-3:0",
+      "grid": "GA,M3,M5,WX | 10,G1,Q,WX | B1,A,M3,M1 | M2,M2,M2,M2 | WX,G1,A,WX | WX,J,M2,WX",
+      "nextDrop": "~0.0/2,~0.1/2,WX,M5 | ~1.0/1,10,WX,Q | ~2.0/3,~2.1/3,~2.2/3,B1 | M2,M2,M2,M2 | WX,G1,A,WX | WX,J,M2,WX",
+      "wins": [
+        "M1x3 ways=2 pay=25 total=50",
+        "M3x3 ways=2 pay=12 total=24",
+        "Ax3 ways=2 pay=5 total=10",
+      ],
+      "winsZero": [
+        "9x2 ways=1 pay=0 total=0",
+        "10x2 ways=2 pay=0 total=0",
+        "WXx2 ways=1 pay=0 total=0",
+        "B1x1 ways=1 pay=0 total=0",
+        "M1x3 ways=2 pay=25 total=50",
+        "M2x2 ways=1 pay=0 total=0",
+        "M3x3 ways=2 pay=12 total=24",
+        "M4x2 ways=1 pay=0 total=0",
+        "M5x2 ways=2 pay=0 total=0",
+        "M6x2 ways=1 pay=0 total=0",
+        "Ax3 ways=2 pay=5 total=10",
+        "Kx2 ways=1 pay=0 total=0",
+        "Qx2 ways=2 pay=0 total=0",
+        "Jx2 ways=1 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-0:2 0-1:1 0-2:0 0-3:1 1-0:999 1-2:2 1-3:0/1/2 2-0:0 2-3:0/1/2 3-1:0 3-3:0 4-0:0 4-2:0 5-2:0",
+      "grid": "GA,M2,9,M2 | S1,Q,A,WX | 9,M1,J,WX | K,9,10,9 | 9,M1,9,B1 | J,B1,WX,M1",
+      "nextDrop": "~0.0/3,~0.1/3,~0.2/3,WX | ~1.0/3,~1.1/3,~1.2/3,Q | ~2.0/2,~2.1/2,M1,J | ~3.0/2,~3.1/2,K,10 | ~4.0/2,~4.1/2,M1,B1 | ~5.0/1,J,B1,M1",
+      "wins": [
+        "9x6 ways=8 pay=0 total=0",
+        "M2x3 ways=2 pay=20 total=40",
+        "Ax3 ways=2 pay=5 total=10",
+      ],
+      "winsZero": [
+        "9x6 ways=8 pay=0 total=0",
+        "B1x2 ways=1 pay=0 total=0",
+        "S1x1 ways=1 pay=0 total=0",
+        "M2x3 ways=2 pay=20 total=40",
+        "Ax3 ways=2 pay=5 total=10",
+      ],
+    },
+    {
+      "coords": "0-2:0 1-0:0 1-1:0 1-2:0 2-1:0 2-2:0 3-1:0 3-2:0 3-3:0 4-0:0 4-1:0 4-2:0 5-3:0",
+      "grid": "M4,9,B1,A | B1,B1,B1,M3 | Q,B1,B1,G1 | GA,B1,B1,B1 | B1,B1,B1,M1 | 9,K,M5,B1",
+      "nextDrop": "~0.0/1,M4,9,A | ~1.0/3,~1.1/3,~1.2/3,M3 | ~2.0/2,~2.1/2,Q,G1 | ~3.0/3,~3.1/3,~3.2/3,GA | ~4.0/3,~4.1/3,~4.2/3,M1 | ~5.0/1,9,K,M5",
+      "wins": [
+        "B1x13 ways=1 pay=0 total=0",
+      ],
+      "winsZero": [
+        "B1x13 ways=1 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-1:0 0-2:0 0-3:1 1-0:0 1-2:1 2-2:0/1",
+      "grid": "M4,A,GA,K | A,9,K,B1 | M4,M1,WX,B1 | M5,J,M4,M4 | M3,G1,M4,K | M3,GA,9,M3",
+      "nextDrop": "~0.0/2,~0.1/2,M4,WX | ~1.0/2,~1.1/2,9,B1 | ~2.0/1,M4,M1,B1 | M5,J,M4,M4 | M3,G1,M4,K | M3,GA,9,M3",
+      "wins": [
+        "Ax3 ways=2 pay=5 total=10",
+        "Kx3 ways=1 pay=4 total=4",
+      ],
+      "winsZero": [
+        "B1x2 ways=1 pay=0 total=0",
+        "Ax3 ways=2 pay=5 total=10",
+        "Kx3 ways=1 pay=4 total=4",
+      ],
+    },
+    {
+      "coords": "0-0:0/999 0-1:0/999 0-2:0/999 1-0:0 1-1:0 1-2:0 2-0:0/999 2-3:0/999 4-0:0/999 4-1:0/999 4-2:0/999 4-3:0/999 5-1:0/999 5-3:0/999",
+      "grid": "S1,S1,S1,9 | WX,WX,WX,Q | S1,M6,Q,S1 | GA,K,M4,GA | S1,S1,S1,S1 | G1,S1,M6,S1",
+      "nextDrop": "~0.0/3,~0.1/3,~0.2/3,9 | ~1.0/3,~1.1/3,~1.2/3,Q | ~2.0/2,~2.1/2,M6,Q | GA,K,M4,GA | ~4.0/4,~4.1/4,~4.2/4,~4.3/4 | ~5.0/2,~5.1/2,G1,M6",
+      "wins": [
+        "S1x11 ways=1 pay=9 total=9",
+      ],
+      "winsZero": [
+        "9x2 ways=3 pay=0 total=0",
+        "S1x11 ways=1 pay=9 total=9",
+      ],
+    },
+    {
+      "coords": "0-0:3 0-1:0/1/2/3/4/5/6/7/8/9/10/11/12 0-2:8 0-3:4 1-0:4 1-1:0/1/2/3/4/5/6/7/8/9/10/11/12 1-2:4 1-3:7 2-0:3 2-1:4 2-2:0/1/2/3/4/5/6/7/8/9/10/11/12 2-3:9 3-0:4 3-1:4 3-2:4 3-3:4 4-0:4 4-1:4 4-2:4 4-3:4 5-1:4 5-2:4",
+      "grid": "M1,WX,M6,M2 | M2,WX,M2,M5 | G1,M2,WX,A | M2,M2,M2,M2 | M2,M2,M2,WX | A,WX,M2,M3",
+      "nextDrop": "~0.0/4,~0.1/4,~0.2/4,~0.3/4 | ~1.0/4,~1.1/4,~1.2/4,~1.3/4 | ~2.0/3,~2.1/3,~2.2/3,WX | ~3.0/4,~3.1/4,~3.2/4,~3.3/4 | ~4.0/4,~4.1/4,~4.2/4,~4.3/4 | ~5.0/2,~5.1/2,A,M3",
+      "wins": [
+        "9x3 ways=1 pay=0 total=0",
+        "10x3 ways=1 pay=0 total=0",
+        "WXx3 ways=1 pay=0 total=0",
+        "M1x3 ways=4 pay=25 total=100",
+        "M2x6 ways=384 pay=300 total=115200",
+        "M3x3 ways=1 pay=12 total=12",
+        "M4x3 ways=1 pay=10 total=10",
+        "M5x3 ways=2 pay=0 total=0",
+        "M6x3 ways=2 pay=0 total=0",
+        "Ax3 ways=2 pay=5 total=10",
+        "Kx3 ways=1 pay=4 total=4",
+        "Qx3 ways=1 pay=2 total=2",
+        "Jx3 ways=1 pay=1 total=1",
+      ],
+      "winsZero": [
+        "9x3 ways=1 pay=0 total=0",
+        "10x3 ways=1 pay=0 total=0",
+        "WXx3 ways=1 pay=0 total=0",
+        "M1x3 ways=4 pay=25 total=100",
+        "M2x6 ways=384 pay=300 total=115200",
+        "M3x3 ways=1 pay=12 total=12",
+        "M4x3 ways=1 pay=10 total=10",
+        "M5x3 ways=2 pay=0 total=0",
+        "M6x3 ways=2 pay=0 total=0",
+        "Ax3 ways=2 pay=5 total=10",
+        "Kx3 ways=1 pay=4 total=4",
+        "Qx3 ways=1 pay=2 total=2",
+        "Jx3 ways=1 pay=1 total=1",
+      ],
+    },
+    {
+      "coords": "0-0:0 0-2:0 0-3:0 1-2:0 2-0:0 2-1:0 2-2:0 2-3:0 3-0:0 3-2:0",
+      "grid": "Q,M1,Q,WX | M6,K,Q,10 | Q,Q,Q,Q | Q,B1,Q,M6 | J,9,M2,J | Q,Q,GA,A",
+      "nextDrop": "~0.0/3,~0.1/3,~0.2/3,M1 | ~1.0/1,M6,K,10 | ~2.0/4,~2.1/4,~2.2/4,~2.3/4 | ~3.0/2,~3.1/2,B1,M6 | J,9,M2,J | Q,Q,GA,A",
+      "wins": [
+        "Qx4 ways=24 pay=7 total=168",
+      ],
+      "winsZero": [
+        "10x2 ways=1 pay=0 total=0",
+        "B1x1 ways=1 pay=0 total=0",
+        "M6x2 ways=1 pay=0 total=0",
+        "Kx2 ways=1 pay=0 total=0",
+        "Qx4 ways=24 pay=7 total=168",
+      ],
+    },
+    {
+      "coords": "0-0:0 0-2:0 0-3:0 1-0:0 2-2:999 2-3:0 3-1:0 3-2:0 4-0:0 4-1:0 4-2:0 4-3:999 5-1:0 5-3:0",
+      "grid": "M1,GA,M1,M1 | M1,Q,GA,10 | 10,M3,S1,M1 | GA,WX,WX,M6 | M1,WX,M1,S1 | M6,M1,M2,M1",
+      "nextDrop": "~0.0/3,~0.1/3,~0.2/3,GA | ~1.0/1,Q,GA,10 | ~2.0/2,~2.1/2,10,M3 | ~3.0/2,~3.1/2,GA,M6 | ~4.0/4,~4.1/4,~4.2/4,~4.3/4 | ~5.0/2,~5.1/2,M6,M2",
+      "wins": [
+        "M1x6 ways=36 pay=500 total=18000",
+      ],
+      "winsZero": [
+        "S1x2 ways=1 pay=0 total=0",
+        "M1x6 ways=36 pay=500 total=18000",
+        "Ax2 ways=1 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-0:0 0-1:0 0-2:0 1-1:0 1-3:0 2-1:0 2-2:0 3-1:0 3-3:0 4-0:0 4-1:0 4-2:0 5-1:0 5-2:0 5-3:0",
+      "grid": "M2,M2,M2,M1 | 9,M2,M1,M2 | GA,M2,M2,10 | Q,M2,M3,M2 | M2,M2,M2,9 | GA,WX,WX,M2",
+      "nextDrop": "~0.0/3,~0.1/3,~0.2/3,M1 | ~1.0/2,~1.1/2,9,M1 | ~2.0/2,~2.1/2,GA,10 | ~3.0/2,~3.1/2,Q,M3 | ~4.0/3,~4.1/3,~4.2/3,9 | ~5.0/3,~5.1/3,~5.2/3,GA",
+      "wins": [
+        "M2x6 ways=216 pay=300 total=64800",
+      ],
+      "winsZero": [
+        "M1x2 ways=1 pay=0 total=0",
+        "M2x6 ways=216 pay=300 total=64800",
+      ],
+    },
+    {
+      "coords": "0-0:0 0-1:0 0-2:0 0-3:0 1-0:0 3-1:0 4-1:0 5-0:0 5-2:0 5-3:0",
+      "grid": "B1,B1,B1,WX | B1,M1,K,Q | M5,M6,M5,M3 | Q,WX,GA,GA | M6,B1,M6,GM1 | B1,M2,B1,B1",
+      "nextDrop": "~0.0/4,~0.1/4,~0.2/4,~0.3/4 | ~1.0/1,M1,K,Q | M5,M6,M5,M3 | ~3.0/1,Q,GA,GA | ~4.0/1,M6,M6,GM1 | ~5.0/3,~5.1/3,~5.2/3,M2",
+      "wins": [
+        "B1x8 ways=1 pay=0 total=0",
+      ],
+      "winsZero": [
+        "B1x8 ways=1 pay=0 total=0",
+        "M1x2 ways=1 pay=0 total=0",
+        "Kx2 ways=1 pay=0 total=0",
+        "Qx2 ways=1 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-0:0 0-2:0 0-3:0 1-1:0 1-2:0 1-3:0 2-0:0 2-2:0 2-3:0 3-2:0 3-3:0 4-0:0 4-1:0 4-3:999 5-0:0 5-1:0 5-2:0",
+      "grid": "M5,B1,M5,M5 | G1,M5,M5,M5 | M5,9,M5,WX | M6,M1,M5,WX | M5,M5,G1,S1 | WX,M5,M5,A",
+      "nextDrop": "~0.0/3,~0.1/3,~0.2/3,B1 | ~1.0/3,~1.1/3,~1.2/3,G1 | ~2.0/3,~2.1/3,~2.2/3,9 | ~3.0/2,~3.1/2,M6,M1 | ~4.0/3,~4.1/3,~4.2/3,G1 | ~5.0/3,~5.1/3,~5.2/3,A",
+      "wins": [
+        "M5x6 ways=324 pay=0 total=0",
+      ],
+      "winsZero": [
+        "B1x1 ways=1 pay=0 total=0",
+        "S1x1 ways=1 pay=0 total=0",
+        "M5x6 ways=324 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-0:1 0-1:0/999 0-2:2 0-3:0/999 1-0:1/2/0 1-1:0/999 1-2:0/999 2-0:1/2/0 2-2:1/2/0 2-3:0/999 3-0:0/999 3-1:0/999 3-2:1 3-3:0/999 4-0:0/999 4-1:1/0 5-0:0/999 5-1:1/0 5-2:0/999",
+      "grid": "M3,S1,M6,S1 | WX,S1,S1,A | WX,A,WX,S1 | S1,S1,M3,S1 | S1,WX,B1,GA | S1,WX,S1,G1",
+      "nextDrop": "~0.0/4,~0.1/4,~0.2/4,~0.3/4 | ~1.0/3,~1.1/3,~1.2/3,A | ~2.0/3,~2.1/3,~2.2/3,A | ~3.0/4,~3.1/4,~3.2/4,~3.3/4 | ~4.0/2,~4.1/2,B1,GA | ~5.0/3,~5.1/3,~5.2/3,G1",
+      "wins": [
+        "S1x11 ways=1 pay=9 total=9",
+        "M3x6 ways=2 pay=200 total=400",
+        "M6x3 ways=2 pay=0 total=0",
+      ],
+      "winsZero": [
+        "B1x1 ways=1 pay=0 total=0",
+        "S1x11 ways=1 pay=9 total=9",
+        "M3x6 ways=2 pay=200 total=400",
+        "M6x3 ways=2 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-0:0 0-1:0 0-3:0 1-1:0 1-2:0 1-3:0 2-2:0 2-3:0 3-0:0 3-2:0 4-0:0 5-2:0",
+      "grid": "M1,M1,K,G1 | M3,M1,WX,M1 | J,GA,M1,M1 | M1,A,M1,M5 | WX,M3,M3,10 | B1,10,WX,A",
+      "nextDrop": "~0.0/2,~0.1/2,K,WX | ~1.0/3,~1.1/3,~1.2/3,M3 | ~2.0/2,~2.1/2,J,GA | ~3.0/2,~3.1/2,A,M5 | ~4.0/1,M3,M3,10 | ~5.0/1,B1,10,A",
+      "wins": [
+        "M1x6 ways=36 pay=500 total=18000",
+      ],
+      "winsZero": [
+        "B1x1 ways=1 pay=0 total=0",
+        "M1x6 ways=36 pay=500 total=18000",
+        "Kx2 ways=1 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-2:0 0-3:0 1-1:0 1-3:0 2-0:0 2-2:999 2-3:999 3-1:0 3-2:0 3-3:0 4-3:0",
+      "grid": "M2,Q,M1,WX | Q,M1,GA,M1 | G1,M2,S1,S1 | GA,M1,M1,M1 | 9,10,M6,M1 | M3,10,M3,B1",
+      "nextDrop": "~0.0/2,~0.1/2,M2,Q | ~1.0/2,~1.1/2,Q,GA | ~2.0/2,~2.1/2,WX,M2 | ~3.0/3,~3.1/3,~3.2/3,GA | ~4.0/1,9,10,M6 | M3,10,M3,B1",
+      "wins": [
+        "M1x5 ways=12 pay=150 total=1800",
+      ],
+      "winsZero": [
+        "B1x1 ways=1 pay=0 total=0",
+        "S1x2 ways=1 pay=0 total=0",
+        "M1x5 ways=12 pay=150 total=1800",
+        "Ax2 ways=1 pay=0 total=0",
+        "Qx2 ways=2 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-0:0 0-1:0 0-3:0 1-1:0 1-2:0 2-0:0 2-1:0 2-3:0 3-1:0 3-3:0 4-1:0 4-3:0 5-0:0 5-1:0",
+      "grid": "M6,M6,M4,M6 | K,M6,WX,B1 | M6,M6,J,M6 | B1,WX,M4,M6 | J,M6,K,M6 | M6,M6,M3,M5",
+      "nextDrop": "~0.0/3,~0.1/3,~0.2/3,M4 | ~1.0/2,~1.1/2,K,B1 | ~2.0/3,~2.1/3,~2.2/3,J | ~3.0/2,~3.1/2,B1,M4 | ~4.0/2,~4.1/2,J,K | ~5.0/2,~5.1/2,M3,M5",
+      "wins": [
+        "M6x6 ways=144 pay=0 total=0",
+      ],
+      "winsZero": [
+        "B1x2 ways=1 pay=0 total=0",
+        "M4x2 ways=1 pay=0 total=0",
+        "M6x6 ways=144 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-0:0 0-1:0 0-2:0 0-3:0 1-1:0 1-3:0 2-1:999 2-2:0 3-0:0 3-1:0 3-2:0 3-3:0 4-0:0 4-1:0 4-2:0 4-3:0 5-0:0 5-1:0 5-2:0 5-3:0",
+      "grid": "Q,Q,Q,Q | B1,Q,M6,Q | K,S1,Q,M6 | Q,Q,WX,Q | WX,Q,Q,Q | WX,Q,Q,Q",
+      "nextDrop": "~0.0/4,~0.1/4,~0.2/4,~0.3/4 | ~1.0/2,~1.1/2,B1,M6 | ~2.0/2,~2.1/2,K,M6 | ~3.0/4,~3.1/4,~3.2/4,~3.3/4 | ~4.0/4,~4.1/4,~4.2/4,~4.3/4 | ~5.0/4,~5.1/4,~5.2/4,~5.3/4",
+      "wins": [
+        "Qx6 ways=512 pay=50 total=25600",
+      ],
+      "winsZero": [
+        "B1x1 ways=1 pay=0 total=0",
+        "S1x1 ways=1 pay=0 total=0",
+        "Qx6 ways=512 pay=50 total=25600",
+      ],
+    },
+    {
+      "coords": "0-0:1 0-3:0 1-3:0/1 2-1:0/1 2-2:0/1",
+      "grid": "J,GM1,B1,10 | K,K,A,WX | K,WX,WX,K | K,K,K,K | M1,K,K,GA | K,K,B1,K",
+      "nextDrop": "~0.0/2,~0.1/2,GM1,B1 | ~1.0/1,K,K,A | ~2.0/2,~2.1/2,K,K | K,K,K,K | M1,K,K,GA | K,K,B1,K",
+      "wins": [
+        "10x3 ways=2 pay=0 total=0",
+        "Jx3 ways=2 pay=1 total=2",
+      ],
+      "winsZero": [
+        "10x3 ways=2 pay=0 total=0",
+        "B1x2 ways=1 pay=0 total=0",
+        "Jx3 ways=2 pay=1 total=2",
+      ],
+    },
+    {
+      "coords": "0-0:0 0-3:999 1-0:0 1-2:0 1-3:0 2-1:0 2-2:0 3-0:0 3-2:0 3-3:0 4-0:999 4-2:0 4-3:0 5-1:0 5-3:0",
+      "grid": "M3,B1,M5,S1 | M3,GM1,M3,M3 | M1,M3,M3,M6 | WX,GA,M3,M3 | S1,M6,WX,M3 | J,M3,M6,M3",
+      "nextDrop": "~0.0/2,~0.1/2,B1,M5 | ~1.0/3,~1.1/3,~1.2/3,GM1 | ~2.0/2,~2.1/2,M1,M6 | ~3.0/3,~3.1/3,~3.2/3,GA | ~4.0/3,~4.1/3,~4.2/3,M6 | ~5.0/2,~5.1/2,J,M6",
+      "wins": [
+        "M3x6 ways=72 pay=200 total=14400",
+      ],
+      "winsZero": [
+        "B1x1 ways=1 pay=0 total=0",
+        "S1x2 ways=1 pay=0 total=0",
+        "M3x6 ways=72 pay=200 total=14400",
+      ],
+    },
+    {
+      "coords": "0-0:0 1-2:0 2-3:0 3-0:0 3-2:0 3-3:0 4-0:0 4-1:0 4-3:0 5-0:0 5-2:0 5-3:0",
+      "grid": "M2,K,M4,M4 | GA,9,M2,G1 | 10,10,M4,M2 | M2,10,M2,M2 | M2,WX,Q,M2 | M2,J,M2,M2",
+      "nextDrop": "~0.0/1,K,M4,M4 | ~1.0/1,GA,9,G1 | ~2.0/1,10,10,M4 | ~3.0/3,~3.1/3,~3.2/3,10 | ~4.0/3,~4.1/3,~4.2/3,Q | ~5.0/3,~5.1/3,~5.2/3,J",
+      "wins": [
+        "M2x6 ways=27 pay=300 total=8100",
+      ],
+      "winsZero": [
+        "M2x6 ways=27 pay=300 total=8100",
+      ],
+    },
+    {
+      "coords": "0-0:0 1-0:0 1-1:0 1-2:0 1-3:0 2-0:0 2-1:0 2-2:0 3-0:0 3-1:0 3-3:0 4-0:0 4-1:0 4-2:0 5-2:0",
+      "grid": "M4,G1,M3,GM1 | M4,M4,M4,M4 | M4,M4,M4,G1 | M4,WX,M5,WX | M4,WX,M4,GA | GA,M2,M4,M3",
+      "nextDrop": "~0.0/1,G1,M3,GM1 | ~1.0/4,~1.1/4,~1.2/4,~1.3/4 | ~2.0/3,~2.1/3,~2.2/3,G1 | ~3.0/3,~3.1/3,~3.2/3,M5 | ~4.0/3,~4.1/3,~4.2/3,GA | ~5.0/1,GA,M2,M3",
+      "wins": [
+        "M4x6 ways=108 pay=150 total=16200",
+      ],
+      "winsZero": [
+        "M4x6 ways=108 pay=150 total=16200",
+      ],
+    },
+    {
+      "coords": "0-0:0/1/2 0-2:1 0-3:1 1-0:0 1-1:2 1-2:1 1-3:1 2-1:0/1/2 2-2:1 3-2:1 4-0:1 4-1:1 4-2:1 4-3:999 5-0:1 5-1:1 5-2:1",
+      "grid": "WX,M6,Q,Q | M5,J,Q,Q | M3,WX,Q,M2 | G1,GM1,Q,GM1 | Q,Q,Q,S1 | Q,Q,WX,M4",
+      "nextDrop": "~0.0/3,~0.1/3,~0.2/3,M6 | ~1.0/4,~1.1/4,~1.2/4,~1.3/4 | ~2.0/2,~2.1/2,M3,M2 | ~3.0/1,G1,GM1,GM1 | ~4.0/4,~4.1/4,~4.2/4,~4.3/4 | ~5.0/3,~5.1/3,~5.2/3,M4",
+      "wins": [
+        "M5x3 ways=1 pay=0 total=0",
+        "Qx6 ways=108 pay=50 total=5400",
+        "Jx3 ways=1 pay=1 total=1",
+      ],
+      "winsZero": [
+        "S1x1 ways=1 pay=0 total=0",
+        "M5x3 ways=1 pay=0 total=0",
+        "Qx6 ways=108 pay=50 total=5400",
+        "Jx3 ways=1 pay=1 total=1",
+      ],
+    },
+  ],
+  "rng:base": [
+    {
+      "coords": "",
+      "grid": "J,K,M4,K | M1,Q,M3,M4 | Q,M3,J,B1 | M3,A,M2,A | A,B1,K,M1 | M1,Q,M3,M4",
+      "rng": "10,24,75,60,49,24",
+      "wins": [],
+      "winsZero": [
+        "B1x2 ways=1 pay=0 total=0",
+        "M4x2 ways=1 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "",
+      "grid": "K,M4,K,B1 | M4,Q,A,M4 | B1,M3,J,Q | M3,J,K,M1 | A,M1,A,M1 | M1,K,M4,Q",
+      "rng": "67,73,46,21,71,36",
+      "wins": [],
+      "winsZero": [
+        "B1x2 ways=1 pay=0 total=0",
+        "M4x2 ways=2 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-1:1 0-3:0 1-0:1 1-1:0 2-1:0 2-3:1 3-1:0",
+      "grid": "M4,Q,K,M3 | Q,M3,M4,M1 | B1,M3,M2,Q | K,M3,J,M2 | M1,A,M1,A | B1,J,M2,A",
+      "nextDrop": "~0.0/2,~0.1/2,M4,K | ~1.0/2,~1.1/2,M4,M1 | ~2.0/2,~2.1/2,B1,M2 | ~3.0/1,K,J,M2 | M1,A,M1,A | B1,J,M2,A",
+      "rng": "38,25,70,75,72,78",
+      "wins": [
+        "M3x4 ways=1 pay=25 total=25",
+        "Qx3 ways=1 pay=2 total=2",
+      ],
+      "winsZero": [
+        "B1x2 ways=1 pay=0 total=0",
+        "M3x4 ways=1 pay=25 total=25",
+        "M4x2 ways=1 pay=0 total=0",
+        "Qx3 ways=1 pay=2 total=2",
+      ],
+    },
+    {
+      "coords": "0-1:0 1-0:0 4-3:0 5-3:0",
+      "grid": "K,B1,K,M4 | B1,Q,M1,M1 | J,M1,K,M4 | K,M3,A,M2 | M1,M1,M1,B1 | M2,Q,A,B1",
+      "nextDrop": "~0.0/1,K,K,M4 | ~1.0/1,Q,M1,M1 | J,M1,K,M4 | K,M3,A,M2 | ~4.0/1,M1,M1,M1 | ~5.0/1,M2,Q,A",
+      "rng": "73,78,35,59,3,47",
+      "wins": [
+        "B1x4 ways=1 pay=0 total=0",
+      ],
+      "winsZero": [
+        "B1x4 ways=1 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-3:1 1-0:1 1-1:0 2-0:999 2-1:999 2-2:1 3-0:0 4-2:0 5-0:0",
+      "grid": "Q,M2,K,J | J,B1,Q,M2 | S1,S1,J,M4 | B1,M3,K,A | M2,A,B1,A | B1,A,M2,Q",
+      "nextDrop": "~0.0/1,Q,M2,K | ~1.0/2,~1.1/2,Q,M2 | ~2.0/3,~2.1/3,~2.2/3,M4 | ~3.0/1,M3,K,A | ~4.0/1,M2,A,A | ~5.0/1,A,M2,Q",
+      "rng": "7,61,16,46,68,66",
+      "wins": [
+        "B1x4 ways=1 pay=0 total=0",
+        "Jx3 ways=1 pay=1 total=1",
+      ],
+      "winsZero": [
+        "B1x4 ways=1 pay=0 total=0",
+        "S1x2 ways=1 pay=0 total=0",
+        "M2x2 ways=1 pay=0 total=0",
+        "Qx2 ways=1 pay=0 total=0",
+        "Jx3 ways=1 pay=1 total=1",
+      ],
+    },
+    {
+      "coords": "0-0:0 1-3:0 2-2:0 2-3:999 5-0:999",
+      "grid": "Q,M4,K,M1 | M4,K,M1,Q | A,M3,Q,S1 | A,M1,M1,M1 | M1,A,B1,K | S1,K,M4,Q",
+      "nextDrop": "~0.0/1,M4,K,M1 | ~1.0/1,M4,K,M1 | ~2.0/2,~2.1/2,A,M3 | A,M1,M1,M1 | M1,A,B1,K | ~5.0/1,K,M4,Q",
+      "rng": "29,30,11,2,48,17",
+      "wins": [
+        "Qx3 ways=1 pay=2 total=2",
+      ],
+      "winsZero": [
+        "B1x1 ways=1 pay=0 total=0",
+        "S1x2 ways=1 pay=0 total=0",
+        "M1x2 ways=1 pay=0 total=0",
+        "M4x2 ways=1 pay=0 total=0",
+        "Kx2 ways=1 pay=0 total=0",
+        "Qx3 ways=1 pay=2 total=2",
+      ],
+    },
+    {
+      "coords": "0-0:2 0-2:1 0-3:0 1-0:2 1-2:1 1-3:999 2-0:1 2-1:2 2-2:1 3-3:0 4-0:0",
+      "grid": "J,M2,Q,B1 | J,M2,Q,S1 | Q,J,Q,M3 | A,M3,K,B1 | B1,A,M3,J | J,M2,A,M1",
+      "nextDrop": "~0.0/3,~0.1/3,~0.2/3,M2 | ~1.0/3,~1.1/3,~1.2/3,M2 | ~2.0/3,~2.1/3,~2.2/3,M3 | ~3.0/1,A,M3,K | ~4.0/1,A,M3,J | J,M2,A,M1",
+      "rng": "43,11,73,63,19,79",
+      "wins": [
+        "B1x3 ways=1 pay=0 total=0",
+        "Qx3 ways=2 pay=2 total=4",
+        "Jx3 ways=1 pay=1 total=1",
+      ],
+      "winsZero": [
+        "B1x3 ways=1 pay=0 total=0",
+        "S1x1 ways=1 pay=0 total=0",
+        "M2x2 ways=1 pay=0 total=0",
+        "Qx3 ways=2 pay=2 total=4",
+        "Jx3 ways=1 pay=1 total=1",
+      ],
+    },
+    {
+      "coords": "0-0:999 1-0:0 2-0:0 3-3:0 4-0:0 4-2:0 5-3:0",
+      "grid": "S1,K,M4,K | B1,M4,M2,Q | B1,J,M3,Q | K,M4,A,B1 | WX,K,WX,K | Q,M2,J,B1",
+      "nextDrop": "~0.0/1,K,M4,K | ~1.0/1,M4,M2,Q | ~2.0/1,J,M3,Q | ~3.0/1,K,M4,A | ~4.0/2,~4.1/2,K,K | ~5.0/1,Q,M2,J",
+      "rng": "17,66,54,51,10,63",
+      "wins": [
+        "B1x4 ways=1 pay=0 total=0",
+      ],
+      "winsZero": [
+        "B1x4 ways=1 pay=0 total=0",
+        "S1x1 ways=1 pay=0 total=0",
+        "M4x2 ways=1 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "1-1:0 2-2:0 5-3:0",
+      "grid": "M1,Q,M4,K | J,B1,J,M4 | M2,J,B1,M3 | M1,K,M4,Q | J,M1,K,M4 | A,M2,K,B1",
+      "nextDrop": "M1,Q,M4,K | ~1.0/1,J,J,M4 | ~2.0/1,M2,J,M3 | M1,K,M4,Q | J,M1,K,M4 | ~5.0/1,A,M2,K",
+      "rng": "28,53,44,36,35,7",
+      "wins": [
+        "B1x3 ways=1 pay=0 total=0",
+      ],
+      "winsZero": [
+        "B1x3 ways=1 pay=0 total=0",
+        "M4x2 ways=1 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-2:0 2-0:999 2-1:999 3-1:0 5-1:0",
+      "grid": "M4,K,B1,A | K,M1,Q,M3 | S1,S1,J,M4 | A,B1,K,M4 | M4,J,M1,K | A,B1,A,M1",
+      "nextDrop": "~0.0/1,M4,K,A | K,M1,Q,M3 | ~2.0/2,~2.1/2,J,M4 | ~3.0/1,A,K,M4 | M4,J,M1,K | ~5.0/1,A,A,M1",
+      "rng": "68,23,16,49,34,57",
+      "wins": [
+        "B1x3 ways=1 pay=0 total=0",
+      ],
+      "winsZero": [
+        "B1x3 ways=1 pay=0 total=0",
+        "S1x2 ways=1 pay=0 total=0",
+        "Kx2 ways=1 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "",
+      "grid": "K,M3,J,K | Q,M4,K,M1 | M2,J,B1,M3 | K,B1,A,M2 | M4,K,WX,M2 | Q,M3,J,K",
+      "rng": "20,29,68,65,41,20",
+      "wins": [],
+      "winsZero": [
+        "B1x2 ways=1 pay=0 total=0",
+        "Kx2 ways=2 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-1:1/999 0-3:1/999 2-3:0 3-2:0 4-1:0 5-0:1/999 5-1:1/999",
+      "grid": "K,S1,A,S1 | M1,Q,M3,M4 | J,M2,A,B1 | M4,A,B1,J | A,B1,K,M1 | S1,S1,K,M4",
+      "nextDrop": "~0.0/2,~0.1/2,K,A | M1,Q,M3,M4 | ~2.0/1,J,M2,A | ~3.0/1,M4,A,J | ~4.0/1,A,K,M1 | ~5.0/2,~5.1/2,K,M4",
+      "rng": "13,24,79,52,49,16",
+      "wins": [
+        "B1x3 ways=1 pay=0 total=0",
+        "S1x4 ways=1 pay=8 total=8",
+      ],
+      "winsZero": [
+        "B1x3 ways=1 pay=0 total=0",
+        "S1x4 ways=1 pay=8 total=8",
+      ],
+    },
+    {
+      "coords": "",
+      "grid": "K,B1,Q,M2 | M2,M4,Q,A | M3,J,K,M1 | J,M1,K,M4 | M3,J,K,M1 | M1,Q,B1,Q",
+      "rng": "5,72,21,35,21,60",
+      "wins": [],
+      "winsZero": [
+        "B1x2 ways=1 pay=0 total=0",
+        "M2x2 ways=1 pay=0 total=0",
+        "Qx2 ways=1 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "",
+      "grid": "M3,K,J,K | M1,M1,M1,M1 | M4,M1,Q,M4 | B1,K,M3,J | A,M1,M1,M1 | M2,A,M1,M1",
+      "rng": "64,0,27,74,1,0",
+      "wins": [],
+      "winsZero": [
+        "B1x1 ways=1 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-2:0 1-0:0 2-1:0 3-2:0 4-1:0",
+      "grid": "K,B1,Q,M2 | Q,M3,J,K | J,Q,M3,J | K,M4,Q,J | M4,Q,J,M4 | A,M2,K,B1",
+      "nextDrop": "~0.0/1,K,B1,M2 | ~1.0/1,M3,J,K | ~2.0/1,J,M3,J | ~3.0/1,K,M4,J | ~4.0/1,M4,J,M4 | A,M2,K,B1",
+      "rng": "5,20,74,37,38,7",
+      "wins": [
+        "Qx5 ways=1 pay=20 total=20",
+      ],
+      "winsZero": [
+        "B1x2 ways=1 pay=0 total=0",
+        "Kx2 ways=1 pay=0 total=0",
+        "Qx5 ways=1 pay=20 total=20",
+      ],
+    },
+  ],
+  "rng:free": [
+    {
+      "coords": "0-1:0 0-3:0 1-1:0 2-2:0 3-0:0 4-2:0 5-3:0",
+      "grid": "M2,J,Q,J | M2,J,Q,M4 | A,M1,J,M4 | WX,A,K,M3 | A,M3,WX,Q | M1,Q,M3,J",
+      "nextDrop": "~0.0/2,~0.1/2,M2,Q | ~1.0/1,M2,Q,M4 | ~2.0/1,A,M1,M4 | ~3.0/1,A,K,M3 | ~4.0/1,A,M3,Q | ~5.0/1,M1,Q,M3",
+      "rng": "8,57,1,9,3,66",
+      "wins": [
+        "Jx6 ways=2 pay=25 total=50",
+      ],
+      "winsZero": [
+        "M2x2 ways=1 pay=0 total=0",
+        "Qx2 ways=1 pay=0 total=0",
+        "Jx6 ways=2 pay=25 total=50",
+      ],
+    },
+    {
+      "coords": "0-0:0 0-3:0 1-1:0 2-0:0 2-3:0 3-0:0",
+      "grid": "J,M3,M4,J | Q,J,M4,M2 | J,M3,M2,J | J,K,M4,K | A,M1,A,M2 | A,M2,J,M1",
+      "nextDrop": "~0.0/2,~0.1/2,M3,M4 | ~1.0/1,Q,M4,M2 | ~2.0/2,~2.1/2,M3,M2 | ~3.0/1,K,M4,K | A,M1,A,M2 | A,M2,J,M1",
+      "rng": "42,54,42,28,63,75",
+      "wins": [
+        "Jx4 ways=4 pay=5 total=20",
+      ],
+      "winsZero": [
+        "M4x2 ways=1 pay=0 total=0",
+        "Jx4 ways=4 pay=5 total=20",
+      ],
+    },
+    {
+      "coords": "0-3:0 1-2:0 2-3:0 4-1:999",
+      "grid": "M1,M1,M1,Q | J,M4,Q,K | M1,J,M4,WX | M4,K,M1,M1 | WX,S1,A,M4 | J,M4,K,M3",
+      "nextDrop": "~0.0/1,M1,M1,M1 | ~1.0/1,J,M4,K | ~2.0/1,M1,J,M4 | M4,K,M1,M1 | WX,S1,A,M4 | J,M4,K,M3",
+      "rng": "33,23,2,30,13,37",
+      "wins": [
+        "Qx3 ways=1 pay=2 total=2",
+      ],
+      "winsZero": [
+        "S1x1 ways=1 pay=0 total=0",
+        "Qx3 ways=1 pay=2 total=2",
+      ],
+    },
+    {
+      "coords": "0-1:0 1-2:0 2-1:0 3-0:0",
+      "grid": "J,Q,J,M3 | M2,M4,Q,A | J,Q,M4,J | Q,J,M4,K | A,K,A,M2 | K,M3,J,K",
+      "nextDrop": "~0.0/1,J,J,M3 | ~1.0/1,M2,M4,A | ~2.0/1,J,M4,J | ~3.0/1,J,M4,K | A,K,A,M2 | K,M3,J,K",
+      "rng": "65,72,50,36,69,26",
+      "wins": [
+        "Qx4 ways=1 pay=7 total=7",
+      ],
+      "winsZero": [
+        "Qx4 ways=1 pay=7 total=7",
+      ],
+    },
+    {
+      "coords": "0-1:1 0-2:0 1-1:1 1-2:0 2-0:1 2-2:0/1 2-3:0",
+      "grid": "M3,J,Q,A | M2,J,Q,M4 | J,M4,WX,Q | M1,K,M3,K | A,M1,A,M2 | M2,J,M1,A",
+      "nextDrop": "~0.0/2,~0.1/2,M3,A | ~1.0/2,~1.1/2,M2,M4 | ~2.0/3,~2.1/3,~2.2/3,M4 | M1,K,M3,K | A,M1,A,M2 | M2,J,M1,A",
+      "rng": "4,64,3,68,49,76",
+      "wins": [
+        "Qx3 ways=2 pay=2 total=4",
+        "Jx3 ways=2 pay=1 total=2",
+      ],
+      "winsZero": [
+        "Qx3 ways=2 pay=2 total=4",
+        "Jx3 ways=2 pay=1 total=2",
+      ],
+    },
+    {
+      "coords": "0-2:1 0-3:0 1-0:0 1-1:1 2-0:0 2-3:1 3-0:1 4-2:999",
+      "grid": "M4,K,J,Q | Q,J,M4,M2 | Q,K,M3,J | J,K,M4,K | M2,A,S1,K | M1,K,M3,A",
+      "nextDrop": "~0.0/2,~0.1/2,M4,K | ~1.0/2,~1.1/2,M4,M2 | ~2.0/2,~2.1/2,K,M3 | ~3.0/1,K,M4,K | M2,A,S1,K | M1,K,M3,A",
+      "rng": "12,54,25,28,44,10",
+      "wins": [
+        "Qx3 ways=1 pay=2 total=2",
+        "Jx4 ways=1 pay=5 total=5",
+      ],
+      "winsZero": [
+        "S1x1 ways=1 pay=0 total=0",
+        "M4x2 ways=1 pay=0 total=0",
+        "Qx3 ways=1 pay=2 total=2",
+        "Jx4 ways=1 pay=5 total=5",
+      ],
+    },
+    {
+      "coords": "",
+      "grid": "K,M3,M4,J | J,M4,M2,J | K,M1,M1,M1 | M4,K,M1,M1 | M2,WX,A,K | M2,J,M1,K",
+      "rng": "39,55,31,30,8,8",
+      "wins": [],
+      "winsZero": [
+        "M4x2 ways=1 pay=0 total=0",
+        "Jx2 ways=2 pay=0 total=0",
+      ],
+    },
+    {
+      "coords": "0-0:1 0-3:0 1-0:1 1-1:0 2-0:0 2-1:1 2-3:1 3-0:1",
+      "grid": "J,M4,K,M3 | J,M3,M2,Q | M3,J,Q,J | J,M4,Q,K | K,A,M1,A | Q,M3,Q,J",
+      "nextDrop": "~0.0/2,~0.1/2,M4,K | ~1.0/2,~1.1/2,M2,Q | ~2.0/3,~2.1/3,~2.2/3,Q | ~3.0/1,M4,Q,K | K,A,M1,A | Q,M3,Q,J",
+      "rng": "37,42,76,23,58,20",
+      "wins": [
+        "M3x3 ways=1 pay=12 total=12",
+        "Jx4 ways=2 pay=5 total=10",
+      ],
+      "winsZero": [
+        "M3x3 ways=1 pay=12 total=12",
+        "Jx4 ways=2 pay=5 total=10",
+      ],
+    },
+    {
+      "coords": "0-0:2 0-1:0 0-2:1 0-3:3 1-0:0 1-1:3 1-2:2 1-3:1 2-0:0/1/2/3 2-2:3 3-0:3 3-1:0 3-3:2",
+      "grid": "K,M3,M4,J | M3,J,K,M4 | WX,Q,J,M2 | J,M3,M1,K | M2,A,M1,A | J,M1,A,M4",
+      "nextDrop": "~0.0/4,~0.1/4,~0.2/4,~0.3/4 | ~1.0/4,~1.1/4,~1.2/4,~1.3/4 | ~2.0/2,~2.1/2,Q,M2 | ~3.0/3,~3.1/3,~3.2/3,M1 | M2,A,M1,A | J,M1,A,M4",
+      "rng": "39,27,5,42,72,69",
+      "wins": [
+        "M3x4 ways=1 pay=25 total=25",
+        "M4x3 ways=1 pay=10 total=10",
+        "Kx4 ways=1 pay=10 total=10",
+        "Jx4 ways=2 pay=5 total=10",
+      ],
+      "winsZero": [
+        "M3x4 ways=1 pay=25 total=25",
+        "M4x3 ways=1 pay=10 total=10",
+        "Kx4 ways=1 pay=10 total=10",
+        "Jx4 ways=2 pay=5 total=10",
+      ],
+    },
+    {
+      "coords": "0-0:0 0-1:1 0-2:2 0-3:1 1-0:1 1-1:2 1-2:0 1-3:2 2-1:0/1/2 2-2:1 2-3:2 5-1:999",
+      "grid": "M2,Q,J,Q | Q,J,M2,J | M4,WX,Q,J | M4,K,M3,A | K,M3,J,K | J,S1,A,M4",
+      "nextDrop": "~0.0/4,~0.1/4,~0.2/4,~0.3/4 | ~1.0/4,~1.1/4,~1.2/4,~1.3/4 | ~2.0/3,~2.1/3,~2.2/3,M4 | M4,K,M3,A | K,M3,J,K | J,S1,A,M4",
+      "rng": "48,17,4,58,26,45",
+      "wins": [
+        "M2x3 ways=1 pay=20 total=20",
+        "Qx3 ways=4 pay=2 total=8",
+        "Jx3 ways=4 pay=1 total=4",
+      ],
+      "winsZero": [
+        "S1x1 ways=1 pay=0 total=0",
+        "M2x3 ways=1 pay=20 total=20",
+        "Qx3 ways=4 pay=2 total=8",
+        "Jx3 ways=4 pay=1 total=4",
+      ],
+    },
+    {
+      "coords": "0-0:0 1-1:0 1-3:0 2-0:0 3-1:0 3-3:0 4-0:0 4-2:0 4-3:999",
+      "grid": "K,M1,M1,M1 | J,K,M4,K | WX,Q,J,M3 | M1,K,M4,K | K,M1,WX,S1 | J,M3,M2,J",
+      "nextDrop": "~0.0/1,M1,M1,M1 | ~1.0/2,~1.1/2,J,M4 | ~2.0/1,Q,J,M3 | ~3.0/2,~3.1/2,M1,M4 | ~4.0/2,~4.1/2,M1,S1 | J,M3,M2,J",
+      "rng": "31,28,9,56,11,42",
+      "wins": [
+        "Kx5 ways=8 pay=25 total=200",
+      ],
+      "winsZero": [
+        "S1x1 ways=1 pay=0 total=0",
+        "Kx5 ways=8 pay=25 total=200",
+      ],
+    },
+    {
+      "coords": "0-1:0 0-2:1 1-0:0 1-1:1 1-2:0 2-0:0 2-2:1 2-3:0 3-3:999",
+      "grid": "M3,Q,J,M4 | Q,J,Q,M2 | Q,M3,J,Q | A,M3,K,S1 | K,M4,A,M1 | M3,J,K,M4",
+      "nextDrop": "~0.0/2,~0.1/2,M3,M4 | ~1.0/3,~1.1/3,~1.2/3,M2 | ~2.0/3,~2.1/3,~2.2/3,M3 | A,M3,K,S1 | K,M4,A,M1 | M3,J,K,M4",
+      "rng": "21,61,75,63,47,27",
+      "wins": [
+        "Qx3 ways=4 pay=2 total=8",
+        "Jx3 ways=1 pay=1 total=1",
+      ],
+      "winsZero": [
+        "S1x1 ways=1 pay=0 total=0",
+        "Qx3 ways=4 pay=2 total=8",
+        "Jx3 ways=1 pay=1 total=1",
+      ],
+    },
+    {
+      "coords": "0-1:0 0-2:2 0-3:1 1-0:0/1/2 1-1:1 1-2:2 2-0:2 2-1:0 2-2:1",
+      "grid": "M3,M4,J,Q | WX,Q,J,M2 | J,M4,Q,K | K,M3,K,M1 | K,A,M1,A | K,M1,M1,M1",
+      "nextDrop": "~0.0/3,~0.1/3,~0.2/3,M3 | ~1.0/3,~1.1/3,~1.2/3,M2 | ~2.0/3,~2.1/3,~2.2/3,K | K,M3,K,M1 | K,A,M1,A | K,M1,M1,M1",
+      "rng": "43,5,23,53,58,31",
+      "wins": [
+        "M4x3 ways=1 pay=10 total=10",
+        "Qx3 ways=2 pay=2 total=4",
+        "Jx3 ways=2 pay=1 total=2",
+      ],
+      "winsZero": [
+        "M3x2 ways=1 pay=0 total=0",
+        "M4x3 ways=1 pay=10 total=10",
+        "Qx3 ways=2 pay=2 total=4",
+        "Jx3 ways=2 pay=1 total=2",
+      ],
+    },
+    {
+      "coords": "0-0:0 0-3:0 1-0:0 2-1:0 3-3:0 4-3:0 5-3:0",
+      "grid": "J,M4,K,J | J,K,M4,K | Q,J,M2,M3 | K,M3,Q,J | K,M3,M4,J | M1,A,M2,J",
+      "nextDrop": "~0.0/2,~0.1/2,M4,K | ~1.0/1,K,M4,K | ~2.0/1,Q,M2,M3 | ~3.0/1,K,M3,Q | ~4.0/1,K,M3,M4 | ~5.0/1,M1,A,M2",
+      "rng": "11,28,57,20,39,6",
+      "wins": [
+        "Jx6 ways=2 pay=25 total=50",
+      ],
+      "winsZero": [
+        "M4x2 ways=1 pay=0 total=0",
+        "Kx2 ways=2 pay=0 total=0",
+        "Jx6 ways=2 pay=25 total=50",
+      ],
+    },
+    {
+      "coords": "0-0:999",
+      "grid": "S1,K,M2,Q | K,J,K,M1 | J,M2,M3,J | WX,A,K,M3 | M3,J,K,M4 | K,M3,J,K",
+      "rng": "17,1,58,13,27,26",
+      "wins": [],
+      "winsZero": [
+        "S1x1 ways=1 pay=0 total=0",
+        "Kx2 ways=2 pay=0 total=0",
+      ],
+    },
+  ],
+  "traits": {
+    "hasCascade": true,
+    "maxRandomAttempts": 1000,
+    "positionDependent": false,
+    "unremovable": [],
+    "unremovableFree": [
+      "S1",
+    ],
+  },
+  "tumbleMultiplier": {
+    "base": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32,
+    ],
+    "free": [
+      8,
+      16,
+      32,
+      64,
+      128,
+      256,
+    ],
+  },
+}
+`;
