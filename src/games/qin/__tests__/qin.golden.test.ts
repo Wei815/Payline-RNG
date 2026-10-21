@@ -1,4 +1,4 @@
-import { defineGoldenSuite } from './harness';
+import { defineGoldenSuite } from '../../base/__tests__/harness';
 
 // 秦皇範本滾輪表沒有金框符號，額外混入 G 開頭金框以覆蓋「金框→WX」掉落邏輯
 defineGoldenSuite({

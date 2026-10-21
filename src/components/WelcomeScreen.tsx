@@ -1,6 +1,7 @@
 import React from 'react';
 import { Play, FileBox, Calculator, FileCheck2, Upload, Link as LinkIcon, FileSpreadsheet } from 'lucide-react';
 import { useMachineStore } from '../store/useMachineStore';
+import { ENGINE_MENU, TEMPLATE_MENU } from '../games/registry';
 
 interface WelcomeScreenProps {
   onSelectTemplate: (templateName: string) => void;
@@ -25,12 +26,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectTemplate }
           <section className="flex flex-col gap-4">
             <h2 className="text-xl font-bold text-[#e6f1ff] border-b border-gray-700/50 pb-2">遊戲基底 (Game Engines)</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { name: 'Line Game', type: 'linegame' },
-                { name: 'Way Game', type: 'waygame' },
-                { name: 'Pay Anywhere', type: 'payanywhere' },
-                { name: 'Megaway', type: 'megaway' },
-              ].map((engine) => (
+              {ENGINE_MENU.map((engine) => (
                 <div 
                   key={engine.name}
                   onClick={() => onSelectTemplate(engine.name)}
@@ -76,7 +72,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectTemplate }
                 }}
               />
 
-              {['人魚傳說', '決戰賽特2', '秦皇傳說', '奢華', '皇家金象', '諸神之戰：雷神VS戰神', '羅馬競技場'].map((template) => (
+              {TEMPLATE_MENU.map(({ name: template }) => (
                 <div 
                   key={template}
                   onClick={() => onSelectTemplate(template)}

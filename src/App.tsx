@@ -16,6 +16,7 @@ import { RtpCalculator } from './components/tools/RtpCalculator';
 import type { GameConfig, GameType } from './types';
 import { useMachineStore } from './store/useMachineStore';
 import { useGameStore } from './store/useGameStore';
+import { getTraits, resolveMenuSelection } from './games/registry';
 
 function App() {
   const { isRunning, progress, currentSpins, currentGrid, result, runSimulation } = useSimulation();
@@ -38,30 +39,9 @@ function App() {
   const [isMetricsOpen, setIsMetricsOpen] = useState<boolean>(false);
 
   const handleSelectTemplate = useCallback((templateName: string) => {
-    const engineMap: Record<string, GameType> = {
-      'Line Game': 'linegame',
-      'Way Game': 'waygame',
-      'Pay Anywhere': 'payanywhere',
-      'Megaway': 'megaway'
-    };
-    const templateGameTypeMap: Record<string, GameType> = {
-      '人魚傳說': 'waygame',
-      '決戰賽特2': 'payanywhere_set2',
-      '秦皇傳說': 'waygame_qin',
-      '奢華': 'linegame_set2',
-      '皇家金象': 'waygame_elephant',
-      '諸神之戰：雷神VS戰神': 'linegame_gods',
-      '羅馬競技場': 'linegame_roma',
-    };
-    if (engineMap[templateName]) {
-      setGameType(engineMap[templateName]);
-      setLoadTemplateTrigger('預設泛用');
-    } else {
-      if (templateGameTypeMap[templateName]) {
-        setGameType(templateGameTypeMap[templateName]);
-      }
-      setLoadTemplateTrigger(templateName);
-    }
+    const [targetGameType, trigger] = resolveMenuSelection(templateName);
+    if (targetGameType) setGameType(targetGameType);
+    setLoadTemplateTrigger(trigger);
   }, [setGameType, setLoadTemplateTrigger]);
 
   const handleTestSpin = useCallback((strips: any[], paytable: any[], spins?: number, rows?: number[], paylines?: number[][], isFreeGame?: boolean) => {
@@ -123,7 +103,7 @@ function App() {
         <div 
           className={`
             ${!isProjectLoaded ? 'hidden' : 'block'}
-            w-full h-full transition-all duration-300 ${gameType === 'payanywhere_set2' || gameType === 'linegame_set2' || gameType === 'linegame_gods' ? 'md:w-[360px] shrink-0' : 'md:w-[35%]'}
+            w-full h-full transition-all duration-300 ${getTraits(gameType).mathIdGenerator ? 'md:w-[360px] shrink-0' : 'md:w-[35%]'}
           `}
         >
           <ConfigPanel 

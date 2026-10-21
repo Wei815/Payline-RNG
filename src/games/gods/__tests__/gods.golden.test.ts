@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { defineGoldenSuite, evalSample } from './harness';
+import { defineGoldenSuite, evalSample } from '../../base/__tests__/harness';
 
 const wyConfigs = { 1: { a: 2, b: 10, z: 0 as const }, 2: { a: 3, b: 5, z: 1 as const }, 3: { a: 4, b: 8, z: 0 as const } };
 

@@ -6,6 +6,7 @@ import { defaultPaylines } from '../utils/evaluation';
 
 import { useMachineStore } from '../store/useMachineStore';
 import { useGameStore } from '../store/useGameStore';
+import { GAME_SELECT_GROUPS } from '../games/registry';
 
 const rawTemplateFiles = import.meta.glob('/templates/*.{xlsx,xls}', { query: '?url', eager: true, import: 'default' }) as Record<string, string>;
 const templateFiles = Object.fromEntries(Object.entries(rawTemplateFiles).filter(([path]) => !path.includes('/~$')));
@@ -815,23 +816,11 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                   disabled={isRunning}
                   className="bg-[#0f1d35] border border-gray-700 text-dashboard-accent rounded px-2 py-1 outline-none focus:border-dashboard-accent cursor-pointer text-xs font-bold font-mono"
                 >
-                <optgroup label="路徑機台 (Way Game)">
-                  <option value="waygame">Way Game (通用基底)</option>
-                  <option value="waygame_qin">Way Game (秦皇)</option>
-                </optgroup>
-                <optgroup label="Megaway 系統">
-                  <option value="megaway">Megaway (測試中)</option>
-                </optgroup>
-                <optgroup label="隨處支付 (Pay Anywhere)">
-                  <option value="payanywhere">Pay Anywhere (通用基底)</option>
-                  <option value="payanywhere_set2">Pay Anywhere (賽特)</option>
-                </optgroup>
-                <optgroup label="連線機台 (Line Game)">
-                  <option value="linegame">Line Game (通用基底)</option>
-                  <option value="linegame_roma">Line Game (羅馬競技場)</option>
-                  <option value="linegame_set2">Line Game (奢華)</option>
-                  <option value="linegame_gods">Line Game (諸神之戰)</option>
-                </optgroup>
+                {GAME_SELECT_GROUPS.map(group => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.options.map(opt => <option key={opt.id} value={opt.id}>{opt.label}</option>)}
+                  </optgroup>
+                ))}
                 </select>
               </div>
               <div className="flex items-center gap-1.5">

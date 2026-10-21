@@ -2,7 +2,7 @@ import React from 'react';
 import { Home, Play, FileBox, Calculator, FileCheck2, Menu, Link as LinkIcon, FileSpreadsheet } from 'lucide-react';
 import { useGameStore } from '../store/useGameStore';
 import { useMachineStore } from '../store/useMachineStore';
-import type { GameType } from '../types';
+import { ENGINE_MENU, TEMPLATE_MENU, resolveMenuSelection } from '../games/registry';
 
 export const Sidebar: React.FC = () => {
   const clearProject = useGameStore(state => state.clearProject);
@@ -10,30 +10,9 @@ export const Sidebar: React.FC = () => {
   const setGameType = useMachineStore(state => state.setGameType);
 
   const handleSelectTemplate = (templateName: string) => {
-    const engineMap: Record<string, GameType> = {
-      'Line Game': 'linegame',
-      'Way Game': 'waygame',
-      'Pay Anywhere': 'payanywhere',
-      'Megaway': 'megaway'
-    };
-    const templateGameTypeMap: Record<string, GameType> = {
-      '人魚傳說': 'waygame',
-      '決戰賽特2': 'payanywhere_set2',
-      '秦皇傳說': 'waygame_qin',
-      '奢華': 'linegame_set2',
-      '皇家金象': 'waygame_elephant',
-      '諸神之戰：雷神VS戰神': 'linegame_gods',
-      '羅馬競技場': 'linegame_roma',
-    };
-    if (engineMap[templateName]) {
-      setGameType(engineMap[templateName]);
-      setLoadTemplateTrigger('預設泛用');
-    } else {
-      if (templateGameTypeMap[templateName]) {
-        setGameType(templateGameTypeMap[templateName]);
-      }
-      setLoadTemplateTrigger(templateName);
-    }
+    const [gameType, trigger] = resolveMenuSelection(templateName);
+    if (gameType) setGameType(gameType);
+    setLoadTemplateTrigger(trigger);
   };
 
   const menuSection = (title: string, items: { name: string, icon: React.ReactNode, action?: () => void, disabled?: boolean }[]) => (
@@ -72,22 +51,13 @@ export const Sidebar: React.FC = () => {
           <span>新專案 / 首頁</span>
         </button>
 
-        {menuSection('遊戲基底 (Engines)', [
-          { name: 'Line Game', icon: <Play size={16} />, action: () => handleSelectTemplate('Line Game') },
-          { name: 'Way Game', icon: <Play size={16} />, action: () => handleSelectTemplate('Way Game') },
-          { name: 'Pay Anywhere', icon: <Play size={16} />, action: () => handleSelectTemplate('Pay Anywhere') },
-          { name: 'Megaway', icon: <Play size={16} />, action: () => handleSelectTemplate('Megaway') },
-        ])}
+        {menuSection('遊戲基底 (Engines)',
+          ENGINE_MENU.map(e => ({ name: e.name, icon: <Play size={16} />, action: () => handleSelectTemplate(e.name) })),
+        )}
 
         {menuSection('遊戲範本 (Templates)', [
           { name: '上傳自訂 Excel', icon: <FileBox size={16} />, action: () => document.getElementById('sidebar-file-upload')?.click() },
-          { name: '人魚傳說', icon: <FileBox size={16} />, action: () => handleSelectTemplate('人魚傳說') },
-          { name: '決戰賽特2', icon: <FileBox size={16} />, action: () => handleSelectTemplate('決戰賽特2') },
-          { name: '秦皇傳說', icon: <FileBox size={16} />, action: () => handleSelectTemplate('秦皇傳說') },
-          { name: '奢華', icon: <FileBox size={16} />, action: () => handleSelectTemplate('奢華') },
-          { name: '皇家金象', icon: <FileBox size={16} />, action: () => handleSelectTemplate('皇家金象') },
-          { name: '諸神之戰：雷神VS戰神', icon: <FileBox size={16} />, action: () => handleSelectTemplate('諸神之戰：雷神VS戰神') },
-          { name: '羅馬競技場', icon: <FileBox size={16} />, action: () => handleSelectTemplate('羅馬競技場') },
+          ...TEMPLATE_MENU.map(t => ({ name: t.name, icon: <FileBox size={16} />, action: () => handleSelectTemplate(t.name) })),
         ])}
 
         <input

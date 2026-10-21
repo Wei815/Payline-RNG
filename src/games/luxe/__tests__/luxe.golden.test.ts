@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { defineGoldenSuite, evalSample } from './harness';
+import { defineGoldenSuite, evalSample } from '../../base/__tests__/harness';
 
 const goldFrames = { '0-0': 2, '1-1': 5, '2-2': 10, '4-3': 3 };
 const jackpots = { '1-0': 'MINI', '3-1': 'MAJOR', '2-3': 'MEGA' } as const;

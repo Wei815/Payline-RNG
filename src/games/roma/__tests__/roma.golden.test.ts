@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
-import { defineGoldenSuite, evalSample, fmtGrid, makeConfig, withSeed } from './harness';
-import type { RomaGame } from '../Roma/RomaGame';
+import { defineGoldenSuite, evalSample, fmtGrid, makeConfig, withSeed } from '../../base/__tests__/harness';
+import type { RomaGame } from '../RomaGame';
 
 defineGoldenSuite(
   {

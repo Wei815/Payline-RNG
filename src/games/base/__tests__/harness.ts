@@ -10,14 +10,14 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { vi, describe, test, expect, beforeAll } from 'vitest';
-import type { GameConfig, GameType, PaytableRule } from '../../types';
-import type { WinResult } from '../../utils/evaluation';
-import { defaultPaylines, getWinningPositions } from '../../utils/evaluation';
-import { parseExcelData, type ExcelParsedData } from '../../utils/excelParser';
-import { GameRegistry } from '../../core/GameRegistry';
-import type { AbstractGame } from '../base/AbstractGame';
+import type { GameConfig, GameType, PaytableRule } from '../../../types';
+import type { WinResult } from '../../../utils/evaluation';
+import { defaultPaylines, getWinningPositions } from '../../../utils/evaluation';
+import { parseExcelData, type ExcelParsedData } from '../../../utils/excelParser';
+import { GameRegistry } from '../../../core/GameRegistry';
+import type { AbstractGame } from '../AbstractGame';
 
-const TEMPLATES_DIR = path.resolve(__dirname, '../../../templates');
+const TEMPLATES_DIR = path.resolve(__dirname, '../../../../templates');
 
 // ==========================================
 // 可重現隨機數

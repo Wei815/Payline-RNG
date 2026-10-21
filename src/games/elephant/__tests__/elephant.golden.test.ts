@@ -1,4 +1,4 @@
-import { defineGoldenSuite } from './harness';
+import { defineGoldenSuite } from '../../base/__tests__/harness';
 
 defineGoldenSuite({
   gameType: 'waygame_elephant', template: 'Royal Ganesha', seed: 106, combos: true,
