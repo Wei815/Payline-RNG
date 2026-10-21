@@ -23,9 +23,6 @@ const round = (v: unknown): unknown => {
   return v;
 };
 
-// 秦皇 full_game 目前會無限迴圈（FG 中 S1 不消除 → 持續中獎永不停止），暫只測 base_only，見 ARCHITECTURE 技術債
-const BASE_ONLY = new Set<GameType>(['waygame_qin']);
-
 const CASES: [GameType, string][] = [
   ['linegame', 'Mermaid'],
   ['waygame', 'Mermaid'],
@@ -59,8 +56,7 @@ describe('simulation.worker 黃金樣本', () => {
         bet: 1,
       };
       const results: Record<string, unknown> = {};
-      const modes = BASE_ONLY.has(gameType) ? (['base_only'] as const) : (['base_only', 'full_game'] as const);
-      for (const mode of modes) {
+      for (const mode of ['base_only', 'full_game'] as const) {
         lastMessage = undefined;
         await withSeed(7, () => onmessage({ data: { ...base, mode } }));
         const msg = lastMessage as WorkerResponse | undefined;

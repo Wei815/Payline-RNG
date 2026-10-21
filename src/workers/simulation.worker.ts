@@ -25,6 +25,8 @@ export type WorkerResponse = {
   result: any;
 };
 const REPORT_INTERVAL_MS = 100;
+/** 單次旋轉最多掉落次數（安全上限，避免盤面循環時卡死 Worker） */
+const MAX_CASCADES = 100;
 
 self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
   const { mode = 'base_only', strips, freeStrips, paytable, totalSpins, rowCounts, gameConfig, coin, bet, isFreeGame } = e.data;
@@ -149,6 +151,8 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
       spinWin += cascadeWin;
 
       if (traits.simulationCascade && cascadeWin > 0) {
+        // 本次是否真的有格子被替換；全部中獎格都不可消除（例如免遊中的 S1）時盤面不變，再評估只會重複同樣的贏分
+        let gridChanged = false;
         const winningCoordsMap = getWinningPositions(grid, wins, paytable, gameConfig.gameType, undefined, effectivePaylines);
         
         for (let colIndex = 0; colIndex < grid.length; colIndex++) {
@@ -166,6 +170,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
               }
               if (traits.goldToWild && isGoldSymbol(currentSym)) {
                 grid[colIndex][r] = 'WX';
+                gridChanged = true;
                 continue;
               }
 
@@ -177,15 +182,18 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
                 
                 grid[colIndex][r] = strip[actualDrawIndex];
                 drawIndices[colIndex]--;
+                gridChanged = true;
               }
             }
           }
         }
+        if (!gridChanged) keepCascading = false;
       } else {
         keepCascading = false;
       }
       
       cascadeCount++;
+      if (cascadeCount >= MAX_CASCADES) keepCascading = false;
     }
     
     for (let c = 0; c < grid.length; c++) {
