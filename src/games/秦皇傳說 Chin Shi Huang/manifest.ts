@@ -12,6 +12,7 @@ export default defineGame({
     family: 'way',
     searchPositionDependent: false,
     mathIdGenerator: false,
+    doublingTumbleMultiplier: true,
     goldCascadeSearch: true,
     simulationCascade: true,
   },
