@@ -4,7 +4,7 @@
  */
 import type { KnownIssues } from './knownIssues';
 
-const F01 = 'F01 通用 Pay Anywhere 反向搜尋完全找不到';
+const F01 = 'F01 通用 Pay Anywhere 反向搜尋完全找不到（個數取自賠率表 match3 → 3 個，但評估要 8 個以上才中獎；引擎又以「軸數 < 個數」直接放棄）';
 const F02 = 'F02 秦皇：+WX 要求金框但滾輪表沒有金框；4096 ways 下單一路徑組合多數找不到';
 const F03 = 'F03 WX 當目標：通用 Line / Way 無法產生；「B1 + WX」不可能卻仍列出';
 const F04 = 'F04 搜尋引擎不把「百搭自成連線」算干擾';
@@ -19,6 +19,7 @@ const F12 = 'F12 通用 Line Game：驗證工具 / 載入腳本把滾輪 RNG 當
 const F13 = 'F13 驗證工具：羅馬未使用腳本第 2 行遞補，自行模擬掉落';
 const F14 = 'F14 驗證工具的掉落模型（往下掉）與產生器（原位替換）不同';
 const F15 = 'F15 反向搜尋漏解：存在零干擾解卻回傳「找不到」或「有干擾」';
+const F17 = 'F17 消除掉落測試：掉落後留在盤面的符號被當成 MathID，全部變成 ?M2 / ?M3…';
 const F16 = 'F16 皇家金象「×1 + WX」（2 連線含百搭）找不到';
 
 export const GENERATOR_KNOWN: KnownIssues = {
@@ -66,4 +67,8 @@ export const VALIDATOR_KNOWN: KnownIssues = {
 
 export const SNIPPET_KNOWN: KnownIssues = {
   'linegame | S1 載入盤面 = 腳本盤面': { count: 13, finding: F12 },
+};
+
+export const TUMBLE_KNOWN: KnownIssues = {
+  'payanywhere_set2 | T3 掉落後符號可辨識': { count: 8, finding: F17 },
 };
