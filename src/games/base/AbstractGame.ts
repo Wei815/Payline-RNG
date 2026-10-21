@@ -62,6 +62,16 @@ export abstract class AbstractGame implements IGameEnvironment {
     return true;
   }
 
+  /**
+   * RNG 反向搜尋時，抽到的位置出現此符號是否應捨棄該次抽樣（避免非目標的 Bonus / Scatter 干擾）
+   * 預設：非目標的 B1、非 Scatter 目標時的 S1/S2 皆會捨棄。
+   */
+  public blocksSearchDraw(sym: string, targetSymbol: string): boolean {
+    if (sym === "B1" && targetSymbol !== "B1") return true;
+    if ((sym === "S1" || sym === "S2") && targetSymbol !== "S1" && targetSymbol !== "S2" && targetSymbol !== "SCATTER") return true;
+    return false;
+  }
+
   /** 搜尋 RNG 隨機生成的最大嘗試次數 */
   public getMaxRandomAttempts(): number {
     return 1000;

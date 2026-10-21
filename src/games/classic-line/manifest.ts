@@ -9,6 +9,8 @@ export default defineGame({
     family: 'line',
     searchPositionDependent: true,
     mathIdGenerator: false,
+    snippetClassIds: 'coordinate',
+    specialConfigFromGrid: false,
   },
   create: () => new ClassicLineGame(),
 });

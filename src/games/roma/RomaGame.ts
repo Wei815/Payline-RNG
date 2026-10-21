@@ -2,6 +2,7 @@ import { BaseLineGame } from '../base/BaseLineGame';
 import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
 import { getWinningPositions, type WinResult } from '../../utils/evaluation';
 import { RngSearchEngine } from '../base/RngSearchEngine';
+import { getBaseSymbol } from '../../utils/evaluation/GameConstants';
 
 export class RomaGame extends BaseLineGame {
   readonly id: GameType = 'linegame_roma';
@@ -18,6 +19,36 @@ export class RomaGame extends BaseLineGame {
 
   public override isPositionDependent(): boolean {
     return true;
+  }
+
+  /** B1 少於 3 顆時會隨贏分一起消除（由 validateCandidateRng 把關），搜尋時不需避開 B1 */
+  public override blocksSearchDraw(sym: string, targetSymbol: string): boolean {
+    if (sym === 'B1') return false;
+    return super.blocksSearchDraw(sym, targetSymbol);
+  }
+
+  /**
+   * 規則 8：若版面上的免費遊戲符號 B1 數量少於 3 顆時，若版面上有贏分出現時，會連同免費遊戲符號 B1 一起消除
+   */
+  public postProcessWinningPositions(grid: string[][], wins: WinResult[], winningCoords: Map<string, number[]>): void {
+    const hasRealWin = wins.some(w => {
+      if (w.symbolId === 'B1') return false;
+      return (w.totalWin !== undefined ? w.totalWin > 0 : (w.payout !== undefined ? w.payout > 0 : false));
+    });
+    if (!hasRealWin) return;
+
+    const b1Coords: string[] = [];
+    for (let col = 0; col < grid.length; col++) {
+      for (let row = 0; row < grid[col].length; row++) {
+        if (getBaseSymbol(grid[col][row]) === 'B1') b1Coords.push(`${col}-${row}`);
+      }
+    }
+    if (b1Coords.length > 0 && b1Coords.length < 3) {
+      for (const coord of b1Coords) {
+        if (!winningCoords.has(coord)) winningCoords.set(coord, []);
+        winningCoords.get(coord)!.push(0);
+      }
+    }
   }
 
   getDefaultConfig(): GameConfig {

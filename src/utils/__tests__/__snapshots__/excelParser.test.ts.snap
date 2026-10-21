@@ -1,0 +1,107 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`excelParser 範本辨識 > Battle of Set → payanywhere_set2 1`] = `
+{
+  "reelCount": 6,
+  "rowCounts": [
+    5,
+    5,
+    5,
+    5,
+    5,
+    5,
+  ],
+}
+`;
+
+exports[`excelParser 範本辨識 > Chin Shi → waygame_qin 1`] = `
+{
+  "reelCount": 6,
+  "rowCounts": [
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+  ],
+}
+`;
+
+exports[`excelParser 範本辨識 > God of Wars → linegame_gods 1`] = `
+{
+  "reelCount": 5,
+  "rowCounts": [
+    5,
+    5,
+    5,
+    5,
+    5,
+  ],
+}
+`;
+
+exports[`excelParser 範本辨識 > Mermaid → linegame 1`] = `
+{
+  "reelCount": 5,
+  "rowCounts": [
+    3,
+    3,
+    3,
+    3,
+    3,
+  ],
+}
+`;
+
+exports[`excelParser 範本辨識 > Roma → linegame_roma 1`] = `
+{
+  "reelCount": 5,
+  "rowCounts": [
+    3,
+    3,
+    3,
+    3,
+    3,
+  ],
+}
+`;
+
+exports[`excelParser 範本辨識 > Royal Ganesha → waygame_elephant 1`] = `
+{
+  "reelCount": 6,
+  "rowCounts": [
+    3,
+    4,
+    5,
+    5,
+    4,
+    3,
+  ],
+}
+`;
+
+exports[`excelParser 範本辨識 > The Luxe → linegame_set2 1`] = `
+{
+  "reelCount": 5,
+  "rowCounts": [
+    4,
+    4,
+    4,
+    4,
+    4,
+  ],
+}
+`;
+
+exports[`excelParser 範本辨識 > 只靠檔名辨識（無 Line Table / Way 資訊） 1`] = `
+{
+  "elephant": "waygame_elephant reels=6 rows=undefined",
+  "gods": "linegame_gods reels=6 rows=undefined",
+  "luxe": "linegame_set2 reels=6 rows=undefined",
+  "qin": "waygame_qin reels=6 rows=4,4,4,4,4,4",
+  "roma": "linegame_roma reels=6 rows=undefined",
+  "set2": "payanywhere_set2 reels=6 rows=undefined",
+  "unknown": "payanywhere reels=6 rows=undefined",
+}
+`;

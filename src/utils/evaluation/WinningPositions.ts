@@ -2,6 +2,8 @@ import type { PaytableRule, GameType } from '../../types';
 import type { WinResult } from '../evaluation';
 import { defaultPaylines } from '../evaluation';
 import { getBaseSymbol } from './GameConstants';
+import { GameRegistry } from '../../core/GameRegistry';
+import { getFamily } from '../../games/registry';
 
 export function getWinningPositions(
   grid: string[][],
@@ -12,6 +14,7 @@ export function getWinningPositions(
   customPaylines?: number[][]
 ): Map<string, number[]> {
   const winningCoords = new Map<string, number[]>();
+  const family = getFamily(gameType);
 
   if (!wins || wins.length === 0) {
     // Even if no wins, we still highlight S1 if it's on the board
@@ -42,13 +45,13 @@ export function getWinningPositions(
   for (let w = 0; w < wins.length; w++) {
     const win = wins[w];
     const isScatter = currentPaytable.some(p => p.symbolId === win.symbolId && p.isScatter);
-    const isPayAnywhere = gameType === 'payanywhere' || gameType === 'payanywhere_set2';
+    const isPayAnywhere = family === 'payanywhere';
 
     if (isScatter || isPayAnywhere) {
       scatterPayAnywhereWins.push({ w, symbolId: win.symbolId });
       scatterPayAnywhereSet.add(win.symbolId);
       if (win.symbolId === 'B1') scatterPayAnywhereSet.add('B2');
-    } else if (gameType === 'linegame' || gameType === 'linegame_set2' || gameType === 'linegame_gods' || gameType === 'linegame_roma') {
+    } else if (family === 'line') {
       if (win.lineIndex !== undefined) {
         const line = customPaylines && customPaylines.length > 0 ? customPaylines[win.lineIndex] : defaultPaylines[win.lineIndex];
         if (line) {
@@ -79,7 +82,7 @@ export function getWinningPositions(
             addCoord(`${col}-${row}`, w);
           }
         }
-        if (gameType === 'megaway' && col >= 1 && col <= 4 && topTracker) {
+        if (family === 'megaway' && col >= 1 && col <= 4 && topTracker) {
           const cell = topTracker[col - 1];
           if (getBaseSymbol(cell) === getBaseSymbol(win.symbolId) || wildSymbols.has(cell) || (win.symbolId === 'B1' && cell === 'B2')) {
             addCoord(`top-${col - 1}`, w);
@@ -102,7 +105,7 @@ export function getWinningPositions(
         }
       }
     }
-    if (gameType === 'megaway' && topTracker) {
+    if (family === 'megaway' && topTracker) {
       topTracker.forEach((cell, idx) => {
         if (scatterPayAnywhereSet.has(cell) || wildSymbols.has(cell)) {
           for (const sw of scatterPayAnywhereWins) {
@@ -128,28 +131,8 @@ export function getWinningPositions(
     }
   }
 
-  // Roma Rule 8: 若版面上的免費遊戲符號 B1 數量少於 3 顆時，若版面上有贏分出現時，會連同免費遊戲符號 B1 一起消除
-  const hasRealWin = wins.some(w => {
-    if (w.symbolId === 'B1') return false;
-    return (w.totalWin !== undefined ? w.totalWin > 0 : (w.payout !== undefined ? w.payout > 0 : false));
-  });
-  if (gameType === 'linegame_roma' && hasRealWin) {
-    let b1Count = 0;
-    const b1Coords: { col: number; row: number }[] = [];
-    for (let col = 0; col < grid.length; col++) {
-      for (let row = 0; row < grid[col].length; row++) {
-        if (getBaseSymbol(grid[col][row]) === 'B1') {
-          b1Count++;
-          b1Coords.push({ col, row });
-        }
-      }
-    }
-    if (b1Count > 0 && b1Count < 3) {
-      for (const pos of b1Coords) {
-        addCoord(`${pos.col}-${pos.row}`, 0);
-      }
-    }
-  }
+  // 遊戲專屬的中獎座標規則（例如羅馬 B1 少於 3 顆隨贏分一起消除）
+  GameRegistry.tryGetGame(gameType)?.postProcessWinningPositions?.(grid, wins, winningCoords);
 
   return winningCoords;
 }

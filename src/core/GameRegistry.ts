@@ -27,6 +27,12 @@ export class GameRegistry {
     return game;
   }
 
+  /** 未註冊的 gameType（如 megaway）回傳 undefined 而非拋錯 */
+  static tryGetGame(id: GameType): IGameEnvironment | undefined {
+    this.init();
+    return this.games.get(id);
+  }
+
   static getAllGames(): IGameEnvironment[] {
     this.init();
     return Array.from(this.games.values());

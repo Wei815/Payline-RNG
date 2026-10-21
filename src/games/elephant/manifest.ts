@@ -5,10 +5,12 @@ export default defineGame({
   id: 'waygame_elephant',
   label: 'Way Game (皇家金象)',
   templateName: '皇家金象',
+  fileNameKeywords: ['家', '象'],
   traits: {
     family: 'way',
     searchPositionDependent: true,
     mathIdGenerator: false,
+    simulation: { cascade: true, doublingTumbleMultiplier: true, goldToWild: true },
   },
   create: () => new RoyalElephantGame(),
 });

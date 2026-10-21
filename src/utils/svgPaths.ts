@@ -1,6 +1,7 @@
 import type { PaytableRule, GameType } from '../types';
 import { defaultPaylines } from './evaluation';
 import type { WinResult } from './evaluation';
+import { getFamily } from '../games/registry';
 
 
 export interface SVGPathResult {
@@ -19,7 +20,8 @@ export function calculateSVGPaths(
   customPaylines?: number[][]
 ): SVGPathResult[] {
   if (!wins || wins.length === 0) return [];
-  if (gameType === 'payanywhere' || gameType === 'payanywhere_set2') return [];
+  const family = getFamily(gameType);
+  if (family === 'payanywhere') return [];
 
   const paths: SVGPathResult[] = [];
   const cols = grid.length;
@@ -53,7 +55,7 @@ export function calculateSVGPaths(
     const rowsInCol = grid[col]?.length || 3;
     const colHeight = rowsInCol * 80 + (rowsInCol - 1) * 12;
     const startY = (gridHeight - colHeight) / 2;
-    const yOffset = gameType === 'megaway' ? 84 : 0;
+    const yOffset = family === 'megaway' ? 84 : 0;
     const y = yOffset + startY + row * 92 + 40;
     return { x: col * 92 + 40, y };
   };
@@ -67,7 +69,7 @@ export function calculateSVGPaths(
     const isScatter = currentPaytable.some(p => p.symbolId === win.symbolId && p.isScatter);
     if (isScatter) continue;
 
-    if (gameType.startsWith('linegame')) {
+    if (family === 'line') {
       if (win.lineIndex === undefined) continue;
       const line = customPaylines && customPaylines.length > 0 ? customPaylines[win.lineIndex] : defaultPaylines[win.lineIndex];
       if (!line) continue;
@@ -97,7 +99,7 @@ export function calculateSVGPaths(
           activeRows.push(row);
         }
       }
-      if (gameType === 'megaway' && col >= 1 && col <= 4 && topTracker) {
+      if (family === 'megaway' && col >= 1 && col <= 4 && topTracker) {
         const topSym = topTracker[col - 1];
         if (topSym === win.symbolId || wildSymbols.has(topSym)) {
           activeRows.push(-1);

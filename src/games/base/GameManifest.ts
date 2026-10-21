@@ -1,4 +1,4 @@
-import type { GameType } from '../../types';
+import type { GameType, MultiplierInterval } from '../../types';
 import type { IGameEnvironment } from './IGameEnvironment';
 
 /** 遊戲家族：決定共用層使用哪一套連線判定 / SVG 繪線 / 顯示文字 */
@@ -23,6 +23,27 @@ export interface GameTraits {
    * ConfigPanel 顯示「參數設定」而非滾輪表，產生器使用即時產生器。
    */
   mathIdGenerator: boolean;
+  /**
+   * 測試腳本 (Snippet) ClassIDs 的意義：
+   * - 'coordinate'：每 3 碼 (col,row,值) 表示金框倍數 / Jackpot（奢華、通用線遊戲）
+   * - 'wyConfig'：每 3 碼 (a,b,z) 依序對應盤面上出現 WY 的軸（諸神）
+   * - 'symbolMultiplier'（預設）：依序作為 F/L 倍數球的倍數
+   */
+  snippetClassIds?: 'coordinate' | 'wyConfig' | 'symbolMultiplier';
+  /** 套用腳本 / 自訂盤面時是否從盤面推導 S1/S2/倍數球設定（預設 true） */
+  specialConfigFromGrid?: boolean;
+  /**
+   * RTP 模擬 Worker 使用的簡化掉落規則（未設定 = 不掉落）。
+   * 注意：Worker 目前與遊戲類別的 calculateNextDropGrid 是兩套獨立實作。
+   */
+  simulation?: {
+    /** 中獎後是否進行消除掉落 */
+    cascade?: boolean;
+    /** 連續掉落倍數 1,2,4,8...（FG 由 8 起跳，上限 1024） */
+    doublingTumbleMultiplier?: boolean;
+    /** 中獎的金框符號轉為 WX 留在盤面 */
+    goldToWild?: boolean;
+  };
 }
 
 export interface GameManifest {
@@ -34,6 +55,14 @@ export interface GameManifest {
   /** 側邊欄 / 歡迎頁「遊戲基底」名稱（通用基底才有） */
   engineName?: string;
   traits: GameTraits;
+  /** 上傳 Excel 時依檔名辨識為本遊戲的關鍵字 */
+  fileNameKeywords?: string[];
+  /** 範本 Overview 的 Way 數等於此值時判定為本遊戲 */
+  templateWays?: number;
+  /** 只靠檔名辨識時套用的固定盤面配置 */
+  templateLayout?: { reelCount: number; rowCounts: number[] };
+  /** 大獎倍數區間（未設定則使用 DEFAULT_MULTIPLIER_INTERVALS） */
+  multiplierIntervals?: MultiplierInterval[];
   create(): IGameEnvironment;
 }
 

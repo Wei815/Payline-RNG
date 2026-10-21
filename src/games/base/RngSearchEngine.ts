@@ -5,6 +5,7 @@ import type {
 } from "../../types";
 import { getWinningPositions } from "../../utils/evaluation";
 import type { AbstractGame } from "./AbstractGame";
+import { getFamily, getTraits } from "../registry";
 
 export class RngSearchEngine {
   private gameInstance: AbstractGame;
@@ -109,7 +110,7 @@ export class RngSearchEngine {
     let hcAttempts = 0;
     const hcLockedReels = new Set<number>();
     const isTargetScatter = currentPaytable.some(p => p.symbolId === targetSymbol && p.isScatter);
-    const isPositionDependent = gameType === 'linegame' || gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'linegame_set2' || gameType === 'linegame_gods' || gameType === 'linegame_roma';
+    const isPositionDependent = getTraits(gameType).searchPositionDependent;
 
     const targetIndicesForReel: number[][] = [];
     const goldIndicesForReel: number[][] = [];
@@ -182,7 +183,7 @@ export class RngSearchEngine {
 
       let globalHasAnyGold = false;
 
-      const isLineGame = (gameType === 'linegame' || gameType === 'linegame_roma' || gameType === 'linegame_set2' || gameType === 'linegame_gods') && !isTargetScatter && Boolean(customPaylines && customPaylines.length > 0);
+      const isLineGame = getFamily(gameType) === 'line' && !isTargetScatter && Boolean(customPaylines && customPaylines.length > 0);
       let targetPayline: number[] | null = null;
       let wildReelIndices: Set<number> | null = null;
 
@@ -295,10 +296,7 @@ export class RngSearchEngine {
         let hasTargetOrWild = false;
         for (let r = 0; r < rows; r++) {
           const sym = currentStrips[c][(chosenIdx + r) % len];
-          if (gameType !== 'linegame_roma' && sym === "B1" && targetSymbol !== "B1") {
-            hasB1 = true;
-          }
-          if ((sym === "S1" || sym === "S2") && targetSymbol !== "S1" && targetSymbol !== "S2" && targetSymbol !== "SCATTER") {
+          if (this.gameInstance.blocksSearchDraw(sym, targetSymbol)) {
             hasB1 = true;
           }
           if (sym === targetSymbol || wildSymbolSet.has(sym)) {
@@ -313,7 +311,7 @@ export class RngSearchEngine {
           break;
         }
         
-        const isPositionDependent = gameType === 'linegame' || gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'linegame_set2' || gameType === 'linegame_gods' || gameType === 'linegame_roma';
+        const isPositionDependent = getTraits(gameType).searchPositionDependent;
         const isScatter = targetSymbol === 'S1' || targetSymbol === 'S2' || targetSymbol === 'SCATTER' || targetSymbol === 'B1' || targetSymbol === 'B2';
         
         if (c < length && !hasTargetOrWild && isPositionDependent && !isScatter && !requireGoldCascade) {
@@ -530,7 +528,7 @@ export class RngSearchEngine {
         }
 
       } else {
-        const isLineGame = (gameType === 'linegame' || gameType === 'linegame_roma' || gameType === 'linegame_set2' || gameType === 'linegame_gods');
+        const isLineGame = getFamily(gameType) === 'line';
         const initialWinsWithZero = this.gameInstance.evaluate(
           initialEvalGrid,
           currentPaytable,

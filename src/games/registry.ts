@@ -35,7 +35,7 @@ const MEGAWAY: { id: GameType; label: string; engineName: string; traits: GameTr
   id: 'megaway',
   label: 'Megaway (測試中)',
   engineName: 'Megaway',
-  traits: { family: 'megaway', searchPositionDependent: false, mathIdGenerator: false },
+  traits: { family: 'megaway', searchPositionDependent: false, mathIdGenerator: false, specialConfigFromGrid: false },
 };
 
 const byId = new Map<GameType, GameManifest>(GAMES.map(g => [g.id, g]));
@@ -44,12 +44,17 @@ export function getManifest(id: GameType): GameManifest | undefined {
   return byId.get(id);
 }
 
-/** 取得遊戲能力宣告；未註冊的 gameType (如 megaway) 也有安全預設值 */
-export function getTraits(id: GameType): GameTraits {
+/** 取得遊戲能力宣告（含 megaway）；未知 id 回傳 undefined，供舊資料（如舊腳本的 gameType）容錯使用 */
+export function findTraits(id: string): GameTraits | undefined {
   if (id === MEGAWAY.id) return MEGAWAY.traits;
-  const m = byId.get(id);
-  if (!m) throw new Error(`Game manifest for ${id} not found.`);
-  return m.traits;
+  return byId.get(id as GameType)?.traits;
+}
+
+/** 取得遊戲能力宣告；未註冊的 gameType 直接拋錯 */
+export function getTraits(id: GameType): GameTraits {
+  const t = findTraits(id);
+  if (!t) throw new Error(`Game manifest for ${id} not found.`);
+  return t;
 }
 
 export const getFamily = (id: GameType): GameFamily => getTraits(id).family;
@@ -86,4 +91,17 @@ export function resolveMenuSelection(name: string): [GameType | undefined, strin
   const engine = ENGINE_MENU.find(e => e.name === name);
   if (engine) return [engine.id, '預設泛用'];
   return [TEMPLATE_MENU.find(t => t.name === name)?.id, name];
+}
+
+/** 依上傳的 Excel 檔名辨識遊戲；可限定家族（例如有 Line Table 時只找線遊戲） */
+export function detectGameByFileName(fileName: string, family?: GameFamily): GameManifest | undefined {
+  return GAMES.find(g =>
+    (!family || g.traits.family === family) &&
+    g.fileNameKeywords?.some(k => fileName.includes(k)),
+  );
+}
+
+/** 依範本 Overview 的 Way 數辨識遊戲 */
+export function detectGameByWays(ways: number): GameManifest | undefined {
+  return GAMES.find(g => g.templateWays === ways);
 }

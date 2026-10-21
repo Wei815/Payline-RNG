@@ -12,6 +12,9 @@ export interface IGameEnvironment {
   
   isSymbolUnremovable?(sym: string, isFreeGame: boolean): boolean;
 
+  /** 共用 getWinningPositions() 計算完後，供遊戲加入專屬的中獎/消除座標（直接修改 winningCoords） */
+  postProcessWinningPositions?(grid: string[][], wins: WinResult[], winningCoords: Map<string, number[]>): void;
+
   calculateNextDropGrid(
     currentGrid: string[][],
     winningCoords: Map<string, number[]>,

@@ -1,8 +1,9 @@
 import * as xlsx from 'xlsx';
-import type { PaytableRule } from '../types';
+import type { GameType, PaytableRule } from '../types';
+import { detectGameByFileName, detectGameByWays } from '../games/registry';
 
 export interface ExcelParsedData {
-  gameType?: 'waygame' | 'linegame' | 'payanywhere' | 'linegame_set2' | 'payanywhere_set2' | 'waygame_qin' | 'waygame_elephant' | 'linegame_gods' | 'linegame_roma';
+  gameType?: GameType;
   coin?: number;
   bet?: number;
   paylines?: number[][];
@@ -59,15 +60,8 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
     if (paylines.length > 0) {
       result.paylines = paylines;
       const decodedFileName = decodeURIComponent(file.name || '');
-      if (decodedFileName.includes('奢華')) {
-        result.gameType = 'linegame_set2';
-      } else if (decodedFileName.includes('雷神') || decodedFileName.includes('諸神')) {
-        result.gameType = 'linegame_gods';
-      } else if (decodedFileName.includes('羅馬') || decodedFileName.includes('Roma') || decodedFileName.includes('roma')) {
-        result.gameType = 'linegame_roma';
-      } else {
-        result.gameType = 'linegame'; // if there's a line table, it's likely a linegame
-      }
+      // 有 Line Table 即為線遊戲；再依檔名關鍵字找出具體遊戲
+      result.gameType = detectGameByFileName(decodedFileName, 'line')?.id ?? 'linegame';
     }
   }
 
@@ -166,14 +160,12 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
       if (wayIdx !== -1 && result.gameType === undefined) {
         if (overviewData[i+1] && overviewData[i+1][wayIdx] !== undefined) {
            const wayStr = String(overviewData[i+1][wayIdx]);
-           if (wayStr.includes('4096') || parseInt(wayStr) === 4096) {
-             result.gameType = 'waygame_qin';
-           } else if (parseInt(wayStr) > 0) {
-             if (file.name.includes('家') || file.name.includes('象')) {
-               result.gameType = 'waygame_elephant';
-             } else {
-               result.gameType = 'waygame';
-             }
+           const ways = wayStr.includes('4096') ? 4096 : parseInt(wayStr);
+           const byWays = detectGameByWays(ways);
+           if (byWays) {
+             result.gameType = byWays.id;
+           } else if (ways > 0) {
+             result.gameType = detectGameByFileName(file.name, 'way')?.id ?? 'waygame';
            }
         }
       }
@@ -564,20 +556,13 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
 
   if (!result.gameType) {
     const decodedFileName = decodeURIComponent(file.name || '');
-    if (decodedFileName.includes('決戰賽特')) {
-      result.gameType = 'payanywhere_set2';
-    } else if (decodedFileName.includes('秦皇')) {
-      result.gameType = 'waygame_qin';
-      result.reelCount = 6;
-      result.rowCounts = [4, 4, 4, 4, 4, 4];
-    } else if (decodedFileName.includes('奢華')) {
-      result.gameType = 'linegame_set2';
-    } else if (decodedFileName.includes('雷神') || decodedFileName.includes('諸神')) {
-      result.gameType = 'linegame_gods';
-    } else if (decodedFileName.includes('羅馬') || decodedFileName.includes('Roma') || decodedFileName.includes('roma')) {
-      result.gameType = 'linegame_roma';
-    } else if (decodedFileName.includes('家') || decodedFileName.includes('象')) {
-      result.gameType = 'waygame_elephant';
+    const byName = detectGameByFileName(decodedFileName);
+    if (byName) {
+      result.gameType = byName.id;
+      if (byName.templateLayout) {
+        result.reelCount = byName.templateLayout.reelCount;
+        result.rowCounts = [...byName.templateLayout.rowCounts];
+      }
     } else if (!result.paylines || result.paylines.length === 0) {
       result.gameType = 'payanywhere';
     } else {

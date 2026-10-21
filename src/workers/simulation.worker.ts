@@ -1,6 +1,7 @@
 import type { PaytableRule, ReelStrips, SymbolMetric, GameConfig } from '../types';
 import { evaluateGrid, getWinningPositions } from '../utils/evaluation';
 import { isGoldSymbol } from '../utils/evaluation/GameConstants';
+import { getTraits } from '../games/registry';
 
 export type WorkerMessageData = {
   mode?: 'base_only' | 'free_only' | 'full_game';
@@ -28,6 +29,9 @@ const REPORT_INTERVAL_MS = 100;
 self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
   const { mode = 'base_only', strips, freeStrips, paytable, totalSpins, rowCounts, gameConfig, coin, bet, isFreeGame } = e.data;
   
+  const traits = getTraits(gameConfig.gameType);
+  const sim = traits.simulation ?? {};
+
   const symbolMetrics: Record<string, SymbolMetric> = {};
   paytable.forEach(rule => {
     symbolMetrics[rule.symbolId] = {
@@ -56,7 +60,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
   const grid: string[][] = new Array(maxCols);
   for (let c = 0; c < maxCols; c++) {
     const rows = rowCounts[c] || 3;
-    const isMegawayTop = gameConfig.gameType === 'megaway' && c >= 1 && c <= 4;
+    const isMegawayTop = traits.family === 'megaway' && c >= 1 && c <= 4;
     grid[c] = new Array(rows + (isMegawayTop ? 1 : 0)).fill('0');
   }
 
@@ -89,7 +93,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
         }
       }
       
-      if (gameConfig.gameType === 'megaway' && colIndex >= 1 && colIndex <= 4) {
+      if (traits.family === 'megaway' && colIndex >= 1 && colIndex <= 4) {
         if (!strip || strip.length === 0) {
           grid[colIndex][writeIdx++] = 'WX';
         } else {
@@ -112,7 +116,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
       }
       
       let tumbleMultiplier = 1;
-      if (gameConfig.gameType === 'waygame' || gameConfig.gameType === 'waygame_elephant') {
+      if (sim.doublingTumbleMultiplier) {
         tumbleMultiplier = isFG 
           ? Math.min(1024, 8 * Math.pow(2, cascadeCount)) 
           : Math.min(1024, 1 * Math.pow(2, cascadeCount));
@@ -128,7 +132,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
         if (metric) {
           metric.totalPayout += multipliedWin;
 
-          if (gameConfig.gameType === 'payanywhere' || gameConfig.gameType === 'payanywhere_set2') {
+          if (traits.family === 'payanywhere') {
             if (win.matchCount >= 8 && win.matchCount <= 9) metric.hits3++;
             else if (win.matchCount >= 10 && win.matchCount <= 11) metric.hits4++;
             else if (win.matchCount >= 12) metric.hits5++;
@@ -145,7 +149,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
 
       spinWin += cascadeWin;
 
-      if ((gameConfig.gameType === 'waygame' || gameConfig.gameType === 'waygame_qin' || gameConfig.gameType === 'waygame_elephant' || gameConfig.gameType === 'payanywhere_set2') && cascadeWin > 0) {
+      if (sim.cascade && cascadeWin > 0) {
         const winningCoordsMap = getWinningPositions(grid, wins, paytable, gameConfig.gameType, undefined, effectivePaylines);
         
         for (let colIndex = 0; colIndex < grid.length; colIndex++) {
@@ -161,7 +165,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
               if (isFG && unremovable.includes(currentSym)) {
                 continue;
               }
-              if (gameConfig.gameType === 'waygame_elephant' && isGoldSymbol(currentSym)) {
+              if (sim.goldToWild && isGoldSymbol(currentSym)) {
                 grid[colIndex][r] = 'WX';
                 continue;
               }
@@ -269,7 +273,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
     metric.contributionRTP = (metric.totalPayout / (totalSpins * effectiveBet)) * 100;
   });
 
-  const usedPaylines = effectivePaylines ? effectivePaylines.length : ((gameConfig.gameType === 'linegame' || gameConfig.gameType === 'linegame_roma' || gameConfig.gameType === 'linegame_set2' || gameConfig.gameType === 'linegame_gods') ? 20 : 0);
+  const usedPaylines = effectivePaylines ? effectivePaylines.length : (traits.family === 'line' ? 20 : 0);
 
   self.postMessage({
     type: 'DONE',

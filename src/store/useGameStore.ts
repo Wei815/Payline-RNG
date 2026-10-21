@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { PaytableRule, ReelStrips, ReelStripsList, SpecialSymbolConfig } from '../types';
 import { useMachineStore } from './useMachineStore';
 import type { Snippet } from './useSnippetStore';
+import { findTraits } from '../games/registry';
 
 export interface GameState {
   currentStrips: ReelStrips;
@@ -78,7 +79,7 @@ export const defaultSpecialSymbolConfig: SpecialSymbolConfig = {
 };
 
 export const extractSpecialConfigFromGrid = (grid: string[][], baseConfig: SpecialSymbolConfig, gameType: string): SpecialSymbolConfig => {
-  if (gameType === 'linegame' || gameType === 'waygame' || gameType === 'megaway') {
+  if (findTraits(gameType)?.specialConfigFromGrid === false) {
     return baseConfig;
   }
   
@@ -233,15 +234,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     const flatClassIds = (qa.ClassIDs && qa.ClassIDs.length > 0) ? qa.ClassIDs[0] : [];
     
     const gameType = snippet.gameType || useMachineStore.getState().gameType || '';
-    const isCoordinateClassId = gameType === 'linegame_set2' || gameType === 'linegame_gods' || gameType === 'linegame';
+    const classIdMode = findTraits(gameType)?.snippetClassIds ?? 'symbolMultiplier';
+    // 有 ClassID 座標意義的遊戲盤面一律以 MathID 解讀
+    const isCoordinateClassId = classIdMode !== 'symbolMultiplier';
     const newGoldFrames: Record<string, number> = {};
     const newJackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'> = {};
     const newWyConfigs: Record<number, { a: number, b: number, z: 0 | 1 }> = {};
 
-    if (gameType === 'linegame_gods') {
-      // In GodsGame, classId is used purely for WY configs (A, B, Z)
-      // We will parse it AFTER newGrid is generated, so leave it here empty for now
-    } else if (isCoordinateClassId && flatClassIds.length > 0) {
+    if (classIdMode === 'wyConfig') {
+      // classId 僅用於 WY 設定 (A, B, Z)，需在盤面產生後才解析
+    } else if (classIdMode === 'coordinate' && flatClassIds.length > 0) {
       const poolIndexToMultiplier: Record<number, number> = {
         0: 2, 1: 3, 2: 4, 3: 5, 4: 6, 5: 7, 6: 8, 7: 9, 8: 10, 9: 25, 10: 50, 11: 100
       };
@@ -300,8 +302,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       });
     }
     
-    // Parse WY Configs for GodsGame
-    if (gameType === 'linegame_gods' && flatClassIds.length > 0) {
+    // 解析 WY 設定 (A, B, Z)
+    if (classIdMode === 'wyConfig' && flatClassIds.length > 0) {
       let wyClassIdIndex = 0;
       for (let c = 0; c < reelCount; c++) {
         const hasWy = newGrid[c].includes('WY');
