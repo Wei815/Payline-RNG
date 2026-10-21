@@ -116,9 +116,9 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#0a192f] w-[95vw] max-w-[1400px] h-[90vh] rounded-xl shadow-2xl border border-blue-500/30 flex flex-col overflow-hidden">
+      <div className="bg-dashboard-bg w-[95vw] max-w-[1400px] h-[90vh] rounded-xl shadow-2xl border border-blue-500/30 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-[#112240] shrink-0">
+        <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-dashboard-card shrink-0">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-500/20 rounded-lg">
@@ -131,7 +131,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
               <span className="text-sm font-bold text-gray-400 uppercase tracking-wider">選擇遊戲範本:</span>
               <select 
                 onChange={handleTemplateChange}
-                className="bg-[#0a192f] border border-blue-500/50 text-[#e6f1ff] font-bold rounded px-3 py-1.5 text-sm outline-none focus:border-blue-400 cursor-pointer shadow-lg hover:bg-[#112240] transition-colors"
+                className="bg-dashboard-bg border border-blue-500/50 text-dashboard-text-primary font-bold rounded px-3 py-1.5 text-sm outline-none focus:border-blue-400 cursor-pointer shadow-lg hover:bg-dashboard-card transition-colors"
                 value={isProjectLoaded || loadStatus !== 'idle' ? "loaded" : ""}
               >
                 <option value="" disabled hidden>-- 請選擇 --</option>
@@ -171,7 +171,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
                 <select
                   value={selectedStripKey}
                   onChange={(e) => setSelectedStripKey(e.target.value)}
-                  className="w-full bg-[#0a192f] border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
+                  className="w-full bg-dashboard-bg border border-gray-600 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none"
                   disabled={!isProjectLoaded || isRunning}
                 >
                   <optgroup label="全流程模擬 (Base + Free)">
@@ -212,7 +212,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
                       disabled={!isProjectLoaded || isRunning}
                       className={`py-2 px-3 rounded-lg text-sm font-medium transition-colors ${selectedSpins === spins
                         ? 'bg-blue-600 text-white border-blue-500'
-                        : 'bg-[#112240] text-gray-400 border-gray-700 hover:border-gray-500 hover:text-white'
+                        : 'bg-dashboard-card text-gray-400 border-gray-700 hover:border-gray-500 hover:text-white'
                         } border disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       {spins.toLocaleString()} 局
@@ -247,7 +247,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
           </div>
 
           {/* Right Column: Results */}
-          <div className="flex-1 bg-[#0a192f] flex flex-col overflow-hidden">
+          <div className="flex-1 bg-dashboard-bg flex flex-col overflow-hidden">
             <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
 
               {/* Progress Bar */}
@@ -281,19 +281,19 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
 
                   {/* Skeleton Cards */}
                   <div className="grid grid-cols-4 gap-4 w-full mt-8 opacity-20">
-                    <div className="h-24 bg-[#112240] rounded-xl border border-blue-500/20"></div>
-                    <div className="h-24 bg-[#112240] rounded-xl border border-purple-500/20"></div>
-                    <div className="h-24 bg-[#112240] rounded-xl border border-yellow-500/20"></div>
-                    <div className="h-24 bg-[#112240] rounded-xl border border-green-500/20"></div>
+                    <div className="h-24 bg-dashboard-card rounded-xl border border-blue-500/20"></div>
+                    <div className="h-24 bg-dashboard-card rounded-xl border border-purple-500/20"></div>
+                    <div className="h-24 bg-dashboard-card rounded-xl border border-yellow-500/20"></div>
+                    <div className="h-24 bg-dashboard-card rounded-xl border border-green-500/20"></div>
                   </div>
-                  <div className="w-full h-64 bg-[#112240] rounded-xl border border-gray-700/50 mt-4 opacity-20"></div>
+                  <div className="w-full h-64 bg-dashboard-card rounded-xl border border-gray-700/50 mt-4 opacity-20"></div>
                 </div>
               )}
 
               {/* KPI Cards */}
               {result && (
                 <div className="grid grid-cols-4 gap-4 mb-8">
-                  <div className="bg-[#112240] p-4 rounded-xl border border-blue-500/20">
+                  <div className="bg-dashboard-card p-4 rounded-xl border border-blue-500/20">
                     <div className="flex items-center gap-2 text-gray-400 mb-2">
                       <Percent className="w-4 h-4" />
                       <span className="text-sm">總 RTP</span>
@@ -303,7 +303,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
                     </div>
                   </div>
 
-                  <div className="bg-[#112240] p-4 rounded-xl border border-purple-500/20">
+                  <div className="bg-dashboard-card p-4 rounded-xl border border-purple-500/20">
                     <div className="flex items-center gap-2 text-gray-400 mb-2">
                       <Target className="w-4 h-4" />
                       <span className="text-sm">命中率 (Hit Freq)</span>
@@ -313,7 +313,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
                     </div>
                   </div>
 
-                  <div className="bg-[#112240] p-4 rounded-xl border border-yellow-500/20">
+                  <div className="bg-dashboard-card p-4 rounded-xl border border-yellow-500/20">
                     <div className="flex items-center gap-2 text-gray-400 mb-2">
                       <Coins className="w-4 h-4" />
                       <span className="text-sm">有效底注 (Eff. Bet)</span>
@@ -323,7 +323,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
                     </div>
                   </div>
 
-                  <div className="bg-[#112240] p-4 rounded-xl border border-green-500/20">
+                  <div className="bg-dashboard-card p-4 rounded-xl border border-green-500/20">
                     <div className="flex items-center gap-2 text-gray-400 mb-2">
                       <BarChart2 className="w-4 h-4" />
                       <span className="text-sm">遊戲屬性</span>
@@ -340,7 +340,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
               {/* Full Game Detailed Metrics */}
               {result && result.freeGameTriggers !== undefined && result.freeGameTriggers > 0 && (
                 <div className="grid grid-cols-4 gap-4 mb-8">
-                  <div className="bg-[#112240] p-4 rounded-xl border border-blue-500/20 flex flex-col justify-between">
+                  <div className="bg-dashboard-card p-4 rounded-xl border border-blue-500/20 flex flex-col justify-between">
                     <div className="flex items-center gap-2 text-gray-400 mb-2">
                       <span className="text-xs">Base Game 貢獻 RTP</span>
                     </div>
@@ -349,7 +349,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
                     </div>
                   </div>
 
-                  <div className="bg-[#112240] p-4 rounded-xl border border-pink-500/20 flex flex-col justify-between">
+                  <div className="bg-dashboard-card p-4 rounded-xl border border-pink-500/20 flex flex-col justify-between">
                     <div className="flex items-center gap-2 text-gray-400 mb-2">
                       <span className="text-xs">Free Game 貢獻 RTP</span>
                     </div>
@@ -358,7 +358,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
                     </div>
                   </div>
 
-                  <div className="bg-[#112240] p-4 rounded-xl border border-indigo-500/20 flex flex-col justify-between">
+                  <div className="bg-dashboard-card p-4 rounded-xl border border-indigo-500/20 flex flex-col justify-between">
                     <div className="flex items-center gap-2 text-gray-400 mb-2">
                       <span className="text-xs">進免遊次數 (Trigger)</span>
                     </div>
@@ -370,7 +370,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
                     </div>
                   </div>
 
-                  <div className="bg-[#112240] p-4 rounded-xl border border-cyan-500/20 flex flex-col justify-between">
+                  <div className="bg-dashboard-card p-4 rounded-xl border border-cyan-500/20 flex flex-col justify-between">
                     <div className="flex items-center gap-2 text-gray-400 mb-2">
                       <span className="text-xs">Retrigger 次數</span>
                     </div>
@@ -388,7 +388,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
                     <ArrowDownWideNarrow className="w-5 h-5 text-gray-400" />
                     <h3 className="text-lg font-bold text-white">符號 RTP 貢獻度分析</h3>
                   </div>
-                  <div className="bg-[#112240] rounded-xl border border-gray-700/50 overflow-hidden">
+                  <div className="bg-dashboard-card rounded-xl border border-gray-700/50 overflow-hidden">
                     <table className="w-full text-sm text-left">
                       <thead className="text-xs text-gray-400 uppercase bg-gray-800/50 border-b border-gray-700/50">
                         <tr>

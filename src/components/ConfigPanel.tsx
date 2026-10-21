@@ -617,10 +617,10 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
     return (
       <React.Fragment>
         <tr className={bgColor}>
-          <td rowSpan={matchesToRender.length + 1} className="border-r border-b border-gray-700 p-2 font-bold text-dashboard-accent text-center bg-[#0f1d35] whitespace-pre-wrap w-24">
+          <td rowSpan={matchesToRender.length + 1} className="border-r border-b border-gray-700 p-2 font-bold text-dashboard-accent text-center bg-dashboard-raised whitespace-pre-wrap w-24">
             {title}
           </td>
-          <td className="border-r border-b border-gray-700 p-1 font-bold text-gray-500 w-16 bg-[#0f1d35]">
+          <td className="border-r border-b border-gray-700 p-1 font-bold text-gray-500 w-16 bg-dashboard-raised">
             Sym
           </td>
           {bases.map(base => {
@@ -628,7 +628,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
             if (!sym) return <td key={base} className="border-none bg-transparent"></td>;
 
             return (
-              <td key={base} className="border-r border-b border-t border-gray-700 p-2 h-[56px] bg-[#112240] shadow-sm relative">
+              <td key={base} className="border-r border-b border-t border-gray-700 p-2 h-[56px] bg-dashboard-card shadow-sm relative">
                 <div className="flex items-center justify-center gap-2.5">
                   <div className="text-dashboard-text-primary text-[15px] font-bold min-w-[20px] text-center">{sym}</div>
                   <div className="flex flex-col gap-1 text-xs text-dashboard-text-secondary font-sans font-normal border-l border-gray-700/50 pl-2.5">
@@ -668,8 +668,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
             }
 
           return (
-            <tr key={match} className={`hover:bg-[#1a2b4c] transition-colors ${bgColor}`}>
-              <td className="border-r border-b border-gray-700 p-2 font-bold text-dashboard-text-secondary bg-[#0f1d35] shadow-sm">
+            <tr key={match} className={`hover:bg-dashboard-hover transition-colors ${bgColor}`}>
+              <td className="border-r border-b border-gray-700 p-2 font-bold text-dashboard-text-secondary bg-dashboard-raised shadow-sm">
                 {labelText}
               </td>
               {bases.map(base => {
@@ -678,7 +678,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
 
                 const val = paytableMap[sym]?.payouts[`match${match}`] ?? 0;
                 return (
-                  <td key={base} className="border-r border-b border-gray-700 p-0 h-[40px] min-w-[110px] bg-[#0a192f]">
+                  <td key={base} className="border-r border-b border-gray-700 p-0 h-[40px] min-w-[110px] bg-dashboard-bg">
                     <input
                       type="number"
                       min="0"
@@ -700,7 +700,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                           }
                         }
                       }}
-                      className="w-full h-full bg-transparent text-center focus:outline-none focus:bg-[#1a2b4c] focus:text-dashboard-accent text-dashboard-text-primary transition-colors text-sm"
+                      className="w-full h-full bg-transparent text-center focus:outline-none focus:bg-dashboard-hover focus:text-dashboard-accent text-dashboard-text-primary transition-colors text-sm"
                     />
                   </td>
                 );
@@ -722,7 +722,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
             value={selectedTemplate}
             onChange={(e) => setSelectedTemplate(e.target.value)}
             disabled={isRunning}
-            className="bg-[#0f1d35] border border-gray-700 text-dashboard-accent rounded px-2 py-1.5 outline-none focus:border-dashboard-accent cursor-pointer text-sm font-bold font-mono max-w-full truncate"
+            className="bg-dashboard-raised border border-gray-700 text-dashboard-accent rounded px-2 py-1.5 outline-none focus:border-dashboard-accent cursor-pointer text-sm font-bold font-mono max-w-full truncate"
           >
             {templateKeys.map(path => (
               <option key={path} value={path}>{getTemplateName(path)}</option>
@@ -812,7 +812,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                   value={gameType}
                   onChange={(e) => onGameTypeChange(e.target.value as GameType)}
                   disabled={isRunning}
-                  className="bg-[#0f1d35] border border-gray-700 text-dashboard-accent rounded px-2 py-1 outline-none focus:border-dashboard-accent cursor-pointer text-xs font-bold font-mono"
+                  className="bg-dashboard-raised border border-gray-700 text-dashboard-accent rounded px-2 py-1 outline-none focus:border-dashboard-accent cursor-pointer text-xs font-bold font-mono"
                 >
                 {GAME_SELECT_GROUPS.map(group => (
                   <optgroup key={group.label} label={group.label}>
@@ -831,7 +831,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                     setGridData(Array.from({ length: 4 }, () => Array(newCount).fill('')));
                   }}
                   disabled={isRunning}
-                  className="bg-[#0f1d35] border border-gray-700 text-dashboard-accent rounded px-2 py-1 outline-none focus:border-dashboard-accent cursor-pointer text-xs font-bold font-mono"
+                  className="bg-dashboard-raised border border-gray-700 text-dashboard-accent rounded px-2 py-1 outline-none focus:border-dashboard-accent cursor-pointer text-xs font-bold font-mono"
                 >
                   <option value={3}>3</option>
                   <option value={4}>4</option>
@@ -843,7 +843,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
 
             {/* Row 2: Secondary Filters/Inputs */}
             <div className="flex flex-wrap items-center gap-3 text-xs">
-              <div className="flex items-center gap-1.5 bg-[#112240] px-2 py-1 rounded border border-gray-700/50 focus-within:border-dashboard-accent transition-colors">
+              <div className="flex items-center gap-1.5 bg-dashboard-card px-2 py-1 rounded border border-gray-700/50 focus-within:border-dashboard-accent transition-colors">
                 <span className="text-xs text-gray-400 font-bold whitespace-nowrap">Highlight:</span>
                 <input
                   type="text"
@@ -854,7 +854,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                   className="bg-transparent border-none outline-none text-dashboard-accent font-bold text-xs w-10 text-center uppercase"
                 />
               </div>
-              <div className="flex items-center gap-1.5 bg-[#112240] px-2 py-1 rounded border border-gray-700/50">
+              <div className="flex items-center gap-1.5 bg-dashboard-card px-2 py-1 rounded border border-gray-700/50">
                 <span className="text-gray-400 font-bold whitespace-nowrap">COIN (規則):</span>
                 <input
                   type="number"
@@ -865,7 +865,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                   className="bg-transparent border-none outline-none text-dashboard-accent font-bold text-xs w-10 text-center font-mono"
                 />
               </div>
-              <div className="flex items-center gap-1.5 bg-[#112240] px-2 py-1 rounded border border-gray-700/50">
+              <div className="flex items-center gap-1.5 bg-dashboard-card px-2 py-1 rounded border border-gray-700/50">
                 <span className="text-gray-400 font-bold whitespace-nowrap">BET (實際投注):</span>
                 <input
                   type="number"
@@ -884,13 +884,13 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                 {getTraits(gameType).mathIdGenerator ? '參數設定' : 'Reel Strips 表格'}
               </label>
               {!getTraits(gameType).mathIdGenerator && (
-                <div className="flex items-center gap-1 bg-[#112240] p-0.5 rounded border border-gray-700/50">
+                <div className="flex items-center gap-1 bg-dashboard-card p-0.5 rounded border border-gray-700/50">
                   <button
                     onClick={() => setActiveStripTab('base')}
                     disabled={isRunning}
                     className={`px-3 py-1 text-xs font-bold rounded transition-colors ${
                       activeStripTab === 'base'
-                        ? 'bg-dashboard-accent text-[#0a192f]'
+                        ? 'bg-dashboard-accent text-dashboard-bg'
                         : 'text-gray-400 hover:text-white'
                     }`}
                   >
@@ -901,7 +901,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                     disabled={isRunning}
                     className={`px-3 py-1 text-xs font-bold rounded transition-colors ${
                       activeStripTab === 'free'
-                        ? 'bg-dashboard-accent text-[#0a192f]'
+                        ? 'bg-dashboard-accent text-dashboard-bg'
                         : 'text-gray-400 hover:text-white'
                     }`}
                   >
@@ -915,7 +915,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                         value={activeStripId}
                         onChange={(e) => setActiveStripId(Number(e.target.value))}
                         disabled={isRunning}
-                        className="bg-[#0a192f] border border-gray-600 text-dashboard-accent font-bold rounded px-1.5 py-0.5 text-xs outline-none focus:border-dashboard-accent cursor-pointer"
+                        className="bg-dashboard-bg border border-gray-600 text-dashboard-accent font-bold rounded px-1.5 py-0.5 text-xs outline-none focus:border-dashboard-accent cursor-pointer"
                       >
                         {(activeStripTab === 'base' ? currentStripSets : currentFreeStripSets)?.map((_, i) => (
                           <option key={i} value={i}>ID {i}</option>
@@ -929,8 +929,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
           </div>
 
           {getTraits(gameType).mathIdGenerator && (
-            <div className="flex-1 border border-gray-700 rounded-lg overflow-hidden flex flex-col bg-[#0a192f] mt-2">
-              <div className="flex justify-between items-center bg-[#0f1d35] border-b border-gray-700 p-3 shrink-0">
+            <div className="flex-1 border border-gray-700 rounded-lg overflow-hidden flex flex-col bg-dashboard-bg mt-2">
+              <div className="flex justify-between items-center bg-dashboard-raised border-b border-gray-700 p-3 shrink-0">
                 <span className="text-sm text-dashboard-text-secondary font-bold">MathID 映射表</span>
                 <span className="text-xs text-gray-500">多個請用逗號分隔</span>
               </div>
@@ -956,13 +956,13 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                         newMap[rule.symbolId] = { ...rule, mathId: e.target.value };
                         setPaytableMap(newMap);
                       }}
-                      className={`flex-1 border rounded px-3 py-1.5 text-xs outline-none transition-colors ${
+                      className={`flex-1 min-w-0 border rounded px-3 py-1.5 text-xs outline-none transition-colors ${
                         rule.isEnabled !== false 
-                          ? 'bg-[#112240] border-gray-600 text-white focus:border-dashboard-accent' 
+                          ? 'bg-dashboard-card border-gray-600 text-white focus:border-dashboard-accent' 
                           : 'bg-gray-800/50 border-gray-700/50 text-gray-500 cursor-not-allowed'
                       }`}
                     />
-                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-medium text-gray-400 hover:text-white transition-colors">
+                    <label className="flex items-center gap-1.5 shrink-0 cursor-pointer text-xs font-medium text-gray-400 hover:text-white transition-colors">
                       <input
                         type="checkbox"
                         checked={rule.isEnabled !== false}
@@ -984,11 +984,11 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
 
           {!getTraits(gameType).mathIdGenerator && (
             <div
-              className="flex-1 border border-gray-700 rounded-lg overflow-hidden flex flex-col bg-[#0a192f] focus-within:ring-1 focus-within:ring-dashboard-accent focus-within:border-dashboard-accent transition-all relative"
+              className="flex-1 border border-gray-700 rounded-lg overflow-hidden flex flex-col bg-dashboard-bg focus-within:ring-1 focus-within:ring-dashboard-accent focus-within:border-dashboard-accent transition-all relative"
               tabIndex={0}
               onPaste={isRunning ? undefined : onPaste}
             >
-            <div className="flex bg-[#0f1d35] text-xs font-bold text-dashboard-text-secondary border-b border-gray-700 select-none">
+            <div className="flex bg-dashboard-raised text-xs font-bold text-dashboard-text-secondary border-b border-gray-700 select-none">
               <div className="w-12 py-2 text-center border-r border-gray-700">Line #</div>
               {Array.from({ length: reelCount }).map((_, i) => (
                 <div key={i} className="flex-1 py-2 text-center border-r border-gray-700/50 last:border-r-0">
@@ -1001,8 +1001,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
               <table className="w-full text-center text-xs font-mono">
                 <tbody className="divide-y divide-gray-800/50">
                   {displayStrips.map((row, rowIndex) => (
-                    <tr key={rowIndex} className="hover:bg-[#112240] transition-colors">
-                      <td className="w-12 py-1.5 bg-[#112240] text-gray-500 border-r border-gray-700 select-none">
+                    <tr key={rowIndex} className="hover:bg-dashboard-card transition-colors">
+                      <td className="w-12 py-1.5 bg-dashboard-card text-gray-500 border-r border-gray-700 select-none">
                         {rowIndex}
                       </td>
                       {row.map((cell, colIndex) => {
@@ -1025,7 +1025,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
 
             {isGridEmpty && !isRunning && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/60 backdrop-blur-[2px] z-10">
-                <div className="bg-[#112240] border border-dashboard-accent text-dashboard-accent px-5 py-3 rounded-lg shadow-2xl flex items-center gap-3 font-medium text-sm">
+                <div className="bg-dashboard-card border border-dashboard-accent text-dashboard-accent px-5 py-3 rounded-lg shadow-2xl flex items-center gap-3 font-medium text-sm">
                   <Table size={18} /> 點擊此處並按 Ctrl+V 貼上
                 </div>
               </div>
@@ -1041,11 +1041,11 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
               <span className="text-xs text-dashboard-text-secondary font-mono">已載入 {customPaylines.length} 條線</span>
             </div>
             <div
-              className="flex-1 border border-gray-700 rounded-lg overflow-hidden flex flex-col bg-[#0a192f] focus-within:ring-1 focus-within:ring-dashboard-accent focus-within:border-dashboard-accent transition-all relative"
+              className="flex-1 border border-gray-700 rounded-lg overflow-hidden flex flex-col bg-dashboard-bg focus-within:ring-1 focus-within:ring-dashboard-accent focus-within:border-dashboard-accent transition-all relative"
               tabIndex={0}
               onPaste={isRunning ? undefined : onPastePaylines}
             >
-              <div className="flex bg-[#0f1d35] text-xs font-bold text-dashboard-text-secondary border-b border-gray-700 select-none">
+              <div className="flex bg-dashboard-raised text-xs font-bold text-dashboard-text-secondary border-b border-gray-700 select-none">
                 <div className="w-12 py-2 text-center border-r border-gray-700">No.</div>
                 {Array.from({ length: reelCount }).map((_, i) => (
                   <div key={i} className="flex-1 py-2 text-center border-r border-gray-700/50 last:border-r-0">
@@ -1058,8 +1058,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                 <table className="w-full text-center text-xs font-mono">
                   <tbody className="divide-y divide-gray-800/50">
                     {customPaylines.map((row, rowIndex) => (
-                      <tr key={rowIndex} className="hover:bg-[#112240] transition-colors">
-                        <td className="w-12 py-1.5 bg-[#112240] text-gray-500 border-r border-gray-700 select-none">
+                      <tr key={rowIndex} className="hover:bg-dashboard-card transition-colors">
+                        <td className="w-12 py-1.5 bg-dashboard-card text-gray-500 border-r border-gray-700 select-none">
                           {rowIndex + 1}
                         </td>
                         {row.map((cell, colIndex) => (
@@ -1078,7 +1078,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
 
               {customPaylines.length === 0 && !isRunning && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none bg-black/60 backdrop-blur-[2px] z-10">
-                  <div className="bg-[#112240] border border-dashboard-accent text-dashboard-accent px-5 py-3 rounded-lg shadow-2xl flex items-center gap-3 font-medium text-sm">
+                  <div className="bg-dashboard-card border border-dashboard-accent text-dashboard-accent px-5 py-3 rounded-lg shadow-2xl flex items-center gap-3 font-medium text-sm">
                     <Table size={18} /> 點擊此處並按 Ctrl+V 貼上線規則
                   </div>
                 </div>
@@ -1089,7 +1089,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
 
         <div className="flex flex-col gap-2 mt-2">
           <label className="text-sm text-dashboard-text-secondary font-medium">Paytable Rules</label>
-          <div className="bg-[#0f1d35] border border-gray-700 rounded-lg p-4 flex items-center justify-between">
+          <div className="bg-dashboard-raised border border-gray-700 rounded-lg p-4 flex items-center justify-between">
             <div className="flex flex-col">
               <span className="text-dashboard-text-primary font-bold">動態賠率表</span>
               <span className="text-gray-500 text-xs mt-1">
@@ -1099,7 +1099,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
             <button
               onClick={() => setIsModalOpen(true)}
               disabled={isRunning || uniqueSymbols.length === 0}
-              className="flex items-center gap-2 px-4 py-2 bg-[#112240] border border-dashboard-accent text-dashboard-accent rounded-lg hover:bg-dashboard-accent hover:text-[#0a192f] transition-all font-bold text-sm disabled:opacity-50 disabled:hover:bg-[#112240] disabled:hover:text-dashboard-accent disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 bg-dashboard-card border border-dashboard-accent text-dashboard-accent rounded-lg hover:bg-dashboard-accent hover:text-dashboard-bg transition-all font-bold text-sm disabled:opacity-50 disabled:hover:bg-dashboard-card disabled:hover:text-dashboard-accent disabled:cursor-not-allowed"
             >
               <Edit3 size={16} /> 開啟編輯器
             </button>
@@ -1117,7 +1117,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
       <button
         onClick={handleTestSpin}
         disabled={isRunning || (isGridEmpty && !getTraits(gameType).mathIdGenerator)}
-        className="mt-auto w-full py-3 flex items-center justify-center gap-2 bg-[#112240] border border-dashboard-accent text-dashboard-accent font-bold rounded-lg hover:bg-dashboard-accent hover:text-[#0a192f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="mt-auto w-full py-3 flex items-center justify-center gap-2 bg-dashboard-card border border-dashboard-accent text-dashboard-accent font-bold rounded-lg hover:bg-dashboard-accent hover:text-dashboard-bg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isRunning ? (
           <>
@@ -1138,9 +1138,9 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
       {/* Paytable Editor Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200">
-          <div className="bg-[#0a192f] border border-gray-600 w-full max-w-7xl h-full max-h-[90vh] rounded-xl flex flex-col shadow-2xl overflow-hidden relative">
+          <div className="bg-dashboard-bg border border-gray-600 w-full max-w-7xl h-full max-h-[90vh] rounded-xl flex flex-col shadow-2xl overflow-hidden relative">
 
-            <div className="flex justify-between items-center p-5 border-b border-gray-700 bg-[#0f1d35] shrink-0">
+            <div className="flex justify-between items-center p-5 border-b border-gray-700 bg-dashboard-raised shrink-0">
               <div className="flex items-center gap-3">
                 <Table className="text-dashboard-accent" />
                 <h2 className="text-xl font-bold text-dashboard-text-primary tracking-wide">Paytable Editor</h2>
@@ -1161,9 +1161,9 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                   return (
                     <div key={group.id} className="flex flex-col gap-3">
                       <h3 className="text-dashboard-accent font-bold text-lg px-1">{group.title}</h3>
-                      <div className="overflow-x-auto rounded-lg shadow-xl border border-gray-700 bg-[#0a192f]">
+                      <div className="overflow-x-auto rounded-lg shadow-xl border border-gray-700 bg-dashboard-bg">
                         <table className="w-full text-center text-xs font-mono border-collapse table-auto">
-                          <thead className="bg-[#0f1d35]">
+                          <thead className="bg-dashboard-raised">
                             <tr>
                               <th className="p-3 border-b border-r border-gray-700 w-24 font-bold text-dashboard-text-secondary">Type</th>
                               <th className="p-3 border-b border-r border-gray-700 w-16 font-bold text-dashboard-text-secondary">Hits</th>

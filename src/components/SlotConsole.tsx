@@ -77,6 +77,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
   const [useWxInLines, setUseWxInLines] = useState<boolean>(true);
 
   const hasLinesTab = getTraits(gameType).family === 'line' || !!getTraits(gameType).tumbleViewerTab;
+  const hasCustomGridTab = !!getTraits(gameType).customGridTab;
 
   const formattedStripSets = useMemo(() => {
     const sets = isFreeGame ? currentFreeStripSets : currentStripSets;
@@ -89,6 +90,9 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
   useEffect(() => {
     if (!hasLinesTab && activeTab === 'lines') {
       setActiveTab('manual');
+    }
+    if (!hasCustomGridTab && activeTab === 'customGrid') {
+      setActiveTab(getTraits(gameType).mathIdGenerator ? 'other' : 'manual');
     }
   }, [gameType, activeTab]);
 
@@ -151,17 +155,19 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
 
 
   return (
-    <div className="h-full flex flex-col p-6 overflow-hidden relative">
+    <div className="h-full flex flex-col p-3 sm:p-5 overflow-hidden relative">
 
 
       {/* Tabs Switcher */}
-      <div className="flex border-b border-gray-800 bg-[#0f1d35] rounded-t-xl overflow-hidden shrink-0 border border-gray-700/50">
+      <div role="tablist" className="flex bg-dashboard-card rounded-t-xl shrink-0 border border-dashboard-border overflow-x-auto custom-scrollbar">
         {!getTraits(gameType).mathIdGenerator && (
           <button
             onClick={() => setActiveTab('manual')}
-            className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-all duration-200 cursor-pointer ${activeTab === 'manual'
-                ? 'border-dashboard-accent text-dashboard-accent bg-[#112240]/40'
-                : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-[#112240]/20'
+            role="tab"
+            aria-selected={activeTab === 'manual'}
+            className={`flex-1 min-w-max px-4 h-11 text-[13px] font-semibold text-center whitespace-nowrap border-b-2 transition-colors cursor-pointer ${activeTab === 'manual'
+                ? 'border-dashboard-accent text-dashboard-text-primary bg-dashboard-raised'
+                : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-dashboard-hover/60'
               }`}
           >
             手動計算盤面
@@ -169,38 +175,46 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
         )}
         <button
           onClick={() => setActiveTab('other')}
-          className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-all duration-200 cursor-pointer ${activeTab === 'other'
-              ? 'border-dashboard-accent text-dashboard-accent bg-[#112240]/40'
-              : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-[#112240]/20'
-            }`}
+          role="tab"
+            aria-selected={activeTab === 'other'}
+            className={`flex-1 min-w-max px-4 h-11 text-[13px] font-semibold text-center whitespace-nowrap border-b-2 transition-colors cursor-pointer ${activeTab === 'other'
+                ? 'border-dashboard-accent text-dashboard-text-primary bg-dashboard-raised'
+                : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-dashboard-hover/60'
+              }`}
         >
           連線測試產生器
         </button>
         {hasLinesTab && (
           <button
             onClick={() => setActiveTab('lines')}
-            className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-all duration-200 cursor-pointer ${activeTab === 'lines'
-                ? 'border-dashboard-accent text-dashboard-accent bg-[#112240]/40'
-                : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-[#112240]/20'
+            role="tab"
+            aria-selected={activeTab === 'lines'}
+            className={`flex-1 min-w-max px-4 h-11 text-[13px] font-semibold text-center whitespace-nowrap border-b-2 transition-colors cursor-pointer ${activeTab === 'lines'
+                ? 'border-dashboard-accent text-dashboard-text-primary bg-dashboard-raised'
+                : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-dashboard-hover/60'
               }`}
           >
             {getTraits(gameType).family === 'line' ? '贏分線路一覽' : '消除掉落測試'}
           </button>
         )}
+        {hasCustomGridTab && (
         <button
           onClick={() => setActiveTab('customGrid')}
-          className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-all duration-200 cursor-pointer ${activeTab === 'customGrid'
-              ? 'border-dashboard-accent text-dashboard-accent bg-[#112240]/40'
-              : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-[#112240]/20'
-            }`}
+          role="tab"
+            aria-selected={activeTab === 'customGrid'}
+            className={`flex-1 min-w-max px-4 h-11 text-[13px] font-semibold text-center whitespace-nowrap border-b-2 transition-colors cursor-pointer ${activeTab === 'customGrid'
+                ? 'border-dashboard-accent text-dashboard-text-primary bg-dashboard-raised'
+                : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-dashboard-hover/60'
+              }`}
         >
           自定義盤面
         </button>
+        )}
       </div>
 
       {/* Content Area */}
-      <div className="flex-1 min-h-0 bg-[#112240]/10 border-x border-b border-gray-700/30 rounded-b-xl overflow-y-auto custom-scrollbar p-6 flex flex-col">
-        <React.Suspense fallback={<div>Loading...</div>}>
+      <div className="flex-1 min-h-0 bg-dashboard-inset/40 border-x border-b border-dashboard-border rounded-b-xl overflow-y-auto custom-scrollbar p-3 sm:p-6 flex flex-col">
+        <React.Suspense fallback={<div className="m-auto text-sm text-dashboard-text-muted">載入中…</div>}>
         {activeTab === 'manual' && (
           <SlotManualTab 
             reelCount={reelCount} rowCounts={rowCounts} onRowCountsChange={setRowCounts}
@@ -277,7 +291,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
             />
           </div>
         )}
-        {activeTab === 'customGrid' && (
+        {hasCustomGridTab && activeTab === 'customGrid' && (
           <div className="w-full flex-1 flex flex-col min-h-0">
             <SlotCustomGridTab 
               reelCount={reelCount} rowCounts={rowCounts} currentPaytable={currentPaytable}

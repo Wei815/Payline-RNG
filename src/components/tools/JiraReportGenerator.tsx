@@ -434,16 +434,16 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#0a192f] w-[95vw] max-w-[1600px] rounded-xl shadow-2xl border border-blue-500/30 flex flex-col overflow-hidden max-h-[95vh]">
+      <div className="bg-dashboard-bg w-[95vw] max-w-[1600px] rounded-xl shadow-2xl border border-blue-500/30 flex flex-col overflow-hidden max-h-[95vh]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-[#112240]">
+        <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-dashboard-card">
           <div className="flex items-center gap-4">
             <div className="p-2 bg-blue-500/20 rounded-lg">
               <FileSpreadsheet className="w-5 h-5 text-blue-400" />
             </div>
             <h2 className="text-lg font-bold text-white flex items-center gap-4">
               Jira CSV 報表轉換器
-              <div className="flex items-center bg-[#0a192f] p-1 rounded-lg border border-gray-700">
+              <div className="flex items-center bg-dashboard-bg p-1 rounded-lg border border-gray-700">
                 <button 
                   className="px-4 py-1 rounded bg-blue-500 text-white text-sm font-bold shadow-sm"
                 >
@@ -471,14 +471,14 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
           <div className="flex items-center gap-4">
             <button 
               onClick={() => document.getElementById('jira-csv-upload')?.click()}
-              className="flex items-center gap-2 px-4 py-2 bg-[#112240] hover:bg-[#152e4b] border border-blue-500/50 hover:border-blue-400 text-blue-300 font-bold rounded-lg transition-colors shadow-lg"
+              className="flex items-center gap-2 px-4 py-2 bg-dashboard-card hover:bg-dashboard-hover border border-blue-500/50 hover:border-blue-400 text-blue-300 font-bold rounded-lg transition-colors shadow-lg"
             >
               <Upload className="w-5 h-5" />
               上傳 Jira CSV
             </button>
             <button
               onClick={() => window.open('https://docs.google.com/spreadsheets/d/1-R8yri4STdd8sjgdWmcCmOOjbOWaoZeleXjbBzBgBrc/edit?gid=1865707977#gid=1865707977', '_blank')}
-              className="flex items-center gap-2 px-4 py-2 bg-[#112240] hover:bg-[#152e4b] border border-green-500/50 hover:border-green-400 text-green-300 font-bold rounded-lg transition-colors shadow-lg"
+              className="flex items-center gap-2 px-4 py-2 bg-dashboard-card hover:bg-dashboard-hover border border-green-500/50 hover:border-green-400 text-green-300 font-bold rounded-lg transition-colors shadow-lg"
             >
               <ExternalLink className="w-5 h-5" />
               開啟目標追蹤表
@@ -543,7 +543,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
               </div>
             </div>
             {/* Visual Table Preview */}
-            <div className={`w-full flex-1 min-h-[400px] border rounded-lg overflow-auto ${jiraReportData && jiraReportData.length > 0 ? 'bg-white border-gray-700 p-1' : 'bg-[#0a192f]/50 border-gray-700 border-dashed flex flex-col items-center justify-center p-8'}`}>
+            <div className={`w-full flex-1 min-h-[400px] border rounded-lg overflow-auto ${jiraReportData && jiraReportData.length > 0 ? 'bg-white border-gray-700 p-1' : 'bg-dashboard-bg/50 border-gray-700 border-dashed flex flex-col items-center justify-center p-8'}`}>
               {jiraReportData && jiraReportData.length > 0 ? (
                 <table className="w-full text-black border-collapse border border-gray-300">
                   <thead className="bg-gray-100">
@@ -616,8 +616,8 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
       {/* MR Modal */}
       {showMrModal && (
         <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4">
-          <div className="bg-[#0a192f] w-full max-w-6xl min-h-[700px] rounded-xl shadow-2xl border border-purple-500/50 flex flex-col overflow-hidden max-h-[90vh]">
-            <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-[#112240]">
+          <div className="bg-dashboard-bg w-full max-w-6xl min-h-[700px] rounded-xl shadow-2xl border border-purple-500/50 flex flex-col overflow-hidden max-h-[90vh]">
+            <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-dashboard-card">
               <h2 className="text-lg font-bold text-purple-300">產生 MR 表單</h2>
               <button onClick={() => setShowMrModal(false)} className="p-2 hover:bg-white/10 rounded-lg text-gray-400">
                 <X className="w-5 h-5" />
@@ -656,7 +656,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                     {mrCopySuccess ? '✅ 已複製' : '📋 複製內容'}
                   </button>
                 </div>
-                <div className="flex-1 w-full min-h-0 bg-[#050b14] text-sm p-4 rounded-lg border border-gray-700 overflow-y-auto font-mono">
+                <div className="flex-1 w-full min-h-0 bg-dashboard-inset text-sm p-4 rounded-lg border border-gray-700 overflow-y-auto font-mono">
                   {mrSelectedProjects.map((proj) => {
                     const row = jiraReportData?.find(r => r[0] === proj);
                     if (!row) return null;
@@ -726,8 +726,8 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
 
         return (
         <div className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4">
-          <div className="bg-[#0a192f] w-full max-w-5xl min-h-[600px] rounded-xl shadow-2xl border border-blue-500/50 flex flex-col overflow-hidden max-h-[90vh]">
-            <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-[#112240]">
+          <div className="bg-dashboard-bg w-full max-w-5xl min-h-[600px] rounded-xl shadow-2xl border border-blue-500/50 flex flex-col overflow-hidden max-h-[90vh]">
+            <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-dashboard-card">
               <div className="flex items-center gap-4">
                 <h2 className="text-lg font-bold text-blue-300">
                   {modalTitle}
@@ -737,7 +737,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                     <select 
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value)}
-                      className="bg-[#0a192f] text-sm text-green-300 border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-green-500"
+                      className="bg-dashboard-bg text-sm text-green-300 border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-green-500"
                     >
                       <option value="All">所有狀態</option>
                       {uniqueStatuses.map(status => (
@@ -749,7 +749,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                     <select 
                       value={reporterFilter}
                       onChange={(e) => setReporterFilter(e.target.value)}
-                      className="bg-[#0a192f] text-sm text-purple-300 border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-purple-500"
+                      className="bg-dashboard-bg text-sm text-purple-300 border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-purple-500"
                     >
                       <option value="All">所有回報者</option>
                       {uniqueReporters.map(name => (
@@ -761,7 +761,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                     <select 
                       value={assigneeFilter}
                       onChange={(e) => setAssigneeFilter(e.target.value)}
-                      className="bg-[#0a192f] text-sm text-cyan-300 border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-cyan-500"
+                      className="bg-dashboard-bg text-sm text-cyan-300 border border-gray-600 rounded px-2 py-1 focus:outline-none focus:border-cyan-500"
                     >
                       <option value="All">所有受託人</option>
                       {uniqueAssignees.map(name => (
@@ -828,7 +828,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                               </div>
                               <div className="flex flex-col gap-3">
                                 {issuesInStatus.map((issue, idx) => (
-                                  <div key={idx} className="bg-[#112240] rounded-lg p-3 border border-gray-700 shadow-md flex flex-col sm:flex-row sm:items-center gap-3">
+                                  <div key={idx} className="bg-dashboard-card rounded-lg p-3 border border-gray-700 shadow-md flex flex-col sm:flex-row sm:items-center gap-3">
                                     <a 
                                       href={`https://auforce.atlassian.net/browse/${issue.issueKey}`} 
                                       target="_blank" 
@@ -843,7 +843,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
                                       {issue.summary || '無摘要'}
                                     </div>
                                     <div className="hidden sm:block w-px h-8 bg-gray-700 shrink-0"></div>
-                                    <div className="flex items-center gap-4 text-xs bg-[#0a192f] p-2 px-4 rounded-lg border border-gray-800 shrink-0">
+                                    <div className="flex items-center gap-4 text-xs bg-dashboard-bg p-2 px-4 rounded-lg border border-gray-800 shrink-0">
                                       <div className="flex flex-col gap-1 w-[80px]">
                                         <span className="text-gray-500">回報者</span>
                                         <span className="text-purple-300 font-medium truncate" title={issue.reporter || '未知'}>{issue.reporter || '未知'}</span>

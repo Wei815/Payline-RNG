@@ -63,7 +63,7 @@ const StepCard = ({ step, idx, gameType }: { step: any, idx: number, gameType: s
   };
 
   return (
-    <div className="bg-[#0a192f] border border-gray-700/50 rounded-xl p-6 shadow-xl relative overflow-hidden">
+    <div className="bg-dashboard-bg border border-gray-700/50 rounded-xl p-6 shadow-xl relative overflow-hidden">
       <div className="absolute top-0 left-0 w-1 bg-dashboard-accent h-full"></div>
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-bold text-dashboard-text-primary flex items-center gap-2">
@@ -84,7 +84,7 @@ const StepCard = ({ step, idx, gameType }: { step: any, idx: number, gameType: s
         </div>
       </div>
       
-      <div className="flex flex-col items-center gap-4 bg-[#112240] p-6 rounded-lg border border-gray-700/30 relative">
+      <div className="flex flex-col items-center gap-4 bg-dashboard-card p-6 rounded-lg border border-gray-700/30 relative">
         {step.drops.length > 0 && (
           <div className="flex w-full justify-between items-center px-2 mb-2">
             <button 
@@ -126,7 +126,7 @@ const StepCard = ({ step, idx, gameType }: { step: any, idx: number, gameType: s
           </div>
         )}
         
-        <div className="flex gap-2 justify-center">
+        <div className="slot-board flex gap-2 justify-center">
           <SlotGridDisplay
             gridMode="custom"
             gridSymbols={currentDrop.grid}
@@ -144,7 +144,7 @@ const StepCard = ({ step, idx, gameType }: { step: any, idx: number, gameType: s
                    <span className="text-[10px] text-gray-500 font-mono mt-1 leading-none">{symbol.split('_')[0]}</span>
                 )}
                 {hasGoldFrame && (
-                  <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-[#0a192f] text-[10px] font-black px-1 rounded-sm shadow border border-yellow-600 z-10">
+                  <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-dashboard-bg text-[10px] font-black px-1 rounded-sm shadow border border-yellow-600 z-10">
                     {goldMultiplier}
                   </div>
                 )}
@@ -479,12 +479,12 @@ ${format2DArray(qa.Selection)}
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 sm:p-6">
-      <div className="bg-[#0a192f] border border-dashboard-accent/30 rounded-2xl w-full max-w-[90vw] h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+      <div className="bg-dashboard-bg border border-dashboard-accent/30 rounded-2xl w-full max-w-[90vw] h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
         
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-700/50 shrink-0">
           <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-[#e6f1ff] flex items-center gap-2">
+            <h2 className="text-xl font-bold text-dashboard-text-primary flex items-center gap-2">
               <Play className="text-dashboard-accent" size={24} />
               RNG 腳本驗證 (RNG Validator)
             </h2>
@@ -493,7 +493,7 @@ ${format2DArray(qa.Selection)}
               <span className="text-sm font-bold text-gray-400 uppercase tracking-wider">選擇遊戲範本:</span>
               <select 
                 onChange={handleTemplateChange}
-                className="bg-[#0a192f] border border-dashboard-accent text-[#e6f1ff] font-bold rounded px-3 py-1.5 text-sm outline-none focus:border-blue-500 cursor-pointer shadow-lg hover:bg-[#112240] transition-colors"
+                className="bg-dashboard-bg border border-dashboard-accent text-dashboard-text-primary font-bold rounded px-3 py-1.5 text-sm outline-none focus:border-blue-500 cursor-pointer shadow-lg hover:bg-dashboard-card transition-colors"
                 value={isProjectLoaded || loadStatus !== 'idle' ? "loaded" : ""}
               >
                 <option value="" disabled hidden>-- 請選擇 --</option>
@@ -517,9 +517,9 @@ ${format2DArray(qa.Selection)}
         {/* Content */}
         <div className="flex-1 flex overflow-hidden">
           {/* Left Panel: Input */}
-          <div className="w-[350px] border-r border-gray-700/50 flex flex-col bg-[#0a192f] shrink-0">
+          <div className="w-[350px] border-r border-gray-700/50 flex flex-col bg-dashboard-bg shrink-0">
             <div className="p-4 border-b border-gray-700/50 flex flex-col gap-2 relative">
-              <span className="text-sm font-bold text-[#e6f1ff]">貼上 QA JSON 腳本</span>
+              <span className="text-sm font-bold text-dashboard-text-primary">貼上 QA JSON 腳本</span>
               <span className="text-xs text-gray-400">請貼上包含 QA[0].RNGs 的腳本內容，系統會自動轉換為對應盤面。</span>
               
               <div className="flex items-center gap-2 mt-2">
@@ -545,7 +545,7 @@ ${format2DArray(qa.Selection)}
             <textarea
               value={jsonInput}
               onChange={(e) => setJsonInput(e.target.value)}
-              className="flex-1 bg-[#112240] border border-gray-700 rounded-lg p-3 text-sm text-dashboard-text-primary font-mono focus:border-dashboard-accent focus:ring-1 focus:ring-dashboard-accent outline-none resize-none"
+              className="flex-1 bg-dashboard-card border border-gray-700 rounded-lg p-3 text-sm text-dashboard-text-primary font-mono focus:border-dashboard-accent focus:ring-1 focus:ring-dashboard-accent outline-none resize-none"
               placeholder={'{\n "QA": [\n  {\n   "RNGs": [\n    [22, 31, 9, 0, 0, 0, 0]\n   ]\n  }\n ]\n}'}
             />
             {errorMsg && (
@@ -559,7 +559,7 @@ ${format2DArray(qa.Selection)}
                 disabled={!isProjectLoaded}
                 className={`w-full py-3 flex items-center justify-center gap-2 font-bold rounded-lg transition-colors shadow-lg ${
                   isProjectLoaded 
-                  ? "bg-dashboard-accent text-[#0a192f] hover:bg-dashboard-accent/90" 
+                  ? "bg-dashboard-accent text-dashboard-bg hover:bg-dashboard-accent/90" 
                   : "bg-gray-700 text-gray-500 cursor-not-allowed"
                 }`}
               >
@@ -569,7 +569,7 @@ ${format2DArray(qa.Selection)}
           </div>
 
           {/* Right Panel */}
-          <div className="flex-1 bg-[#112240]/50 overflow-y-auto p-6">
+          <div className="flex-1 bg-dashboard-card/50 overflow-y-auto p-6">
             {parsedSteps.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-gray-500 gap-4">
                 <Play size={48} className="opacity-20" />
@@ -586,9 +586,9 @@ ${format2DArray(qa.Selection)}
 
           {/* Far Right Panel: Saved Scripts */}
           {isProjectLoaded && (
-            <div className="w-[300px] border-l border-gray-700/50 flex flex-col bg-[#0a192f] shrink-0">
+            <div className="w-[300px] border-l border-gray-700/50 flex flex-col bg-dashboard-bg shrink-0">
               <div className="p-4 border-b border-gray-700/50">
-                <h3 className="text-sm font-bold text-[#e6f1ff] flex items-center gap-2">
+                <h3 className="text-sm font-bold text-dashboard-text-primary flex items-center gap-2">
                   <Bookmark size={18} className="text-dashboard-accent" />
                   已儲存腳本
                 </h3>
@@ -606,7 +606,7 @@ ${format2DArray(qa.Selection)}
                     <button
                       key={snippet.id}
                       onClick={() => setJsonInput(stringifyQA(snippet.qaData))}
-                      className="text-left bg-[#112240] hover:bg-[#152e4b] border border-gray-700 hover:border-dashboard-accent rounded-lg p-3 transition-colors flex flex-col gap-2 shadow-sm"
+                      className="text-left bg-dashboard-card hover:bg-dashboard-hover border border-gray-700 hover:border-dashboard-accent rounded-lg p-3 transition-colors flex flex-col gap-2 shadow-sm"
                     >
                       <div className="text-sm font-bold text-blue-300 w-full whitespace-normal break-words leading-tight">
                         {snippet.title}

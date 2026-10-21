@@ -12,6 +12,7 @@ export default defineGame({
     family: 'line',
     searchPositionDependent: true,
     mathIdGenerator: true,
+    customGridTab: true,
     wyReels: true,
     showPaylineTable: true,
     snippetClassIds: 'wyConfig',

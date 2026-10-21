@@ -3,7 +3,7 @@ import type { CurrentRngPreviewProps, ExtraCopyButtonsProps, FreeGameToggleProps
 import type { ScriptCombination } from '../base/ScriptFormat';
 
 const FreeGameToggle: React.FC<FreeGameToggleProps> = ({ isFreeGame, setIsFreeGame }) => (
-  <div className="flex items-center gap-1.5 bg-[#112240] p-1 rounded-lg border border-purple-500/40 shadow-sm">
+  <div className="flex items-center gap-1.5 bg-dashboard-card p-1 rounded-lg border border-purple-500/40 shadow-sm">
     <button
       type="button"
       onClick={() => setIsFreeGame(false)}
@@ -24,7 +24,7 @@ const FreeGameToggle: React.FC<FreeGameToggleProps> = ({ isFreeGame, setIsFreeGa
 const TriggerPanel: React.FC<TriggerPanelProps> = ({ selectedTriggerCombo, setSelectedTriggerCombo, triggerRngSequence, isGeneratingTrigger, regenerate }) => {
   const [isCopiedTrigger, setIsCopiedTrigger] = useState<boolean>(false);
   return (
-    <div className="w-full max-w-3xl flex flex-col bg-[#0f172a] p-4 rounded-xl border border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.15)] gap-3">
+    <div className="w-full max-w-3xl flex flex-col bg-dashboard-inset p-4 rounded-xl border border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.15)] gap-3">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-purple-500/30 pb-2.5 gap-2">
         <div className="flex items-center gap-2">
           <span className="text-base">⚔️</span>
@@ -52,7 +52,7 @@ const TriggerPanel: React.FC<TriggerPanelProps> = ({ selectedTriggerCombo, setSe
               }
             }}
             disabled={!triggerRngSequence}
-            className="px-2.5 py-1 text-xs font-bold rounded bg-[#64ffda]/10 text-[#64ffda] border border-[#64ffda]/30 hover:bg-[#64ffda]/20 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+            className="px-2.5 py-1 text-xs font-bold rounded bg-dashboard-accent/10 text-dashboard-accent border border-dashboard-accent/30 hover:bg-dashboard-accent/20 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
           >
             {isCopiedTrigger ? '✅ 已複製！' : '📋 僅複製觸發 RNG'}
           </button>
@@ -76,7 +76,7 @@ const TriggerPanel: React.FC<TriggerPanelProps> = ({ selectedTriggerCombo, setSe
               className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg border text-center transition-all cursor-pointer ${
                 selectedTriggerCombo === item.combo
                   ? 'bg-purple-600/30 border-purple-400 text-white ring-2 ring-purple-500 shadow-md'
-                  : 'bg-[#112240] border-gray-700/60 text-gray-400 hover:text-gray-200 hover:border-gray-500'
+                  : 'bg-dashboard-card border-gray-700/60 text-gray-400 hover:text-gray-200 hover:border-gray-500'
               }`}
             >
               <span className="text-xs font-bold">{item.label}</span>
@@ -87,7 +87,7 @@ const TriggerPanel: React.FC<TriggerPanelProps> = ({ selectedTriggerCombo, setSe
       </div>
 
       {/* 預覽觸發 RNG 序列 */}
-      <div className="flex flex-col gap-1 bg-[#0a101f] p-2.5 rounded-lg border border-purple-900/40">
+      <div className="flex flex-col gap-1 bg-dashboard-inset p-2.5 rounded-lg border border-purple-900/40">
         <span className="text-[11px] text-gray-400 font-bold flex justify-between">
           <span>預先準備之 BaseGame 觸發序列 (共 {triggerRngSequence ? triggerRngSequence.length : 0} 組 RNG)：</span>
           <span className="text-yellow-400/80 font-mono text-[10px]">點擊卡片將自動包含下方測試連線一併輸出</span>
@@ -95,7 +95,7 @@ const TriggerPanel: React.FC<TriggerPanelProps> = ({ selectedTriggerCombo, setSe
         <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto font-mono text-xs text-yellow-300">
           {triggerRngSequence ? (
             triggerRngSequence.map((r, i) => (
-              <span key={i} className="bg-[#112240] px-1.5 py-0.5 rounded border border-gray-700">
+              <span key={i} className="bg-dashboard-card px-1.5 py-0.5 rounded border border-gray-700">
                 Step {i === triggerRngSequence.length - 1 ? 'End' : i}: [{r.join(',')}]
               </span>
             ))
@@ -178,7 +178,7 @@ const CurrentRngPreview = ({ targetComb, formattedRngArray, isManualEdited, manu
       return (
         <div className="flex flex-col text-[10.5px] leading-tight">
           <span className="text-yellow-400">初始: [{formattedRngArray.slice(0, 5).join(',')}],</span>
-          <span className="text-[#64ffda]">遞補: [{manualRefillRng.slice(0, 5).join(',')}], <span className="text-green-400 font-bold">(0消除)</span></span>
+          <span className="text-dashboard-accent">遞補: [{manualRefillRng.slice(0, 5).join(',')}], <span className="text-green-400 font-bold">(0消除)</span></span>
         </div>
       );
     }
@@ -192,7 +192,7 @@ const CurrentRngPreview = ({ targetComb, formattedRngArray, isManualEdited, manu
         {triggerRngSequence.map((r: number[], idx: number) => (
           <span key={`trig-${idx}`} className="opacity-90">[{r.slice(0, 5).join(',')}],</span>
         ))}
-        <span className="text-[#64ffda] font-bold mt-1">FG測試 ({fgRngs.length}組):</span>
+        <span className="text-dashboard-accent font-bold mt-1">FG測試 ({fgRngs.length}組):</span>
         {fgRngs.map((r: number[], idx: number) => (
           <span key={`fg-${idx}`}>[{r.slice(0, 5).join(',')}],</span>
         ))}
@@ -203,7 +203,7 @@ const CurrentRngPreview = ({ targetComb, formattedRngArray, isManualEdited, manu
     return (
       <div className="flex flex-col text-[10.5px] leading-tight">
         <span className="text-yellow-400">初始: [{all[0].slice(0, 5).join(',')}],</span>
-        <span className="text-[#64ffda]">遞補: [{all[1].slice(0, 5).join(',')}], <span className="text-green-400 font-bold">(0消除)</span></span>
+        <span className="text-dashboard-accent">遞補: [{all[1].slice(0, 5).join(',')}], <span className="text-green-400 font-bold">(0消除)</span></span>
       </div>
     );
   } else if (targetComb?.allRngs?.length === 1) {

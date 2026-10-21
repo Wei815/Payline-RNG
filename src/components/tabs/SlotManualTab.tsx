@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useGameStore } from '../../store/useGameStore';
 import type { GameType, PaytableRule, GameConfig } from '../../types';
-import type { SVGPathResult } from '../../utils/svgPaths';
 import { formatAmount } from '../../utils/formatters';
 import { getWinColorClass, calculateSVGPaths } from '../../utils/svgPaths';
 import { evaluateGrid, getWinningPositions } from '../../utils/evaluation';
 import { getTraits } from '../../games/registry';
+import { useLinePaths } from '../../hooks/useLinePaths';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
 
 export interface SlotManualTabProps {
@@ -37,7 +37,6 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
 }) => {
   const [noWinCollapsed, setNoWinCollapsed] = useState(false);
   const gridContainerRef = useRef<HTMLDivElement>(null);
-  const [linePaths, setLinePaths] = useState<SVGPathResult[]>([]);
   const activeStripId = useGameStore(state => state.activeStripId);
   const setActiveStripId = useGameStore(state => state.setActiveStripId);
   const currentStripSets = useGameStore(state => state.currentStripSets);
@@ -109,25 +108,18 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
     return getWinningPositions(displayGrid, wins, currentPaytable, gameType, getTraits(gameType).family === 'megaway' ? topTracker : undefined, customPaylines);
   }, [displayGrid, wins, currentPaytable, gameType, topTracker, customPaylines, bet]);
 
-  useEffect(() => {
-    const updatePaths = () => {
-      const p = calculateSVGPaths(displayGrid, wins, currentPaytable, gridContainerRef.current, 'manual', gameType, getTraits(gameType).family === 'megaway' ? topTracker : undefined, customPaylines);
-      setLinePaths(p);
-    };
-    const timer = setTimeout(updatePaths, 150);
-    window.addEventListener('resize', updatePaths);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', updatePaths);
-    };
-  }, [displayGrid, wins, currentPaytable, gameType, topTracker, customPaylines]);
+  const linePaths = useLinePaths(
+    gridContainerRef,
+    () => calculateSVGPaths(displayGrid, wins, currentPaytable, gridContainerRef.current, 'manual', gameType, getTraits(gameType).family === 'megaway' ? topTracker : undefined, customPaylines),
+    [displayGrid, wins, currentPaytable, gameType, topTracker, customPaylines],
+  );
 
   return (
     <>
       <div className="flex-1 flex flex-col items-center justify-center gap-8">
 
         {/* Controls */}
-        <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-3 rounded-lg border border-gray-700/50 shadow-inner gap-3">
+        <div className="w-full max-w-3xl flex flex-col bg-dashboard-bg p-3 rounded-lg border border-gray-700/50 shadow-inner gap-3">
           <div className="flex justify-between items-center border-b border-gray-700/50 pb-2">
             <div className="flex items-center gap-3">
               <span className="text-sm text-dashboard-text-secondary font-bold pl-2">Reel Settings</span>
@@ -137,7 +129,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                   <select
                     value={activeStripId}
                     onChange={(e) => setActiveStripId(Number(e.target.value))}
-                    className="bg-[#112240] border border-gray-600 text-dashboard-text-primary rounded px-2 py-0.5 outline-none focus:border-dashboard-accent text-xs"
+                    className="bg-dashboard-card border border-gray-600 text-dashboard-text-primary rounded px-2 py-0.5 outline-none focus:border-dashboard-accent text-xs"
                   >
                     {stripSets.map((_, idx) => (
                       <option key={idx} value={idx}>Strip ID {idx}</option>
@@ -165,10 +157,10 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                     e.target.value = '';
                   }
                 }}
-                className="bg-[#112240] border border-gray-700 text-yellow-400 rounded px-2 py-0.5 outline-none focus:border-yellow-500 text-xs w-40 placeholder:text-gray-600 font-mono"
+                className="bg-dashboard-card border border-gray-700 text-yellow-400 rounded px-2 py-0.5 outline-none focus:border-yellow-500 text-xs w-40 placeholder:text-gray-600 font-mono"
               />
             </div>
-            <div className="flex items-center gap-2 bg-[#112240] px-2 py-1 rounded border border-gray-700/30">
+            <div className="flex items-center gap-2 bg-dashboard-card px-2 py-1 rounded border border-gray-700/30">
               <span className="text-xs text-gray-400 font-bold">RNG:</span>
               <code className="text-xs text-yellow-400 font-mono">
                 [{[...manualIndices.map(i => i === '' ? '0' : i), ...(stripSets && stripSets.length > 1 ? [activeStripId] : [])].join(',')}],
@@ -178,15 +170,15 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                   const text = `[${[...manualIndices.map(i => i === '' ? '0' : i), ...(stripSets && stripSets.length > 1 ? [activeStripId] : [])].join(',')}],`;
                   navigator.clipboard.writeText(text);
                 }}
-                className="text-xs font-bold bg-[#0a192f] text-dashboard-accent border border-dashboard-accent/50 px-2 py-0.5 rounded hover:bg-dashboard-accent hover:text-[#0a192f] transition-colors ml-1 cursor-pointer"
+                className="text-xs font-bold bg-dashboard-bg text-dashboard-accent border border-dashboard-accent/50 px-2 py-0.5 rounded hover:bg-dashboard-accent hover:text-dashboard-bg transition-colors ml-1 cursor-pointer"
               >
                 COPY
               </button>
             </div>
           </div>
-          <div className="flex flex-nowrap justify-center gap-1.5 w-full">
+          <div className="flex flex-wrap justify-center gap-1.5 w-full">
             {rowCounts.slice(0, reelCount).map((rows, idx) => (
-              <div key={idx} className="flex flex-col items-center gap-1.5 p-2 bg-[#112240] rounded-md border border-gray-700/50 shadow-sm hover:border-gray-600 transition-colors flex-1 min-w-[65px] max-w-[110px]">
+              <div key={idx} className="flex flex-col items-center gap-1.5 p-2 bg-dashboard-card rounded-md border border-gray-700/50 shadow-sm hover:border-gray-600 transition-colors flex-1 min-w-[65px] max-w-[110px]">
                 <span className="text-xs text-dashboard-accent font-mono font-bold mb-0.5">R{idx + 1}</span>
                 <div className="flex flex-col gap-1.5 w-full">
                   <div className="flex items-center justify-between gap-1 w-full">
@@ -199,7 +191,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                         onRowCountsChange(newCounts);
                       }}
                       disabled={isRunning}
-                      className="bg-[#0a192f] border border-gray-600 text-dashboard-text-primary rounded px-0.5 py-0.5 outline-none focus:border-dashboard-accent text-xs cursor-pointer appearance-none text-center w-full max-w-[45px]"
+                      className="bg-dashboard-bg border border-gray-600 text-dashboard-text-primary rounded px-0.5 py-0.5 outline-none focus:border-dashboard-accent text-xs cursor-pointer appearance-none text-center w-full max-w-[45px]"
                     >
                       {[2, 3, 4, 5, 6, 7, 8].map(n => (
                         <option key={n} value={n}>{n}</option>
@@ -215,9 +207,9 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
 
         {/* Slot Grid Visualization */}
         <div
-          className="bg-dashboard-card p-6 rounded-xl shadow-2xl border border-gray-700/30 w-full max-w-3xl overflow-hidden flex justify-center items-center"
+          className="slot-board bg-dashboard-card p-3 sm:p-6 rounded-xl shadow-2xl border border-gray-700/30 w-full max-w-3xl overflow-hidden flex justify-center items-center"
         >
-          <div ref={gridContainerRef} className="relative inline-flex flex-col items-center justify-center">
+          <div ref={gridContainerRef} className="slot-grid relative inline-flex flex-col items-center justify-center" style={{ '--cols': reelCount } as React.CSSProperties}>
           {/* SVG Winning Line Overlay */}
           {linePaths.length > 0 && (
             <svg className="absolute inset-0 pointer-events-none w-full h-full z-20">
@@ -238,7 +230,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                     <path
                       d={p.path}
                       fill="none"
-                      stroke={isInterference ? "#ef4444" : "#64ffda"}
+                      stroke={isInterference ? "#ef4444" : "var(--color-dashboard-accent)"}
                       strokeWidth="8"
                       strokeOpacity={isInterference ? "0.35" : "0.45"}
                       filter="url(#glow-manual)"
@@ -257,11 +249,11 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
             </svg>
           )}
 
-          <div className="flex flex-col items-center justify-center gap-3 relative z-10 w-full">
+          <div className="flex flex-col items-center justify-center slot-gap relative z-10 w-full">
             {/* Megaways Top Tracker */}
             {getTraits(gameType).family === 'megaway' && (
-              <div className="flex gap-3 justify-center mb-1">
-                <div className="w-20 h-20 bg-transparent" />
+              <div className="flex slot-gap justify-center mb-1">
+                <div className="slot-cell bg-transparent" />
                 {Array.from({ length: 4 }).map((_, idx) => {
                   const winIndices = winningCoords.get(`top-${idx}`);
                   const isWinning = !!winIndices;
@@ -271,8 +263,8 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                     <div
                       key={idx}
                       className={`
-                        w-20 h-20 rounded-lg flex flex-col items-center justify-center font-bold shadow-lg transform transition-all duration-300 relative border
-                        ${isWinning ? `z-10 ring-2 scale-105 ${winColorClass}` : hasAnyWin ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]' : 'bg-[#112240] text-dashboard-text-primary border-dashboard-accent/30'}
+                        slot-cell rounded-lg flex flex-col items-center justify-center font-bold shadow-lg transform transition-all duration-300 relative border
+                        ${isWinning ? `z-10 ring-2 scale-105 ${winColorClass}` : hasAnyWin ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]' : 'bg-dashboard-card text-dashboard-text-primary border-dashboard-accent/30'}
                       `}
                     >
                       <span className="text-[11px] text-gray-300 font-bold font-mono tracking-tighter absolute top-1">TOP R{idx + 2}</span>
@@ -289,15 +281,15 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                     </div>
                   );
                 })}
-                {reelCount > 5 && <div className="w-20 h-20 bg-transparent" />}
+                {reelCount > 5 && <div className="slot-cell bg-transparent" />}
               </div>
             )}
 
-            <div className="flex justify-center items-center gap-3 min-h-[300px]">
+            <div className="flex justify-center items-center slot-gap">
               {displayGrid.map((col, colIndex) => (
                 <div
                   key={colIndex}
-                  className="flex flex-col gap-3"
+                  className="flex flex-col slot-gap"
                 >
                   {col.map((symbol, rowIndex) => {
                     const winIndices = winningCoords.get(`${colIndex}-${rowIndex}`);
@@ -312,7 +304,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                       const numVal = parseInt(valStr.replace('X', ''), 10);
                       const balls = ballId.startsWith('F') ? MULTIPLIER_BALLS : LUCKY_BALLS;
                       const ball = balls.find(b => b.values.includes(numVal)) || balls.find(b => b.id === ballId);
-                      if (ball) customBg = `bg-[#0a192f] border ${ball.border} ${ball.color}`;
+                      if (ball) customBg = `bg-dashboard-bg border ${ball.border} ${ball.color}`;
                     }
 
                     return (
@@ -320,13 +312,13 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                         key={`${colIndex}-${rowIndex}`}
                         id={`cell-manual-${colIndex}-${rowIndex}`}
                         className={`
-                          w-20 h-20 rounded-lg flex items-center justify-center text-xl font-bold
+                          slot-cell rounded-lg flex items-center justify-center font-bold
                           shadow-lg transform transition-all duration-300 relative border
                           ${customBg ? customBg :
-                            symbol === '-' ? 'bg-[#0a192f] text-gray-700 border-2 border-gray-800 border-dashed' :
+                            symbol === '-' ? 'bg-dashboard-bg text-gray-700 border-2 border-gray-800 border-dashed' :
                             symbol === 'WILD' || symbol.startsWith('W') || symbol === 'WX' ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border-yellow-300' :
                               symbol === 'SCATTER' ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border-pink-300' :
-                                'bg-[#112240] text-dashboard-text-primary border-dashboard-accent/30'}
+                                'bg-dashboard-card text-dashboard-text-primary border-dashboard-accent/30'}
                           ${isWinning
                             ? `z-10 ring-2 scale-105 ${winColorClass}`
                             : hasAnyWin
@@ -348,7 +340,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
         </div>
 
         {/* Evaluation Output */}
-        <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 shadow-inner">
+        <div className="w-full max-w-3xl flex flex-col bg-dashboard-bg p-4 rounded-lg border border-gray-700/50 shadow-inner">
           <span className="text-sm text-dashboard-text-secondary font-bold border-b border-gray-700/50 pb-2 mb-3">連線結果 (Evaluation)</span>
 
           {wins.length > 0 ? (() => {
@@ -367,7 +359,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                       ? (w.symbolId !== 'B1' && w.symbolId !== 'B2')
                       : w.symbolId !== selectedSymbol;
                     return (
-                      <div key={idx} className={`flex flex-col px-3 py-2 rounded border ${selectedSymbol && isInterference ? 'bg-[#2b1616] border-red-900/50' : 'bg-[#112240] border-dashboard-accent/30'}`}>
+                      <div key={idx} className={`flex flex-col px-3 py-2 rounded border ${selectedSymbol && isInterference ? 'bg-[#2b1616] border-red-900/50' : 'bg-dashboard-card border-dashboard-accent/30'}`}>
                         <span className="text-xs text-yellow-400 font-mono font-bold truncate">
                           {w.symbolId} {getTraits(gameType).family === 'payanywhere' ? `出現 ${w.matchCount} 個` : getTraits(gameType).family === 'line' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
                         </span>
@@ -414,7 +406,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                           ? (w.symbolId !== 'B1' && w.symbolId !== 'B2')
                           : w.symbolId !== selectedSymbol;
                         return (
-                          <div key={idx} className={`flex flex-col px-3 py-2 rounded border ${selectedSymbol && isInterference ? 'bg-[#2b1616] border-red-900/50' : 'bg-[#0f1c34] border-gray-700/30'}`}>
+                          <div key={idx} className={`flex flex-col px-3 py-2 rounded border ${selectedSymbol && isInterference ? 'bg-[#2b1616] border-red-900/50' : 'bg-dashboard-raised border-gray-700/30'}`}>
                             <span className={`text-xs font-mono truncate ${selectedSymbol && isInterference ? 'text-red-400' : 'text-gray-400'}`}>
                               {w.symbolId} {getTraits(gameType).family === 'payanywhere' ? `出現 ${w.matchCount} 個` : getTraits(gameType).family === 'line' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
                             </span>

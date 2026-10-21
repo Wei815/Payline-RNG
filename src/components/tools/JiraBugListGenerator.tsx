@@ -401,9 +401,9 @@ export const JiraBugListGenerator: React.FC<JiraBugListGeneratorProps> = ({ onCl
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#0a192f] w-[95vw] max-w-[1600px] rounded-xl shadow-2xl border border-blue-500/30 flex flex-col overflow-hidden max-h-[95vh]">
+      <div className="bg-dashboard-bg w-[95vw] max-w-[1600px] rounded-xl shadow-2xl border border-blue-500/30 flex flex-col overflow-hidden max-h-[95vh]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-[#112240]">
+        <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-dashboard-card">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-500/20 rounded-lg">
               <FileSpreadsheet className="w-5 h-5 text-blue-400" />
@@ -423,7 +423,7 @@ export const JiraBugListGenerator: React.FC<JiraBugListGeneratorProps> = ({ onCl
           <div className="flex items-center gap-4 flex-wrap">
             <button 
               onClick={() => document.getElementById('jira-buglist-upload')?.click()}
-              className="flex items-center gap-2 px-4 py-2 bg-[#112240] hover:bg-[#152e4b] border border-blue-500/50 hover:border-blue-400 text-blue-300 font-bold rounded-lg transition-colors shadow-lg"
+              className="flex items-center gap-2 px-4 py-2 bg-dashboard-card hover:bg-dashboard-hover border border-blue-500/50 hover:border-blue-400 text-blue-300 font-bold rounded-lg transition-colors shadow-lg"
             >
               <Upload className="w-5 h-5" />
               上傳 Jira CSV/Excel
@@ -438,7 +438,7 @@ export const JiraBugListGenerator: React.FC<JiraBugListGeneratorProps> = ({ onCl
             <select 
               value={phase}
               onChange={(e) => handlePhaseChange(e.target.value)}
-              className="bg-[#112240] border border-gray-600 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500"
+              className="bg-dashboard-card border border-gray-600 rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500"
             >
               <option value="R1">R1</option>
               <option value="R2">R2</option>

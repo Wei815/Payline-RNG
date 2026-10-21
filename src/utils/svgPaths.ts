@@ -143,14 +143,14 @@ export function calculateSVGPaths(
 }
 
 const WIN_COLORS = [
-  'ring-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.8)]',
-  'ring-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)]',
-  'ring-green-500 shadow-[0_0_15px_rgba(34,197,94,0.8)]',
-  'ring-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.8)]',
-  'ring-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.8)]',
-  'ring-teal-500 shadow-[0_0_15px_rgba(20,184,166,0.8)]',
-  'ring-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.8)]',
-  'ring-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.8)]'
+  'ring-orange-500 shadow-[0_0_12px_rgba(249,115,22,0.45)]',
+  'ring-blue-500 shadow-[0_0_12px_rgba(59,130,246,0.45)]',
+  'ring-green-500 shadow-[0_0_12px_rgba(34,197,94,0.45)]',
+  'ring-purple-500 shadow-[0_0_12px_rgba(168,85,247,0.45)]',
+  'ring-pink-500 shadow-[0_0_12px_rgba(236,72,153,0.45)]',
+  'ring-teal-500 shadow-[0_0_12px_rgba(20,184,166,0.45)]',
+  'ring-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.45)]',
+  'ring-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.45)]'
 ];
 
 export function getWinColorClass(winIndices: number[] | undefined): string {

@@ -236,7 +236,7 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
   return (
     <>
       <div className="flex-1 flex flex-col gap-6">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-[#0a192f] p-4 rounded-lg border border-gray-700/50">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-dashboard-bg p-4 rounded-lg border border-gray-700/50">
           <div className="flex flex-col gap-2.5">
             <span className="text-sm text-dashboard-text-secondary font-bold">自訂線路展示樣式</span>
             <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
@@ -245,7 +245,7 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                 <select
                   value={activeLineViewerSymbol}
                   onChange={(e) => setLineViewerSymbolState(e.target.value)}
-                  className="bg-[#112240] border border-gray-700 text-yellow-400 rounded px-2.5 py-1 outline-none focus:border-yellow-500 text-xs font-mono font-bold cursor-pointer"
+                  className="bg-dashboard-card border border-gray-700 text-yellow-400 rounded px-2.5 py-1 outline-none focus:border-yellow-500 text-xs font-mono font-bold cursor-pointer"
                 >
                   {symbols
                     .map(sym => {
@@ -298,7 +298,7 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
               className={`px-2 py-1 text-xs font-bold rounded border transition-colors ${
                 isCopiedAll 
                   ? 'bg-green-500/20 text-green-400 border-green-500/50' 
-                  : 'bg-[#64ffda]/10 hover:bg-[#64ffda]/20 text-[#64ffda] border-[#64ffda]/30'
+                  : 'bg-dashboard-accent/10 hover:bg-dashboard-accent/20 text-dashboard-accent border-dashboard-accent/30'
               }`}
             >
               {isCopiedAll ? '✅ 已複製全部！' : '📋 複製全部腳本'}
@@ -310,13 +310,13 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {computedLines.map(({ line, lineIdx, rng, allRngs, actualTotalWin, mathIdRng }) => {
 return (
-              <div key={lineIdx} className="bg-[#0a192f] border border-gray-700/50 rounded-lg p-3 flex flex-col items-center gap-3 hover:border-dashboard-accent/50 transition-colors">
+              <div key={lineIdx} className="bg-dashboard-bg border border-gray-700/50 rounded-lg p-3 flex flex-col items-center gap-3 hover:border-dashboard-accent/50 transition-colors">
                 <div className="flex justify-between w-full text-xs font-mono border-b border-gray-800 pb-1.5">
                   <span className="text-dashboard-accent font-bold">Line {lineIdx + 1}</span>
                   <span className="text-gray-400">{activeLineViewerSymbol}*{line.length}</span>
                 </div>
 
-                <div className="flex gap-1.5 bg-[#112240]/30 p-2 rounded-md border border-gray-800/50">
+                <div className="flex gap-1.5 bg-dashboard-card/30 p-2 rounded-md border border-gray-800/50">
                   {line.map((activeRow, colIdx) => {
                     const colRows = rowCounts[colIdx] || 3;
                     return (
@@ -348,7 +348,7 @@ return (
                                 ? isWild
                                 ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border border-pink-400 shadow-[0_0_8px_rgba(236,72,153,0.6)]'
                                 : 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border border-yellow-300 shadow-[0_0_8px_rgba(234,179,8,0.5)]'
-                              : 'bg-[#112240]/40 text-gray-700 border border-gray-800/20'
+                              : 'bg-dashboard-card/40 text-gray-700 border border-gray-800/20'
                             }`}
                           >
                             {isActive ? displaySym : ''}
@@ -390,25 +390,25 @@ return (
                       }}
                       className={`text-xs font-mono border px-2 py-1.5 rounded cursor-pointer transition-all w-full flex flex-col items-center justify-center gap-0.5 ${
                         copiedIndex === lineIdx
-                          ? 'bg-[#112240] border-[#64ffda]/50'
-                          : 'bg-[#112240] border-gray-700/50 hover:border-dashboard-accent hover:bg-[#112240]/80 text-dashboard-text-primary'
+                          ? 'bg-dashboard-card border-dashboard-accent/50'
+                          : 'bg-dashboard-card border-gray-700/50 hover:border-dashboard-accent hover:bg-dashboard-card/80 text-dashboard-text-primary'
                       }`}
                       title="點擊自動套用此 RNG 數組至盤面並複製至剪貼簿"
                     >
                       {copiedIndex === lineIdx ? (
-                        <div className="w-full text-center text-[#64ffda] font-bold py-1">COPIED!</div>
+                        <div className="w-full text-center text-dashboard-accent font-bold py-1">COPIED!</div>
                       ) : allRngs && allRngs.length > 1 ? (
                         <div className="flex flex-col items-center justify-center gap-0.5 w-full text-[10.5px]">
                           <span className="text-yellow-400 font-mono truncate max-w-full">
                             初始: [{rng?.slice(0, 5).join(',')}],
                           </span>
-                          <span className="text-[#64ffda] font-mono truncate max-w-full">
+                          <span className="text-dashboard-accent font-mono truncate max-w-full">
                             遞補: [{allRngs[1]?.slice(0, 5).join(',')}], <span className="text-[9px] text-green-400 font-bold">(0消除)</span>
                           </span>
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center gap-0.5 w-full">
-                          <span className="text-[#64ffda] leading-tight truncate max-w-full text-center" title={mathIdRng ? `[${mathIdRng.join(',')}]` : `[${rng?.join(',')}]`}>
+                          <span className="text-dashboard-accent leading-tight truncate max-w-full text-center" title={mathIdRng ? `[${mathIdRng.join(',')}]` : `[${rng?.join(',')}]`}>
                             {mathIdRng ? `[${mathIdRng.join(',').slice(0, 20)}...],` : `[${rng?.join(',')}],`}
                           </span>
                         </div>

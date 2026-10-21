@@ -324,6 +324,22 @@ export const useGameStore = create<GameState>((set, get) => ({
        newTopTracker = []; // simplified for now, as useGameStore might have more complex logic
     }
     
+    // 依滾輪表產生盤面的遊戲沒有「自定義盤面」：改為帶入手動計算盤面的滾輪位置（多組滾輪表時第 reelCount+1 碼為 Strip ID）
+    if (!findTraits(gameType)?.customGridTab && !isMathId) {
+      const updates: Partial<GameState> = {
+        manualIndices: flatIds.slice(0, reelCount).map(v => String(v)),
+        activeTab: 'manual',
+      };
+      const stripId = Number(flatIds[reelCount]);
+      const sets = store.isFreeGame ? store.currentFreeStripSets : store.currentStripSets;
+      if (flatIds.length > reelCount && sets.length > 1 && stripId >= 0 && stripId < sets.length) {
+        updates.activeStripId = stripId;
+        updates.currentStrips = sets[stripId];
+      }
+      set(updates);
+      return;
+    }
+
     const newSpecialConfig = extractSpecialConfigFromGrid(newGrid, store.specialSymbolConfig, gameType);
 
     set({ customGridData: newGrid, activeTab: 'customGrid', goldFrames: newGoldFrames, jackpots: newJackpots, customGridWyConfigs: newWyConfigs, specialSymbolConfig: newSpecialConfig });

@@ -56,9 +56,8 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
   renderColumnHeader,
   renderCellInner
 }) => {
-  const containerClass = gridMode === 'tumble' 
-    ? "flex flex-wrap gap-2 md:gap-4 justify-center" 
-    : "flex gap-1 sm:gap-2 justify-center";
+  // 盤面欄位不換行；格子大小與間距由 .slot-grid 依外層 .slot-board 寬度計算
+  const containerClass = "flex slot-gap justify-center";
 
   // Calculate drop distances for dropping animation
   const dropDistances = React.useMemo(() => {
@@ -91,9 +90,9 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
   }, [animationStage, gridSymbols, prevGridSymbols, prevWinningCoords]);
 
   return (
-    <div className={containerClass}>
+    <div className={`slot-grid ${containerClass}`} style={{ '--cols': gridSymbols.length } as React.CSSProperties}>
       {gridSymbols.map((col, colIndex) => (
-        <div key={colIndex} className="flex flex-col justify-center gap-3">
+        <div key={colIndex} className="flex flex-col justify-center slot-gap">
           {renderColumnHeader && renderColumnHeader(colIndex)}
           {col.map((symbol, rowIndex) => {
             const winIndices = winningCoords.get(`${colIndex}-${rowIndex}`);
@@ -118,7 +117,7 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
               const balls = ballId.startsWith('F') ? MULTIPLIER_BALLS : LUCKY_BALLS;
               const ball = balls.find(b => b.values.includes(numVal)) || balls.find(b => b.id === ballId);
               if (ball) {
-                customBg = `bg-[#0a192f] border ${ball.border} ${ball.color}`;
+                customBg = `bg-dashboard-bg border ${ball.border} ${ball.color}`;
               } else if (gridMode === 'tumble') {
                 displaySymbol = '2X';
                 customBg = `bg-red-900/30 border-2 border-red-500 text-red-500`;
@@ -161,13 +160,13 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
             }
 
             if (gridMode === 'custom') {
-              const defaultBg = symbol === '-' ? 'bg-[#0a192f] text-gray-700 border-2 border-gray-800 border-dashed hover:border-dashboard-accent' :
+              const defaultBg = symbol === '-' ? 'bg-dashboard-bg text-gray-700 border-2 border-gray-800 border-dashed hover:border-dashboard-accent' :
                                 isWild ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border border-yellow-300' :
                                 symbol === 'SCATTER' ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border border-pink-300' :
-                                'bg-[#112240] text-dashboard-text-primary border border-dashboard-accent/30';
+                                'bg-dashboard-card text-dashboard-text-primary border border-dashboard-accent/30';
               
               cellClassNames = `
-                w-16 h-16 sm:w-20 sm:h-20 rounded-lg flex items-center justify-center text-xl font-bold
+                slot-cell rounded-lg flex items-center justify-center font-bold
                 shadow-lg transform relative cursor-pointer active:scale-95 transition-all duration-200 shrink-0
                 ${customBg ? customBg : defaultBg}
                 ${hideEmptyCells && symbol === '-' ? 'hidden' : ''}
@@ -177,25 +176,25 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
                 ${animationClasses}
               `;
             } else if (gridMode === 'manual') {
-              const defaultBg = symbol === '-' ? 'bg-[#0a192f] text-gray-700 border-2 border-gray-800 border-dashed' :
+              const defaultBg = symbol === '-' ? 'bg-dashboard-bg text-gray-700 border-2 border-gray-800 border-dashed' :
                                 isWild ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border-yellow-300' :
                                 symbol === 'SCATTER' ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border-pink-300' :
-                                'bg-[#112240] text-dashboard-text-primary border-dashboard-accent/30';
+                                'bg-dashboard-card text-dashboard-text-primary border-dashboard-accent/30';
                                 
               cellClassNames = `
-                w-20 h-20 rounded-lg flex items-center justify-center text-xl font-bold
+                slot-cell rounded-lg flex items-center justify-center font-bold
                 shadow-lg transform transition-all duration-300 relative cursor-grab active:cursor-grabbing border
                 ${customBg ? customBg : defaultBg}
                 ${isWinning ? `z-10 ring-2 scale-105 ${winColorClass}` : hasAnyWin ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]' : ''}
                 ${animationClasses}
               `;
             } else if (gridMode === 'tumble') {
-              const defaultBg = isWild ? 'bg-[#112240] text-purple-400 border border-purple-500/30' :
+              const defaultBg = isWild ? 'bg-dashboard-card text-purple-400 border border-purple-500/30' :
                                 isUnknown ? 'bg-red-900/30 text-red-400 border border-red-500/50' :
-                                'bg-[#112240] text-gray-300 border border-gray-700/50';
+                                'bg-dashboard-card text-gray-300 border border-gray-700/50';
                                 
               cellClassNames = `
-                w-16 h-16 sm:w-20 sm:h-20 flex flex-col items-center justify-center rounded-lg relative transform text-sm sm:text-base font-bold
+                slot-cell flex flex-col items-center justify-center rounded-lg relative transform font-bold
                 ${!isWinning ? 'transition-all duration-300' : ''}
                 ${isWinning ? `z-10 ring-2 scale-105 ${winColorClass} ${pulseClass}` : customBg ? customBg : defaultBg}
                 ${!isWinning && hasAnyWin && !customBg ? 'opacity-30 scale-95 border-transparent' : ''}

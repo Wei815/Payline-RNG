@@ -29,6 +29,11 @@ export interface GameTraits {
   doublingTumbleMultiplier?: boolean;
   /** 搜尋含百搭的組合時，要求盤面有金框可轉 WX（秦皇 / 皇家金象） */
   goldCascadeSearch?: boolean;
+  /**
+   * 「自定義盤面」分頁：可直接指定每一格符號（MathID 盤面，例如奢華）。
+   * 依滾輪表產生盤面的遊戲不提供（盤面只能由滾輪位置決定）。
+   */
+  customGridTab?: boolean;
   /** 「贏分線路一覽」分頁改為「消除掉落測試」(TumbleViewer) */
   tumbleViewerTab?: boolean;
   /** ConfigPanel 顯示線路規則表格 */

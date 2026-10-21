@@ -1,9 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ConfigPanel } from './components/ConfigPanel';
 import { SlotConsole } from './components/SlotConsole';
 import { MetricsDashboard } from './components/MetricsDashboard';
 import { useSimulation } from './hooks/useSimulation';
-import { BarChart3, X } from 'lucide-react';
+import { BarChart3, Menu, X } from 'lucide-react';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { Sidebar } from './components/Sidebar';
 import { JiraLinkGenerator } from './components/tools/JiraLinkGenerator';
@@ -16,7 +16,7 @@ import { RtpCalculator } from './components/tools/RtpCalculator';
 import type { GameConfig, GameType } from './types';
 import { useMachineStore } from './store/useMachineStore';
 import { useGameStore } from './store/useGameStore';
-import { getTraits, resolveMenuSelection } from './games/registry';
+import { getManifest, getTraits, resolveMenuSelection } from './games/registry';
 
 function App() {
   const { isRunning, progress, currentSpins, currentGrid, result, runSimulation } = useSimulation();
@@ -37,6 +37,25 @@ function App() {
   const setActiveModalTool = useMachineStore(state => state.setActiveModalTool);
   
   const [isMetricsOpen, setIsMetricsOpen] = useState<boolean>(false);
+  const projectName = useGameStore(state => state.projectName);
+
+  // 側欄：桌面可收合（記住偏好），小螢幕為抽屜
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem('rngpay.sidebarCollapsed') === '1'; } catch { return false; }
+  });
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const toggleSidebar = useCallback(() => {
+    setSidebarCollapsed(prev => {
+      try { localStorage.setItem('rngpay.sidebarCollapsed', prev ? '0' : '1'); } catch { /* 無痕模式 */ }
+      return !prev;
+    });
+  }, []);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const onChange = () => { if (mq.matches) setMobileNavOpen(false); };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   const handleSelectTemplate = useCallback((templateName: string) => {
     const [targetGameType, trigger] = resolveMenuSelection(templateName);
@@ -72,38 +91,59 @@ function App() {
   }, [runSimulation, gameType, customPaylines, bet, currentStrips, currentPaytable, rowCounts, coin]);
 
   return (
-    <div className="w-screen h-screen flex bg-dashboard-bg overflow-hidden text-dashboard-text-primary">
-      <Sidebar />
+    <div className="w-screen h-dvh flex bg-dashboard-bg overflow-hidden text-dashboard-text-primary">
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggleCollapsed={toggleSidebar}
+        mobileOpen={mobileNavOpen}
+        onCloseMobile={() => setMobileNavOpen(false)}
+      />
       
       <div className="flex-1 flex flex-col min-w-0 h-full relative">
         {/* Header */}
-        <div className="w-full h-14 bg-[#0f1d35] border-b border-gray-800 flex items-center justify-between px-6 shrink-0 shadow-md z-40">
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-bold tracking-widest text-dashboard-text-primary flex items-center gap-2">
-            <span className="text-dashboard-accent">RNG</span> PAY
+        <header className="w-full h-14 bg-dashboard-bg/95 backdrop-blur border-b border-dashboard-border flex items-center justify-between gap-3 px-3 sm:px-5 shrink-0 z-40">
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            onClick={() => setMobileNavOpen(true)}
+            className="lg:hidden p-1.5 rounded-md text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-dashboard-hover"
+            title="開啟選單"
+          >
+            <Menu size={20} />
+          </button>
+          <h1 className="text-[17px] font-semibold tracking-[0.12em] text-dashboard-text-primary flex items-center gap-1.5 shrink-0">
+            <span className="text-dashboard-accent">RNG</span>PAY
           </h1>
-          <span className="ml-4 text-xs font-mono text-dashboard-text-secondary border border-gray-700 px-2 py-0.5 rounded-full bg-[#112240] hidden sm:block">
-            v1.0 Simulation Engine
-          </span>
+          {isProjectLoaded && (
+            <div className="hidden sm:flex items-center gap-2 min-w-0 text-[13px]">
+              <span className="text-dashboard-border">/</span>
+              <span className="text-dashboard-text-secondary truncate">{getManifest(gameType)?.label ?? gameType}</span>
+              {projectName && projectName !== '預設泛用' && (
+                <span className="truncate max-w-[18rem] px-2 py-0.5 rounded-md bg-dashboard-card border border-dashboard-border text-dashboard-text-secondary font-mono text-[11px]">
+                  {projectName}
+                </span>
+              )}
+            </div>
+          )}
         </div>
+        <span className="hidden md:block text-[11px] font-mono text-dashboard-text-muted shrink-0">Slot Math QA Toolkit</span>
         {/* 暫時隱藏 RTP 測試報告按鈕 (待後續開發開放)
         <button 
           onClick={() => setIsMetricsOpen(true)}
-          className="flex items-center gap-2 px-4 py-1.5 bg-[#112240] border border-dashboard-accent text-dashboard-accent rounded-lg hover:bg-dashboard-accent hover:text-[#0a192f] transition-all font-bold text-sm"
+          className="flex items-center gap-2 px-4 py-1.5 bg-dashboard-card border border-dashboard-accent text-dashboard-accent rounded-lg hover:bg-dashboard-accent hover:text-dashboard-bg transition-all font-bold text-sm"
         >
           <BarChart3 size={16} />
           <span>RTP 測試報告</span>
         </button>
         */}
-        </div>
+        </header>
 
-        {/* Main Grid Layout */}
-        <div className="flex-1 w-full flex flex-col md:flex-row min-h-0">
+        {/* Main Grid Layout：寬螢幕左右並排，窄螢幕上下堆疊並整頁捲動 */}
+        <main className="flex-1 w-full flex flex-col lg:flex-row min-h-0 overflow-y-auto lg:overflow-hidden custom-scrollbar">
           {/* Left: ConfigPanel */}
         <div 
           className={`
             ${!isProjectLoaded ? 'hidden' : 'block'}
-            w-full h-full transition-all duration-300 ${getTraits(gameType).mathIdGenerator ? 'md:w-[360px] shrink-0' : 'md:w-[35%]'}
+            w-full shrink-0 h-[80dvh] lg:h-full transition-[width] duration-200 ${getTraits(gameType).mathIdGenerator ? 'lg:w-[340px]' : 'lg:w-[clamp(340px,34%,480px)]'}
           `}
         >
           <ConfigPanel 
@@ -112,7 +152,7 @@ function App() {
         </div>
 
         {/* Center: SlotConsole or WelcomeScreen */}
-        <div className="w-full flex-1 h-full min-w-0">
+        <div className={`w-full flex-1 min-w-0 lg:h-full ${isProjectLoaded ? 'min-h-[85dvh] lg:min-h-0' : 'h-full'}`}>
           {!isProjectLoaded ? (
             <WelcomeScreen onSelectTemplate={handleSelectTemplate} />
           ) : (
@@ -121,14 +161,14 @@ function App() {
             />
           )}
         </div>
-      </div>
+      </main>
       </div>
 
       {/* Metrics Modal */}
       {isMetricsOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200">
-          <div className="bg-[#0a192f] border border-gray-600 w-full max-w-5xl h-full max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden relative">
-            <div className="flex justify-between items-center p-5 border-b border-gray-700 bg-[#0f1d35] shrink-0">
+          <div className="bg-dashboard-bg border border-gray-600 w-full max-w-5xl h-full max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden relative">
+            <div className="flex justify-between items-center p-5 border-b border-gray-700 bg-dashboard-raised shrink-0">
               <div className="flex items-center gap-3">
                 <BarChart3 className="text-dashboard-accent" />
                 <h2 className="text-xl font-bold text-dashboard-text-primary tracking-wide">RTP 測試報告</h2>
@@ -140,7 +180,7 @@ function App() {
                 <X size={24} />
               </button>
             </div>
-            <div className="flex-1 overflow-hidden relative bg-[#0a192f]">
+            <div className="flex-1 overflow-hidden relative bg-dashboard-bg">
               <MetricsDashboard 
                 result={result}
                 progress={progress}

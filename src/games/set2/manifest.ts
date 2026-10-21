@@ -12,6 +12,7 @@ export default defineGame({
     family: 'payanywhere',
     searchPositionDependent: false,
     mathIdGenerator: true,
+    customGridTab: true,
     multiplierBalls: true,
     cellMathIdLabel: true,
     ballMathIds: true,

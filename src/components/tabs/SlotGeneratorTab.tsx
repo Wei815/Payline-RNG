@@ -4,14 +4,14 @@ import { formatAmount } from '../../utils/formatters';
 import { getWinColorClass, calculateSVGPaths } from '../../utils/svgPaths';
 import { getGameIntervals } from '../../utils/evaluation/GameIntervals';
 import { getWinningPositions } from '../../utils/evaluation';
-import type { SVGPathResult } from '../../utils/svgPaths';
-import { evaluateGrid, defaultPaylines } from '../../utils/evaluation';
+import { evaluateGrid } from '../../utils/evaluation';
 import { MULTIPLIER_BALLS, LUCKY_BALLS, isGoldSymbol } from '../../utils/evaluation/GameConstants';
 import { useRngSearch } from '../../hooks/useRngSearch';
 import { useGameStore } from '../../store/useGameStore';
 import { GameRegistry } from '../../core/GameRegistry';
 import { getScriptFormatter, getTraits } from '../../games/registry';
 import { getGameUi } from '../../games/ui-registry';
+import { useLinePaths } from '../../hooks/useLinePaths';
 import type { ScriptContext } from '../../games/base/ScriptFormat';
 
 export interface SlotGeneratorTabProps {
@@ -46,29 +46,6 @@ export interface SlotGeneratorTabProps {
   stripSets?: Record<string, string[][]>;
   setActiveStripId?: (id: number) => void;
 }
-
-const LUXE_MULTIPLIER_INTERVALS: import('../../types').MultiplierInterval[] = [
-  { id: '0', name: '接近大獎', min: 0, max: 10 },
-  { id: '1', name: 'MINI WIN', min: 10, max: 20 },
-  { id: '2', name: 'BIG WIN', min: 20, max: 50 },
-  { id: '3', name: 'MEGA WIN', min: 50, max: 100 },
-  { id: '4', name: 'SUPER MEGA WIN', min: 100, max: 250 },
-  { id: '5', name: 'EPIC WIN', min: 250, max: null },
-];
-
-const DEFAULT_MULTIPLIER_INTERVALS: import('../../types').MultiplierInterval[] = [
-  { id: '1', name: 'Big Win', min: 20, max: 50 },
-  { id: '2', name: 'Super Win', min: 50, max: 100 },
-  { id: '3', name: 'Mega Win', min: 100, max: 300 },
-  { id: '4', name: 'Ultra Win', min: 300, max: 1000 },
-  { id: '5', name: 'Legend Win', min: 1000, max: null },
-];
-
-const ELEPHANT_MULTIPLIER_INTERVALS: import('../../types').MultiplierInterval[] = [
-  { id: '1', name: 'Big Win', min: 20, max: 50 },
-  { id: '2', name: 'Mega Win', min: 50, max: 300 },
-  { id: '3', name: 'SuperMega Win', min: 300, max: null },
-];
 
 export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, setActiveStripId,
   reelCount, rowCounts, onRowCountsChange,
@@ -114,7 +91,6 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
       regenerateTriggerSequence();
     }
   }, [game, isFreeGame, selectedTriggerCombo, regenerateTriggerSequence]);
-  const [linePathsOther, setLinePathsOther] = useState<SVGPathResult[]>([]);
   const [multiplierIntervals, setMultiplierIntervals] = useState<import('../../types').MultiplierInterval[]>(() => getGameIntervals(gameType));
   const [activeSearchIntervals, setActiveSearchIntervals] = useState<import('../../types').MultiplierInterval[]>(() => getGameIntervals(gameType));
 
@@ -307,22 +283,14 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
     return getWinningPositions(displayGridOther, winsOther, currentPaytable, gameType, getTraits(gameType).family === 'megaway' ? topTrackerOther : undefined, customPaylines);
   }, [displayGridOther, winsOther, currentPaytable, gameType, topTrackerOther, customPaylines, bet]);
 
-  useEffect(() => {
-    const updatePaths = () => {
-      if (!selectedSymbol) {
-        setLinePathsOther([]);
-        return;
-      }
-      const p = calculateSVGPaths(displayGridOther, winsOther, currentPaytable, gridContainerRefOther.current, 'other', gameType, getTraits(gameType).family === 'megaway' ? topTrackerOther : undefined, customPaylines);
-      setLinePathsOther(p);
-    };
-    const timer = setTimeout(updatePaths, 150);
-    window.addEventListener('resize', updatePaths);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('resize', updatePaths);
-    };
-  }, [displayGridOther, winsOther, currentPaytable, gameType, topTrackerOther, customPaylines, selectedSymbol]);
+  // 禁忌 1：未選目標 Symbol 時絕不繪製連線
+  const linePathsOther = useLinePaths(
+    gridContainerRefOther,
+    () => selectedSymbol
+      ? calculateSVGPaths(displayGridOther, winsOther, currentPaytable, gridContainerRefOther.current, 'other', gameType, getTraits(gameType).family === 'megaway' ? topTrackerOther : undefined, customPaylines)
+      : [],
+    [displayGridOther, winsOther, currentPaytable, gameType, topTrackerOther, customPaylines, selectedSymbol],
+  );
 
   const [noWinCollapsed, setNoWinCollapsed] = useState(false);
   const [pulseToggle, setPulseToggle] = useState(false);
@@ -738,10 +706,12 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
     setIsManualEdited(true);
   };
 
+  // 依分頁寬度（container query）決定特殊符號設定欄是否並排，避免側欄 / 設定面板展開時擠壓盤面
   return (
-    <div className="w-full flex flex-col lg:flex-row gap-6 items-start justify-center">
-      <div className="flex-1 flex flex-col items-center justify-center gap-6 w-full lg:max-w-3xl">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 w-full max-w-3xl gap-4">
+    <div className="@container w-full">
+    <div className="w-full flex flex-col @6xl:flex-row gap-6 items-start justify-center">
+      <div className="flex-1 min-w-0 flex flex-col items-center justify-center gap-6 w-full @6xl:max-w-3xl">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-dashboard-bg p-4 rounded-lg border border-gray-700/50 w-full max-w-3xl gap-4">
           <div className="flex items-center gap-3 shrink-0">
             <span className="text-sm font-bold text-dashboard-text-secondary whitespace-nowrap">選擇目標 Symbol:</span>
             <select
@@ -751,27 +721,27 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                 e.target.blur();
               }}
               onWheel={(e) => e.currentTarget.blur()}
-              className="bg-[#112240] border border-gray-600 text-dashboard-text-primary rounded px-3 py-1.5 outline-none focus:border-dashboard-accent text-sm cursor-pointer font-bold"
+              className="bg-dashboard-card border border-gray-600 text-dashboard-text-primary rounded px-3 py-1.5 outline-none focus:border-dashboard-accent text-sm cursor-pointer font-bold"
             >
               <option value="" disabled hidden>請選擇目標</option>
               {groupedSymbols.map(group => {
                 const filteredList = group.list.filter(sym => !['S1', 'S2', 'F1', 'L1'].includes(sym));
                 if (filteredList.length === 0) return null;
                 return (
-                  <optgroup key={group.id} label={group.title} className="bg-[#0a192f] text-dashboard-accent font-bold text-xs">
+                  <optgroup key={group.id} label={group.title} className="bg-dashboard-bg text-dashboard-accent font-bold text-xs">
                     {filteredList.map(sym => (
-                      <option key={sym} value={sym} className="bg-[#112240] text-dashboard-text-primary font-normal text-sm">
+                      <option key={sym} value={sym} className="bg-dashboard-card text-dashboard-text-primary font-normal text-sm">
                         {sym}
                       </option>
                     ))}
                   </optgroup>
                 );
               })}
-              <optgroup label="特殊搜尋" className="bg-[#0a192f] text-orange-400 font-bold text-xs">
-                <option value="COMBO" className="bg-[#112240] text-dashboard-text-primary font-normal text-sm">
+              <optgroup label="特殊搜尋" className="bg-dashboard-bg text-orange-400 font-bold text-xs">
+                <option value="COMBO" className="bg-dashboard-card text-dashboard-text-primary font-normal text-sm">
                   COMBO (連續消除)
                 </option>
-                <option value="WIN_MULTIPLIER" className="bg-[#112240] text-dashboard-text-primary font-normal text-sm">
+                <option value="WIN_MULTIPLIER" className="bg-dashboard-card text-dashboard-text-primary font-normal text-sm">
                   大獎區間 (Win Multipliers)
                 </option>
               </optgroup>
@@ -796,7 +766,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
         )}
 
         {selectedSymbol === 'WIN_MULTIPLIER' && (
-          <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 shadow-inner">
+          <div className="w-full max-w-3xl flex flex-col bg-dashboard-bg p-4 rounded-lg border border-gray-700/50 shadow-inner">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-700/50 pb-2 mb-3 gap-2">
               <span className="text-sm text-dashboard-text-secondary font-bold pl-1">
                 大獎區間設定 (倍率 = 總贏分 / BET)
@@ -824,7 +794,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                     className={`flex flex-col gap-1.5 p-2.5 rounded border transition-colors ${
                       errorInfo?.hasError
                         ? 'bg-red-950/30 border-red-500/80 shadow-[0_0_8px_rgba(239,68,68,0.2)]'
-                        : 'bg-[#112240] border-gray-700/50 hover:border-gray-600'
+                        : 'bg-dashboard-card border-gray-700/50 hover:border-gray-600'
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -838,7 +808,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                           setActiveSearchIntervals([]);
                         }}
                         placeholder="區間名稱"
-                        className="flex-1 bg-[#0a192f] border border-gray-600 text-dashboard-text-primary rounded px-2 py-1 outline-none focus:border-dashboard-accent text-sm"
+                        className="flex-1 bg-dashboard-bg border border-gray-600 text-dashboard-text-primary rounded px-2 py-1 outline-none focus:border-dashboard-accent text-sm"
                       />
                       <div className="flex items-center gap-1">
                         <span className="text-xs text-gray-400">Min:</span>
@@ -856,7 +826,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                             setMultiplierIntervals(newIntervals);
                             setActiveSearchIntervals([]);
                           }}
-                          className={`w-20 bg-[#0a192f] border ${
+                          className={`w-20 bg-dashboard-bg border ${
                             errorInfo?.isMinNegative || errorInfo?.isMaxLessThanMin
                               ? 'border-red-500 text-red-300 focus:border-red-400'
                               : 'border-gray-600 text-dashboard-text-primary focus:border-dashboard-accent'
@@ -884,7 +854,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                             setActiveSearchIntervals([]);
                           }}
                           placeholder="∞"
-                          className={`w-20 bg-[#0a192f] border ${
+                          className={`w-20 bg-dashboard-bg border ${
                             errorInfo?.isMaxNegative || errorInfo?.isMaxLessThanMin
                               ? 'border-red-500 text-red-300 focus:border-red-400'
                               : 'border-gray-600 text-dashboard-text-primary focus:border-dashboard-accent'
@@ -943,7 +913,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
           </div>
         )}
 
-        <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 shadow-inner">
+        <div className="w-full max-w-3xl flex flex-col bg-dashboard-bg p-4 rounded-lg border border-gray-700/50 shadow-inner">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-700/50 pb-2 mb-3 gap-2">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm text-dashboard-text-secondary font-bold pl-1">
@@ -967,7 +937,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                 className={`px-2 py-1 text-xs font-bold rounded border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                   isCopiedAll 
                     ? 'bg-green-500/20 text-green-400 border-green-500/50' 
-                    : 'bg-[#64ffda]/10 hover:bg-[#64ffda]/20 text-[#64ffda] border-[#64ffda]/30'
+                    : 'bg-dashboard-accent/10 hover:bg-dashboard-accent/20 text-dashboard-accent border-dashboard-accent/30'
                 }`}
               >
                 {isCopiedAll ? '✅ 已複製！' : '📋 複製全部腳本'}
@@ -1058,30 +1028,30 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                     }
                   }}
                   className={`flex justify-between items-center gap-2 px-3 py-2 rounded border text-left transition-all ${
-                    selectedCombIndex === globalIdx ? 'ring-1 ring-[#64ffda] ' : ''
+                    selectedCombIndex === globalIdx ? 'ring-1 ring-dashboard-accent ' : ''
                   }${comb.rng
                       ? (comb.isInterfered || (comb as any).hasS1Drop)
-                        ? 'bg-[#112240] border-orange-500/40 hover:border-orange-500 text-dashboard-text-primary cursor-pointer'
-                        : 'bg-[#112240] border-gray-700/50 hover:border-dashboard-accent hover:bg-[#112240]/80 text-dashboard-text-primary cursor-pointer'
-                      : 'bg-[#112240]/10 border-gray-800/50 text-gray-600 cursor-not-allowed'
+                        ? 'bg-dashboard-card border-orange-500/40 hover:border-orange-500 text-dashboard-text-primary cursor-pointer'
+                        : 'bg-dashboard-card border-gray-700/50 hover:border-dashboard-accent hover:bg-dashboard-card/80 text-dashboard-text-primary cursor-pointer'
+                      : 'bg-dashboard-card/10 border-gray-800/50 text-gray-600 cursor-not-allowed'
                     }`}
                 >
                   <span className="text-xs font-bold whitespace-pre-line shrink-0">{comb.name}</span>
                   {comb.rng ? (
-                    <div className={`text-xs font-mono border bg-[#0a192f] px-1.5 py-0.5 rounded min-w-0 flex-1 truncate text-right ${(comb.isInterfered || (comb as any).hasS1Drop)
+                    <div className={`text-xs font-mono border bg-dashboard-bg px-1.5 py-0.5 rounded min-w-0 flex-1 truncate text-right ${(comb.isInterfered || (comb as any).hasS1Drop)
                         ? 'text-orange-400 border-orange-500/30'
-                        : 'text-[#64ffda] border-[#64ffda]/30'
+                        : 'text-dashboard-accent border-dashboard-accent/30'
                       }`}>
                       {(() => {
                         const shown = scriptFormatter.display(comb, scriptCtx, selectedCombIndex === globalIdx && isManualEdited ? currentRngString : undefined);
                         if (shown.kind === 'mathIds') {
                           return (
                             <div className="flex flex-col gap-0.5 mt-0.5 w-full">
-                              <span className="text-[#64ffda] leading-tight truncate block" title={shown.mainTitle}>
+                              <span className="text-dashboard-accent leading-tight truncate block" title={shown.mainTitle}>
                                 {shown.main}
                               </span>
                               {shown.drop !== undefined && (shown.dropTitle !== undefined ? (
-                                <span className="text-[#64ffda] leading-tight opacity-75 truncate block" title={shown.dropTitle}>
+                                <span className="text-dashboard-accent leading-tight opacity-75 truncate block" title={shown.dropTitle}>
                                   {shown.drop}
                                 </span>
                               ) : (
@@ -1098,7 +1068,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                           <div className="flex flex-col w-full text-right gap-0.5">
                             <span className="truncate block leading-tight" title={rawStr}>{parts[0]}</span>
                             {parts[1] && (
-                              <span className="truncate block opacity-80 text-[10.5px] leading-tight text-[#64ffda]" title={`Classid: ${parts[1].trim().replace(/,$/, '')}`}>
+                              <span className="truncate block opacity-80 text-[10.5px] leading-tight text-dashboard-accent" title={`Classid: ${parts[1].trim().replace(/,$/, '')}`}>
                                 Classid: {parts[1].trim().replace(/,$/, '')}
                               </span>
                             )}
@@ -1163,7 +1133,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
         </div>
 
 
-        <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-3 rounded-lg border border-gray-700/50 shadow-inner gap-3">
+        <div className="w-full max-w-3xl flex flex-col bg-dashboard-bg p-3 rounded-lg border border-gray-700/50 shadow-inner gap-3">
           <div className="flex flex-col sm:flex-row justify-between items-start border-b border-gray-700/50 pb-3 gap-3">
             <div className="flex flex-col gap-2 shrink-0 min-w-[200px]">
               <span className="text-sm text-dashboard-text-secondary font-bold pl-1">Reel Settings (單一連線測試)</span>
@@ -1182,11 +1152,11 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                     e.target.value = '';
                   }
                 }}
-                className="bg-[#112240] border border-gray-700 text-yellow-400 rounded px-2 py-1 outline-none focus:border-yellow-500 text-xs w-full placeholder:text-gray-600 font-mono"
+                className="bg-dashboard-card border border-gray-700 text-yellow-400 rounded px-2 py-1 outline-none focus:border-yellow-500 text-xs w-full placeholder:text-gray-600 font-mono"
               />
             </div>
             <div className="flex flex-col gap-1 items-end flex-1 pl-4">
-              <div className="flex items-center gap-2 bg-[#112240] px-2 py-1 rounded border border-gray-700/30 w-full justify-between">
+              <div className="flex items-center gap-2 bg-dashboard-card px-2 py-1 rounded border border-gray-700/30 w-full justify-between">
                 <span className="text-xs text-gray-400 font-bold shrink-0">RNG:</span>
                 {(() => {
                   const targetComb = combinations[selectedCombIndex < combinations.length ? selectedCombIndex : 0];
@@ -1214,14 +1184,14 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                             return (
                               <div className="flex flex-col">
                                 <span>{parts[0]}</span>
-                                {parts[1] && <span className="text-[10.5px] opacity-80 text-[#64ffda] leading-tight mt-0.5">Classid: {parts[1].trim().replace(/,$/, '')}</span>}
+                                {parts[1] && <span className="text-[10.5px] opacity-80 text-dashboard-accent leading-tight mt-0.5">Classid: {parts[1].trim().replace(/,$/, '')}</span>}
                               </div>
                             );
                           })()}
                         </code>
                         <button
                           onClick={() => navigator.clipboard.writeText(currentRngString)}
-                          className="text-[10px] font-bold bg-[#0a192f] text-dashboard-accent border border-dashboard-accent/50 px-1.5 py-0.5 rounded hover:bg-dashboard-accent hover:text-[#0a192f] transition-colors shrink-0 cursor-pointer"
+                          className="text-[10px] font-bold bg-dashboard-bg text-dashboard-accent border border-dashboard-accent/50 px-1.5 py-0.5 rounded hover:bg-dashboard-accent hover:text-dashboard-bg transition-colors shrink-0 cursor-pointer"
                         >
                           COPY
                         </button>
@@ -1229,12 +1199,12 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                       {dropString && (
                         <div className="flex items-center gap-1 w-full justify-between mt-0.5 pt-1 border-t border-gray-700/50">
                           <span className="text-xs text-gray-400 font-bold shrink-0">遞補:</span>
-                          <code className="text-xs text-[#64ffda] font-mono truncate max-w-[120px] sm:max-w-[250px]" title={dropString}>
+                          <code className="text-xs text-dashboard-accent font-mono truncate max-w-[120px] sm:max-w-[250px]" title={dropString}>
                             {dropString}
                           </code>
                           <button
                             onClick={() => navigator.clipboard.writeText(dropString)}
-                            className="text-[10px] font-bold bg-[#0a192f] text-[#64ffda] border border-[#64ffda]/50 px-1.5 py-0.5 rounded hover:bg-[#64ffda] hover:text-[#0a192f] transition-colors shrink-0 cursor-pointer"
+                            className="text-[10px] font-bold bg-dashboard-bg text-dashboard-accent border border-dashboard-accent/50 px-1.5 py-0.5 rounded hover:bg-dashboard-accent hover:text-dashboard-bg transition-colors shrink-0 cursor-pointer"
                           >
                             COPY
                           </button>
@@ -1261,7 +1231,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                 
                 const classIdsString = `[${classIdsArray.join(',')}],`;
                 return (
-                  <div className="flex items-center gap-2 bg-[#112240] px-2 py-1 rounded border border-gray-700/30 w-full justify-between">
+                  <div className="flex items-center gap-2 bg-dashboard-card px-2 py-1 rounded border border-gray-700/30 w-full justify-between">
                     <span className="text-xs text-gray-400 font-bold shrink-0">ClassIDs:</span>
                     <div className="flex items-center gap-1 overflow-hidden">
                       <code className="text-xs text-purple-400 font-mono truncate max-w-[150px] sm:max-w-[300px]" title={classIdsString}>
@@ -1269,7 +1239,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                       </code>
                       <button
                         onClick={() => navigator.clipboard.writeText(classIdsString)}
-                        className="text-[10px] font-bold bg-[#0a192f] text-purple-400 border border-purple-400/50 px-1.5 py-0.5 rounded hover:bg-purple-400 hover:text-[#0a192f] transition-colors shrink-0 cursor-pointer"
+                        className="text-[10px] font-bold bg-dashboard-bg text-purple-400 border border-purple-400/50 px-1.5 py-0.5 rounded hover:bg-purple-400 hover:text-dashboard-bg transition-colors shrink-0 cursor-pointer"
                       >
                         COPY
                       </button>
@@ -1279,9 +1249,9 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
               })()}
             </div>
           </div>
-          <div className="flex flex-nowrap justify-center gap-2 w-full">
+          <div className="flex flex-wrap justify-center gap-2 w-full">
             {rowCounts.slice(0, reelCount).map((rows, idx) => (
-              <div key={idx} className="flex flex-col justify-center items-center gap-1.5 py-2 px-2 bg-[#112240] rounded-md border border-gray-700/50 shadow-sm hover:border-gray-600 transition-colors flex-1 min-w-[70px] max-w-[100px]">
+              <div key={idx} className="flex flex-col justify-center items-center gap-1.5 py-2 px-2 bg-dashboard-card rounded-md border border-gray-700/50 shadow-sm hover:border-gray-600 transition-colors flex-1 min-w-[70px] max-w-[100px]">
                 <div className="flex items-center gap-1 mb-0.5">
                   <span className="text-[11px] text-dashboard-accent font-mono font-bold">R{idx + 1}</span>
                   <span className="text-[10px] text-gray-400">Rows</span>
@@ -1294,7 +1264,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                     onRowCountsChange(newCounts);
                   }}
                   disabled={isRunning}
-                  className="bg-[#0a192f] border border-gray-600 text-dashboard-text-primary rounded px-1 py-0.5 outline-none focus:border-dashboard-accent text-[11px] cursor-pointer appearance-none text-center w-full"
+                  className="bg-dashboard-bg border border-gray-600 text-dashboard-text-primary rounded px-1 py-0.5 outline-none focus:border-dashboard-accent text-[11px] cursor-pointer appearance-none text-center w-full"
                 >
                   {[2, 3, 4, 5, 6, 7, 8].map(n => (
                     <option key={n} value={n}>{n}</option>
@@ -1307,9 +1277,9 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
         </div>
 
         <div
-          className="bg-dashboard-card p-6 rounded-xl shadow-2xl border border-gray-700/30 w-full max-w-3xl overflow-hidden flex justify-center items-center"
+          className="slot-board bg-dashboard-card p-3 sm:p-6 rounded-xl shadow-2xl border border-gray-700/30 w-full max-w-3xl overflow-hidden flex justify-center items-center"
         >
-          <div ref={gridContainerRefOther} className="relative inline-flex flex-col items-center justify-center">
+          <div ref={gridContainerRefOther} className="slot-grid relative inline-flex flex-col items-center justify-center" style={{ '--cols': reelCount } as React.CSSProperties}>
           {Boolean(selectedSymbol && linePathsOther.length > 0) && (
             <svg className="absolute inset-0 pointer-events-none w-full h-full z-20">
               <defs>
@@ -1329,7 +1299,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                     <path
                       d={p.path}
                       fill="none"
-                      stroke={isInterference ? "#ef4444" : "#64ffda"}
+                      stroke={isInterference ? "#ef4444" : "var(--color-dashboard-accent)"}
                       strokeWidth="8"
                       strokeOpacity={isInterference ? "0.35" : "0.45"}
                       filter="url(#glow-other)"
@@ -1348,10 +1318,10 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
             </svg>
           )}
 
-          <div className="flex flex-col items-center justify-center gap-3 relative z-10 w-full">
+          <div className="flex flex-col items-center justify-center slot-gap relative z-10 w-full">
             {getTraits(gameType).family === 'megaway' && (
-              <div className="flex gap-3 justify-center mb-1">
-                <div className="w-20 h-20 bg-transparent" />
+              <div className="flex slot-gap justify-center mb-1">
+                <div className="slot-cell bg-transparent" />
                 {Array.from({ length: 4 }).map((_, idx) => {
                   const winIndices = winningCoordsOther.get(`top-${idx}`);
                   const isWinning = !!winIndices;
@@ -1363,8 +1333,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                       key={idx}
                       id={`cell-top-other-${idx}`}
                       className={`
-                        w-20 h-20 rounded-lg flex flex-col items-center justify-center font-bold shadow-lg transform relative border
-                        ${isWinning ? `scale-[1.06] border-2 shadow-[0_0_15px_rgba(100,255,218,0.85)] z-10 bg-[#152e4b] ${pulseClass} ${winColorClass}` : hasAnyWin ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]' : 'bg-[#112240] text-dashboard-text-primary border-dashboard-accent/30'}
+                        slot-cell rounded-lg flex flex-col items-center justify-center font-bold shadow-lg transform relative border
+                        ${isWinning ? `scale-[1.06] border-2 shadow-[0_0_15px_rgba(100,255,218,0.85)] z-10 bg-dashboard-hover ${pulseClass} ${winColorClass}` : hasAnyWin ? 'opacity-20 scale-95 border-transparent contrast-75 filter blur-[0.3px]' : 'bg-dashboard-card text-dashboard-text-primary border-dashboard-accent/30'}
                       `}
                     >
                       <span className="text-[11px] text-gray-300 font-bold font-mono tracking-tighter absolute top-1">TOP R{idx + 2}</span>
@@ -1381,13 +1351,13 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                     </div>
                   );
                 })}
-                {reelCount > 5 && <div className="w-20 h-20 bg-transparent" />}
+                {reelCount > 5 && <div className="slot-cell bg-transparent" />}
               </div>
             )}
 
-            <div className="flex justify-center items-center gap-3 min-h-[300px]">
+            <div className="flex justify-center items-center slot-gap">
               {displayGridOther.map((col, colIndex) => (
-                <div key={colIndex} className="flex flex-col gap-3">
+                <div key={colIndex} className="flex flex-col slot-gap">
                   {col.map((symbol, rowIndex) => {
                     const winIndices = winningCoordsOther.get(`${colIndex}-${rowIndex}`);
                     const isWinning = !!winIndices;
@@ -1417,7 +1387,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                       const balls = ballId.startsWith('F') ? MULTIPLIER_BALLS : LUCKY_BALLS;
                       const ball = balls.find(b => b.values.includes(numVal)) || balls.find(b => b.id === ballId);
                       if (ball) {
-                        customBg = `bg-[#0a192f] border ${ball.border} ${ball.color}`;
+                        customBg = `bg-dashboard-bg border ${ball.border} ${ball.color}`;
                       }
                     }
 
@@ -1455,15 +1425,15 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                         onDragOver={handleDragOver}
                         onDrop={(e) => !isGoldFrameMode && !isJackpotMode && !isCloverMode && handleDrop(e, colIndex, rowIndex)}
                         className={`
-                          w-20 h-20 rounded-lg flex items-center justify-center text-xl font-bold
+                          slot-cell rounded-lg flex items-center justify-center font-bold
                           shadow-lg transform relative cursor-grab active:cursor-grabbing
                           ${!isWinning && 'transition-all duration-300'}
                           ${customBg ? customBg :
-                            symbol === '-' ? 'bg-[#0a192f] text-gray-700 border-2 border-gray-800 border-dashed' :
+                            symbol === '-' ? 'bg-dashboard-bg text-gray-700 border-2 border-gray-800 border-dashed' :
                             symbol === 'WILD' || symbol.startsWith('W') || symbol === 'WX' ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-dashboard-bg border border-yellow-300' :
                               symbol === 'SCATTER' ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white border border-pink-300' :
-                                symbol === 'S1' ? 'bg-[#0f1d35] text-green-400 border border-green-500/50' :
-                                'bg-[#112240] text-dashboard-text-primary border border-dashboard-accent/30'}
+                                symbol === 'S1' ? 'bg-dashboard-raised text-green-400 border border-green-500/50' :
+                                'bg-dashboard-card text-dashboard-text-primary border border-dashboard-accent/30'}
                           ${isWinning
                             ? `z-10 ring-2 scale-105 ${winColorClass} ${pulseClass} ${isNoPayoutWin ? 'ring-gray-400 shadow-[0_0_15px_rgba(156,163,175,0.8)]' : ''}`
                             : hasAnyWin
@@ -1490,7 +1460,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                         </div>
                         {getTraits(gameType).goldFramesAndJackpots && showGoldFrameEditor && goldFrames[`${colIndex}-${rowIndex}`] !== undefined && (
                           <div className="absolute inset-0 rounded-lg border-[3px] border-yellow-400 pointer-events-none z-20 flex items-end justify-end p-0.5">
-                            <span className="text-[9px] font-bold text-[#0a192f] bg-yellow-400 px-1 rounded-sm leading-tight shadow-sm">
+                            <span className="text-[9px] font-bold text-dashboard-bg bg-yellow-400 px-1 rounded-sm leading-tight shadow-sm">
                               {goldFrames[`${colIndex}-${rowIndex}`]}X
                             </span>
                           </div>
@@ -1513,7 +1483,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
         </div>
 
         {/* Evaluation Output */}
-        <div className="w-full max-w-3xl flex flex-col bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 shadow-inner">
+        <div className="w-full max-w-3xl flex flex-col bg-dashboard-bg p-4 rounded-lg border border-gray-700/50 shadow-inner">
           <span className="text-sm text-dashboard-text-secondary font-bold border-b border-gray-700/50 pb-2 mb-3">連線結果 (Evaluation)</span>
 
           {winsOther.length > 0 ? (() => {
@@ -1539,7 +1509,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                         className={`flex flex-col px-3 py-2 rounded border transition-all ${
                           isInterference
                             ? `bg-red-950/20 border-red-500/40 ${pulseClass}`
-                            : 'bg-[#112240] border-dashboard-accent/30'
+                            : 'bg-dashboard-card border-dashboard-accent/30'
                         }`}
                       >
                         <span className={`text-xs font-mono font-bold truncate ${isInterference ? 'text-red-400' : 'text-yellow-400'}`}>
@@ -1577,8 +1547,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                         </div>
                         {globalMultiplier > 0 && (
                           <div className="flex justify-between items-center">
-                            <span className="text-[#64ffda] font-bold text-xs">Total Multiplier</span>
-                            <span className="text-[#64ffda] font-bold text-sm">x{globalMultiplier}</span>
+                            <span className="text-dashboard-accent font-bold text-xs">Total Multiplier</span>
+                            <span className="text-dashboard-accent font-bold text-sm">x{globalMultiplier}</span>
                           </div>
                         )}
                         <div className="flex justify-between items-center mt-1">
@@ -1612,7 +1582,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                   </button>
                   {!noWinCollapsed && (
                     noWinHits.length > 0 ? noWinHits.map((w, idx) => (
-                      <div key={idx} className="flex flex-col bg-[#0f1c34] px-3 py-2 rounded border border-gray-700/30">
+                      <div key={idx} className="flex flex-col bg-dashboard-raised px-3 py-2 rounded border border-gray-700/30">
                         <span className="text-xs font-mono font-bold truncate text-gray-400">
                           {w.symbolId} {getTraits(gameType).family === 'payanywhere' ? `個數 ${w.matchCount}` : getTraits(gameType).family === 'line' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
                         </span>
@@ -1638,12 +1608,12 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
 
       {/* Right Column: Special Symbol & Multiplier Config */}
       {getTraits(gameType).family !== 'way' && (
-      <div className="w-full lg:w-[480px] shrink-0 bg-[#0a192f] p-5 rounded-lg border border-gray-700/50 flex flex-col gap-4">
+      <div className="w-full @6xl:w-[420px] shrink-0 bg-dashboard-bg p-4 sm:p-5 rounded-lg border border-gray-700/50 flex flex-col gap-4">
         <span className="text-base font-bold text-dashboard-text-secondary border-b border-gray-700/50 pb-2 mb-1">特殊符號與倍數球配置</span>
         
-        <div className="flex flex-col gap-4 p-4 bg-[#112240] rounded border border-gray-700/50">
+        <div className="flex flex-col gap-4 p-4 bg-dashboard-card rounded border border-gray-700/50">
           <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-purple-500/20">
+            <div className="flex items-center justify-between bg-dashboard-bg p-2 rounded-lg border border-purple-500/20">
               <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">
                 {getTraits(gameType).goldFramesAndJackpots ? (
                   <input type="checkbox" className="accent-purple-500 w-5 h-5" checked={showGoldFrameEditor}
@@ -1671,7 +1641,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                     <select 
                       value={selectedGoldMultiplier}
                       onChange={e => setSelectedGoldMultiplier(Number(e.target.value))}
-                      className="bg-[#0a192f] border border-dashboard-accent/30 text-white rounded px-2 py-1 text-sm outline-none focus:border-dashboard-accent cursor-pointer"
+                      className="bg-dashboard-bg border border-dashboard-accent/30 text-white rounded px-2 py-1 text-sm outline-none focus:border-dashboard-accent cursor-pointer"
                     >
                       <option value={0}>🧽 橡皮擦 (刪除)</option>
                       {[2, 3, 4, 5, 6, 7, 8, 9, 10, 25, 50, 100].map(m => (
@@ -1698,7 +1668,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                   className={`w-full py-1.5 px-2 rounded text-xs font-bold transition-all border flex justify-center items-center gap-1 ${
                     isGoldFrameMode 
                       ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500 ring-1 ring-yellow-400' 
-                      : 'bg-[#0a192f] text-gray-400 border-gray-600 hover:border-gray-400'
+                      : 'bg-dashboard-bg text-gray-400 border-gray-600 hover:border-gray-400'
                   }`}
                 >
                   👑 金框編輯模式 {isGoldFrameMode ? '(ON)' : '(OFF)'}
@@ -1707,7 +1677,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
             )}
 
             {getTraits(gameType).goldFramesAndJackpots && (
-              <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-red-500/20 mt-2">
+              <div className="flex items-center justify-between bg-dashboard-bg p-2 rounded-lg border border-red-500/20 mt-2">
                 <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">
                   <input type="checkbox" className="accent-red-500 w-5 h-5" checked={showJackpotEditor}
                     onChange={(e) => setShowJackpotEditor(e.target.checked)} />
@@ -1724,7 +1694,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                     <select 
                       value={selectedJackpot}
                       onChange={e => setSelectedJackpot(e.target.value as any)}
-                      className="bg-[#0a192f] border border-red-500/30 text-white rounded px-2 py-1 text-sm outline-none focus:border-red-500 cursor-pointer"
+                      className="bg-dashboard-bg border border-red-500/30 text-white rounded px-2 py-1 text-sm outline-none focus:border-red-500 cursor-pointer"
                     >
                       <option value="ERASER">🧽 橡皮擦 (刪除)</option>
                       <option value="MINI">MINI (25x)</option>
@@ -1752,7 +1722,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                   className={`w-full py-1.5 px-2 rounded text-xs font-bold transition-all border flex justify-center items-center gap-1 ${
                     isJackpotMode 
                       ? 'bg-red-500/20 text-red-400 border-red-500 ring-1 ring-red-400' 
-                      : 'bg-[#0a192f] text-gray-400 border-gray-600 hover:border-gray-400'
+                      : 'bg-dashboard-bg text-gray-400 border-gray-600 hover:border-gray-400'
                   }`}
                 >
                   🎯 大獎編輯模式 {isJackpotMode ? '(ON)' : '(OFF)'}
@@ -1763,7 +1733,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
             {getTraits(gameType).goldFramesAndJackpots && (
               <>
               {combinedClassIdStr && (
-                <div className="flex items-center gap-2 bg-[#112240] px-2 py-1 rounded border border-gray-700/30 w-full justify-between mt-2">
+                <div className="flex items-center gap-2 bg-dashboard-card px-2 py-1 rounded border border-gray-700/30 w-full justify-between mt-2">
                   <span className="text-xs text-yellow-400 font-bold shrink-0">ClassIDs:</span>
                   <div className="flex items-center gap-1 overflow-hidden">
                     <code className="text-xs text-yellow-400 font-mono truncate w-[85%]" title={combinedClassIdStr}>
@@ -1771,7 +1741,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                     </code>
                     <button
                       onClick={() => navigator.clipboard.writeText(combinedClassIdStr)}
-                      className="text-[10px] font-bold bg-[#0a192f] text-yellow-400 border border-yellow-400/50 px-1.5 py-0.5 rounded hover:bg-yellow-400 hover:text-[#0a192f] transition-colors shrink-0 cursor-pointer"
+                      className="text-[10px] font-bold bg-dashboard-bg text-yellow-400 border border-yellow-400/50 px-1.5 py-0.5 rounded hover:bg-yellow-400 hover:text-dashboard-bg transition-colors shrink-0 cursor-pointer"
                     >
                       COPY
                     </button>
@@ -1784,16 +1754,16 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
             {!getTraits(gameType).goldFramesAndJackpots && (specialSymbolConfig.s1Enabled || specialSymbolConfig.s2Enabled) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                 {specialSymbolConfig.s1Enabled && (
-                  <div className="flex flex-col gap-3 p-4 rounded-lg border-2 bg-[#0a192f] border-purple-500/30 shadow-lg relative overflow-hidden">
+                  <div className="flex flex-col gap-3 p-4 rounded-lg border-2 bg-dashboard-bg border-purple-500/30 shadow-lg relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-16 h-16 opacity-10 rounded-bl-full bg-purple-500"></div>
                     <span className="text-sm font-bold text-purple-400">S1 (Scatter 1)</span>
                     <div className="flex flex-wrap gap-2 relative z-10">
-                      <div className="flex items-center gap-2 bg-[#112240] rounded-md px-3 py-1.5 border border-purple-500/50 hover:border-purple-500 transition-colors">
+                      <div className="flex items-center gap-2 bg-dashboard-card rounded-md px-3 py-1.5 border border-purple-500/50 hover:border-purple-500 transition-colors">
                         <span className="text-sm text-purple-300 font-bold">數量</span>
                         <select className="bg-transparent text-sm text-white outline-none cursor-pointer border-none font-bold"
                           value={specialSymbolConfig.s1Count} onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, s1Count: Number(e.target.value) }))}>
                           {[0, 1, 2, 3].map(n => (
-                            <option key={n} value={n} className="bg-[#112240] text-white">{n}</option>
+                            <option key={n} value={n} className="bg-dashboard-card text-white">{n}</option>
                           ))}
                         </select>
                       </div>
@@ -1802,16 +1772,16 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                   </div>
                 )}
                 {specialSymbolConfig.s2Enabled && (
-                  <div className="flex flex-col gap-3 p-4 rounded-lg border-2 bg-[#0a192f] border-purple-500/30 shadow-lg relative overflow-hidden">
+                  <div className="flex flex-col gap-3 p-4 rounded-lg border-2 bg-dashboard-bg border-purple-500/30 shadow-lg relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-16 h-16 opacity-10 rounded-bl-full bg-purple-500"></div>
                     <span className="text-sm font-bold text-purple-400">S2 (Scatter 2)</span>
                     <div className="flex flex-wrap gap-2 relative z-10">
-                      <div className="flex items-center gap-2 bg-[#112240] rounded-md px-3 py-1.5 border border-purple-500/50 hover:border-purple-500 transition-colors">
+                      <div className="flex items-center gap-2 bg-dashboard-card rounded-md px-3 py-1.5 border border-purple-500/50 hover:border-purple-500 transition-colors">
                         <span className="text-sm text-purple-300 font-bold">數量</span>
                         <select className="bg-transparent text-sm text-white outline-none cursor-pointer border-none font-bold"
                           value={specialSymbolConfig.s2Count} onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, s2Count: Number(e.target.value) }))}>
                           {[0, 1, 2, 3].map(n => (
-                            <option key={n} value={n} className="bg-[#112240] text-white">{n}</option>
+                            <option key={n} value={n} className="bg-dashboard-card text-white">{n}</option>
                           ))}
                         </select>
                       </div>
@@ -1824,7 +1794,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
           
           {(getTraits(gameType).cloverCollection || getTraits(gameType).multiplierBalls) && (
             <div className="flex flex-col gap-3 mt-2 pt-4 border-t border-gray-700/50">
-              <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-dashboard-accent/20">
+              <div className="flex items-center justify-between bg-dashboard-bg p-2 rounded-lg border border-dashboard-accent/20">
                 <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">
                   {getTraits(gameType).cloverCollection ? (
                     <input type="checkbox" className="accent-dashboard-accent w-5 h-5" checked={specialSymbolConfig.s1Enabled}
@@ -1862,9 +1832,9 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
               
               {getTraits(gameType).cloverCollection && specialSymbolConfig.s1Enabled && (
                 <div className="grid grid-cols-1 gap-4 mt-2">
-                  <div className="flex flex-col gap-3 p-4 rounded-lg border-2 bg-[#0a192f] border-[#64ffda]/30 shadow-lg relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-16 h-16 opacity-10 rounded-bl-full bg-[#64ffda]"></div>
-                    <span className="text-sm font-bold text-[#64ffda]">幸運草 (S1)</span>
+                  <div className="flex flex-col gap-3 p-4 rounded-lg border-2 bg-dashboard-bg border-dashboard-accent/30 shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-16 h-16 opacity-10 rounded-bl-full bg-dashboard-accent"></div>
+                    <span className="text-sm font-bold text-dashboard-accent">幸運草 (S1)</span>
                     <div className="flex flex-wrap gap-2 relative z-10">
 
                       <button
@@ -1875,8 +1845,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                         }}
                         className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all border flex justify-center items-center gap-1 ${
                           isCloverMode 
-                            ? 'bg-[#64ffda]/20 text-[#64ffda] border-[#64ffda] ring-1 ring-[#64ffda]' 
-                            : 'bg-[#112240] text-gray-400 border-gray-600 hover:border-gray-400'
+                            ? 'bg-dashboard-accent/20 text-dashboard-accent border-dashboard-accent ring-1 ring-dashboard-accent' 
+                            : 'bg-dashboard-card text-gray-400 border-gray-600 hover:border-gray-400'
                         }`}
                       >
                         🍀 幸運草編輯模式 {isCloverMode ? '(ON)' : '(OFF)'}
@@ -1892,7 +1862,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                 return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                   {MULTIPLIER_BALLS.map(ball => (
-                    <div key={ball.id} className={`flex flex-col gap-3 p-4 rounded-lg border-2 bg-[#0a192f] ${ball.border} shadow-lg relative overflow-hidden`}>
+                    <div key={ball.id} className={`flex flex-col gap-3 p-4 rounded-lg border-2 bg-dashboard-bg ${ball.border} shadow-lg relative overflow-hidden`}>
                       <div className={`absolute top-0 right-0 w-16 h-16 opacity-10 rounded-bl-full ${ball.color.replace('text-', 'bg-')}`}></div>
                       <span className={`text-sm font-bold ${ball.color}`}>{ball.name}</span>
                       <div className="flex flex-wrap gap-2 relative z-10">
@@ -1900,8 +1870,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                           const key = `${ball.id}_${val}X`;
                           const count = specialSymbolConfig.multiplierCounts[key] || 0;
                           return (
-                            <div key={val} className={`flex items-center gap-2 bg-[#112240] rounded-md px-3 py-1.5 border transition-colors ${count > 0 ? 'border-[#64ffda] shadow-[0_0_8px_rgba(100,255,218,0.2)]' : 'border-gray-700/50 hover:border-gray-500'}`}>
-                              <span className={`text-sm w-8 text-right font-bold ${count > 0 ? 'text-[#64ffda]' : 'text-gray-300'}`}>{val}X</span>
+                            <div key={val} className={`flex items-center gap-2 bg-dashboard-card rounded-md px-3 py-1.5 border transition-colors ${count > 0 ? 'border-dashboard-accent shadow-[0_0_8px_rgba(100,255,218,0.2)]' : 'border-gray-700/50 hover:border-gray-500'}`}>
+                              <span className={`text-sm w-8 text-right font-bold ${count > 0 ? 'text-dashboard-accent' : 'text-gray-300'}`}>{val}X</span>
                               <select className="bg-transparent text-sm text-white outline-none cursor-pointer border-none font-bold"
                                 value={count}
                                 onChange={(e) => {
@@ -1916,7 +1886,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                               {[0, 1, 2, 3, 4, 5, 6].map(n => {
                                 const wouldExceed = totalMultipliers + (n - count) > 6;
                                 return (
-                                  <option key={n} value={n} disabled={wouldExceed} className={`bg-[#112240] ${wouldExceed ? 'text-gray-600' : 'text-white'}`}>
+                                  <option key={n} value={n} disabled={wouldExceed} className={`bg-dashboard-card ${wouldExceed ? 'text-gray-600' : 'text-white'}`}>
                                     {n}
                                   </option>
                                 );
@@ -1934,7 +1904,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
 
             {!getTraits(gameType).cloverCollection && (
               <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-gray-700/50">
-                <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-pink-500/20">
+                <div className="flex items-center justify-between bg-dashboard-bg p-2 rounded-lg border border-pink-500/20">
                   <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">
                     <input type="checkbox" className="accent-pink-500 w-5 h-5" checked={specialSymbolConfig.luckyBallsEnabled}
                       onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, luckyBallsEnabled: e.target.checked }))} />
@@ -1963,7 +1933,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                   return (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                     {LUCKY_BALLS.map(ball => (
-                      <div key={ball.id} className={`flex flex-col gap-3 p-4 rounded-lg border-2 bg-[#0a192f] ${ball.border} shadow-lg relative overflow-hidden`}>
+                      <div key={ball.id} className={`flex flex-col gap-3 p-4 rounded-lg border-2 bg-dashboard-bg ${ball.border} shadow-lg relative overflow-hidden`}>
                         <div className={`absolute top-0 right-0 w-16 h-16 opacity-10 rounded-bl-full ${ball.color.replace('text-', 'bg-')}`}></div>
                         <span className={`text-sm font-bold ${ball.color}`}>{ball.name}</span>
                         <div className="flex flex-wrap gap-2 relative z-10">
@@ -1971,7 +1941,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                             const key = `${ball.id}_${val}X`;
                             const count = specialSymbolConfig.luckyCounts[key] || 0;
                             return (
-                              <div key={val} className={`flex items-center gap-2 bg-[#112240] rounded-md px-3 py-1.5 border transition-colors ${count > 0 ? 'border-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.2)]' : 'border-gray-700/50 hover:border-gray-500'}`}>
+                              <div key={val} className={`flex items-center gap-2 bg-dashboard-card rounded-md px-3 py-1.5 border transition-colors ${count > 0 ? 'border-pink-500 shadow-[0_0_8px_rgba(236,72,153,0.2)]' : 'border-gray-700/50 hover:border-gray-500'}`}>
                                 <span className={`text-sm w-8 text-right font-bold ${count > 0 ? 'text-pink-400' : 'text-gray-300'}`}>{val}X</span>
                                 <select className="bg-transparent text-sm text-white outline-none cursor-pointer border-none font-bold"
                                   value={count}
@@ -1987,7 +1957,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                                 {[0, 1, 2, 3, 4, 5, 6].map(n => {
                                   const wouldExceed = totalLucky + (n - count) > 6;
                                   return (
-                                    <option key={n} value={n} disabled={wouldExceed} className={`bg-[#112240] ${wouldExceed ? 'text-gray-600' : 'text-white'}`}>
+                                    <option key={n} value={n} disabled={wouldExceed} className={`bg-dashboard-card ${wouldExceed ? 'text-gray-600' : 'text-white'}`}>
                                       {n}
                                     </option>
                                   );
@@ -2010,6 +1980,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
       </div>
       )}
 
+    </div>
     </div>
   );
 };

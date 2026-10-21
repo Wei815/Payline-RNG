@@ -1,16 +1,74 @@
 @import "tailwindcss";
 
+/*
+ * 設計 Token：所有顏色請使用這裡的語意名稱，不要在元件寫死色碼。
+ * canvas(最底) < inset(凹陷區) < card(面板) < raised(標題列/分頁) < hover(互動)
+ */
 @theme {
-  --color-dashboard-bg: #0a192f;
-  --color-dashboard-card: #112240;
-  --color-dashboard-accent: #64ffda;
-  --color-dashboard-text-primary: #e6f1ff;
-  --color-dashboard-text-secondary: #8892b0;
+  --font-sans: "Inter", "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+
+  --color-dashboard-bg: #0b1120;
+  --color-dashboard-inset: #070b15;
+  --color-dashboard-card: #111a2c;
+  --color-dashboard-raised: #162238;
+  --color-dashboard-hover: #1c2a44;
+  --color-dashboard-border: #24324a;
+  --color-dashboard-accent: #2dd4bf;
+  --color-dashboard-accent-strong: #14b8a6;
+  --color-dashboard-text-primary: #e6edf7;
+  --color-dashboard-text-secondary: #94a3b8;
+  --color-dashboard-text-muted: #64748b;
+
+  /* 灰階改用帶藍調的 slate，與深藍底色一致 */
+  --color-gray-100: #f1f5f9;
+  --color-gray-200: #e2e8f0;
+  --color-gray-300: #cbd5e1;
+  --color-gray-400: #94a3b8;
+  --color-gray-500: #64748b;
+  --color-gray-600: #475569;
+  --color-gray-700: #2c3a52;
+  --color-gray-800: #1c2738;
+  --color-gray-900: #0f172a;
 }
 
 @layer base {
   body {
-    @apply bg-dashboard-bg text-dashboard-text-primary antialiased m-0 font-sans h-screen w-screen overflow-hidden;
+    @apply bg-dashboard-bg text-dashboard-text-primary antialiased m-0 font-sans h-dvh w-screen overflow-hidden;
+    font-feature-settings: "cv11", "ss01", "tnum";
+  }
+  code, kbd, pre, .font-mono {
+    font-variant-ligatures: none;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-dashboard-accent);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--color-dashboard-accent) 35%, transparent);
+  }
+}
+
+/*
+ * 響應式盤面：格子大小依可用寬度縮放（container query），贏分線由 useLinePaths 依實際格子位置重算。
+ * 用法：外層 .slot-board（量測寬度），盤面 .slot-grid 並設定 style={{ '--cols': 欄數 }}，格子 .slot-cell，間距 .slot-gap
+ */
+@layer components {
+  .slot-board {
+    container-type: inline-size;
+    width: 100%;
+  }
+  .slot-grid {
+    --gap: clamp(4px, 1.6cqi, 12px);
+    --cell: clamp(34px, calc((100cqi - (var(--cols, 5) + 1) * var(--gap)) / var(--cols, 5)), 80px);
+  }
+  .slot-gap {
+    gap: var(--gap);
+  }
+  .slot-cell {
+    width: var(--cell);
+    height: var(--cell);
+    font-size: clamp(11px, calc(var(--cell) * 0.26), 20px);
   }
 }
 
@@ -20,15 +78,14 @@
     height: 6px;
   }
   .custom-scrollbar::-webkit-scrollbar-track {
-    background: rgba(10, 25, 47, 0.5); 
-    border-radius: 4px;
+    background: transparent;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(136, 146, 176, 0.3); 
+    background: color-mix(in oklab, var(--color-dashboard-text-secondary) 28%, transparent);
     border-radius: 4px;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(100, 255, 218, 0.5); 
+    background: color-mix(in oklab, var(--color-dashboard-accent) 55%, transparent);
   }
 
   @keyframes sync-pulse-1 {
@@ -76,7 +133,7 @@
 
   @keyframes slide-down-dynamic {
     0% { 
-      transform: translateY(calc( -100% * var(--drop-dist, 1) - 0.5rem * var(--drop-dist, 1) )); 
+      transform: translateY(calc( -100% * var(--drop-dist, 1) - var(--gap, 0.5rem) * var(--drop-dist, 1) )); 
     }
     100% { 
       transform: translateY(0); 

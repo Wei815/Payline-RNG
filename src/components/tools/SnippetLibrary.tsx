@@ -93,10 +93,10 @@ ${format2DArray(qa.Selection)}
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200">
-      <div className="bg-[#0a192f] border border-gray-600 w-full max-w-4xl h-full max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden relative">
+      <div className="bg-dashboard-bg border border-gray-600 w-full max-w-4xl h-full max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden relative">
         
         {/* Header */}
-        <div className="flex justify-between items-center p-5 border-b border-gray-700 bg-[#0f1d35] shrink-0">
+        <div className="flex justify-between items-center p-5 border-b border-gray-700 bg-dashboard-raised shrink-0">
           <div className="flex items-center gap-3">
             <h2 className="text-xl font-bold text-dashboard-text-primary tracking-wide">測試腳本暫存庫 (Snippet Library)</h2>
           </div>
@@ -109,7 +109,7 @@ ${format2DArray(qa.Selection)}
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto p-6 bg-[#0a192f] custom-scrollbar">
+        <div className="flex-1 overflow-auto p-6 bg-dashboard-bg custom-scrollbar">
           {snippets.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-500">
               <p>目前沒有任何暫存的測試腳本。</p>
@@ -117,7 +117,7 @@ ${format2DArray(qa.Selection)}
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {snippets.map(snippet => (
-                <div key={snippet.id} className="bg-[#112240] border border-gray-700 rounded-lg p-4 flex flex-col justify-between shadow-sm">
+                <div key={snippet.id} className="bg-dashboard-card border border-gray-700 rounded-lg p-4 flex flex-col justify-between shadow-sm">
                   <div>
                     <div className="flex justify-between items-start mb-2 gap-2">
                       <div className="flex-1 min-w-0">
@@ -144,7 +144,7 @@ ${format2DArray(qa.Selection)}
                                 setEditingTitleId(null);
                               }
                             }}
-                            className="w-full bg-[#0a192f] border border-dashboard-accent rounded px-2 py-0.5 text-dashboard-accent outline-none font-bold text-lg"
+                            className="w-full bg-dashboard-bg border border-dashboard-accent rounded px-2 py-0.5 text-dashboard-accent outline-none font-bold text-lg"
                           />
                         ) : (
                           <h3 
@@ -219,7 +219,7 @@ ${format2DArray(qa.Selection)}
       {/* Custom Confirm Modal */}
       {confirmDialog.isOpen && (
         <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0a192f] border border-gray-700 w-full max-w-sm rounded-lg p-5 shadow-2xl">
+          <div className="bg-dashboard-bg border border-gray-700 w-full max-w-sm rounded-lg p-5 shadow-2xl">
             <h3 className="text-dashboard-text-primary font-bold mb-4">系統提示</h3>
             <p className="text-gray-300 text-sm mb-6 leading-relaxed">
               {confirmDialog.message}
@@ -233,7 +233,7 @@ ${format2DArray(qa.Selection)}
               </button>
               <button 
                 onClick={confirmDialog.onConfirm}
-                className="px-3 py-1.5 rounded text-sm bg-dashboard-accent text-[#0a192f] font-bold hover:opacity-90 transition-opacity"
+                className="px-3 py-1.5 rounded text-sm bg-dashboard-accent text-dashboard-bg font-bold hover:opacity-90 transition-opacity"
               >
                 確定
               </button>
@@ -245,8 +245,8 @@ ${format2DArray(qa.Selection)}
       {/* Edit Content Modal */}
       {editingContentId && (
         <div className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0a192f] border border-gray-700 w-full max-w-2xl h-[80vh] flex flex-col rounded-lg shadow-2xl">
-            <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-[#0f1d35] shrink-0">
+          <div className="bg-dashboard-bg border border-gray-700 w-full max-w-2xl h-[80vh] flex flex-col rounded-lg shadow-2xl">
+            <div className="flex justify-between items-center p-4 border-b border-gray-700 bg-dashboard-raised shrink-0">
               <h3 className="text-dashboard-text-primary font-bold">檢視 / 編輯內文</h3>
               <button 
                 onClick={() => setEditingContentId(null)} 
@@ -259,12 +259,12 @@ ${format2DArray(qa.Selection)}
               <textarea 
                 value={editingContentValue}
                 onChange={e => setEditingContentValue(e.target.value)}
-                className="w-full h-full bg-[#112240] border border-gray-600 rounded p-3 text-white font-mono text-sm outline-none focus:border-dashboard-accent resize-none custom-scrollbar"
+                className="w-full h-full bg-dashboard-card border border-gray-600 rounded p-3 text-white font-mono text-sm outline-none focus:border-dashboard-accent resize-none custom-scrollbar"
                 spellCheck={false}
               />
               {editingContentError && <p className="text-red-400 text-xs font-bold">{editingContentError}</p>}
             </div>
-            <div className="flex justify-end gap-2 p-4 border-t border-gray-700 bg-[#0f1d35] shrink-0">
+            <div className="flex justify-end gap-2 p-4 border-t border-gray-700 bg-dashboard-raised shrink-0">
               <button 
                 onClick={() => setEditingContentId(null)} 
                 className="px-4 py-2 rounded text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
@@ -281,7 +281,7 @@ ${format2DArray(qa.Selection)}
                     setEditingContentError('JSON 格式錯誤，請檢查內容');
                   }
                 }}
-                className="px-4 py-2 rounded text-sm bg-dashboard-accent text-[#0a192f] font-bold hover:opacity-90 transition-opacity"
+                className="px-4 py-2 rounded text-sm bg-dashboard-accent text-dashboard-bg font-bold hover:opacity-90 transition-opacity"
               >
                 儲存
               </button>

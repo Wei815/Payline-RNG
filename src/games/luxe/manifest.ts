@@ -12,6 +12,7 @@ export default defineGame({
     family: 'line',
     searchPositionDependent: true,
     mathIdGenerator: true,
+    customGridTab: true,
     goldFramesAndJackpots: true,
     cloverCollection: true,
     ballMathIds: true,

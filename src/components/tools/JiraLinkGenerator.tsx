@@ -34,10 +34,10 @@ export const JiraLinkGenerator: React.FC<JiraLinkGeneratorProps> = ({ onClose })
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200">
-      <div className="bg-[#0a192f] border border-gray-600 w-full max-w-6xl h-full max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden relative">
+      <div className="bg-dashboard-bg border border-gray-600 w-full max-w-6xl h-full max-h-[85vh] rounded-xl flex flex-col shadow-2xl overflow-hidden relative">
         
         {/* Header */}
-        <div className="flex justify-between items-center p-5 border-b border-gray-700 bg-[#0f1d35] shrink-0">
+        <div className="flex justify-between items-center p-5 border-b border-gray-700 bg-dashboard-raised shrink-0">
           <div className="flex items-center gap-3">
             <LinkIcon className="text-dashboard-accent" />
             <h2 className="text-xl font-bold text-dashboard-text-primary tracking-wide">JIRA 出測 BUG 備註工具</h2>
@@ -51,7 +51,7 @@ export const JiraLinkGenerator: React.FC<JiraLinkGeneratorProps> = ({ onClose })
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden flex flex-col md:flex-row p-6 gap-6 bg-[#0a192f]">
+        <div className="flex-1 overflow-hidden flex flex-col md:flex-row p-6 gap-6 bg-dashboard-bg">
           
           {/* Left: Inputs */}
           <div className="w-full md:w-[320px] shrink-0 flex flex-col gap-6 h-full">
@@ -61,7 +61,7 @@ export const JiraLinkGenerator: React.FC<JiraLinkGeneratorProps> = ({ onClose })
                 type="text" 
                 value={baseUrl}
                 onChange={(e) => setBaseUrl(e.target.value)}
-                className="w-full bg-[#112240] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-dashboard-accent transition-colors"
+                className="w-full bg-dashboard-card border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-dashboard-accent transition-colors"
                 placeholder="https://auforce.atlassian.net/browse"
               />
             </div>
@@ -70,7 +70,7 @@ export const JiraLinkGenerator: React.FC<JiraLinkGeneratorProps> = ({ onClose })
               <textarea 
                 value={issues}
                 onChange={(e) => setIssues(e.target.value)}
-                className="w-full flex-1 bg-[#112240] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-dashboard-accent transition-colors resize-none font-mono custom-scrollbar"
+                className="w-full flex-1 bg-dashboard-card border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-dashboard-accent transition-colors resize-none font-mono custom-scrollbar"
                 placeholder={"RSGCLUXE-15\nRSGCLUXE-18\n..."}
               />
             </div>
