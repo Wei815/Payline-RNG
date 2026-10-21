@@ -150,6 +150,11 @@ export class RngSearchEngine {
       goldIndicesForReel.push(goldValid);
     }
 
+    // 滾輪表沒有任何金框時（例如秦皇），+WX 不可能經由金框掉落形成，改走一般百搭搜尋
+    if (requireGoldCascade && goldIndicesForReel.every(l => l.length === 0)) {
+      requireGoldCascade = false;
+    }
+
     const possibleReelsCount = targetIndicesForReel.filter(v => v.length > 0).length;
     if (possibleReelsCount < length) {
       return { rng: null, isInterfered: false };
@@ -674,11 +679,127 @@ export class RngSearchEngine {
       }
     }
 
+    // Way 類隨機搜尋找不到乾淨解時，改用「依規則篩選停點」的建構式搜尋（取樣 + 決定性窮舉）
+    if ((!bestCandidateRng || minInterferenceCount > 0) && getFamily(gameType) === 'way' && !isTargetScatter && !requireGoldCascade) {
+      const constructed = this.constructiveWaySearch(
+        targetSymbol, length, wildCount, currentStrips, rowCounts, currentPaytable, reelCount, gameType, wildSymbolSet, customPaylines, topTrackerOther,
+      );
+      if (constructed) return { rng: constructed, isInterfered: false };
+    }
+
     if (bestCandidateRng) {
       return { rng: bestCandidateRng, isInterfered: (minInterferenceCount > 0), allRngs: bestAllRngs };
     }
 
     return { rng: null, isInterfered: false };
+  }
+
+  /**
+   * Way 類單一路徑組合的建構式搜尋：
+   * - 先把每軸停點分類：視窗內「恰好一個目標」、「恰好一個百搭」、「沒有目標也沒有百搭」
+   * - 連線軸 (< length) 只從前兩類挑（百搭軸數 = wildCount），第 length 軸只從第三類挑，其餘軸任意
+   * - 先隨機取樣，失敗再以決定性順序窮舉（有上限），讓「找不到」盡量代表真的不存在
+   * 接受條件：恰好一筆目標 × length、ways = 1、百搭軸數正確、沒有任何其他有贏分的中獎（含百搭自成連線）
+   */
+  private constructiveWaySearch(
+    targetSymbol: string,
+    length: number,
+    wildCount: number,
+    currentStrips: string[][],
+    rowCounts: number[],
+    currentPaytable: PaytableRule[],
+    reelCount: number,
+    gameType: GameType,
+    wildSymbolSet: Set<string>,
+    customPaylines?: number[][],
+    topTrackerOther?: string[],
+  ): number[] | null {
+    const SAMPLE_BUDGET = 3000;
+    const ENUM_BUDGET = 20000;
+    if (length > reelCount || wildCount > length) return null;
+
+    const isT = (s: string) => s === targetSymbol;
+    const isW = (s: string) => wildSymbolSet.has(s);
+    // 優先使用不含 Bonus / Scatter 的停點；某一類在該軸完全沒有時才退而使用含 Bonus / Scatter 的停點
+    // （例如秦皇多數 A 停點視窗內有 B1 / S1；只要最終盤面沒有任何其他贏分即可接受）
+    const classes = Array.from({ length: reelCount }, (_, c) => {
+      const strip = currentStrips[c] || [];
+      const rows = rowCounts[c] || 3;
+      const clean = { target: [] as number[], wild: [] as number[], none: [] as number[], any: [] as number[] };
+      const blocked = { target: [] as number[], wild: [] as number[], none: [] as number[], any: [] as number[] };
+      for (let i = 0; i < strip.length; i++) {
+        const win = Array.from({ length: rows }, (_, r) => strip[(i + r) % strip.length]);
+        const bucket = win.some(s => this.gameInstance.blocksSearchDraw(s, targetSymbol)) ? blocked : clean;
+        bucket.any.push(i);
+        const hits = win.filter(s => isT(s) || isW(s));
+        if (hits.length === 0) bucket.none.push(i);
+        else if (hits.length === 1) (isT(hits[0]) ? bucket.target : bucket.wild).push(i);
+      }
+      const prefer = (k: keyof typeof clean) => (clean[k].length > 0 ? clean[k] : blocked[k]);
+      return { target: prefer('target'), wild: prefer('wild'), none: prefer('none'), any: prefer('any') };
+    });
+
+    const accept = (rng: number[]): boolean => {
+      const grid = this.gameInstance.getGridFromRng(rng, currentStrips, rowCounts, reelCount);
+      const evalGrid = this.gameInstance.getEvalGrid(grid, gameType, length, topTrackerOther);
+      const wins = this.gameInstance.evaluate(evalGrid, currentPaytable, { gameType, paylines: customPaylines }, customPaylines, true);
+      const targetWins = wins.filter(w => w.symbolId === targetSymbol);
+      if (targetWins.length !== 1 || targetWins[0].matchCount !== length || targetWins[0].ways !== 1) return false;
+      if (wins.some(w => w !== targetWins[0] && w.payout > 0)) return false;
+      const coords = getWinningPositions(evalGrid, [targetWins[0]], currentPaytable, gameType, undefined, customPaylines);
+      const wildReels = new Set<number>();
+      for (const key of coords.keys()) {
+        const [c, r] = key.split('-').map(Number);
+        if (isW(evalGrid[c]?.[r])) wildReels.add(c);
+      }
+      return wildReels.size === wildCount;
+    };
+
+    const listFor = (c: number, wildReels: Set<number>) =>
+      c < length ? (wildReels.has(c) ? classes[c].wild : classes[c].target)
+        : c === length ? classes[c].none : classes[c].any;
+
+    // 1) 隨機取樣
+    const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
+    for (let t = 0; t < SAMPLE_BUDGET; t++) {
+      const wildReels = new Set<number>();
+      const avail = Array.from({ length }, (_, i) => i);
+      for (let k = 0; k < wildCount; k++) wildReels.add(avail.splice(Math.floor(Math.random() * avail.length), 1)[0]);
+      const lists = Array.from({ length: reelCount }, (_, c) => listFor(c, wildReels));
+      if (lists.some(l => l.length === 0)) continue;
+      const rng = lists.map(pick);
+      if (accept(rng)) return rng;
+    }
+
+    // 2) 決定性窮舉：逐一列舉百搭軸組合 × 連線軸 / 第 length 軸的停點乘積；其餘軸依序輪替
+    const subsets: number[][] = [];
+    const build = (start: number, acc: number[]) => {
+      if (acc.length === wildCount) { subsets.push([...acc]); return; }
+      for (let i = start; i < length; i++) build(i + 1, [...acc, i]);
+    };
+    build(0, []);
+    let tried = 0;
+    for (const subset of subsets) {
+      const wildReels = new Set(subset);
+      const lists = Array.from({ length: reelCount }, (_, c) => listFor(c, wildReels));
+      if (lists.some(l => l.length === 0)) continue;
+      const constrained = Math.min(reelCount, length + 1);
+      const counter = Array(constrained).fill(0);
+      for (;;) {
+        if (tried++ >= ENUM_BUDGET) return null;
+        const rng = lists.map((l, c) => (c < constrained ? l[counter[c]] : l[(tried * 7 + c * 13) % l.length]));
+        if (accept(rng)) return rng;
+        let c = constrained - 1;
+        while (c >= 0) {
+          counter[c]++;
+          if (counter[c] < lists[c].length) break;
+          counter[c] = 0;
+          c--;
+        }
+        if (c < 0) break;
+      }
+    }
+    return null;
   }
 
   async findRngForCombos(

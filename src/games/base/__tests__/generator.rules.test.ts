@@ -12,7 +12,7 @@ import { getScriptFormatter, getTraits } from '../../registry';
 import { expectKnownIssues } from './knownIssues';
 import { GENERATOR_KNOWN } from './knownIssues.data';
 import {
-  asScript, cascadeOnce, checkRomaRefill, independentTotal, winCtx, checkSingleCombination, gridFromMathIds, gridFromScriptLine, parseScript, scriptCtx, type Violation,
+  asScript, usesGoldCascade, cascadeOnce, checkRomaRefill, independentTotal, winCtx, checkSingleCombination, gridFromMathIds, gridFromScriptLine, parseScript, scriptCtx, type Violation,
 } from './flowRules';
 
 const CASES: [GameType, string][] = [
@@ -83,7 +83,7 @@ describe('產生器 → 複製腳本 → 規則檢查', () => {
             if (symbol !== 'B1/B2' && n !== c.length) push('P1 目標個數', `名稱 ${c.length} 個，盤面 ${n} 個`);
           } else if (!c.isInterfered) {
             let board = grid;
-            if (traits.goldCascadeSearch && c.wildCount > 0) {
+            if (usesGoldCascade(fx, c.wildCount)) {
               const strips = c.stripId !== undefined && fx.stripSets?.[c.stripId] ? fx.stripSets[c.stripId] : fx.strips;
               const { next, initialWins } = cascadeOnce(fx, grid, c.rng as number[], strips);
               if (initialWins.some(w => w.symbolId === symbol && w.payout > 0)) push('G1 初始盤面不得已有目標中獎', symbol);

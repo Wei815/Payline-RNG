@@ -132,7 +132,11 @@ export function tumbleOnce(env: TumbleEnv, state: TumbleState): TumbleState {
     return symId;
   }));
 
-  const nextGrid = GameRegistry.getGame(gameType).calculateNextDropGrid(
+  // 新補入的格子以標記回傳，掉落後再換回 MathID；留在盤面的格子沿用原本的 MathID
+  // （掉落是依「符號」計算，若直接把符號盤面存回 MathID 盤面，留盤符號會變成無法辨識的 ?M2）
+  const NEW = '\u0000new:';
+  const game = GameRegistry.getGame(gameType);
+  const dropped = game.calculateNextDropGrid(
     upgradedGridSymbols,
     winningCoords,
     isFreeGame,
@@ -145,11 +149,26 @@ export function tumbleOnce(env: TumbleEnv, state: TumbleState): TumbleState {
           const mult = newClassSeq.shift();
           if (mult) symStr = `${idVal}_${mult}X`;
         }
-        return symStr;
+        return NEW + symStr;
       }
-      return "0";
+      return NEW + "0";
     }
   );
+
+  const nextGrid = dropped.map((col, c) => {
+    // 依原盤面順序取出留下的格子（與 calculateNextDropGrid 保留順序一致）
+    const keptIds = state.currentGridIds[c].filter((_, r) =>
+      !winningCoords.has(`${c}-${r}`) || game.isSymbolUnremovable?.(upgradedGridSymbols[c][r], isFreeGame));
+    let k = 0;
+    return col.map(cell => {
+      if (cell.startsWith(NEW)) return cell.slice(NEW.length);
+      const origId = keptIds[k++] ?? '0';
+      if (cell === 'WX') return 'WX';
+      // 幸運球升級後倍數改變：保留 MathID，套用新的倍數字尾
+      const suffix = cell.includes('_') ? `_${cell.split('_')[1]}` : '';
+      return `${origId.split('_')[0]}${suffix}`;
+    });
+  });
 
   return {
     currentGridIds: nextGrid,

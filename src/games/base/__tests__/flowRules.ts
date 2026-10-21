@@ -255,3 +255,8 @@ export const winCtx = (fx: GameFixture, symbol: string, isFreeGame = false): Com
   currentPaytable: fx.paytable, customPaylines: fx.paylines, bet: 1, goldFrames: {}, selectedSymbol: symbol, isFreeGame,
   topTrackerOther: ['WX', 'WX', 'WX', 'WX'],
 });
+
+/** 金框掉落型的「+WX」只在滾輪表真的有金框時成立（秦皇沒有金框，+WX 是一般百搭） */
+export const usesGoldCascade = (fx: GameFixture, wildCount: number) =>
+  !!getTraits(fx.gameType).goldCascadeSearch && wildCount > 0 &&
+  [fx.strips, ...Object.values(fx.stripSets ?? {})].some(set => set.some(col => col.some(s => fx.game.isGoldSymbol?.(s) ?? /^G[1-9A-Z]/.test(s))));

@@ -24,12 +24,11 @@ exports[`waygame_qin 黃金樣本 > RNG 反向搜尋 1`] = `
 [
   {
     "case": "M1*3",
-    "grid": "K,Q,A,M1 | Q,M3,M4,M1 | M1,K,M4,Q | M2,A,M3,K | M1,M1,M1,M1 | M4,M1,Q,M4",
-    "isInterfered": true,
-    "rng": "77,25,36,62,2,27",
+    "grid": "M4,M1,Q,M4 | M3,J,K,M1 | J,M1,K,M4 | M2,A,M3,K | J,M1,K,M4 | M1,Q,M4,K",
+    "isInterfered": false,
+    "rng": "27,21,35,62,35,28",
     "wins": [
       "M1x3 ways=1 pay=25 total=25",
-      "Qx3 ways=1 pay=2 total=2",
     ],
   },
   {
@@ -44,42 +43,47 @@ exports[`waygame_qin 黃金樣本 > RNG 反向搜尋 1`] = `
   },
   {
     "case": "M1*3+1W",
+    "grid": "M3,J,K,M1 | M4,M1,Q,M4 | M2,Q,WX,A | K,M4,Q,J | M4,J,M1,K | J,M2,J,M1",
     "isInterfered": false,
-    "rng": null,
+    "rng": "21,27,8,37,34,53",
+    "wins": [
+      "M1x3 ways=1 pay=25 total=25",
+    ],
   },
   {
     "case": "M2*3",
-    "grid": "K,M2,K,J | M2,Q,M3,J | M3,Q,J,M2 | M4,Q,J,M3 | K,M1,Q,M4 | Q,M2,A,M3",
-    "isInterfered": true,
-    "rng": "59,19,41,38,31,73",
+    "grid": "K,M2,K,J | M2,M4,Q,A | J,M2,M3,Q | J,M1,K,M4 | Q,J,M4,K | A,M4,Q,M2",
+    "isInterfered": false,
+    "rng": "59,72,58,35,39,71",
     "wins": [
       "M2x3 ways=1 pay=20 total=20",
-      "Jx4 ways=1 pay=5 total=5",
     ],
   },
   {
     "case": "M2*6",
+    "grid": "M2,K,J,K | A,M2,M4,Q | M3,Q,J,M2 | M3,A,M2,A | A,M1,A,M2 | M4,Q,M2,A",
     "isInterfered": false,
-    "rng": null,
+    "rng": "8,71,56,60,73,72",
+    "wins": [
+      "M2x6 ways=1 pay=300 total=300",
+    ],
   },
   {
     "case": "M2*3+1W",
-    "grid": "Q,J,M2,Q | J,M4,M2,J | Q,WX,A,M3 | M1,Q,M4,K | M3,J,K,M1 | A,M1,J,M2",
-    "isInterfered": true,
-    "rng": "42,55,9,28,21,51",
+    "grid": "M2,K,J,K | M2,M4,Q,A | Q,WX,A,M3 | K,A,M1,M1 | A,M1,A,M1 | M2,A,M1,M1",
+    "isInterfered": false,
+    "rng": "8,72,9,1,71,0",
     "wins": [
       "M2x3 ways=1 pay=20 total=20",
-      "Jx3 ways=2 pay=1 total=2",
     ],
   },
   {
     "case": "M3*3",
-    "grid": "Q,K,M3,Q | M3,M4,M1,Q | M3,Q,J,M2 | M4,M1,Q,M4 | M3,J,K,M1 | M1,Q,M4,K",
-    "isInterfered": true,
-    "rng": "39,26,56,27,21,28",
+    "grid": "M1,M1,M1,M3 | M3,J,Q,M2 | J,Q,M3,J | A,M1,M1,M1 | K,M1,Q,M3 | M4,Q,J,M2",
+    "isInterfered": false,
+    "rng": "1,47,74,2,23,38",
     "wins": [
       "M3x3 ways=1 pay=12 total=12",
-      "Qx4 ways=2 pay=7 total=14",
     ],
   },
   {
@@ -94,13 +98,11 @@ exports[`waygame_qin 黃金樣本 > RNG 反向搜尋 1`] = `
   },
   {
     "case": "M3*3+1W",
-    "grid": "Q,M4,J,M3 | Q,M3,J,K | M2,Q,WX,A | M1,Q,M4,J | M1,J,M4,A | A,M3,M2,A",
-    "isInterfered": true,
-    "rng": "49,20,8,32,54,42",
+    "grid": "K,M3,J,K | M3,M4,M1,Q | M2,Q,WX,A | M4,K,M1,Q | A,M1,J,M4 | M1,M1,M1,K",
+    "isInterfered": false,
+    "rng": "20,26,8,30,53,3",
     "wins": [
       "M3x3 ways=1 pay=12 total=12",
-      "Qx4 ways=2 pay=7 total=14",
-      "Jx5 ways=1 pay=15 total=15",
     ],
   },
 ]

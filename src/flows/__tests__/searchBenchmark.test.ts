@@ -10,7 +10,7 @@ import { describe, expect, test } from 'vitest';
 import * as fs from 'fs';
 import type { GameType } from '../../types';
 import { buildFixture, loadTemplate, mulberry32, withSeed, type GameFixture } from '../../games/base/__tests__/harness';
-import { cascadeOnce, checkSingleCombination, WILDS } from '../../games/base/__tests__/flowRules';
+import { cascadeOnce, checkSingleCombination, usesGoldCascade, WILDS } from '../../games/base/__tests__/flowRules';
 import { getTraits } from '../../games/registry';
 
 const RUN = !!process.env.FLOW_BENCH;
@@ -112,7 +112,7 @@ describe.skipIf(!RUN)('反向搜尋效能與漏解評估', () => {
               if (!res.rng) { row.engineNone++; continue; }
               const strips = res.stripId !== undefined && fx.stripSets?.[res.stripId] ? fx.stripSets[res.stripId] : fx.strips;
               let grid = fx.game.getGridFromRng(res.rng, strips, fx.rowCounts, fx.reelCount);
-              if (traits.goldCascadeSearch && wild > 0) grid = cascadeOnce(fx, grid, res.rng, strips).next;
+              if (usesGoldCascade(fx, wild)) grid = cascadeOnce(fx, grid, res.rng, strips).next;
               if (isClean(fx, grid, symbol, length, wild)) row.engineClean++; else row.engineInterfered++;
             }
             row.engineMs = Math.round(row.engineMs / 3);

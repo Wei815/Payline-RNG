@@ -19,8 +19,12 @@ exports[`waygame 黃金樣本 > RNG 反向搜尋 1`] = `
 [
   {
     "case": "M1*3",
+    "grid": "M2,M1,K | A,M1,Q | J,J,M1 | M3,A,K | K,K,WX",
     "isInterfered": false,
-    "rng": null,
+    "rng": "16,42,24,26,39",
+    "wins": [
+      "M1x3 ways=1 pay=30 total=30",
+    ],
   },
   {
     "case": "M1*5",
@@ -45,13 +49,21 @@ exports[`waygame 黃金樣本 > RNG 反向搜尋 1`] = `
   },
   {
     "case": "M2*3",
+    "grid": "K,TE,M2 | M2,J,M4 | Q,Q,M2 | Q,M4,K | J,M4,A",
     "isInterfered": false,
-    "rng": null,
+    "rng": "3,13,48,42,24",
+    "wins": [
+      "M2x3 ways=1 pay=30 total=30",
+    ],
   },
   {
     "case": "M2*5",
+    "grid": "K,TE,M2 | J,Q,M2 | A,TE,M2 | M1,M2,Q | TE,TE,M2",
     "isInterfered": false,
-    "rng": null,
+    "rng": "3,11,35,34,42",
+    "wins": [
+      "M2x5 ways=1 pay=400 total=400",
+    ],
   },
   {
     "case": "M2*3+1W",
@@ -66,13 +78,23 @@ exports[`waygame 黃金樣本 > RNG 反向搜尋 1`] = `
   },
   {
     "case": "M3*3",
+    "grid": "J,A,M3 | M1,M3,A | Q,M2,M3 | J,TE,TE | Q,A,M4",
     "isInterfered": false,
-    "rng": null,
+    "rng": "20,40,49,31,0",
+    "wins": [
+      "M3x3 ways=1 pay=20 total=20",
+      "Ax2 ways=1 pay=0 total=0",
+    ],
   },
   {
     "case": "M3*5",
+    "grid": "M1,M3,M2 | M1,M3,A | M3,M4,M2 | M3,A,K | M3,K,Q",
     "isInterfered": false,
-    "rng": null,
+    "rng": "30,40,11,26,16",
+    "wins": [
+      "M1x2 ways=1 pay=0 total=0",
+      "M3x5 ways=1 pay=200 total=200",
+    ],
   },
   {
     "case": "M3*3+1W",

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { PaytableRule, ReelStrips, ReelStripsList, SpecialSymbolConfig } from '../types';
 import { useMachineStore } from './useMachineStore';
 import type { Snippet } from './useSnippetStore';
+import { isMathIdRng } from '../flows/rngFormat';
 import { findTraits } from '../games/registry';
 
 export interface GameState {
@@ -268,7 +269,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     
     const reelCount = store.reelCount;
     const rowCounts = store.rowCounts;
-    const isMathId = isCoordinateClassId || flatIds.length > reelCount + 4;
+    const isMathId = isMathIdRng(gameType, flatIds, reelCount);
     const emptyGrid = Array.from({ length: reelCount }, (_, c) => 
       Array(rowCounts[c] || 3).fill('-')
     );

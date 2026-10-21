@@ -1,18 +1,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { evaluateGrid } from '../../utils/evaluation';
 import { formatAmount } from '../../utils/formatters';
 import { getWinColorClass } from '../../utils/svgPaths';
-import { getWinningPositions } from '../../utils/evaluation';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
-import { GameRegistry } from '../../core/GameRegistry';
 import type { GameType, PaytableRule } from '../../types';
 import { useGameStore } from '../../store/useGameStore';
 import { getTraits } from '../../games/registry';
 import { symbolToneClass } from '../ui/symbolTone';
 import { SpecialSymbols } from '../../constants/GameConstants';
+import { evaluateTumble, gridSymbols, loadInitialGrid, tumbleOnce, type TumbleEnv, type TumbleState } from '../../flows/tumble';
 
 const ALL_SPECIAL_BALLS = [...MULTIPLIER_BALLS, ...LUCKY_BALLS];
-const MULTIPLIER_LEVELS = [2, 3, 4, 6, 8, 10, 12, 15, 18, 25, 55, 65, 80, 100, 150, 200, 250, 500];
 
 export interface TumbleViewerTabProps {
   reelCount: number;
@@ -28,21 +25,9 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
   reelCount, rowCounts, currentPaytable, gameType, betMultiplier
 }) => {
   const isFreeGame = useGameStore(state => state.isFreeGame);
-  const totalCells = rowCounts.reduce((acc, curr) => acc + curr, 0);
 
-  // 建立反向查詢表：MathID -> SymbolID
-  const reverseMap = useMemo(() => {
-    const map: Record<number, string> = {};
-    currentPaytable.forEach(rule => {
-      const idsStr = String(rule.mathId ?? '');
-      if (!idsStr) return;
-      const ids = idsStr.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
-      for (const id of ids) {
-        map[id] = rule.symbolId;
-      }
-    });
-    return map;
-  }, [currentPaytable]);
+  // 載入 / 計分 / 掉落邏輯在 src/flows/tumble.ts（有流程規則測試）
+  const env: TumbleEnv = useMemo(() => ({ gameType, reelCount, rowCounts, currentPaytable, isFreeGame }), [gameType, reelCount, rowCounts, currentPaytable, isFreeGame]);
 
   // 2. 模擬輸入陣列
   const [inputArrayStr, setInputArrayStr] = useState<string>('');
@@ -63,82 +48,33 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
 
   // 載入初始盤面
   const handleLoadInitialGrid = () => {
-    const ids = inputArrayStr.replace(/[^0-9, \t\n]/g, ',')
-                           .split(/[,\s]+/)
-                           .map(s => parseInt(s.trim()))
-                           .filter(n => !isNaN(n));
-
-    const cIds = classIdsStr.replace(/[^0-9, \t\n]/g, ',')
-                           .split(/[,\s]+/)
-                           .map(s => parseInt(s.trim()))
-                           .filter(n => !isNaN(n));
-    
-    const lSelects = luckySelectsStr.replace(/[^0-9, \t\n]/g, ',')
-                                   .split(/[,\s]+/)
-                                   .map(s => parseInt(s.trim()))
-                                   .filter(n => !isNaN(n));
-
-    if (ids.length < totalCells) {
-      setToastMessage(`請至少輸入 ${totalCells} 個數字來填滿盤面！目前只有 ${ids.length} 個。`);
+    const loaded = loadInitialGrid(env, inputArrayStr, classIdsStr, luckySelectsStr);
+    if ('error' in loaded) {
+      setToastMessage(loaded.error);
       setTimeout(() => setToastMessage(null), 3000);
       return;
     }
+    applyState(loaded);
+  };
 
-    let classPtr = 0;
+  const tumbleState: TumbleState = useMemo(() => ({
+    currentGridIds, mathIdSequence, remainingClassIds, remainingLuckySelects, accumulatedWin, tumbleCount,
+  }), [currentGridIds, mathIdSequence, remainingClassIds, remainingLuckySelects, accumulatedWin, tumbleCount]);
 
-    // 取出前 totalCells 個作為初始盤面
-    const gridIds: string[][] = [];
-    let ptr = 0;
-    for (let c = 0; c < reelCount; c++) {
-      const rows = rowCounts[c] || 3;
-      const colIds = [];
-      for (let r = 0; r < rows; r++) {
-        let idVal = ids[ptr++];
-        let symStr = String(idVal);
-        const mappedSym = reverseMap[idVal];
-        if (mappedSym && mappedSym.match(/^[F|L][1-4]/)) {
-          const mult = cIds[classPtr++];
-          if (mult) symStr = `${idVal}_${mult}X`;
-        }
-        colIds.push(symStr);
-      }
-      gridIds.push(colIds);
-    }
-
-    setCurrentGridIds(gridIds);
-    // 剩下的存入遞補序列
-    setMathIdSequence(ids.slice(totalCells));
-    setRemainingClassIds(cIds.slice(classPtr));
-    setRemainingLuckySelects(lSelects);
-    setAccumulatedWin(0);
-    setTumbleCount(0);
+  const applyState = (next: TumbleState) => {
+    setCurrentGridIds(next.currentGridIds);
+    setMathIdSequence(next.mathIdSequence);
+    setRemainingClassIds(next.remainingClassIds);
+    setRemainingLuckySelects(next.remainingLuckySelects);
+    setAccumulatedWin(next.accumulatedWin);
+    setTumbleCount(next.tumbleCount);
   };
 
   // 把 MathID Grid 轉換為 Symbol Grid
-  const currentGridSymbols = useMemo(() => {
-    return currentGridIds.map(col => col.map(strId => {
-      if (strId === 'WX') return 'WX';
-      if (typeof strId === 'string' && strId.includes('_')) {
-        const [baseId, mult] = strId.split('_');
-        const sym = reverseMap[parseInt(baseId)] || `?${baseId}`;
-        return `${sym.split('_')[0]}_${mult}`;
-      }
-      return reverseMap[parseInt(String(strId))] || `?${strId}`;
-    }));
-  }, [currentGridIds, reverseMap]);
+  const currentGridSymbols = useMemo(() => gridSymbols(env, currentGridIds), [env, currentGridIds]);
 
   // 當前盤面的贏分結果
-  const { wins, winningCoords, totalWin, currentMultiplier } = useMemo(() => {
-    if (currentGridSymbols.length === 0) return { wins: [], winningCoords: new Map<string, number[]>(), totalWin: 0, currentMultiplier: 1 };
-    const evWins = evaluateGrid(currentGridSymbols, currentPaytable, gameType, undefined, false);
-    const coords = getWinningPositions(currentGridSymbols, evWins, currentPaytable, gameType);
-    
-    const gameInstance = GameRegistry.getGame(gameType);
-    let mult = gameInstance.getTumbleMultiplier(tumbleCount, isFreeGame);
-    
-    const winSum = evWins.reduce((sum, w) => sum + (w.totalWin * mult), 0);
-    return { wins: evWins, winningCoords: coords, totalWin: winSum, currentMultiplier: mult };
-  }, [currentGridSymbols, currentPaytable, gameType, tumbleCount, isFreeGame]);
+  const { wins, winningCoords, totalWin, currentMultiplier } = useMemo(() => evaluateTumble(env, tumbleState), [env, tumbleState]);
 
   const [pulseToggle, setPulseToggle] = useState(false);
   
@@ -150,59 +86,7 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
 
   const handleTumble = () => {
     if (wins.length === 0) return;
-
-    setAccumulatedWin(prev => prev + totalWin);
-    setTumbleCount(prev => prev + 1);
-
-    let newSequence = [...mathIdSequence];
-    let newClassSeq = [...remainingClassIds];
-    let newLuckySelects = [...remainingLuckySelects];
-    let sequenceDepleted = false;
-
-    // 預處理 L 符號升級 (僅對未被消除的符號進行升級)
-    const upgradeCount = newLuckySelects.length > 0 ? newLuckySelects.shift()! : 0;
-    const upgradedGridSymbols = currentGridSymbols.map((col, c) => col.map((symId, r) => {
-      if (!winningCoords.has(`${c}-${r}`) && upgradeCount > 0 && symId.startsWith('L') && symId.includes('_')) {
-        let val = parseInt(symId.split('_')[1].replace('X', ''), 10);
-        let currentIndex = MULTIPLIER_LEVELS.indexOf(val);
-        if (currentIndex === -1) currentIndex = MULTIPLIER_LEVELS.indexOf(2);
-        const nextIndex = Math.min(MULTIPLIER_LEVELS.length - 1, currentIndex + upgradeCount);
-        val = MULTIPLIER_LEVELS[nextIndex];
-        return `${symId.split('_')[0]}_${val}X`;
-      }
-      return symId;
-    }));
-
-    const gameInstance = GameRegistry.getGame(gameType);
-    const nextGrid = gameInstance.calculateNextDropGrid(
-      upgradedGridSymbols,
-      winningCoords,
-      isFreeGame,
-      (c, dropIndex, totalDropped) => {
-        if (newSequence.length > 0) {
-          let idVal = newSequence.shift()!;
-          let symStr = String(idVal);
-          const mappedSym = reverseMap[idVal];
-          if (mappedSym && mappedSym.match(/^[F|L][1-4]/)) {
-            const mult = newClassSeq.shift();
-            if (mult) symStr = `${idVal}_${mult}X`;
-          }
-          return symStr;
-        } else {
-          return "0";
-        }
-      }
-    );
-
-    if (sequenceDepleted) {
-      setToastMessage("補位陣列用盡！已補入 0 (未知符號)。請準備更長的輸入陣列。");
-      setTimeout(() => setToastMessage(null), 3000);
-    }
-
-    setCurrentGridIds(nextGrid);
-    setMathIdSequence(newSequence);
-    setRemainingClassIds(newClassSeq);
-    setRemainingLuckySelects(newLuckySelects);
+    applyState(tumbleOnce(env, tumbleState));
   };
 
   return (

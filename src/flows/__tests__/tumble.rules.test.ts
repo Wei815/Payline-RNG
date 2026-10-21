@@ -43,8 +43,18 @@ describe('決戰賽特2 腳本 → 消除掉落測試', () => {
 
         const next = tumbleOnce(env, state);
         if (next !== state) {
-          const unknown = gridSymbols(env, next.currentGridIds).flat().filter(s => s.startsWith('?'));
+          const nextSyms = gridSymbols(env, next.currentGridIds);
+          const unknown = nextSyms.flat().filter(s => s.startsWith('?'));
           if (unknown.length) push('T3 掉落後符號可辨識', `出現 ${unknown.length} 個無法辨識的格子，例如 ${unknown.slice(0, 3).join(' ')}`);
+          // T4 獨立重算掉落後盤面：消除中獎格、留盤符號往下、上方依序從遞補序列補入（逐軸取用）
+          const { winningCoords } = evaluateTumble(env, state);
+          const seq = [...(sc.dropMathIds ?? [])].map(String);
+          const expectedNext = expectedGrid.map((col, c) => {
+            const kept = col.filter((_, r) => !winningCoords.has(`${c}-${r}`));
+            const fresh = Array.from({ length: col.length - kept.length }, () => gridFromMathIds(fx, [seq.shift() ?? '0'].concat(Array(29).fill('0')))[0][0]);
+            return [...fresh, ...kept];
+          });
+          if (JSON.stringify(nextSyms) !== JSON.stringify(expectedNext)) push('T4 掉落後盤面 = 規則重算', `工具 ${nextSyms.map(c => c.join(',')).join(' | ')}`);
         }
       }
     }

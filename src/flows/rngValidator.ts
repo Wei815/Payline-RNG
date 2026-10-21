@@ -8,6 +8,7 @@ import type { GameType, PaytableRule } from '../types';
 import { evaluateGrid, getWinningPositions } from '../utils/evaluation';
 import { findTraits } from '../games/registry';
 import { GameRegistry } from '../core/GameRegistry';
+import { isMathIdRng } from './rngFormat';
 
 export interface RngValidatorParams {
   jsonInput: string;
@@ -63,7 +64,7 @@ export function parseQaSteps(p: RngValidatorParams): ValidatorStep[] {
   const isCoordinateClassId = (findTraits(gameType)?.snippetClassIds ?? 'symbolMultiplier') !== 'symbolMultiplier';
 
   return rngSteps.map((rngArray, stepIndex) => {
-    const isMathId = isCoordinateClassId || rngArray.length > reelCount + 4;
+    const isMathId = isMathIdRng(gameType, rngArray, reelCount);
 
     const emptyGrid = Array.from({ length: reelCount }, (_, c) =>
       Array(rowCounts[c] || 3).fill('-')
