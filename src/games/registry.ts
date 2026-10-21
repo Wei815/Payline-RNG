@@ -9,15 +9,15 @@ import type { GameType } from '../types';
 import type { GameFamily, GameManifest, GameTraits } from './base/GameManifest';
 import { defaultScriptFormatter, type ScriptFormatter } from './base/ScriptFormat';
 
-import classicLine from './classic-line/manifest';
-import mermaid from './mermaid/manifest';
-import classicPayAnywhere from './classic-payanywhere/manifest';
-import set2 from './set2/manifest';
-import qin from './qin/manifest';
-import luxe from './luxe/manifest';
-import elephant from './elephant/manifest';
-import gods from './gods/manifest';
-import roma from './roma/manifest';
+import classicLine from './通用線遊戲 linegame/manifest';
+import mermaid from './人魚傳說 Mermaid/manifest';
+import classicPayAnywhere from './通用全盤消除 payanywhere/manifest';
+import set2 from './決戰賽特2 Battle of Set 2Awakening/manifest';
+import qin from './秦皇傳說 Chin Shi Huang/manifest';
+import luxe from './奢華 The Luxe/manifest';
+import elephant from './皇家金象 Royal Ganesha/manifest';
+import gods from './諸神之戰 God of WarsThor VS Seth/manifest';
+import roma from './羅馬競技場 Roma/manifest';
 
 export const GAMES: readonly GameManifest[] = [
   classicLine,

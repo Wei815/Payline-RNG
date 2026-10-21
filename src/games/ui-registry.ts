@@ -4,8 +4,8 @@
  */
 import type { GameType } from '../types';
 import type { GameUi } from './base/GameUi';
-import { godsUi } from './gods/ui';
-import { romaUi } from './roma/ui';
+import { godsUi } from './諸神之戰 God of WarsThor VS Seth/ui';
+import { romaUi } from './羅馬競技場 Roma/ui';
 
 const GAME_UI: Partial<Record<GameType, GameUi>> = {
   linegame_gods: godsUi,

@@ -10,7 +10,7 @@ import type { GeneratorCombination } from '../InstantGenerator';
 import type { ScriptCombination, ScriptContext } from '../ScriptFormat';
 import type { GameFixture } from './harness';
 import { makeConfig } from './harness';
-import type { RomaGame } from '../../roma/RomaGame';
+import type { RomaGame } from '../../羅馬競技場 Roma/RomaGame';
 import type { CombinationWinContext } from '../../../flows/combinationWin';
 
 export interface Violation {
