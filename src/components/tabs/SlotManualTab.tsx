@@ -5,6 +5,7 @@ import type { SVGPathResult } from '../../utils/svgPaths';
 import { formatAmount } from '../../utils/formatters';
 import { getWinColorClass, calculateSVGPaths } from '../../utils/svgPaths';
 import { evaluateGrid, getWinningPositions } from '../../utils/evaluation';
+import { getTraits } from '../../games/registry';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
 
 export interface SlotManualTabProps {
@@ -44,7 +45,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
   const isFreeGame = useGameStore(state => state.isFreeGame);
   const stripSets = isFreeGame ? currentFreeStripSets : currentStripSets;
   let baseMultiplier = 1;
-  if (gameType === 'waygame' || gameType === 'waygame_elephant') {
+  if (getTraits(gameType).doublingTumbleMultiplier) {
     baseMultiplier = isFreeGame ? 8 : 1;
   }
 
@@ -86,7 +87,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
 
   const wins = useMemo(() => {
     let finalGrid = displayGrid;
-    if (gameType === 'megaway') {
+    if (getTraits(gameType).family === 'megaway') {
       finalGrid = displayGrid.map((col, colIdx) => {
         if (colIdx >= 1 && colIdx <= 4) {
           const topSym = topTracker[colIdx - 1] || 'WX';
@@ -105,12 +106,12 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
   }, [displayGrid, currentPaytable, gameType, topTracker, customPaylines, bet]);
 
   const winningCoords = useMemo(() => {
-    return getWinningPositions(displayGrid, wins, currentPaytable, gameType, gameType === 'megaway' ? topTracker : undefined, customPaylines);
+    return getWinningPositions(displayGrid, wins, currentPaytable, gameType, getTraits(gameType).family === 'megaway' ? topTracker : undefined, customPaylines);
   }, [displayGrid, wins, currentPaytable, gameType, topTracker, customPaylines, bet]);
 
   useEffect(() => {
     const updatePaths = () => {
-      const p = calculateSVGPaths(displayGrid, wins, currentPaytable, gridContainerRef.current, 'manual', gameType, gameType === 'megaway' ? topTracker : undefined, customPaylines);
+      const p = calculateSVGPaths(displayGrid, wins, currentPaytable, gridContainerRef.current, 'manual', gameType, getTraits(gameType).family === 'megaway' ? topTracker : undefined, customPaylines);
       setLinePaths(p);
     };
     const timer = setTimeout(updatePaths, 150);
@@ -258,7 +259,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
 
           <div className="flex flex-col items-center justify-center gap-3 relative z-10 w-full">
             {/* Megaways Top Tracker */}
-            {gameType === 'megaway' && (
+            {getTraits(gameType).family === 'megaway' && (
               <div className="flex gap-3 justify-center mb-1">
                 <div className="w-20 h-20 bg-transparent" />
                 {Array.from({ length: 4 }).map((_, idx) => {
@@ -368,7 +369,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                     return (
                       <div key={idx} className={`flex flex-col px-3 py-2 rounded border ${selectedSymbol && isInterference ? 'bg-[#2b1616] border-red-900/50' : 'bg-[#112240] border-dashboard-accent/30'}`}>
                         <span className="text-xs text-yellow-400 font-mono font-bold truncate">
-                          {w.symbolId} {gameType === 'payanywhere' || gameType === 'payanywhere_set2' ? `出現 ${w.matchCount} 個` : (gameType === 'linegame' || gameType === 'linegame_roma' || gameType === 'linegame_set2' || gameType === 'linegame_gods') ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
+                          {w.symbolId} {getTraits(gameType).family === 'payanywhere' ? `出現 ${w.matchCount} 個` : getTraits(gameType).family === 'line' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
                         </span>
                         <span className="text-xs text-gray-300 font-mono mt-0.5">
                           {formatAmount(betMultiplier)} × {w.payout}{w.ways > 1 ? ` × ${w.ways}` : ''}{baseMultiplier > 1 ? ` × ${baseMultiplier}` : ''} = <span className="font-bold text-dashboard-accent">{formatAmount(w.totalWin * betMultiplier * baseMultiplier)}</span>
@@ -415,7 +416,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
                         return (
                           <div key={idx} className={`flex flex-col px-3 py-2 rounded border ${selectedSymbol && isInterference ? 'bg-[#2b1616] border-red-900/50' : 'bg-[#0f1c34] border-gray-700/30'}`}>
                             <span className={`text-xs font-mono truncate ${selectedSymbol && isInterference ? 'text-red-400' : 'text-gray-400'}`}>
-                              {w.symbolId} {gameType === 'payanywhere' || gameType === 'payanywhere_set2' ? `出現 ${w.matchCount} 個` : (gameType === 'linegame' || gameType === 'linegame_roma' || gameType === 'linegame_set2' || gameType === 'linegame_gods') ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
+                              {w.symbolId} {getTraits(gameType).family === 'payanywhere' ? `出現 ${w.matchCount} 個` : getTraits(gameType).family === 'line' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
                             </span>
                             <span className={`text-xs font-mono mt-0.5 ${selectedSymbol && isInterference ? 'text-red-500/80' : 'text-gray-600'}`}>
                               payout = 0{w.ways > 1 ? ` × ${w.ways} ways` : ''}

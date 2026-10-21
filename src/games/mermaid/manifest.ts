@@ -10,8 +10,9 @@ export default defineGame({
     family: 'way',
     searchPositionDependent: true,
     mathIdGenerator: false,
+    doublingTumbleMultiplier: true,
     specialConfigFromGrid: false,
-    simulation: { cascade: true, doublingTumbleMultiplier: true },
+    simulationCascade: true,
   },
   multiplierIntervals: [
     { id: '1', name: 'Big Win', min: 20, max: 50 },

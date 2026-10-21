@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import type { PaytableRule } from '../types';
 import { useGameStore } from '../store/useGameStore';
-import { GameTypes, SpecialSymbols, SymbolGroupOrder, SymbolCategories } from '../constants/GameConstants';
+import { findTraits } from '../games/registry';
+import { SpecialSymbols, SymbolGroupOrder, SymbolCategories } from '../constants/GameConstants';
 
 const SymbolGroupOrderMap = new Map<string, number>(
   SymbolGroupOrder.map((sym, idx) => [sym, idx])
@@ -110,7 +111,7 @@ export function useSymbolGrouping(
       }
     });
 
-    if (gameType === GameTypes.PAY_ANYWHERE_SET2) {
+    if (findTraits(gameType)?.combinedBonusSymbol) {
       const hasB1 = others.includes(SpecialSymbols.B1);
       const hasB2 = others.includes(SpecialSymbols.B2);
 

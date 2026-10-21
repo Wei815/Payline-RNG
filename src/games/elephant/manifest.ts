@@ -10,7 +10,10 @@ export default defineGame({
     family: 'way',
     searchPositionDependent: true,
     mathIdGenerator: false,
-    simulation: { cascade: true, doublingTumbleMultiplier: true, goldToWild: true },
+    doublingTumbleMultiplier: true,
+    goldCascadeSearch: true,
+    simulationCascade: true,
+    goldToWild: true,
   },
   create: () => new RoyalElephantGame(),
 });

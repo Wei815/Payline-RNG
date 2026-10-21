@@ -10,7 +10,10 @@ export default defineGame({
     family: 'payanywhere',
     searchPositionDependent: false,
     mathIdGenerator: true,
-    simulation: { cascade: true },
+    tumbleViewerTab: true,
+    rangedPayouts: true,
+    combinedBonusSymbol: true,
+    simulationCascade: true,
   },
   create: () => new BattleSet2Game(),
 });

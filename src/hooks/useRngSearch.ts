@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import type { PaytableRule, GameType } from "../types";
 import { findRngForCombination, findRngForCombos, findRngForMultiplierIntervals } from "../utils/rngSearch";
+import { getTraits } from "../games/registry";
 import { evaluateGrid, defaultPaylines } from "../utils/evaluation";
 
 export function useRngSearch(
@@ -46,8 +47,7 @@ export function useRngSearch(
       return;
     }
     if (
-      gameType !== "payanywhere_set2" &&
-      gameType !== "linegame_set2" && gameType !== "linegame_gods" &&
+      !getTraits(gameType).mathIdGenerator &&
       (currentStrips.length === 0 ||
         currentStrips.every((s) => !s || s.length === 0))
     ) {
@@ -56,7 +56,7 @@ export function useRngSearch(
       return;
     }
 
-    const isInstantGenerator = gameType === "linegame_set2" || gameType === "payanywhere_set2" || gameType === "linegame_gods";
+    const isInstantGenerator = getTraits(gameType).mathIdGenerator;
     if (!isInstantGenerator) {
       setIsSearching(true);
     }
@@ -390,8 +390,8 @@ export function useRngSearch(
         return;
       }
 
-      let minWinCount = gameType.includes('payanywhere') ? 8 : 3;
-      let maxWinCount = gameType.includes('payanywhere') ? 12 : reelCount;
+      let minWinCount = getTraits(gameType).family === 'payanywhere' ? 8 : 3;
+      let maxWinCount = getTraits(gameType).family === 'payanywhere' ? 12 : reelCount;
       const targetRule = currentPaytable.find(p => p.symbolId === selectedSymbol);
       if (targetRule && targetRule.payouts) {
         const matchKeys = Object.keys(targetRule.payouts)
@@ -696,9 +696,7 @@ export function useRngSearch(
 
               newCombs.push({
                 name:
-                  gameType === "payanywhere_set2" ||
-                  gameType === "linegame_set2" ||
-                  gameType === "linegame_gods"
+                  getTraits(gameType).mathIdGenerator
                     ? N < minWinCount
                       ? `無贏分 (1)\n${selectedSymbol} 個數 ${N}`
                       : `有贏分 (1)\n${selectedSymbol} 個數 ${N}`
@@ -951,7 +949,7 @@ export function useRngSearch(
                 customPaylines,
                 isFreeGame,
                 stripSets,
-                (gameType === 'waygame_elephant' || gameType === 'waygame_qin') && W > 0
+                !!getTraits(gameType).goldCascadeSearch && W > 0
               ),
             });
           }

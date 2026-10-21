@@ -30,7 +30,6 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
   const { mode = 'base_only', strips, freeStrips, paytable, totalSpins, rowCounts, gameConfig, coin, bet, isFreeGame } = e.data;
   
   const traits = getTraits(gameConfig.gameType);
-  const sim = traits.simulation ?? {};
 
   const symbolMetrics: Record<string, SymbolMetric> = {};
   paytable.forEach(rule => {
@@ -116,7 +115,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
       }
       
       let tumbleMultiplier = 1;
-      if (sim.doublingTumbleMultiplier) {
+      if (traits.doublingTumbleMultiplier) {
         tumbleMultiplier = isFG 
           ? Math.min(1024, 8 * Math.pow(2, cascadeCount)) 
           : Math.min(1024, 1 * Math.pow(2, cascadeCount));
@@ -149,7 +148,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
 
       spinWin += cascadeWin;
 
-      if (sim.cascade && cascadeWin > 0) {
+      if (traits.simulationCascade && cascadeWin > 0) {
         const winningCoordsMap = getWinningPositions(grid, wins, paytable, gameConfig.gameType, undefined, effectivePaylines);
         
         for (let colIndex = 0; colIndex < grid.length; colIndex++) {
@@ -165,7 +164,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
               if (isFG && unremovable.includes(currentSym)) {
                 continue;
               }
-              if (sim.goldToWild && isGoldSymbol(currentSym)) {
+              if (traits.goldToWild && isGoldSymbol(currentSym)) {
                 grid[colIndex][r] = 'WX';
                 continue;
               }

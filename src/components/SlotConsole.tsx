@@ -9,6 +9,7 @@ export interface SlotConsoleProps {
 
 import { useShallow } from 'zustand/react/shallow';
 import { parsePasteRng } from '../utils/formatters';
+import { getTraits } from '../games/registry';
 import { useSymbolGrouping } from '../hooks/useSymbolGrouping';
 
 const SlotManualTab = React.lazy(() => import('./tabs/SlotManualTab').then(m => ({ default: m.SlotManualTab })));
@@ -75,6 +76,8 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [useWxInLines, setUseWxInLines] = useState<boolean>(true);
 
+  const hasLinesTab = getTraits(gameType).family === 'line' || !!getTraits(gameType).tumbleViewerTab;
+
   const formattedStripSets = useMemo(() => {
     const sets = isFreeGame ? currentFreeStripSets : currentStripSets;
     if (!sets || sets.length <= 1) return undefined;
@@ -84,7 +87,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
   }, [isFreeGame, currentFreeStripSets, currentStripSets]);
 
   useEffect(() => {
-    if (gameType !== 'linegame' && gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2' && gameType !== 'linegame_gods' && gameType !== 'linegame_roma' && activeTab === 'lines') {
+    if (!hasLinesTab && activeTab === 'lines') {
       setActiveTab('manual');
     }
   }, [gameType, activeTab]);
@@ -98,7 +101,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
 
   // Sync active tab if payanywhere_set2 is selected and manual is active
   useEffect(() => {
-    if ((gameType === 'payanywhere_set2' || gameType === 'linegame_set2' || gameType === 'linegame_gods') && activeTab === 'manual') {
+    if (getTraits(gameType).mathIdGenerator && activeTab === 'manual') {
       setActiveTab('other');
     }
   }, [gameType, activeTab]);
@@ -153,7 +156,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
 
       {/* Tabs Switcher */}
       <div className="flex border-b border-gray-800 bg-[#0f1d35] rounded-t-xl overflow-hidden shrink-0 border border-gray-700/50">
-        {(gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2' && gameType !== 'linegame_gods') && (
+        {!getTraits(gameType).mathIdGenerator && (
           <button
             onClick={() => setActiveTab('manual')}
             className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-all duration-200 cursor-pointer ${activeTab === 'manual'
@@ -173,7 +176,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
         >
           連線測試產生器
         </button>
-        {(gameType === 'linegame' || gameType === 'linegame_roma' || gameType === 'payanywhere_set2' || gameType === 'linegame_set2' || gameType === 'linegame_gods') && (
+        {hasLinesTab && (
           <button
             onClick={() => setActiveTab('lines')}
             className={`flex-1 py-3 text-sm font-bold text-center border-b-2 transition-all duration-200 cursor-pointer ${activeTab === 'lines'
@@ -181,7 +184,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
                 : 'border-transparent text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-[#112240]/20'
               }`}
           >
-            {(gameType === 'linegame' || gameType === 'linegame_roma' || gameType === 'linegame_set2' || gameType === 'linegame_gods') ? '贏分線路一覽' : '消除掉落測試'}
+            {getTraits(gameType).family === 'line' ? '贏分線路一覽' : '消除掉落測試'}
           </button>
         )}
         <button
@@ -246,7 +249,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
             />
           </div>
         )}
-        {(gameType === 'linegame' || gameType === 'linegame_roma' || gameType === 'linegame_set2' || gameType === 'linegame_gods') && activeTab === 'lines' && (
+        {getTraits(gameType).family === 'line' && activeTab === 'lines' && (
           <div className="w-full flex-1 flex flex-col">
             <LineViewerTab 
               reelCount={reelCount} rowCounts={rowCounts} currentStrips={currentStrips}
@@ -261,7 +264,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
             />
           </div>
         )}
-        {gameType === 'payanywhere_set2' && activeTab === 'lines' && (
+        {getTraits(gameType).tumbleViewerTab && activeTab === 'lines' && (
           <div className="w-full flex-1 flex flex-col min-h-0">
             <TumbleViewerTab
               reelCount={reelCount}

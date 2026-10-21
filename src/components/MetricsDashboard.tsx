@@ -1,6 +1,7 @@
 import React from 'react';
 import type { SimulationResult } from '../types';
 import { useMachineStore } from '../store/useMachineStore';
+import { findTraits } from '../games/registry';
 import { useGameStore } from '../store/useGameStore';
 
 interface MetricsDashboardProps {
@@ -80,7 +81,7 @@ export const MetricsDashboard: React.FC<MetricsDashboardProps> = ({ result, prog
           <span className="text-dashboard-text-secondary text-xs mb-1">使用條線數 / 遊戲類型</span>
           <span className="text-2xl font-bold text-purple-400 font-mono">
             {result
-              ? (result.gameType === 'linegame' || result.gameType === 'linegame_set2')
+              ? findTraits(result.gameType)?.metricsPaylineCount
                 ? `${result.paylineCount} 條`
                 : result.gameType
               : '--'}

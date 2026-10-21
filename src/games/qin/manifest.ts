@@ -12,7 +12,8 @@ export default defineGame({
     family: 'way',
     searchPositionDependent: false,
     mathIdGenerator: false,
-    simulation: { cascade: true },
+    goldCascadeSearch: true,
+    simulationCascade: true,
   },
   create: () => new QinGame(),
 });

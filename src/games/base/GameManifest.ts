@@ -23,6 +23,20 @@ export interface GameTraits {
    * ConfigPanel 顯示「參數設定」而非滾輪表，產生器使用即時產生器。
    */
   mathIdGenerator: boolean;
+  /** 連續掉落倍數 1,2,4,8...（FG 由 8 起跳，上限 1024）；UI 顯示倍數與 RTP 模擬共用 */
+  doublingTumbleMultiplier?: boolean;
+  /** 搜尋含百搭的組合時，要求盤面有金框可轉 WX（秦皇 / 皇家金象） */
+  goldCascadeSearch?: boolean;
+  /** 「贏分線路一覽」分頁改為「消除掉落測試」(TumbleViewer) */
+  tumbleViewerTab?: boolean;
+  /** ConfigPanel 顯示線路規則表格 */
+  showPaylineTable?: boolean;
+  /** RTP 儀表板顯示使用條線數（否則顯示遊戲類型） */
+  metricsPaylineCount?: boolean;
+  /** 賠率表 match3/4/5 代表個數區間（8-9 / 10-11 / 12+），而非連線數 */
+  rangedPayouts?: boolean;
+  /** 符號選單將 B1、B2 合併為單一「B1/B2」選項 */
+  combinedBonusSymbol?: boolean;
   /**
    * 測試腳本 (Snippet) ClassIDs 的意義：
    * - 'coordinate'：每 3 碼 (col,row,值) 表示金框倍數 / Jackpot（奢華、通用線遊戲）
@@ -32,18 +46,10 @@ export interface GameTraits {
   snippetClassIds?: 'coordinate' | 'wyConfig' | 'symbolMultiplier';
   /** 套用腳本 / 自訂盤面時是否從盤面推導 S1/S2/倍數球設定（預設 true） */
   specialConfigFromGrid?: boolean;
-  /**
-   * RTP 模擬 Worker 使用的簡化掉落規則（未設定 = 不掉落）。
-   * 注意：Worker 目前與遊戲類別的 calculateNextDropGrid 是兩套獨立實作。
-   */
-  simulation?: {
-    /** 中獎後是否進行消除掉落 */
-    cascade?: boolean;
-    /** 連續掉落倍數 1,2,4,8...（FG 由 8 起跳，上限 1024） */
-    doublingTumbleMultiplier?: boolean;
-    /** 中獎的金框符號轉為 WX 留在盤面 */
-    goldToWild?: boolean;
-  };
+  /** RTP 模擬 Worker 中獎後進行消除掉落（Worker 的掉落為獨立的簡化實作） */
+  simulationCascade?: boolean;
+  /** 中獎的金框符號轉為 WX 留在盤面（RTP 模擬 / 產生器試算） */
+  goldToWild?: boolean;
 }
 
 export interface GameManifest {

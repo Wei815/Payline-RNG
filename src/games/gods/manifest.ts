@@ -10,6 +10,7 @@ export default defineGame({
     family: 'line',
     searchPositionDependent: true,
     mathIdGenerator: true,
+    showPaylineTable: true,
     snippetClassIds: 'wyConfig',
   },
   multiplierIntervals: [

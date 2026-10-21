@@ -9,6 +9,8 @@ export default defineGame({
     family: 'line',
     searchPositionDependent: true,
     mathIdGenerator: false,
+    showPaylineTable: true,
+    metricsPaylineCount: true,
     snippetClassIds: 'coordinate',
     specialConfigFromGrid: false,
   },

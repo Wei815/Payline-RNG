@@ -7,6 +7,7 @@ import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConsta
 import { GameRegistry } from '../../core/GameRegistry';
 import type { GameType, PaytableRule } from '../../types';
 import { useGameStore } from '../../store/useGameStore';
+import { getTraits } from '../../games/registry';
 import { SpecialSymbols } from '../../constants/GameConstants';
 
 const ALL_SPECIAL_BALLS = [...MULTIPLIER_BALLS, ...LUCKY_BALLS];
@@ -273,7 +274,7 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
         <div className="flex justify-between items-start shrink-0 relative z-50">
           <div className="flex items-start gap-4 text-sm text-gray-400">
             <span className="pt-0.5">消除次數: <span className="text-white font-bold">{tumbleCount}</span></span>
-            {(gameType === 'waygame' || gameType === 'waygame_elephant') && <span className="pt-0.5">目前倍數: <span className="text-purple-400 font-bold">x{currentMultiplier}</span></span>}
+            {getTraits(gameType).doublingTumbleMultiplier && <span className="pt-0.5">目前倍數: <span className="text-purple-400 font-bold">x{currentMultiplier}</span></span>}
             <span className="pt-0.5">單次贏分: <span className="text-yellow-400 font-bold">{formatAmount(totalWin * betMultiplier)}</span></span>
             {(() => {
               let gridMultiplier = 0;

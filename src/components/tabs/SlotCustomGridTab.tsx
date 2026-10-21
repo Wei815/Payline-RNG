@@ -9,6 +9,7 @@ import { getWinningPositions } from '../../utils/evaluation';
 import type { SVGPathResult } from '../../utils/svgPaths';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
 import { SlotGridDisplay } from '../SlotGridDisplay';
+import { getTraits } from '../../games/registry';
 import { useSnippetStore } from '../../store/useSnippetStore';
 
 export interface SlotCustomGridTabProps {
@@ -269,7 +270,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
 
   // Handle Drag & Drops Generation
   const dropRng = useMemo(() => {
-    if (gameType === 'linegame_set2' || gameType === 'linegame_gods' || gameType === 'linegame' || gameType === 'linegame_roma' || gameType.startsWith('waygame')) return '';
+    if (getTraits(gameType).family === 'line' || getTraits(gameType).family === 'way') return '';
     if (winningCoords.size === 0) return '';
     
     // Calculate current symbol counts to avoid secondary wins
@@ -332,7 +333,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     });
     
     // For Golden Elephant (and other waygames), the game server strictly expects a 6+1 format for RNG, so we discard the 30 math IDs.
-    if (gameType.startsWith('waygame')) {
+    if (getTraits(gameType).family === 'way') {
       const zeroes = Array(reelCount).fill(0);
       const activeStrips = isFreeGame ? currentFreeStripSets : currentStripSets;
       if (activeStrips && activeStrips.length > 1) {
@@ -499,7 +500,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     const matchClass = classIdInput.match(/-?\d+/g);
     const classIds = matchClass ? matchClass.map(s => parseInt(s, 10)) : [];
     
-    const isCoordinateClassId = gameType === 'linegame_set2' || gameType === 'linegame';
+    const isCoordinateClassId = getTraits(gameType).snippetClassIds === 'coordinate';
     const newGoldFrames: Record<string, number> = {};
     const newJackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'> = {};
 
@@ -616,7 +617,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   return (
     <div className="w-full flex flex-col lg:flex-row gap-4 items-stretch justify-center h-full overflow-y-auto">
       {/* Left: Palette & Config */}
-      {!gameType.startsWith('waygame') && (
+      {getTraits(gameType).family !== 'way' && (
       <div className="w-full lg:w-72 shrink-0 flex flex-col gap-4 bg-[#0a192f] p-4 rounded-lg border border-gray-700/50 max-h-full overflow-y-auto custom-scrollbar">
         <h2 className="text-sm font-bold text-dashboard-text-secondary border-b border-gray-700/50 pb-2">方塊調色盤 (Palette)</h2>
         

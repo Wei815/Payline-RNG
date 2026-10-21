@@ -10,6 +10,7 @@ import { MULTIPLIER_BALLS, LUCKY_BALLS, isGoldSymbol } from '../../utils/evaluat
 import { useRngSearch } from '../../hooks/useRngSearch';
 import { useGameStore } from '../../store/useGameStore';
 import { GameRegistry } from '../../core/GameRegistry';
+import { getTraits } from '../../games/registry';
 
 export interface SlotGeneratorTabProps {
   reelCount: number;
@@ -156,7 +157,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
   );
 
   let baseMultiplier = 1;
-  if (gameType === 'waygame' || gameType === 'waygame_elephant') {
+  if (getTraits(gameType).doublingTumbleMultiplier) {
     baseMultiplier = isFreeGame ? 8 : 1;
   }
 
@@ -222,7 +223,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
 
   const winsOther = useMemo(() => {
     let finalGrid = displayGridOther;
-    if (gameType === 'megaway') {
+    if (getTraits(gameType).family === 'megaway') {
       finalGrid = displayGridOther.map((col, colIdx) => {
         if (colIdx >= 1 && colIdx <= 4) {
           const topSym = topTrackerOther[colIdx - 1] || 'WX';
@@ -256,7 +257,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
           }
         }
 
-        if (gameType === 'payanywhere' || gameType === 'payanywhere_set2') {
+        if (getTraits(gameType).family === 'payanywhere') {
           const count = finalGrid.flat().filter(s => s === selectedSymbol || s === wildSymbol).length;
           if (count > 0) {
             baseWins.push({
@@ -303,7 +304,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
   }, [displayGridOther, currentPaytable, selectedSymbol, currentStrips, reelCount, gameType, topTrackerOther, customPaylines, bet, goldFrames, jackpots]);
 
   const winningCoordsOther = useMemo(() => {
-    return getWinningPositions(displayGridOther, winsOther, currentPaytable, gameType, gameType === 'megaway' ? topTrackerOther : undefined, customPaylines);
+    return getWinningPositions(displayGridOther, winsOther, currentPaytable, gameType, getTraits(gameType).family === 'megaway' ? topTrackerOther : undefined, customPaylines);
   }, [displayGridOther, winsOther, currentPaytable, gameType, topTrackerOther, customPaylines, bet]);
 
   useEffect(() => {
@@ -312,7 +313,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
         setLinePathsOther([]);
         return;
       }
-      const p = calculateSVGPaths(displayGridOther, winsOther, currentPaytable, gridContainerRefOther.current, 'other', gameType, gameType === 'megaway' ? topTrackerOther : undefined, customPaylines);
+      const p = calculateSVGPaths(displayGridOther, winsOther, currentPaytable, gridContainerRefOther.current, 'other', gameType, getTraits(gameType).family === 'megaway' ? topTrackerOther : undefined, customPaylines);
       setLinePathsOther(p);
     };
     const timer = setTimeout(updatePaths, 150);
@@ -508,7 +509,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
         return `[${targetComb.rng.slice(0, 5).join(',')}],`;
       }
     }
-    if (gameType.includes('waygame') || gameType.includes('megaway')) {
+    if (getTraits(gameType).family === 'way' || getTraits(gameType).family === 'megaway') {
       const extraId = (targetComb as any)?.stripId !== undefined && !isManualEdited ? Number((targetComb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0);
       return `[${[...currentFormattedRngArray, extraId].join(',')}],`;
     }
@@ -557,7 +558,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
   const generateGridForComb = (rngStrArray: string[], stripId?: number) => {
     const rawGrid = Array(reelCount).fill(null).map((_, colIndex) => {
       const rowsForThisCol = rowCounts[colIndex] || 3;
-      if (gameType === 'megaway' && colIndex >= 1 && colIndex <= 4) {
+      if (getTraits(gameType).family === 'megaway' && colIndex >= 1 && colIndex <= 4) {
         return Array(rowsForThisCol + 1).fill('-');
       }
       return Array(rowsForThisCol).fill('-');
@@ -575,7 +576,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
 
     return rawGrid.map((col, colIndex) => {
       const rowsForThisCol = rowCounts[colIndex] || 3;
-      const isMegawayTop = gameType === 'megaway' && colIndex >= 1 && colIndex <= 4;
+      const isMegawayTop = getTraits(gameType).family === 'megaway' && colIndex >= 1 && colIndex <= 4;
       const totalRows = isMegawayTop ? rowsForThisCol + 1 : rowsForThisCol;
       
       const strip = targetStripSet[colIndex];
@@ -609,9 +610,9 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
     }
 
     // We only support normal ways game cascading format for now
-    if (gameType !== 'waygame' && gameType !== 'waygame_elephant' && gameType !== 'megaway' && gameType !== 'waygame_qin') {
+    if (!(getTraits(gameType).family === 'way' || getTraits(gameType).family === 'megaway')) {
        const config = { gameType, paylines: customPaylines, effectiveBet: bet, goldFrames, wyConfigs, specialRules: { derivativeSymbols: { 'B1': ['B2'] } } };
-       const isMathIdGrid = gameType === 'linegame_set2' || gameType === 'linegame_gods' || gameType === 'payanywhere_set2';
+       const isMathIdGrid = getTraits(gameType).mathIdGenerator;
        const grid = isMathIdGrid ? generateGridFromMathIds(rng) : generateGridForComb(rng, comb.stripId);
        const wins = evaluateGrid(grid, currentPaytable, config, undefined, true);
        const validWins = wins.filter(w => w.totalWin > 0);
@@ -637,7 +638,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
       if (wins.length === 0) break;
       
       let tumbleMultiplier = 1;
-      if (gameType === 'waygame' || gameType === 'waygame_elephant') {
+      if (getTraits(gameType).doublingTumbleMultiplier) {
         tumbleMultiplier = isFreeGame 
           ? Math.min(1024, 8 * Math.pow(2, cascadeCount)) 
           : Math.min(1024, 1 * Math.pow(2, cascadeCount));
@@ -678,7 +679,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
         for (let r = rows - 1; r >= 0; r--) {
            if (winningCoordsMap.has(`${c}-${r}`)) {
              const sym = grid[c][r];
-             if (gameType === 'waygame_elephant' && isGoldSymbol(sym)) {
+             if (getTraits(gameType).goldToWild && isGoldSymbol(sym)) {
                grid[c][r] = 'WX';
                continue;
              }
@@ -1108,7 +1109,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                             rngStr = `[${c.rng.slice(0, 5).join(',')}],`;
                           }
                         } else {
-                          const finalRng = (gameType.includes('waygame') || gameType.includes('megaway'))
+                          const finalRng = (getTraits(gameType).family === 'way' || getTraits(gameType).family === 'megaway')
                             ? [...(c.rng?.slice(0, 6) || []), (c as any).stripId !== undefined ? Number((c as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)]
                             : c.rng;
                           rngStr = `[${finalRng?.join(',')}],`;
@@ -1142,7 +1143,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                         return `${c.name}\t-\t-`;
                       }
                       let rngStr = '';
-                      const finalRng = (gameType.includes('waygame') || gameType.includes('megaway'))
+                      const finalRng = (getTraits(gameType).family === 'way' || getTraits(gameType).family === 'megaway')
                         ? [...(c.rng?.slice(0, 6) || []), (c as any).stripId !== undefined ? Number((c as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)]
                         : (gameType === 'linegame_roma' ? c.rng.slice(0, 5) : c.rng);
                       rngStr = `[${finalRng?.join(',')}],`;
@@ -1311,7 +1312,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                             finalCopy = `[${comb.rng.slice(0, 5).join(',')}],`;
                           }
                         } else {
-                          const finalRng = (gameType.includes('waygame') || gameType.includes('megaway'))
+                          const finalRng = (getTraits(gameType).family === 'way' || getTraits(gameType).family === 'megaway')
                             ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)]
                             : comb.rng;
                           finalCopy = `[${finalRng.join(',')}],`;
@@ -1358,7 +1359,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                           : isRomaMulti 
                             ? ` (+遞補 0 消除)` 
                             : '';
-                        const formattedCombRng = (gameType.includes('waygame') || gameType.includes('megaway'))
+                        const formattedCombRng = (getTraits(gameType).family === 'way' || getTraits(gameType).family === 'megaway')
                           ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)].join(',')
                           : (gameType === 'linegame_roma' ? comb.rng.slice(0, 5).join(',') : comb.rng.join(','));
                         const rawStr = `RNG: ${selectedCombIndex === globalIdx && isManualEdited ? currentRngString : `[${formattedCombRng}]${gameType === 'linegame_gods' && isFreeGame ? ',\t[2,10,0],' : ''}`}${romaMultiSuffix} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`;
@@ -1649,7 +1650,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
           )}
 
           <div className="flex flex-col items-center justify-center gap-3 relative z-10 w-full">
-            {gameType === 'megaway' && (
+            {getTraits(gameType).family === 'megaway' && (
               <div className="flex gap-3 justify-center mb-1">
                 <div className="w-20 h-20 bg-transparent" />
                 {Array.from({ length: 4 }).map((_, idx) => {
@@ -1843,7 +1844,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                         }`}
                       >
                         <span className={`text-xs font-mono font-bold truncate ${isInterference ? 'text-red-400' : 'text-yellow-400'}`}>
-                          {w.symbolId} {w.matchCount > 0 && (gameType === 'payanywhere' || gameType === 'payanywhere_set2' ? `個數 ${w.matchCount}` : (gameType === 'linegame' || gameType === 'linegame_roma' || gameType === 'linegame_set2' || gameType === 'linegame_gods') ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`)}
+                          {w.symbolId} {w.matchCount > 0 && (getTraits(gameType).family === 'payanywhere' ? `個數 ${w.matchCount}` : getTraits(gameType).family === 'line' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`)}
                           {isInterference && <span className="ml-1 text-[10px] opacity-80"> (干擾)</span>}
                         </span>
                         <span className={`text-xs font-mono mt-0.5 ${isInterference ? 'text-red-300' : 'text-gray-300'}`}>
@@ -1914,7 +1915,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                     noWinHits.length > 0 ? noWinHits.map((w, idx) => (
                       <div key={idx} className="flex flex-col bg-[#0f1c34] px-3 py-2 rounded border border-gray-700/30">
                         <span className="text-xs font-mono font-bold truncate text-gray-400">
-                          {w.symbolId} {gameType === 'payanywhere' || gameType === 'payanywhere_set2' ? `個數 ${w.matchCount}` : (gameType === 'linegame' || gameType === 'linegame_roma' || gameType === 'linegame_set2' || gameType === 'linegame_gods') ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
+                          {w.symbolId} {getTraits(gameType).family === 'payanywhere' ? `個數 ${w.matchCount}` : getTraits(gameType).family === 'line' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
                         </span>
                         <span className="text-xs text-gray-600 font-mono mt-0.5">
                           payout = 0{w.ways > 1 ? ` × ${w.ways} ways` : ''}
@@ -1937,7 +1938,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
       </div>
 
       {/* Right Column: Special Symbol & Multiplier Config */}
-      {!gameType.startsWith('waygame') && (
+      {getTraits(gameType).family !== 'way' && (
       <div className="w-full lg:w-[480px] shrink-0 bg-[#0a192f] p-5 rounded-lg border border-gray-700/50 flex flex-col gap-4">
         <span className="text-base font-bold text-dashboard-text-secondary border-b border-gray-700/50 pb-2 mb-1">特殊符號與倍數球配置</span>
         

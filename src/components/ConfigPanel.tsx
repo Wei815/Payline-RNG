@@ -6,7 +6,7 @@ import { defaultPaylines } from '../utils/evaluation';
 
 import { useMachineStore } from '../store/useMachineStore';
 import { useGameStore } from '../store/useGameStore';
-import { GAME_SELECT_GROUPS } from '../games/registry';
+import { GAME_SELECT_GROUPS, getTraits } from '../games/registry';
 
 const rawTemplateFiles = import.meta.glob('/templates/*.{xlsx,xls}', { query: '?url', eager: true, import: 'default' }) as Record<string, string>;
 const templateFiles = Object.fromEntries(Object.entries(rawTemplateFiles).filter(([path]) => !path.includes('/~$')));
@@ -289,8 +289,6 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
 
         if (tmpl.gameType) {
           onGameTypeChange(tmpl.gameType);
-        } else if (filename.includes('羅馬') || filename.includes('Roma') || filename.includes('roma')) {
-          onGameTypeChange('linegame_roma');
         }
         if (tmpl.coin) onCoinChange(tmpl.coin);
         if (tmpl.bet) onBetChange(tmpl.bet);
@@ -572,7 +570,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
       }
 
       const emptyReels = parsedStrips.findIndex(strip => strip.length === 0);
-      if (emptyReels !== -1 && gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2' && gameType !== 'linegame_gods') {
+      if (emptyReels !== -1 && !getTraits(gameType).mathIdGenerator) {
         throw new Error(`R${emptyReels + 1} 沒有任何資料，請檢查表格內容。`);
       }
 
@@ -595,7 +593,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
     groupId: string
   ) => {
     let matchesToRender: number[] = [];
-    if ((groupId === 'mnum' || groupId === 'mlet') && gameType === 'payanywhere_set2') {
+    if ((groupId === 'mnum' || groupId === 'mlet') && getTraits(gameType).rangedPayouts) {
       matchesToRender = [5, 4, 3];
     } else {
       let maxMatch = 6;
@@ -661,7 +659,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
 
           return matchesToRender.map(match => {
             let labelText = String(match);
-            if ((groupId === 'mnum' || groupId === 'mlet') && gameType === 'payanywhere_set2') {
+            if ((groupId === 'mnum' || groupId === 'mlet') && getTraits(gameType).rangedPayouts) {
               if (match === 5) labelText = '12+';
               else if (match === 4) labelText = '10-11';
               else if (match === 3) labelText = '8-9';
@@ -804,7 +802,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
 
       <div className="flex-1 flex flex-col gap-4 overflow-y-auto pr-2 custom-scrollbar">
 
-        <div className={`flex flex-col gap-2 ${gameType === 'linegame' || gameType === 'linegame_set2' || gameType === 'linegame_gods' ? 'h-[450px] shrink-0' : gameType === 'payanywhere_set2' ? 'shrink-0' : 'flex-1 min-h-[450px]'}`}>
+        <div className={`flex flex-col gap-2 ${getTraits(gameType).showPaylineTable ? 'h-[450px] shrink-0' : getTraits(gameType).mathIdGenerator ? 'shrink-0' : 'flex-1 min-h-[450px]'}`}>
           <div className="flex flex-col gap-2 border-b border-gray-800/60 pb-3">
             {/* Row 1: Game Settings */}
             <div className="flex flex-wrap items-center gap-3 text-xs">
@@ -883,9 +881,9 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
             {/* Row 3: Title & Tabs */}
             <div className="flex items-center justify-between gap-2 pt-1 mt-1 border-t border-gray-800/60">
               <label className="text-sm text-dashboard-text-secondary font-bold whitespace-nowrap">
-                {gameType === 'payanywhere_set2' || gameType === 'linegame_set2' || gameType === 'linegame_gods' ? '參數設定' : 'Reel Strips 表格'}
+                {getTraits(gameType).mathIdGenerator ? '參數設定' : 'Reel Strips 表格'}
               </label>
-              {(gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2' && gameType !== 'linegame_gods') && (
+              {!getTraits(gameType).mathIdGenerator && (
                 <div className="flex items-center gap-1 bg-[#112240] p-0.5 rounded border border-gray-700/50">
                   <button
                     onClick={() => setActiveStripTab('base')}
@@ -930,7 +928,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
             </div>
           </div>
 
-          {(gameType === 'payanywhere_set2' || gameType === 'linegame_set2' || gameType === 'linegame_gods') && (
+          {getTraits(gameType).mathIdGenerator && (
             <div className="flex-1 border border-gray-700 rounded-lg overflow-hidden flex flex-col bg-[#0a192f] mt-2">
               <div className="flex justify-between items-center bg-[#0f1d35] border-b border-gray-700 p-3 shrink-0">
                 <span className="text-sm text-dashboard-text-secondary font-bold">MathID 映射表</span>
@@ -984,7 +982,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
             </div>
           )}
 
-          {(gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2' && gameType !== 'linegame_gods') && (
+          {!getTraits(gameType).mathIdGenerator && (
             <div
               className="flex-1 border border-gray-700 rounded-lg overflow-hidden flex flex-col bg-[#0a192f] focus-within:ring-1 focus-within:ring-dashboard-accent focus-within:border-dashboard-accent transition-all relative"
               tabIndex={0}
@@ -1036,7 +1034,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
           )}
         </div>
 
-        {(gameType === 'linegame' || gameType === 'linegame_set2' || gameType === 'linegame_gods') && (
+        {getTraits(gameType).showPaylineTable && (
           <div className="flex flex-col gap-2 h-[220px] shrink-0">
             <div className="flex justify-between items-center">
               <label className="text-sm text-dashboard-text-secondary font-medium">線路規則 表格 (Line Rules)</label>
@@ -1118,7 +1116,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
       {/* 暫時隱藏單次試轉功能 (待後續開發開放)
       <button
         onClick={handleTestSpin}
-        disabled={isRunning || (isGridEmpty && gameType !== 'payanywhere_set2' && gameType !== 'linegame_set2' && gameType !== 'linegame_gods')}
+        disabled={isRunning || (isGridEmpty && !getTraits(gameType).mathIdGenerator)}
         className="mt-auto w-full py-3 flex items-center justify-center gap-2 bg-[#112240] border border-dashboard-accent text-dashboard-accent font-bold rounded-lg hover:bg-dashboard-accent hover:text-[#0a192f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isRunning ? (

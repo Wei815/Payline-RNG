@@ -6,6 +6,7 @@ import { useSnippetStore } from '../../store/useSnippetStore';
 import { SlotGridDisplay } from '../SlotGridDisplay';
 import { evaluateGrid, getWinningPositions } from '../../utils/evaluation';
 import type { GameConfig } from '../../types';
+import { findTraits } from '../../games/registry';
 import { GameRegistry } from '../../core/GameRegistry';
 
 const templateFiles = import.meta.glob('/templates/*.{xlsx,xls}', { query: '?url', eager: true, import: 'default' }) as Record<string, string>;
@@ -97,7 +98,7 @@ const StepCard = ({ step, idx, gameType }: { step: any, idx: number, gameType: s
             <div className="flex items-center gap-3">
               <span className="text-gray-400 font-bold text-sm bg-gray-800 px-3 py-1 rounded-full border border-gray-700">
                 Drop {activeDrop + 1}
-                {(gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'waygame_qin') && (
+                {findTraits(gameType)?.family === 'way' && (
                   <span className="text-yellow-400 ml-2">X{currentDrop.multiplier}</span>
                 )}
               </span>
@@ -160,7 +161,7 @@ const StepCard = ({ step, idx, gameType }: { step: any, idx: number, gameType: s
         {step.drops.length > 0 && (
           <div className={`text-sm font-bold mt-2 px-4 py-2 rounded-full border text-center flex flex-col ${currentDrop.totalWin > 0 ? 'text-green-400 bg-green-900/20 border-green-500/30' : 'text-gray-400 bg-gray-800/50 border-gray-700/50'}`}>
             <span>{(GameRegistry.getGame(gameType as any)?.hasCascadeFeature?.() ?? true) ? '該次掉落贏分' : '連線贏分'}</span>
-            {(gameType === 'waygame' || gameType === 'waygame_elephant' || gameType === 'waygame_qin') ? (
+            {findTraits(gameType)?.family === 'way' ? (
               <span className="text-lg">
                 {currentDrop.originalWin} <span className="text-gray-500 text-sm mx-1">×</span> {currentDrop.multiplier} <span className="text-gray-500 text-sm mx-1">=</span> {currentDrop.totalWin}
               </span>
@@ -282,7 +283,7 @@ ${format2DArray(qa.Selection)}
         }
       });
 
-      const isCoordinateClassId = gameType === 'linegame_set2' || gameType === 'linegame_gods' || gameType === 'linegame';
+      const isCoordinateClassId = (findTraits(gameType)?.snippetClassIds ?? 'symbolMultiplier') !== 'symbolMultiplier';
 
       const newSteps = rngSteps.map((rngArray, stepIndex) => {
          const isMathId = isCoordinateClassId || rngArray.length > reelCount + 4;
