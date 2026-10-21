@@ -10,7 +10,9 @@ import { MULTIPLIER_BALLS, LUCKY_BALLS, isGoldSymbol } from '../../utils/evaluat
 import { useRngSearch } from '../../hooks/useRngSearch';
 import { useGameStore } from '../../store/useGameStore';
 import { GameRegistry } from '../../core/GameRegistry';
-import { getTraits } from '../../games/registry';
+import { getScriptFormatter, getTraits } from '../../games/registry';
+import { getGameUi } from '../../games/ui-registry';
+import type { ScriptContext } from '../../games/base/ScriptFormat';
 
 export interface SlotGeneratorTabProps {
   reelCount: number;
@@ -82,38 +84,36 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
   const currentStripSets = useGameStore(state => state.currentStripSets);
   const gridContainerRefOther = useRef<HTMLDivElement>(null);
 
-  // Roma FreeGame Trigger Setup states
+  const game = GameRegistry.tryGetGame(gameType);
+  const gameUi = getGameUi(gameType);
+
+  // 免遊觸發序列（遊戲實作 generateTriggerSequence 時啟用，例如羅馬）
   const [selectedTriggerCombo, setSelectedTriggerCombo] = useState<number>(4);
   const [triggerRngSequence, setTriggerRngSequence] = useState<number[][] | null>(null);
   const [isGeneratingTrigger, setIsGeneratingTrigger] = useState<boolean>(false);
-  const [isCopiedTrigger, setIsCopiedTrigger] = useState<boolean>(false);
 
   const regenerateTriggerSequence = useCallback(async () => {
-    if (gameType !== 'linegame_roma') return;
+    if (!game?.generateTriggerSequence) return;
     setIsGeneratingTrigger(true);
     try {
-      const { GameRegistry } = await import('../../core/GameRegistry');
-      const romaGame = GameRegistry.getGame('linegame_roma') as any;
-      if (romaGame && romaGame.generateTriggerSequence) {
-        const seq = await romaGame.generateTriggerSequence(
-          selectedTriggerCombo,
-          currentStripSets,
-          rowCounts,
-          currentPaytable,
-          customPaylines
-        );
-        setTriggerRngSequence(seq);
-      }
+      const seq = await game.generateTriggerSequence(
+        selectedTriggerCombo,
+        currentStripSets,
+        rowCounts,
+        currentPaytable,
+        customPaylines
+      );
+      setTriggerRngSequence(seq);
     } finally {
       setIsGeneratingTrigger(false);
     }
-  }, [gameType, selectedTriggerCombo, currentStripSets, rowCounts, currentPaytable, customPaylines]);
+  }, [game, selectedTriggerCombo, currentStripSets, rowCounts, currentPaytable, customPaylines]);
 
   useEffect(() => {
-    if (gameType === 'linegame_roma' && isFreeGame) {
+    if (game?.generateTriggerSequence && isFreeGame) {
       regenerateTriggerSequence();
     }
-  }, [gameType, isFreeGame, selectedTriggerCombo, regenerateTriggerSequence]);
+  }, [game, isFreeGame, selectedTriggerCombo, regenerateTriggerSequence]);
   const [linePathsOther, setLinePathsOther] = useState<SVGPathResult[]>([]);
   const [multiplierIntervals, setMultiplierIntervals] = useState<import('../../types').MultiplierInterval[]>(() => getGameIntervals(gameType));
   const [activeSearchIntervals, setActiveSearchIntervals] = useState<import('../../types').MultiplierInterval[]>(() => getGameIntervals(gameType));
@@ -345,7 +345,6 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
   // Copy feedback state
   const [isCopiedAll, setIsCopiedAll] = useState<boolean>(false);
   const [isCopiedAllTestCases, setIsCopiedAllTestCases] = useState<boolean>(false);
-  const [isCopiedRomaChain, setIsCopiedRomaChain] = useState<boolean>(false);
 
   const combinedClassIdStr = useMemo(() => {
     const arr: number[] = [];
@@ -441,11 +440,11 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
     const s1RawMathId = currentPaytable.find(p => p.symbolId === 'S1')?.mathId;
     const s1MathId = s1RawMathId ? String(s1RawMathId).split(',')[0].trim() : 'S1';
     
-    if (gameType === 'payanywhere_set2' && (targetComb as any)?.fullMathIds && !isManualEdited && !hasClovers) {
+    if (getTraits(gameType).flatMathIdRng && (targetComb as any)?.fullMathIds && !isManualEdited && !hasClovers) {
       formattedRngArray = (targetComb as any).fullMathIds.slice(0, 30).map((id: number) => String(id));
     } else {
-      let isPayAnywhereSet2WithClovers = gameType === 'payanywhere_set2' && (targetComb as any)?.fullMathIds && !isManualEdited && hasClovers;
-      if (isPayAnywhereSet2WithClovers) {
+      let isFlatMathIdWithClovers = getTraits(gameType).flatMathIdRng && (targetComb as any)?.fullMathIds && !isManualEdited && hasClovers;
+      if (isFlatMathIdWithClovers) {
         formattedRngArray = [...(targetComb as any).fullMathIds.slice(0, 30).map((id: number) => String(id))];
         Object.keys(clovers).forEach(key => {
           const [c, r] = key.split('-').map(Number);
@@ -473,57 +472,35 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
     return formattedRngArray;
   }, [gameType, combinations, selectedCombIndex, isManualEdited, manualIndicesOther, clovers, currentPaytable, rowCounts]);
 
-  const romaManualSafeRng1 = useMemo(() => {
-    if (gameType !== 'linegame_roma' || !isManualEdited || winsOther.length === 0) return null;
-    const strips1 = (!isFreeGame && currentStripSets && currentStripSets[1]) ? currentStripSets[1] : currentStrips;
+  // 手動編輯盤面後的安全遞補 RNG（遊戲實作 findRefillRng 時啟用，例如羅馬）
+  const manualRefillRng = useMemo(() => {
+    if (!game?.findRefillRng || !isManualEdited || winsOther.length === 0) return null;
     try {
-      const romaGame = GameRegistry.getGame('linegame_roma') as any;
-      if (romaGame && romaGame.findSafeReplacementRng) {
-        return romaGame.findSafeReplacementRng(
-          displayGridOther, winsOther, currentPaytable, strips1, rowCounts, customPaylines
-        );
-      }
+      return game.findRefillRng(displayGridOther, winsOther, currentPaytable, {
+        stripSets: isFreeGame ? undefined : currentStripSets, fallbackStrips: currentStrips, rowCounts, paylines: customPaylines,
+      });
     } catch {
-      // ignore
+      return null;
     }
-    return null;
-  }, [gameType, isManualEdited, winsOther, currentStripSets, currentStrips, displayGridOther, currentPaytable, rowCounts, customPaylines, isFreeGame]);
+  }, [game, isManualEdited, winsOther, currentStripSets, currentStrips, displayGridOther, currentPaytable, rowCounts, customPaylines, isFreeGame]);
 
-  const currentRngString = (() => {
-    const targetComb = combinations[selectedCombIndex < combinations.length ? selectedCombIndex : 0];
-    if (gameType === 'linegame_roma') {
-      if (isManualEdited) {
-        if (romaManualSafeRng1) {
-          return `[${currentFormattedRngArray.slice(0, 5).join(',')}],\n[${romaManualSafeRng1.slice(0, 5).join(',')}],`;
-        }
-        return `[${currentFormattedRngArray.slice(0, 5).join(',')}],`;
-      }
-      const fgRngs = (targetComb as any)?.allRngs || (targetComb?.rng ? [targetComb.rng] : []);
-      if (isFreeGame && triggerRngSequence && triggerRngSequence.length > 0) {
-        const triggerStr = triggerRngSequence.map(r => `[${r.slice(0, 5).join(',')}],`).join('\n');
-        const fgStr = fgRngs.map((r: number[]) => `[${r.slice(0, 5).join(',')}],`).join('\n');
-        return `${triggerStr}\n${fgStr}`;
-      } else if ((targetComb as any)?.allRngs) {
-        return (targetComb as any).allRngs.map((r: number[]) => `[${r.slice(0, 5).join(',')}],`).join('\n');
-      } else if (targetComb?.rng) {
-        return `[${targetComb.rng.slice(0, 5).join(',')}],`;
-      }
-    }
-    if (getTraits(gameType).family === 'way' || getTraits(gameType).family === 'megaway') {
-      const extraId = (targetComb as any)?.stripId !== undefined && !isManualEdited ? Number((targetComb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0);
-      return `[${[...currentFormattedRngArray, extraId].join(',')}],`;
-    }
-    let baseStr = `[${currentFormattedRngArray.join(',')}],`;
-    if (gameType === 'linegame_gods' && isFreeGame) {
-      baseStr += `\t[2,10,0],`;
-    } else if (gameType === 'linegame_set2') {
-      const classStr = (targetComb as any)?.classStr || combinedClassIdStr;
-      if (classStr) {
-        baseStr += `\t${classStr},`;
-      }
-    }
-    return baseStr;
-  })();
+  // QA 腳本格式由各遊戲 script.ts 決定（src/games/<遊戲>/script.ts）
+  const scriptFormatter = getScriptFormatter(gameType);
+  const scriptCtx: ScriptContext = {
+    family: getTraits(gameType).family,
+    isFreeGame,
+    triggerRngSequence,
+    selectedTriggerCombo,
+    combinedClassIdStr,
+    defaultStripId: stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0,
+  };
+
+  const currentRngString = scriptFormatter.currentRng({
+    targetComb: combinations[selectedCombIndex < combinations.length ? selectedCombIndex : 0],
+    formattedRngArray: currentFormattedRngArray,
+    isManualEdited,
+    manualSafeRng1: manualRefillRng,
+  }, scriptCtx);
 
   const generateGridFromMathIds = (rngStrArray: string[]) => {
     const mathIdToSymbol: Record<string, string> = {};
@@ -546,8 +523,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
       const mathIds = colStr.split(',');
       const colSymbols = mathIds.map(mId => {
         let sym = mathIdToSymbol[mId] || mId;
-        if (mId === "15" && gameType.includes("set2")) sym = "F1";
-        if (mId === "19" && gameType.includes("set2")) sym = "L1";
+        if (mId === "15" && getTraits(gameType).ballMathIds) sym = "F1";
+        if (mId === "19" && getTraits(gameType).ballMathIds) sym = "L1";
         return sym;
       });
       grid.push(colSymbols);
@@ -602,7 +579,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
     if (!rng || rng.length === 0) return { formula: 'Win=0', totalWin: 0 };
     
     let wyConfigs: any = undefined;
-    if (gameType === 'linegame_gods') {
+    if (getTraits(gameType).wyReels) {
       wyConfigs = {};
       for (let c = 0; c < reelCount; c++) {
         wyConfigs[c] = { a: 2, b: 10, z: 0 };
@@ -804,117 +781,18 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
             <span className="text-xs text-dashboard-text-secondary sm:text-right leading-relaxed">
               自動列出該符號在當前滾輪表之無干擾單一連線配置
             </span>
-            {gameType === 'linegame_gods' && (
-              <button
-                onClick={() => setIsFreeGame(!isFreeGame)}
-                className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${isFreeGame ? 'bg-purple-500/20 text-purple-400 border border-purple-500/50 hover:bg-purple-500/30' : 'bg-blue-500/20 text-blue-400 border border-blue-500/50 hover:bg-blue-500/30'}`}
-              >
-                {isFreeGame ? 'FG 模式 (WY)' : 'BG 模式 (WX)'}
-              </button>
-            )}
-            {gameType === 'linegame_roma' && (
-              <div className="flex items-center gap-1.5 bg-[#112240] p-1 rounded-lg border border-purple-500/40 shadow-sm">
-                <button
-                  type="button"
-                  onClick={() => setIsFreeGame(false)}
-                  className={`px-3 py-1 rounded text-xs font-bold transition-all ${!isFreeGame ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
-                >
-                  🛡️ 一般模式 (Base)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsFreeGame(true)}
-                  className={`px-3 py-1 rounded text-xs font-bold transition-all ${isFreeGame ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
-                >
-                  ⚔️ 免遊模式 (Free Game)
-                </button>
-              </div>
-            )}
+            {gameUi.FreeGameToggle && <gameUi.FreeGameToggle isFreeGame={isFreeGame} setIsFreeGame={setIsFreeGame} />}
           </div>
         </div>
 
-        {gameType === 'linegame_roma' && isFreeGame && (
-          <div className="w-full max-w-3xl flex flex-col bg-[#0f172a] p-4 rounded-xl border border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.15)] gap-3">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-purple-500/30 pb-2.5 gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-base">⚔️</span>
-                <span className="text-sm font-bold text-purple-300">
-                  Free Game 觸發機制 (由 BaseGame 連鎖消除觸發)
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={regenerateTriggerSequence}
-                  disabled={isGeneratingTrigger}
-                  className="px-2.5 py-1 text-xs font-bold rounded bg-purple-500/20 text-purple-300 border border-purple-500/40 hover:bg-purple-500/30 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                >
-                  {isGeneratingTrigger ? '產生中...' : '🔄 換一組觸發 RNG'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (triggerRngSequence) {
-                      const text = triggerRngSequence.map(r => `[${r.join(',')}],`).join('\n');
-                      navigator.clipboard.writeText(text);
-                      setIsCopiedTrigger(true);
-                      setTimeout(() => setIsCopiedTrigger(false), 2000);
-                    }
-                  }}
-                  disabled={!triggerRngSequence}
-                  className="px-2.5 py-1 text-xs font-bold rounded bg-[#64ffda]/10 text-[#64ffda] border border-[#64ffda]/30 hover:bg-[#64ffda]/20 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                >
-                  {isCopiedTrigger ? '✅ 已複製！' : '📋 僅複製觸發 RNG'}
-                </button>
-              </div>
-            </div>
-
-            {/* 4 5 6 7 選擇按鈕 */}
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-gray-300 font-bold">選擇觸發條件 (連續消除次數 / 獲得免遊場數)：</span>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {[
-                  { combo: 4, spins: 4, label: 'Combo 4', desc: '觸發 4 場 FG' },
-                  { combo: 5, spins: 5, label: 'Combo 5', desc: '觸發 5 場 FG' },
-                  { combo: 6, spins: 10, label: 'Combo 6', desc: '觸發 10 場 FG' },
-                  { combo: 7, spins: 20, label: 'Combo 7', desc: '觸發 20 場 FG' },
-                ].map(item => (
-                  <button
-                    key={item.combo}
-                    type="button"
-                    onClick={() => setSelectedTriggerCombo(item.combo)}
-                    className={`flex flex-col items-center justify-center py-2 px-3 rounded-lg border text-center transition-all cursor-pointer ${
-                      selectedTriggerCombo === item.combo
-                        ? 'bg-purple-600/30 border-purple-400 text-white ring-2 ring-purple-500 shadow-md'
-                        : 'bg-[#112240] border-gray-700/60 text-gray-400 hover:text-gray-200 hover:border-gray-500'
-                    }`}
-                  >
-                    <span className="text-xs font-bold">{item.label}</span>
-                    <span className="text-[11px] text-purple-300 font-mono mt-0.5">{item.desc}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 預覽觸發 RNG 序列 */}
-            <div className="flex flex-col gap-1 bg-[#0a101f] p-2.5 rounded-lg border border-purple-900/40">
-              <span className="text-[11px] text-gray-400 font-bold flex justify-between">
-                <span>預先準備之 BaseGame 觸發序列 (共 {triggerRngSequence ? triggerRngSequence.length : 0} 組 RNG)：</span>
-                <span className="text-yellow-400/80 font-mono text-[10px]">點擊卡片將自動包含下方測試連線一併輸出</span>
-              </span>
-              <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto font-mono text-xs text-yellow-300">
-                {triggerRngSequence ? (
-                  triggerRngSequence.map((r, i) => (
-                    <span key={i} className="bg-[#112240] px-1.5 py-0.5 rounded border border-gray-700">
-                      Step {i === triggerRngSequence.length - 1 ? 'End' : i}: [{r.join(',')}]
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-gray-500 text-xs italic">正在生成觸發序列中...</span>
-                )}
-              </div>
-            </div>
-          </div>
+        {gameUi.TriggerPanel && game?.generateTriggerSequence && isFreeGame && (
+          <gameUi.TriggerPanel
+            selectedTriggerCombo={selectedTriggerCombo}
+            setSelectedTriggerCombo={setSelectedTriggerCombo}
+            triggerRngSequence={triggerRngSequence}
+            isGeneratingTrigger={isGeneratingTrigger}
+            regenerate={regenerateTriggerSequence}
+          />
         )}
 
         {selectedSymbol === 'WIN_MULTIPLIER' && (
@@ -1080,43 +958,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                   });
                   const textToCopy = sortedCombs
                     .filter(c => c.rng && !c.isInterfered)
-                    .map(c => {
-                      let rngStr = '';
-                      if (gameType === 'linegame_set2') {
-                        const mathIdsStr = (c as any).fullMathIds ? `[${(c as any).fullMathIds.slice(0, 30).join(',')}]` : `[${c.rng?.join(',')}]`;
-                        const classStr = (c as any).classStr;
-                        rngStr = classStr ? `${mathIdsStr},\t${classStr},` : `${mathIdsStr},`;
-                      } else if (gameType === 'linegame_gods' && isFreeGame) {
-                        const mathIdsStr = (c as any).fullMathIds ? `[${(c as any).fullMathIds.slice(0, 30).join(',')}]` : `[${c.rng?.join(',')}]`;
-                        rngStr = `${mathIdsStr},\t[2,10,0],`;
-                      } else if (gameType === 'payanywhere_set2') {
-                        rngStr = (c as any).fullMathIds ? `[${(c as any).fullMathIds.slice(0, 30).join(',')}],` : `[${c.rng?.join(',')}],`;
-                        if ((c as any).fullMathIds && c.length >= 8) {
-                          const dropMathIds = (c as any).dropMathIds || [];
-                          const dropCount = c.length;
-                          rngStr += `[${dropMathIds.slice(0, dropCount).join(',')}],`;
-                        }
-                      } else {
-                        if (gameType === 'linegame_roma') {
-                          const fgRngs = (c as any)?.allRngs || (c.rng ? [c.rng] : []);
-                          if (isFreeGame && triggerRngSequence && triggerRngSequence.length > 0) {
-                            const triggerStr = triggerRngSequence.map(r => `[${r.slice(0, 5).join(',')}],`).join('\n');
-                            const fgStr = fgRngs.map((r: number[]) => `[${r.slice(0, 5).join(',')}],`).join('\n');
-                            rngStr = `${triggerStr}\n${fgStr}`;
-                          } else if ((c as any)?.allRngs) {
-                            rngStr = (c as any).allRngs.map((r: number[]) => `[${r.slice(0, 5).join(',')}],`).join('\n');
-                          } else if (c.rng) {
-                            rngStr = `[${c.rng.slice(0, 5).join(',')}],`;
-                          }
-                        } else {
-                          const finalRng = (getTraits(gameType).family === 'way' || getTraits(gameType).family === 'megaway')
-                            ? [...(c.rng?.slice(0, 6) || []), (c as any).stripId !== undefined ? Number((c as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)]
-                            : c.rng;
-                          rngStr = `[${finalRng?.join(',')}],`;
-                        }
-                      }
-                      return `${rngStr}`;
-                    })
+                    .map(c => scriptFormatter.copyAllLine(c, scriptCtx))
                     .join('\n');
                   navigator.clipboard.writeText(textToCopy);
                   setIsCopiedAll(true);
@@ -1142,17 +984,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                       if (!c.rng) {
                         return `${c.name}\t-\t-`;
                       }
-                      let rngStr = '';
-                      const finalRng = (getTraits(gameType).family === 'way' || getTraits(gameType).family === 'megaway')
-                        ? [...(c.rng?.slice(0, 6) || []), (c as any).stripId !== undefined ? Number((c as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)]
-                        : (gameType === 'linegame_roma' ? c.rng.slice(0, 5) : c.rng);
-                      rngStr = `[${finalRng?.join(',')}],`;
-                      if (gameType === 'linegame_gods' && isFreeGame) {
-                          rngStr += `\t[2,10,0],`;
-                      } else if (gameType === 'linegame_set2' && (c as any).classStr) {
-                          rngStr += `\t${(c as any).classStr},`;
-                      }
-                      
+                      const rngStr = scriptFormatter.testCaseRng(c, scriptCtx);
                       const winInfo = calculateCombinationWin(c);
                       return `${c.name}\t${rngStr}\t${winInfo.formula}`;
                     });
@@ -1172,64 +1004,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
               >
                 {isCopiedAllTestCases ? '✅ 已複製測案！' : '📋 複製全部測案'}
               </button>
-              {gameType === 'linegame_roma' && (
-                <button
-                  disabled={isSearching || combinations.length === 0}
-                  onClick={() => {
-                    // 真機實測精確對齊腳本：
-                    // 1. 官方進入 FG 固定範本：4 場消除（Line 2 J*3）+ 1 遞補無贏分
-                    const triggerLines = [
-                      '[13,0,0,0,0],',
-                      '[13,0,0,0,0],',
-                      '[13,0,0,0,0],',
-                      '[13,0,0,0,0],',
-                      '[0,0,0,0,0],'
-                    ].join('\n');
-
-                    // 2. 取出當前畫面上選中 Symbol 的純連線組（長度 2 ~ 5）
-                    const pureCombs = combinations
-                      .filter(c => c.wildCount === 0 && c.rng)
-                      .sort((a, b) => a.length - b.length);
-
-                    // 3. 取出當前畫面上選中 Symbol 的含 WX 連線組（長度 2 ~ 5）
-                    const wxCombs = combinations
-                      .filter(c => c.wildCount > 0 && c.rng)
-                      .sort((a, b) => a.length - b.length);
-
-                    // 格式化單一測案：若無消除（如 2 連線）僅輸出初始 1 行；若有消除輸出初始 + 遞補
-                    const formatCombBlock = (comb: any) => {
-                      const rngs: number[][] = (comb.allRngs && comb.allRngs.length > 0)
-                        ? comb.allRngs
-                        : (comb.rng ? [comb.rng] : []);
-                      return rngs.map(r => `[${r.slice(0, 5).join(',')}],`).join('\n');
-                    };
-
-                    const pureBlocks = pureCombs.map(formatCombBlock).join('\n\n');
-                    const wxBlocks = wxCombs.map(formatCombBlock).join('\n\n');
-
-                    let text = [
-                      triggerLines,
-                      pureBlocks,
-                      triggerLines,
-                      wxBlocks
-                    ].filter(Boolean).join('\n\n');
-
-                    // 移除最後一行的逗號以符合標準格式
-                    text = text.replace(/,$/, '');
-
-                    navigator.clipboard.writeText(text);
-                    setIsCopiedRomaChain(true);
-                    setTimeout(() => setIsCopiedRomaChain(false), 2000);
-                  }}
-                  className={`px-2 py-1 text-xs font-bold rounded border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                    isCopiedRomaChain
-                      ? 'bg-purple-500/20 text-purple-400 border-purple-500/50'
-                      : 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border-purple-500/30'
-                  }`}
-                  title={`一鍵複製「觸發免遊 (5組) + 4場純${selectedSymbol || ''}測案 + 觸發免遊 (5組) + 4場${selectedSymbol || ''}+WX測案」完整實測腳本`}
-                >
-                  {isCopiedRomaChain ? '✅ 已複製免遊串接！' : '⚔️ 複製免遊連鎖實測腳本'}
-                </button>
+              {gameUi.ExtraCopyButtons && (
+                <gameUi.ExtraCopyButtons combinations={combinations} isSearching={isSearching} selectedSymbol={selectedSymbol} />
               )}
             </div>
             {isSearching && (
@@ -1274,51 +1050,11 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                         setActiveStripId(Number((comb as any).stripId));
                       }
 
-                      if (isManualEdited && selectedCombIndex === globalIdx) {
-                        navigator.clipboard.writeText(currentRngString);
-                      } else if (gameType === 'linegame_set2') {
-                        const mathIdsStr = (comb as any).fullMathIds ? `[${(comb as any).fullMathIds.slice(0, 30).join(',')}]` : `[${comb.rng.join(',')}]`;
-                        const classStr = (comb as any).classStr || combinedClassIdStr;
-                        const finalCopy = classStr ? `${mathIdsStr},\t${classStr},` : `${mathIdsStr},`;
-                        navigator.clipboard.writeText(finalCopy);
-                      } else if (gameType === 'linegame_gods' && isFreeGame) {
-                        const mathIdsStr = (comb as any).fullMathIds ? `[${(comb as any).fullMathIds.slice(0, 30).join(',')}]` : `[${comb.rng.join(',')}]`;
-                        navigator.clipboard.writeText(`${mathIdsStr},\t[2,10,0],`);
-                      } else if (gameType === 'payanywhere_set2') {
-                        const initStr = isManualEdited && selectedCombIndex === globalIdx
+                      navigator.clipboard.writeText(
+                        isManualEdited && selectedCombIndex === globalIdx
                           ? currentRngString
-                          : ((comb as any).fullMathIds ? `[${(comb as any).fullMathIds.slice(0, 30).join(',')}],` : '');
-                        let finalCopy = initStr;
-                        if ((comb as any).fullMathIds && comb.length >= 8) {
-                          const dropMathIds = (comb as any).dropMathIds || [];
-                          const dropCount = comb.length;
-                          const dropStr = `[${dropMathIds.slice(0, dropCount).join(',')}],`;
-                          finalCopy += dropStr;
-                        }
-                        navigator.clipboard.writeText(finalCopy);
-                      } else {
-                        let finalCopy = '';
-                        if (isManualEdited && selectedCombIndex === globalIdx) {
-                          finalCopy = currentRngString;
-                        } else if (gameType === 'linegame_roma') {
-                          const fgRngs = (comb as any)?.allRngs || (comb.rng ? [comb.rng] : []);
-                          if (isFreeGame && triggerRngSequence && triggerRngSequence.length > 0) {
-                            const triggerStr = triggerRngSequence.map(r => `[${r.slice(0, 5).join(',')}],`).join('\n');
-                            const fgStr = fgRngs.map((r: number[]) => `[${r.slice(0, 5).join(',')}],`).join('\n');
-                            finalCopy = `${triggerStr}\n${fgStr}`;
-                          } else if ((comb as any)?.allRngs) {
-                            finalCopy = (comb as any).allRngs.map((r: number[]) => `[${r.slice(0, 5).join(',')}],`).join('\n');
-                          } else if (comb.rng) {
-                            finalCopy = `[${comb.rng.slice(0, 5).join(',')}],`;
-                          }
-                        } else {
-                          const finalRng = (getTraits(gameType).family === 'way' || getTraits(gameType).family === 'megaway')
-                            ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)]
-                            : comb.rng;
-                          finalCopy = `[${finalRng.join(',')}],`;
-                        }
-                        navigator.clipboard.writeText(finalCopy);
-                      }
+                          : scriptFormatter.clickCopy(comb, scriptCtx),
+                      );
                     }
                   }}
                   className={`flex justify-between items-center gap-2 px-3 py-2 rounded border text-left transition-all ${
@@ -1336,33 +1072,27 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                         ? 'text-orange-400 border-orange-500/30'
                         : 'text-[#64ffda] border-[#64ffda]/30'
                       }`}>
-                      {gameType === 'payanywhere_set2' || gameType === 'linegame_set2' ? (
-                        <div className="flex flex-col gap-0.5 mt-0.5 w-full">
-                          <span className="text-[#64ffda] leading-tight truncate block" title={selectedCombIndex === globalIdx && isManualEdited ? currentRngString : `[${(comb as any).fullMathIds?.slice(0, 30).join(',')}]`}>
-                            {selectedCombIndex === globalIdx && isManualEdited ? currentRngString : `[${(comb as any).fullMathIds?.slice(0, 30).join(',')}],`}
-                          </span>
-                          {gameType === 'payanywhere_set2' && (comb as any).dropMathIds && (comb as any).dropMathIds.length > 0 ? (
-                            <span className="text-[#64ffda] leading-tight opacity-75 truncate block" title={`[${((comb as any).dropMathIds || []).slice(0, comb.length).join(',')}]`}>
-                              [{((comb as any).dropMathIds || []).slice(0, comb.length).join(',')}], (自動複製)
-                            </span>
-                          ) : gameType === 'payanywhere_set2' ? (
-                            <span className="text-gray-400 leading-tight opacity-75 text-[10px] truncate block">
-                              無消除 (自動複製)
-                            </span>
-                          ) : null}
-                        </div>
-                      ) : (() => {
-                        const isRomaFG = gameType === 'linegame_roma' && isFreeGame && triggerRngSequence;
-                        const isRomaMulti = gameType === 'linegame_roma' && !isFreeGame && (comb as any)?.allRngs?.length > 1;
-                        const romaMultiSuffix = isRomaFG 
-                          ? ` (觸發${selectedTriggerCombo}連鎖+FG 共 ${triggerRngSequence.length + ((comb as any)?.allRngs?.length || 1)} 組)` 
-                          : isRomaMulti 
-                            ? ` (+遞補 0 消除)` 
-                            : '';
-                        const formattedCombRng = (getTraits(gameType).family === 'way' || getTraits(gameType).family === 'megaway')
-                          ? [...comb.rng.slice(0, 6), (comb as any).stripId !== undefined ? Number((comb as any).stripId) : (stripSets ? Number(Object.keys(stripSets).find(k => stripSets[k] === currentStrips) || 0) : 0)].join(',')
-                          : (gameType === 'linegame_roma' ? comb.rng.slice(0, 5).join(',') : comb.rng.join(','));
-                        const rawStr = `RNG: ${selectedCombIndex === globalIdx && isManualEdited ? currentRngString : `[${formattedCombRng}]${gameType === 'linegame_gods' && isFreeGame ? ',\t[2,10,0],' : ''}`}${romaMultiSuffix} ${comb.isInterfered ? '(有干擾)' : ''} ${(comb as any).hasS1Drop ? '(有S1掉落)' : ''}`;
+                      {(() => {
+                        const shown = scriptFormatter.display(comb, scriptCtx, selectedCombIndex === globalIdx && isManualEdited ? currentRngString : undefined);
+                        if (shown.kind === 'mathIds') {
+                          return (
+                            <div className="flex flex-col gap-0.5 mt-0.5 w-full">
+                              <span className="text-[#64ffda] leading-tight truncate block" title={shown.mainTitle}>
+                                {shown.main}
+                              </span>
+                              {shown.drop !== undefined && (shown.dropTitle !== undefined ? (
+                                <span className="text-[#64ffda] leading-tight opacity-75 truncate block" title={shown.dropTitle}>
+                                  {shown.drop}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400 leading-tight opacity-75 text-[10px] truncate block">
+                                  {shown.drop}
+                                </span>
+                              ))}
+                            </div>
+                          );
+                        }
+                        const rawStr = shown.raw;
                         const parts = rawStr.split('\t');
                         return (
                           <div className="flex flex-col w-full text-right gap-0.5">
@@ -1461,55 +1191,24 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                 {(() => {
                   const targetComb = combinations[selectedCombIndex < combinations.length ? selectedCombIndex : 0];
                   const dropLength = winningCoordsOther.size;
-                  let dropString = '';
-                  if (gameType === 'payanywhere_set2' && (targetComb as any)?.dropMathIds && dropLength > 0) {
-                    const dropArr = (targetComb as any).dropMathIds.slice(0, dropLength).map((id: number) => String(id));
-                    dropString = `[${dropArr.join(',')}],`;
-                  }
+                  const dropString = scriptFormatter.dropPreview(targetComb, dropLength);
 
                   return (
                     <div className="flex flex-col gap-1 w-full">
                       <div className="flex items-center gap-1 w-full justify-between">
                         <code className="text-xs text-yellow-400 font-mono truncate max-w-[150px] sm:max-w-[300px]" title={currentRngString}>
                           {(() => {
-                            if (gameType === 'linegame_roma') {
-                              const hasPayingWin = winsOther.some(w => (w.payout && w.payout > 0) || (w.totalWin && w.totalWin > 0));
-                              if (isManualEdited) {
-                                if (romaManualSafeRng1) {
-                                  return (
-                                    <div className="flex flex-col text-[10.5px] leading-tight">
-                                      <span className="text-yellow-400">初始: [{currentFormattedRngArray.slice(0, 5).join(',')}],</span>
-                                      <span className="text-[#64ffda]">遞補: [{romaManualSafeRng1.slice(0, 5).join(',')}], <span className="text-green-400 font-bold">(0消除)</span></span>
-                                    </div>
-                                  );
-                                }
-                                return <span>[{currentFormattedRngArray.slice(0, 5).join(',')}], <span className="text-gray-400 text-[10px]">{hasPayingWin ? '(掉落連線/無安全遞補)' : '(無消除)'}</span></span>;
-                              }
-                              const fgRngs = (targetComb as any)?.allRngs || (targetComb?.rng ? [targetComb.rng] : []);
-                              if (isFreeGame && triggerRngSequence && triggerRngSequence.length > 0) {
-                                return (
-                                  <div className="flex flex-col text-[10.5px] leading-tight">
-                                    <span className="text-purple-300 font-bold">觸發免遊 ({triggerRngSequence.length}組):</span>
-                                    {triggerRngSequence.map((r: number[], idx: number) => (
-                                      <span key={`trig-${idx}`} className="opacity-90">[{r.slice(0, 5).join(',')}],</span>
-                                    ))}
-                                    <span className="text-[#64ffda] font-bold mt-1">FG測試 ({fgRngs.length}組):</span>
-                                    {fgRngs.map((r: number[], idx: number) => (
-                                      <span key={`fg-${idx}`}>[{r.slice(0, 5).join(',')}],</span>
-                                    ))}
-                                  </div>
-                                );
-                              } else if ((targetComb as any)?.allRngs?.length > 1) {
-                                const all = (targetComb as any).allRngs;
-                                return (
-                                  <div className="flex flex-col text-[10.5px] leading-tight">
-                                    <span className="text-yellow-400">初始: [{all[0].slice(0, 5).join(',')}],</span>
-                                    <span className="text-[#64ffda]">遞補: [{all[1].slice(0, 5).join(',')}], <span className="text-green-400 font-bold">(0消除)</span></span>
-                                  </div>
-                                );
-                              } else if ((targetComb as any)?.allRngs?.length === 1) {
-                                return <span>[{(targetComb as any).allRngs[0].slice(0, 5).join(',')}], <span className="text-gray-400 text-[10px]">{hasPayingWin ? '(掉落連線/無安全遞補)' : '(無消除)'}</span></span>;
-                              }
+                            if (gameUi.CurrentRngPreview) {
+                              const preview = gameUi.CurrentRngPreview({
+                                targetComb,
+                                formattedRngArray: currentFormattedRngArray,
+                                isManualEdited,
+                                manualRefillRng,
+                                isFreeGame,
+                                triggerRngSequence,
+                                hasPayingWin: winsOther.some(w => (w.payout && w.payout > 0) || (w.totalWin && w.totalWin > 0)),
+                              });
+                              if (preview) return preview;
                             }
                             const parts = currentRngString.split('\t');
                             return (
@@ -1708,7 +1407,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
 
                     let customBg = '';
                     let displaySymbol = symbol;
-                    if (symbol === 'S1' && gameType === 'linegame_set2') {
+                    if (symbol === 'S1' && getTraits(gameType).cloverCollection) {
                       displaySymbol = '🍀';
                     }
                     if (symbol.includes('_') && symbol.match(/^[F|L][1-4]_/)) {
@@ -1774,7 +1473,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                       >
                         <div className="flex flex-col items-center justify-center pointer-events-none">
                           <span>{displaySymbol}</span>
-                          {gameType === 'payanywhere_set2' && manualIndicesOther[colIndex] && (() => {
+                          {getTraits(gameType).cellMathIdLabel && manualIndicesOther[colIndex] && (() => {
                             const rawId = manualIndicesOther[colIndex].split(',')[rowIndex] || '-';
                             let displayId = rawId;
                             if (rawId.includes('_') && rawId.match(/^[F|L][1-4]_/)) {
@@ -1789,14 +1488,14 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                             );
                           })()}
                         </div>
-                        {gameType === 'linegame_set2' && showGoldFrameEditor && goldFrames[`${colIndex}-${rowIndex}`] !== undefined && (
+                        {getTraits(gameType).goldFramesAndJackpots && showGoldFrameEditor && goldFrames[`${colIndex}-${rowIndex}`] !== undefined && (
                           <div className="absolute inset-0 rounded-lg border-[3px] border-yellow-400 pointer-events-none z-20 flex items-end justify-end p-0.5">
                             <span className="text-[9px] font-bold text-[#0a192f] bg-yellow-400 px-1 rounded-sm leading-tight shadow-sm">
                               {goldFrames[`${colIndex}-${rowIndex}`]}X
                             </span>
                           </div>
                         )}
-                        {gameType === 'linegame_set2' && showJackpotEditor && jackpots[`${colIndex}-${rowIndex}`] !== undefined && (
+                        {getTraits(gameType).goldFramesAndJackpots && showJackpotEditor && jackpots[`${colIndex}-${rowIndex}`] !== undefined && (
                           <div className="absolute inset-0 rounded-lg border-[3px] border-red-500 pointer-events-none z-20 flex items-end justify-end p-0.5">
                             <span className="text-[9px] font-bold text-white bg-red-500 px-1 rounded-sm leading-tight shadow-sm">
                               {jackpots[`${colIndex}-${rowIndex}`]}
@@ -1946,7 +1645,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-purple-500/20">
               <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">
-                {gameType === 'linegame_set2' ? (
+                {getTraits(gameType).goldFramesAndJackpots ? (
                   <input type="checkbox" className="accent-purple-500 w-5 h-5" checked={showGoldFrameEditor}
                     onChange={(e) => setShowGoldFrameEditor(e.target.checked)} />
                 ) : (
@@ -1960,11 +1659,11 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                       }
                     }} />
                 )}
-                <span className="text-base font-bold text-purple-400">{gameType === 'linegame_set2' ? '啟用金框' : (gameType === 'linegame_gods' ? '啟用 WY/WZ' : '啟用 Scatter (S1/S2)')}</span>
+                <span className="text-base font-bold text-purple-400">{getTraits(gameType).goldFramesAndJackpots ? '啟用金框' : (getTraits(gameType).wyReels ? '啟用 WY/WZ' : '啟用 Scatter (S1/S2)')}</span>
               </label>
             </div>
             
-            {gameType === 'linegame_set2' && showGoldFrameEditor && (
+            {getTraits(gameType).goldFramesAndJackpots && showGoldFrameEditor && (
               <div className="mt-2 flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -2007,7 +1706,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
               </div>
             )}
 
-            {gameType === 'linegame_set2' && (
+            {getTraits(gameType).goldFramesAndJackpots && (
               <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-red-500/20 mt-2">
                 <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">
                   <input type="checkbox" className="accent-red-500 w-5 h-5" checked={showJackpotEditor}
@@ -2017,7 +1716,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
               </div>
             )}
 
-            {gameType === 'linegame_set2' && showJackpotEditor && (
+            {getTraits(gameType).goldFramesAndJackpots && showJackpotEditor && (
               <div className="mt-2 flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -2061,7 +1760,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
               </div>
             )}
 
-            {gameType === 'linegame_set2' && (
+            {getTraits(gameType).goldFramesAndJackpots && (
               <>
               {combinedClassIdStr && (
                 <div className="flex items-center gap-2 bg-[#112240] px-2 py-1 rounded border border-gray-700/30 w-full justify-between mt-2">
@@ -2082,7 +1781,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
               </>
             )}
             
-            {gameType !== 'linegame_set2' && (specialSymbolConfig.s1Enabled || specialSymbolConfig.s2Enabled) && (
+            {!getTraits(gameType).goldFramesAndJackpots && (specialSymbolConfig.s1Enabled || specialSymbolConfig.s2Enabled) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                 {specialSymbolConfig.s1Enabled && (
                   <div className="flex flex-col gap-3 p-4 rounded-lg border-2 bg-[#0a192f] border-purple-500/30 shadow-lg relative overflow-hidden">
@@ -2123,11 +1822,11 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
             )}
           </div>
           
-          {(gameType === 'linegame_set2' || gameType === 'payanywhere' || gameType === 'payanywhere_set2') && (
+          {(getTraits(gameType).cloverCollection || getTraits(gameType).multiplierBalls) && (
             <div className="flex flex-col gap-3 mt-2 pt-4 border-t border-gray-700/50">
               <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-dashboard-accent/20">
                 <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">
-                  {gameType === 'linegame_set2' ? (
+                  {getTraits(gameType).cloverCollection ? (
                     <input type="checkbox" className="accent-dashboard-accent w-5 h-5" checked={specialSymbolConfig.s1Enabled}
                       onChange={(e) => {
                         const checked = e.target.checked;
@@ -2141,9 +1840,9 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                     <input type="checkbox" className="accent-dashboard-accent w-5 h-5" checked={specialSymbolConfig.multipliersEnabled}
                       onChange={(e) => setSpecialSymbolConfig(prev => ({ ...prev, multipliersEnabled: e.target.checked }))} />
                   )}
-                  <span className="text-base font-bold text-dashboard-accent">{gameType === 'linegame_set2' ? '啟用幸運草' : '啟用倍數球 (F1~F4)'}</span>
+                  <span className="text-base font-bold text-dashboard-accent">{getTraits(gameType).cloverCollection ? '啟用幸運草' : '啟用倍數球 (F1~F4)'}</span>
                 </label>
-                {specialSymbolConfig.multipliersEnabled && gameType !== 'linegame_set2' && (() => {
+                {specialSymbolConfig.multipliersEnabled && !getTraits(gameType).cloverCollection && (() => {
                   const total = Object.values(specialSymbolConfig.multiplierCounts).reduce((a, b) => a + b, 0);
                   return (
                     <div className="flex items-center gap-3 mr-1">
@@ -2161,7 +1860,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                 })()}
               </div>
               
-              {gameType === 'linegame_set2' && specialSymbolConfig.s1Enabled && (
+              {getTraits(gameType).cloverCollection && specialSymbolConfig.s1Enabled && (
                 <div className="grid grid-cols-1 gap-4 mt-2">
                   <div className="flex flex-col gap-3 p-4 rounded-lg border-2 bg-[#0a192f] border-[#64ffda]/30 shadow-lg relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-16 h-16 opacity-10 rounded-bl-full bg-[#64ffda]"></div>
@@ -2188,7 +1887,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                 </div>
               )}
               
-              {gameType !== 'linegame_set2' && specialSymbolConfig.multipliersEnabled && (() => {
+              {!getTraits(gameType).cloverCollection && specialSymbolConfig.multipliersEnabled && (() => {
                 const totalMultipliers = Object.values(specialSymbolConfig.multiplierCounts).reduce((a, b) => a + b, 0);
                 return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
@@ -2233,7 +1932,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
             )
             })()}
 
-            {gameType !== 'linegame_set2' && (
+            {!getTraits(gameType).cloverCollection && (
               <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-gray-700/50">
                 <div className="flex items-center justify-between bg-[#0a192f] p-2 rounded-lg border border-pink-500/20">
                   <label className="flex items-center gap-3 cursor-pointer hover:opacity-90 ml-1">

@@ -7,6 +7,7 @@
  */
 import type { GameType } from '../types';
 import type { GameFamily, GameManifest, GameTraits } from './base/GameManifest';
+import { defaultScriptFormatter, type ScriptFormatter } from './base/ScriptFormat';
 
 import classicLine from './classic-line/manifest';
 import mermaid from './mermaid/manifest';
@@ -104,4 +105,9 @@ export function detectGameByFileName(fileName: string, family?: GameFamily): Gam
 /** 依範本 Overview 的 Way 數辨識遊戲 */
 export function detectGameByWays(ways: number): GameManifest | undefined {
   return GAMES.find(g => g.templateWays === ways);
+}
+
+/** 取得遊戲的 QA 腳本格式化器 */
+export function getScriptFormatter(id: GameType): ScriptFormatter {
+  return byId.get(id)?.script ?? defaultScriptFormatter;
 }

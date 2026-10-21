@@ -1,4 +1,5 @@
 import { defineGame } from '../base/GameManifest';
+import { luxeScriptFormatter } from './script';
 import { LuxeGame } from './LuxeGame';
 
 export default defineGame({
@@ -10,6 +11,9 @@ export default defineGame({
     family: 'line',
     searchPositionDependent: true,
     mathIdGenerator: true,
+    goldFramesAndJackpots: true,
+    cloverCollection: true,
+    ballMathIds: true,
     showPaylineTable: true,
     metricsPaylineCount: true,
     snippetClassIds: 'coordinate',
@@ -22,5 +26,6 @@ export default defineGame({
     { id: '5', name: '大獎? (800~1000)', min: 800, max: 1000 },
     { id: '6', name: '大獎? (1000+)', min: 1000, max: null },
   ],
+  script: luxeScriptFormatter,
   create: () => new LuxeGame(),
 });

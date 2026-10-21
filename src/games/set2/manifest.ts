@@ -1,4 +1,5 @@
 import { defineGame } from '../base/GameManifest';
+import { set2ScriptFormatter } from './script';
 import { BattleSet2Game } from './BattleSet2Game';
 
 export default defineGame({
@@ -10,10 +11,15 @@ export default defineGame({
     family: 'payanywhere',
     searchPositionDependent: false,
     mathIdGenerator: true,
+    multiplierBalls: true,
+    cellMathIdLabel: true,
+    ballMathIds: true,
+    flatMathIdRng: true,
     tumbleViewerTab: true,
     rangedPayouts: true,
     combinedBonusSymbol: true,
     simulationCascade: true,
   },
+  script: set2ScriptFormatter,
   create: () => new BattleSet2Game(),
 });

@@ -1,4 +1,5 @@
 import { defineGame } from '../base/GameManifest';
+import { romaScriptFormatter } from './script';
 import { RomaGame } from './RomaGame';
 
 export default defineGame({
@@ -11,5 +12,6 @@ export default defineGame({
     searchPositionDependent: true,
     mathIdGenerator: false,
   },
+  script: romaScriptFormatter,
   create: () => new RomaGame(),
 });

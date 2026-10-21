@@ -1,5 +1,6 @@
 import type { GameType, MultiplierInterval } from '../../types';
 import type { IGameEnvironment } from './IGameEnvironment';
+import type { ScriptFormatter } from './ScriptFormat';
 
 /** 遊戲家族：決定共用層使用哪一套連線判定 / SVG 繪線 / 顯示文字 */
 export type GameFamily = 'line' | 'way' | 'payanywhere' | 'megaway';
@@ -37,6 +38,21 @@ export interface GameTraits {
   rangedPayouts?: boolean;
   /** 符號選單將 B1、B2 合併為單一「B1/B2」選項 */
   combinedBonusSymbol?: boolean;
+  // ---- 可重用的遊戲機制（產生器 / 自訂盤面依此顯示對應編輯器） ----
+  /** 金框倍數與 Jackpot（奢華）：取代一般 Scatter 設定，輸出座標式 ClassID */
+  goldFramesAndJackpots?: boolean;
+  /** S1 幸運草收集（奢華）：S1 顯示為 🍀，取代倍數球 / 幸運球設定 */
+  cloverCollection?: boolean;
+  /** F1~F4 倍數球設定面板 */
+  multiplierBalls?: boolean;
+  /** WY 整軸百搭與 (a,b,z) 倍數設定（諸神） */
+  wyReels?: boolean;
+  /** 盤面格子下方顯示 MathID；MathID 15 / 19 對應 F1 / L1 倍數球 */
+  cellMathIdLabel?: boolean;
+  /** MathID 15 / 19 解讀為 F1 / L1 倍數球 */
+  ballMathIds?: boolean;
+  /** 腳本 RNG 直接使用搜尋結果的 30 碼 MathID 盤面 */
+  flatMathIdRng?: boolean;
   /**
    * 測試腳本 (Snippet) ClassIDs 的意義：
    * - 'coordinate'：每 3 碼 (col,row,值) 表示金框倍數 / Jackpot（奢華、通用線遊戲）
@@ -67,6 +83,8 @@ export interface GameManifest {
   templateWays?: number;
   /** 只靠檔名辨識時套用的固定盤面配置 */
   templateLayout?: { reelCount: number; rowCounts: number[] };
+  /** QA 測試腳本格式（未設定則使用 DefaultScriptFormatter） */
+  script?: ScriptFormatter;
   /** 大獎倍數區間（未設定則使用 DEFAULT_MULTIPLIER_INTERVALS） */
   multiplierIntervals?: MultiplierInterval[];
   create(): IGameEnvironment;

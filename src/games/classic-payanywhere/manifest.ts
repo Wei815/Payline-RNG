@@ -9,6 +9,7 @@ export default defineGame({
     family: 'payanywhere',
     searchPositionDependent: false,
     mathIdGenerator: false,
+    multiplierBalls: true,
   },
   create: () => new ClassicPayAnywhere(),
 });

@@ -103,9 +103,9 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
       gameType,
       paylines: customPaylines || [],
       effectiveBet: effectiveBetValue,
-      goldFrames: gameType === 'linegame_set2' ? goldFrames : {},
-      jackpots: gameType === 'linegame_set2' ? jackpots : {},
-      wyConfigs: gameType === 'linegame_gods' ? wyConfigs : undefined,
+      goldFrames: getTraits(gameType).goldFramesAndJackpots ? goldFrames : {},
+      jackpots: getTraits(gameType).goldFramesAndJackpots ? jackpots : {},
+      wyConfigs: getTraits(gameType).wyReels ? wyConfigs : undefined,
       specialRules: { derivativeSymbols: { 'B1': ['B2'] } }
     };
     const wins = evaluateGrid(gridSymbols, currentPaytable, config, undefined, true);
@@ -188,7 +188,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   };
 
   const luckySelectsStr = useMemo(() => {
-    if (gameType !== 'linegame_gods') return '';
+    if (!getTraits(gameType).wyReels) return '';
     const keys = Object.keys(goldFrames);
     if (keys.length === 0) return '';
     const selects: number[] = [];
@@ -203,7 +203,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   }, [goldFrames, gameType]);
 
   const combinedClassIdStr = useMemo(() => {
-    if (gameType === 'linegame_gods') {
+    if (getTraits(gameType).wyReels) {
       const output: number[] = [];
       for (let c = 0; c < reelCount; c++) {
         const hasWy = gridSymbols[c] && gridSymbols[c].includes('WY');
@@ -216,7 +216,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
       return `[${output.join(',')}],`; // Commas at the end
     }
 
-    if (gameType !== 'linegame_set2') return '';
+    if (!getTraits(gameType).goldFramesAndJackpots) return '';
     const keys = Array.from(new Set([...Object.keys(goldFrames), ...Object.keys(jackpots)]));
     if (keys.length === 0) return '';
     const output: number[] = [];
@@ -430,7 +430,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     if (isGoldFrameMode) {
       setGoldFrames(prev => {
         const next = { ...prev };
-        if (gameType === 'linegame_gods') {
+        if (getTraits(gameType).wyReels) {
           if (next[key]) delete next[key];
           else next[key] = 1;
         } else {
@@ -622,7 +622,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
         <h2 className="text-sm font-bold text-dashboard-text-secondary border-b border-gray-700/50 pb-2">方塊調色盤 (Palette)</h2>
         
         {/* Special Symbol Multiplier Config */}
-        {gameType === 'linegame_gods' && (
+        {getTraits(gameType).wyReels && (
           <div className="bg-[#112240] p-3 rounded-md border border-gray-700/50 flex flex-col gap-3">
              <label className="flex items-center gap-2 cursor-pointer group">
                <div className="relative">
@@ -656,7 +656,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
           </div>
         )}
         
-        {gameType === 'linegame_set2' && (
+        {getTraits(gameType).goldFramesAndJackpots && (
           <div className="bg-[#112240] p-3 rounded-md border border-gray-700/50">
             <span className="text-xs text-dashboard-accent font-bold mb-2 block">特殊設定預設倍數:</span>
             <select 
@@ -672,7 +672,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
             <button
               onClick={() => {
                 const next = !isGoldFrameMode;
-                if (next && gameType === 'linegame_set2') {
+                if (next && getTraits(gameType).goldFramesAndJackpots) {
                   setIsJackpotMode(false);
                   setSelectedPaletteSymbol(null);
                 }
@@ -701,7 +701,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
             <button
               onClick={() => {
                 const next = !isJackpotMode;
-                if (next && gameType === 'linegame_set2') {
+                if (next && getTraits(gameType).goldFramesAndJackpots) {
                   setIsGoldFrameMode(false);
                   setSelectedPaletteSymbol(null);
                 }
@@ -754,7 +754,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
                   draggable
                   onClick={() => {
                     const next = selectedPaletteSymbol === symId ? null : symId;
-                    if (next !== null && gameType === 'linegame_set2') {
+                    if (next !== null && getTraits(gameType).goldFramesAndJackpots) {
                       setIsGoldFrameMode(false);
                       setIsJackpotMode(false);
                     }
@@ -881,10 +881,10 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
             onCellClick={handleCellClick}
             onDragStart={(e, symbol, colIndex, rowIndex) => handleDragStart(e, symbol, false, colIndex, rowIndex)}
             onDrop={handleDrop}
-            goldFrames={gameType === 'linegame_set2' || gameType === 'linegame_gods' ? goldFrames : {}}
-            jackpots={gameType === 'linegame_set2' ? jackpots : {}}
+            goldFrames={getTraits(gameType).goldFramesAndJackpots || getTraits(gameType).wyReels ? goldFrames : {}}
+            jackpots={getTraits(gameType).goldFramesAndJackpots ? jackpots : {}}
             renderColumnHeader={(colIndex) => {
-              if (gameType !== 'linegame_gods') return null;
+              if (!getTraits(gameType).wyReels) return null;
               
               const hasWy = gridSymbols[colIndex]?.includes('WY');
               if (!hasWy) return <div className="h-[90px]"></div>;
@@ -946,7 +946,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
                 {symbol.match(/^[F|L][1-4]_/) && (
                    <span className="text-[10px] text-gray-500 font-mono mt-1 leading-none">{symbol.split('_')[0]}</span>
                 )}
-                {hasGoldFrame && gameType !== 'linegame_gods' && (
+                {hasGoldFrame && !getTraits(gameType).wyReels && (
                     <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-[#0a192f] text-[10px] font-black px-1 rounded-sm shadow border border-yellow-600 z-10">
                       {goldMultiplier}
                     </div>

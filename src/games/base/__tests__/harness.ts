@@ -34,13 +34,18 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
-/** 以固定種子取代 Math.random 執行 fn（含 async） */
+/**
+ * 以固定種子取代 Math.random 執行 fn（含 async）。
+ * 同時凍結 performance.now：搜尋引擎依耗時讓出主執行緒，多個搜尋並行時讓出時機會改變亂數消耗順序。
+ */
 export async function withSeed<T>(seed: number, fn: () => T | Promise<T>): Promise<T> {
   const spy = vi.spyOn(Math, 'random').mockImplementation(mulberry32(seed));
+  const nowSpy = vi.spyOn(performance, 'now').mockReturnValue(0);
   try {
     return await fn();
   } finally {
     spy.mockRestore();
+    nowSpy.mockRestore();
   }
 }
 

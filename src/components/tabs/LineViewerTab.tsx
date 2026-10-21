@@ -3,6 +3,7 @@ import { evaluateGrid } from '../../utils/evaluation';
 import { formatAmount } from '../../utils/formatters';
 import type { GameType, PaytableRule } from '../../types';
 import { GameRegistry } from '../../core/GameRegistry';
+import { getTraits } from '../../games/registry';
 
 export interface LineViewerTabProps {
   reelCount: number;
@@ -37,6 +38,8 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
   const linesToRender = customPaylines && customPaylines.length > 0 ? customPaylines : defaultPaylines;
 
   const computedLines = React.useMemo(() => {
+    // 需要「初始 + 遞補」連鎖腳本的遊戲（例如羅馬）
+    const refillGame = GameRegistry.tryGetGame(gameType);
     return linesToRender.map((line, lineIdx) => {
       const { rng, allRngs, actualTotalWin, mathIdRng } = ((): {
         rng: number[] | null;
@@ -44,7 +47,7 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
         actualTotalWin: number;
         mathIdRng: string[] | null;
       } => {
-              if (gameType === 'linegame_set2' || gameType === 'linegame_gods') {
+              if (getTraits(gameType).mathIdGenerator) {
                 const grid: string[][] = Array.from({ length: reelCount }, (_, c) => Array(rowCounts[c] || 3).fill('-'));
                 for (let c = 0; c < line.length; c++) {
                   if (useWxInLines && (c === 1 || c === 3)) {
@@ -136,15 +139,13 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                   const interference = interferenceWins.length;
 
                   let currentSafeRng1: number[] | null = null;
-                  if (gameType === 'linegame_roma') {
-                    const strips1 = (stripSets && stripSets[1]) ? stripSets[1] : currentStrips;
-                    const romaGame = GameRegistry.getGame('linegame_roma') as any;
-                    if (romaGame && romaGame.findSafeReplacementRng) {
-                      // 只有在 0 干擾時進行掉落殘留自連線與滾輪表 2 遞補驗證
+                  if (refillGame?.findRefillRng) {
+                    {
+                      // 只有在 0 干擾時進行掉落殘留自連線與遞補驗證
                       if (interference === 0) {
-                        currentSafeRng1 = romaGame.findSafeReplacementRng(
-                          testGrid, payingWins, currentPaytable, strips1, rowCounts, linesToRender, 300
-                        );
+                        currentSafeRng1 = refillGame.findRefillRng(testGrid, payingWins, currentPaytable, {
+                          stripSets, fallbackStrips: currentStrips, rowCounts, paylines: linesToRender, maxAttempts: 300,
+                        });
                         if (currentSafeRng1) {
                           // 完美達成：規則 1 (0干擾) + 規則 2A (殘留0連線) + 規則 2B (遞補0消除)！
                           foundPerfect = true;
@@ -200,7 +201,7 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
               }
 
               let allRngs: number[][] | undefined = undefined;
-              if (gameType === 'linegame_roma' && finalRng && finalTotalWin > 0) {
+              if (refillGame?.findRefillRng && finalRng && finalTotalWin > 0) {
                 if (bestSafeRng1) {
                   allRngs = [finalRng, (bestSafeRng1 as number[]).slice(0, 5)];
                 } else {
@@ -211,12 +212,10 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                       return Array.from({ length: r }).map((_, ri) => s[(start + ri) % s.length]);
                     });
                     const evWins = evaluateGrid(testGrid, currentPaytable, gameType, customPaylines, false);
-                    const strips1 = (stripSets && stripSets[1]) ? stripSets[1] : currentStrips;
-                    const romaGame = GameRegistry.getGame('linegame_roma') as any;
-                    if (romaGame && romaGame.findSafeReplacementRng) {
-                      const safeRng1 = romaGame.findSafeReplacementRng(
-                        testGrid, evWins, currentPaytable, strips1, rowCounts, linesToRender, 1500
-                      );
+                    {
+                      const safeRng1 = refillGame.findRefillRng(testGrid, evWins, currentPaytable, {
+                        stripSets, fallbackStrips: currentStrips, rowCounts, paylines: linesToRender, maxAttempts: 1500,
+                      });
                       if (safeRng1) {
                         allRngs = [finalRng, (safeRng1 as number[]).slice(0, 5)];
                       }

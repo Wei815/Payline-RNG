@@ -1,4 +1,5 @@
 import { defineGame } from '../base/GameManifest';
+import { godsScriptFormatter } from './script';
 import { GodsGame } from './GodsGame';
 
 export default defineGame({
@@ -10,6 +11,7 @@ export default defineGame({
     family: 'line',
     searchPositionDependent: true,
     mathIdGenerator: true,
+    wyReels: true,
     showPaylineTable: true,
     snippetClassIds: 'wyConfig',
   },
@@ -20,5 +22,6 @@ export default defineGame({
     { id: '4', name: 'Ultra Win', min: 100, max: 300 },
     { id: '5', name: 'Legend Win', min: 300, max: null },
   ],
+  script: godsScriptFormatter,
   create: () => new GodsGame(),
 });

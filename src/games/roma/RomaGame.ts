@@ -440,6 +440,24 @@ export class RomaGame extends BaseLineGame {
     return null;
   }
 
+  /** 遞補一律使用滾輪表 1（Combo 1），沒有時使用目前滾輪表 */
+  public findRefillRng(
+    grid: string[][],
+    wins: WinResult[],
+    paytable: PaytableRule[],
+    opts: {
+      stripSets?: Record<string, string[][]> | string[][][];
+      fallbackStrips: string[][];
+      rowCounts: number[];
+      paylines?: number[][];
+      maxAttempts?: number;
+    }
+  ): number[] | null {
+    const sets = opts.stripSets as Record<number, string[][]> | undefined;
+    const strips1 = (sets && sets[1]) ? sets[1] : opts.fallbackStrips;
+    return this.findSafeReplacementRng(grid, wins, paytable, strips1, opts.rowCounts, opts.paylines, opts.maxAttempts);
+  }
+
   /**
    * 羅馬競技場專屬候選 RNG 驗證：
    * 1. 若有贏分消除，檢查消除掉落後殘留符號自連線。
