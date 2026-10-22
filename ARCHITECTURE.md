@@ -101,13 +101,14 @@ c:\github\Payline-RNG\
 │   │
 │   ├── components/                      # UI 元件目錄
 │   │   ├── Sidebar.tsx                  # 左側選單欄：遊戲切換、範本載入、QA 工具入口
-│   │   ├── ConfigPanel.tsx              # ★ 左側參數面板 (56KB)：滾輪表 / 賠率表 / 投注 / 特殊符號
+│   │   ├── ConfigPanel.tsx              # ★ 左側參數面板（約 1100 行）：滾輪表 / 賠率表 / 投注 / 範本載入（applyParsedTemplate 統一套用）
 │   │   ├── SlotConsole.tsx              # 中央模擬盤面主容器：管理 5 大功能子分頁切換與生命週期
 │   │   ├── SlotGridDisplay.tsx          # 盤面符號格陣列渲染：金框/倍數球/Jackpot 標記
 │   │   ├── MetricsDashboard.tsx         # 右側數據儀表板：RTP 模擬與命中率
 │   │   ├── WelcomeScreen.tsx            # 首次進入或未載入遊戲時的引導畫面
 │   │   ├── tabs/                        # 中央主功能分頁
-│   │   │   ├── SlotGeneratorTab.tsx     #   ★ 核心 (126KB)：連線測試產生器 / 多連線組合清單 / 批次複製
+│   │   │   ├── SlotGeneratorTab.tsx     #   ★ 核心（約 1200 行）：連線測試產生器 / 多連線組合清單 / 批次複製
+│   │   │   ├── generator/               #   產生器子元件：GeneratorEvalPanel（連線結果）、GeneratorIntervalsEditor（大獎區間）、GeneratorSpecialPanel（特殊符號 / 金框 / 倍數球）
 │   │   │   ├── SlotManualTab.tsx        #   手動輸入 RNG 檢視盤面與贏分連線
 │   │   │   ├── LineViewerTab.tsx        #   贏分線路一覽 (逐線展開、高亮顯示)
 │   │   │   ├── TumbleViewerTab.tsx      #   消除掉落詳細歷程檢視器
@@ -848,10 +849,10 @@ npx tsx <path-to-script>.ts
 |------|------|-------|
 | 羅馬 RTP 模擬未包含獅子特色（B1 ≥ 3） | 免遊與連續消除已依規則模擬，B1 觸發的獅子戰鬥特色贏分尚未模擬 | 低 |
 | 流程測試報告的未修項目 | F03~F06 干擾判定、F09 決戰賽特2 大獎、F10 贏分線路一覽漏解、F13/F14 驗證工具不支援羅馬遞補、F16 皇家金象；白名單 `knownIssues.data.ts` 有精確計數 | 中 |
-| `SlotGeneratorTab.tsx` 仍約 2000 行 | 遊戲判斷已移除，但金框 / Jackpot / 幸運草編輯器仍在主檔，可再拆成 `SpecialSymbolPanel` 子元件 | 中 |
-| `ConfigPanel.tsx` 達 56KB | 建議拆分為 ReelStripViewer / PaytableEditor / BetConfig / SpecialSymbolPanel | 中 |
+| `SlotGeneratorTab.tsx` 約 1200 行 | 已抽出連線結果、大獎區間、特殊符號三個子元件；盤面與組合清單仍在主檔 | 低 |
+| `ConfigPanel.tsx` 約 1100 行 | 範本套用已統一；滾輪表 / 賠率表編輯器仍可再拆 | 低 |
 | `megaway` 型別已定義但無對應遊戲實作 | 只保留型別與 traits，不出現在選單（`games/__tests__/registry.test.ts` 確保選單上的遊戲都有實作）；全域 `ErrorBoundary` 防止任何元件錯誤造成白畫面 | 低 |
-| ESLint 既有問題約 210 個 | 多為 `any` / 未使用變數；遊戲隔離規則本身為 0 錯誤 | 低 |
+| ESLint 剩 85 個（皆在 UI 元件與 Excel 解析器） | React hooks 規則 38 個（改動會影響渲染時機，需逐一實測）、UI 與 excelParser 的 `any` 47 個；games / flows / hooks / workers / store 已為 0；遊戲隔離規則 0 錯誤 | 低 |
 
 ---
 
