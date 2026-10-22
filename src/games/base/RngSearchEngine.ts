@@ -225,7 +225,7 @@ export class RngSearchEngine {
       }
 
       for (let c = 0; c < reelCount; c++) {
-        let chosenIdx = 0;
+        let chosenIdx: number;
         const len = currentStrips[c]?.length || 1;
         const rows = rowCounts[c] || 3;
 
@@ -1061,7 +1061,7 @@ export class RngSearchEngine {
         const rows = rowCounts[c] || 3;
         const minIdx = 2;
         const maxIdx = len > rows + 2 ? len - rows : 0;
-        let start = 0;
+        let start: number;
         if (maxIdx <= minIdx) {
           start = Math.floor(Math.random() * len);
         } else {
@@ -1242,7 +1242,7 @@ export class RngSearchEngine {
         const rows = rowCounts[c] || 3;
         const minIdx = 2;
         const maxIdx = len > rows + 2 ? len - rows : 0;
-        let start = 0;
+        let start: number;
 
         if (
           useGuided &&

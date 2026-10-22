@@ -198,17 +198,10 @@ function combos(params: InstantGeneratorParams): GeneratorCombination[] {
           columnStrings.push(colArr.join(","));
         }
 
-        let name = "";
         const wildSymbolStr = (wyReels && isFreeGame) ? "WY" : "WX";
-        if (isGodsScatter) {
-          name = W === 0
-            ? `${selectedSymbol} * ${len}`
-            : `${selectedSymbol} * ${len - W} + ${wildSymbolStr}`;
-        } else {
-          name = W === 0
-            ? `${selectedSymbol} * ${len}`
-            : `${selectedSymbol} * ${len - W} + ${wildSymbolStr}`;
-        }
+        const name = W === 0
+          ? `${selectedSymbol} * ${len}`
+          : `${selectedSymbol} * ${len - W} + ${wildSymbolStr}`;
 
         let defaultClassStr = '';
         if (wyReels && isFreeGame) {

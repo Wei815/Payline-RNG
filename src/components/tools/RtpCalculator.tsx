@@ -43,8 +43,8 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
     if (!isProjectLoaded) return;
 
     let isFreeGame = false;
-    let stripId = 0;
-    let mode: 'base_only' | 'free_only' | 'full_game' = 'base_only';
+    let stripId: number;
+    let mode: 'base_only' | 'free_only' | 'full_game';
 
     if (selectedStripKey.startsWith('full-')) {
       mode = 'full_game';

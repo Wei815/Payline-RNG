@@ -5,7 +5,7 @@ export function formatAmount(num: number): string {
 
 export function parsePasteRng(text: string, count: number, rowCounts?: number[]): string[] | null {
   const match = text.match(/\[([^\]]+)\]/);
-  let numbersString = "";
+  let numbersString: string;
 
   if (match && match[1]) {
     numbersString = match[1];

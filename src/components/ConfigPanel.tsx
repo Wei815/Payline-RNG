@@ -144,8 +144,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
 
     uniqueSymbols.forEach(sym => {
       const s = sym.toUpperCase();
-      let base = s;
-      let blockIdx = 0;
+      let base: string;
+      let blockIdx: number;
 
       if (/^W\d+$/.test(s)) {
         base = `M${s.substring(1)}`;

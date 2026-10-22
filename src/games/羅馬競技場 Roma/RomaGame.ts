@@ -1172,8 +1172,8 @@ export class RomaGame extends BaseLineGame {
       }
 
       // 情況 B：前 1~4 顆是 WX，看後面接什麼符號（給該符號連線分數，絕非 M1 短連線）
-      let targetSym = '';
-      let matchCount = 0;
+      let targetSym: string;
+      let matchCount: number;
 
       if (wxPrefix > 0) {
         const nextSym = lineSyms[wxPrefix];

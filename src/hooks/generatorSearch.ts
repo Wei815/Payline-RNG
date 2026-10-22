@@ -168,7 +168,7 @@ export async function runGeneratorSearch(params: GeneratorSearchParams): Promise
         const maxWild = Math.min(1, L - 1);
         if (W > maxWild) continue;
 
-        let name = "";
+        let name: string;
         if (isTargetWild) {
           name = `${selectedSymbol} * ${L} 連線`;
         } else if (isSelScatter) {

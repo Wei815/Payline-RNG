@@ -276,7 +276,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       Array(rowCounts[c] || 3).fill('-')
     );
 
-    let newGrid = emptyGrid;
+    let newGrid: string[][];
     if (isMathId) {
       newGrid = emptyGrid.map((col) => 
         col.map((cell) => {

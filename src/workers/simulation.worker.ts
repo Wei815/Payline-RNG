@@ -105,9 +105,9 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
       
       if (traits.family === 'megaway' && colIndex >= 1 && colIndex <= 4) {
         if (!strip || strip.length === 0) {
-          grid[colIndex][writeIdx++] = 'WX';
+          grid[colIndex][writeIdx] = 'WX';
         } else {
-          grid[colIndex][writeIdx++] = strip[Math.floor(Math.random() * strip.length)];
+          grid[colIndex][writeIdx] = strip[Math.floor(Math.random() * strip.length)];
         }
       }
     }
@@ -120,10 +120,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
     while (keepCascading) {
       const wins = evaluateGrid(grid, paytable, gameConfig, effectivePaylines);
       
-      if (wins.length === 0) {
-        keepCascading = false;
-        break;
-      }
+      if (wins.length === 0) break;
       
       // 連續掉落倍數：traits.doublingTumbleMultiplier 的遊戲用遊戲類別的倍數（1、2、4、8…，免遊 8 起跳）
       const tumbleMultiplier = traits.doublingTumbleMultiplier && game ? game.getTumbleMultiplier(cascadeCount, isFG) : 1;

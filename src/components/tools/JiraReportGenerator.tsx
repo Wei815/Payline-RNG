@@ -705,8 +705,8 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
 
       {/* Project Details Modal */}
       {selectedProjectDetails && (() => {
-        let projectIssues: any[] = [];
-        let modalTitle = '';
+        let projectIssues: any[];
+        let modalTitle: string;
         if (selectedProjectDetails === 'ALL') {
           modalTitle = '所有專案議題狀態';
           projectIssues = Object.values(jiraIssuesByProject || {}).flat();

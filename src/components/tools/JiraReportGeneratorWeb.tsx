@@ -907,8 +907,8 @@ export const JiraReportGeneratorWeb: React.FC<JiraReportGeneratorWebProps> = ({ 
 
       {/* Project Details Modal */}
       {selectedProjectDetails && (() => {
-        let projectIssues: any[] = [];
-        let modalTitle = '';
+        let projectIssues: any[];
+        let modalTitle: string;
         if (selectedProjectDetails === 'ALL') {
           modalTitle = '所有專案議題狀態';
           projectIssues = Object.values(jiraIssuesWebByProject || {}).flat();
