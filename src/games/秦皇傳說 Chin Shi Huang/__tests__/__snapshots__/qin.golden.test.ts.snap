@@ -61,18 +61,18 @@ exports[`waygame_qin 黃金樣本 > RNG 反向搜尋 1`] = `
   },
   {
     "case": "M2*6",
-    "grid": "M2,K,J,K | A,M2,M4,Q | M3,Q,J,M2 | M3,A,M2,A | A,M1,A,M2 | M4,Q,M2,A",
+    "grid": "K,J,K,M2 | A,M2,M4,Q | Q,J,M2,M3 | A,M2,A,M3 | M2,A,M1,M1 | J,M2,A,M1",
     "isInterfered": false,
-    "rng": "8,71,56,60,73,72",
+    "rng": "57,71,57,61,0,79",
     "wins": [
       "M2x6 ways=1 pay=300 total=300",
     ],
   },
   {
     "case": "M2*3+1W",
-    "grid": "M2,K,J,K | M2,M4,Q,A | Q,WX,A,M3 | K,A,M1,M1 | A,M1,A,M1 | M2,A,M1,M1",
+    "grid": "K,M2,K,J | A,M2,M4,Q | WX,A,M3,Q | M3,J,K,M1 | M1,J,M4,A | M4,Q,J,M2",
     "isInterfered": false,
-    "rng": "8,72,9,1,71,0",
+    "rng": "59,71,10,21,54,38",
     "wins": [
       "M2x3 ways=1 pay=20 total=20",
     ],

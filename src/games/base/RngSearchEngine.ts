@@ -3,7 +3,7 @@ import type {
   GameType,
   MultiplierInterval,
 } from "../../types";
-import { getWinningPositions } from "../../utils/evaluation";
+import { getWinningPositions, isEliminatedCell } from "../../utils/evaluation";
 import type { AbstractGame } from "./AbstractGame";
 import { getFamily, getTraits } from "../registry";
 import { isInterferingWin } from "./searchRules";
@@ -613,12 +613,18 @@ export class RngSearchEngine {
 
         const payingTargetWinsCount = isLineGame ? initialWins.filter(w => w.symbolId === targetSymbol && w.payout > 0).length : 0;
         const extraTargetWinsCount = Math.max(0, payingTargetWinsCount - 1);
-        const otherWinsCount = initialWins.filter(
+        let otherWinsCount = initialWins.filter(
           (w) =>
             w.symbolId !== targetSymbol &&
             !wildSymbolSet.has(w.symbolId) &&
             isInterferingWin(w, currentPaytable),
         ).length + extraTargetWinsCount;
+
+        // 有掉落的遊戲：目標消除後補上的盤面不可再有中獎，否則測案會多出選定目標以外的贏分
+        if (otherWinsCount === 0 && wildReelsValid && positionValid && currentMatchCount === length &&
+            !this.refillIsClean(candidateRng, currentStrips, rowCounts, reelCount, currentPaytable, gameType, customPaylines, isFreeGame, topTrackerOther)) {
+          otherWinsCount = 1;
+        }
 
         if (otherWinsCount === 0 && wildReelsValid && positionValid && currentMatchCount === length) {
           if (this.gameInstance.validateCandidateRng) {
@@ -761,7 +767,8 @@ export class RngSearchEngine {
         const [c, r] = key.split('-').map(Number);
         if (isW(evalGrid[c]?.[r])) wildReels.add(c);
       }
-      return wildReels.size === wildCount;
+      return wildReels.size === wildCount &&
+        this.refillIsClean(rng, currentStrips, rowCounts, reelCount, currentPaytable, gameType, customPaylines, false, topTrackerOther);
     };
 
     const listFor = (c: number, wildReels: Set<number>) =>
@@ -809,6 +816,41 @@ export class RngSearchEngine {
       }
     }
     return null;
+  }
+
+  /**
+   * 有掉落的遊戲：消除第一盤所有中獎、依遊戲規則掉落一次後，補上的盤面是否沒有任何干擾中獎
+   * 掉落模型與測案 Win= 相同（遊戲類別的 applyCascade、isSymbolUnremovable，停點往回抽）。
+   * 遞補由腳本下一行決定的遊戲（羅馬，實作 findRefillRng）與 MathID 遊戲不在此檢查。
+   */
+  private refillIsClean(
+    rng: number[],
+    strips: string[][],
+    rowCounts: number[],
+    reelCount: number,
+    paytable: PaytableRule[],
+    gameType: GameType,
+    paylines: number[][] | undefined,
+    isFreeGame: boolean,
+    topTrackerOther?: string[],
+  ): boolean {
+    const game = this.gameInstance as AbstractGame & { findRefillRng?: unknown };
+    if (!game.hasCascadeFeature() || game.findRefillRng || getTraits(gameType).mathIdGenerator) return true;
+
+    const grid = game.getGridFromRng(rng, strips, rowCounts, reelCount);
+    const evalGrid = game.getEvalGridForCombos(grid, topTrackerOther);
+    const wins = game.evaluate(evalGrid, paytable, { gameType, paylines }, paylines, false).filter(w => w.payout > 0);
+    const coords = getWinningPositions(evalGrid, wins, paytable, gameType, undefined, paylines);
+    const drawIndices = rng.map(r => r - 1);
+    for (let c = 0; c < reelCount; c++) {
+      const rows: number[] = [];
+      for (let r = 0; r < (rowCounts[c] || 3); r++) {
+        if (isEliminatedCell(coords, `${c}-${r}`) && !game.isSymbolUnremovable(grid[c][r], isFreeGame)) rows.push(r);
+      }
+      if (rows.length > 0) game.applyCascade(grid, c, rows, strips[c], drawIndices, isFreeGame, gameType);
+    }
+    const nextEval = game.getEvalGridForCombos(grid, topTrackerOther);
+    return !game.evaluate(nextEval, paytable, { gameType, paylines }, paylines, false).some(w => isInterferingWin(w, paytable));
   }
 
   /**
@@ -868,6 +910,7 @@ export class RngSearchEngine {
       const targetWins = wins.filter(w => w.symbolId === targetSymbol);
       if (targetWins.length !== 1 || targetWins[0].matchCount !== count) continue;
       if (wins.some(w => w !== targetWins[0] && isInterferingWin(w, currentPaytable))) continue;
+      if (!this.refillIsClean(rng, currentStrips, rowCounts, reelCount, currentPaytable, gameType, customPaylines, false, topTrackerOther)) continue;
       return rng;
     }
     return null;

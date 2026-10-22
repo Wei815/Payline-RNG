@@ -49,11 +49,12 @@ exports[`waygame 黃金樣本 > RNG 反向搜尋 1`] = `
   },
   {
     "case": "M2*3",
-    "grid": "K,TE,M2 | M2,J,M4 | Q,Q,M2 | Q,M4,K | J,M4,A",
+    "grid": "TE,Q,M2 | M2,M3,TE | M4,M2,A | M1,M1,A | K,Q,A",
     "isInterfered": false,
-    "rng": "3,13,48,42,24",
+    "rng": "14,5,12,8,17",
     "wins": [
       "M2x3 ways=1 pay=30 total=30",
+      "TEx2 ways=1 pay=0 total=0",
     ],
   },
   {
@@ -98,10 +99,12 @@ exports[`waygame 黃金樣本 > RNG 反向搜尋 1`] = `
   },
   {
     "case": "M3*3+1W",
-    "grid": "M1,M3,M2 | M3,TE,M4 | M1,WX,Q | TE,TE,M1 | J,TE,J",
+    "grid": "M1,M3,M2 | J,M4,WX | TE,M3,M4 | TE,TE,M1 | K,M2,M2",
     "isInterfered": false,
-    "rng": "30,28,28,32,22",
+    "rng": "30,2,10,32,5",
     "wins": [
+      "M1x2 ways=1 pay=0 total=0",
+      "M2x2 ways=1 pay=0 total=0",
       "M3x3 ways=1 pay=20 total=20",
     ],
   },

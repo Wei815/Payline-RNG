@@ -101,9 +101,14 @@ describe('產生器 → 複製腳本 → 規則檢查', () => {
           const formula = calculateCombinationWin(winCtx(fx, symbol), c);
           // 依遊戲類別規則：會從滾輪表掉落的遊戲連續掉落到無消除；遞補由腳本下一行決定（羅馬）或 MathID 遊戲只算本盤
           const cascades = fx.game.hasCascadeFeature() && !(fx.game as { findRefillRng?: unknown }).findRefillRng && !traits.mathIdGenerator;
-          const expected = cascades
-            ? { total: cascadeToEnd(fx, grid, c.rng as number[], strips).total, steps: ['連續掉落至無消除'] }
+          const cascade = cascades ? cascadeToEnd(fx, grid, c.rng as number[], strips) : null;
+          const expected = cascade
+            ? { total: cascade.total, steps: ['連續掉落至無消除'] }
             : independentTotal(fx, grid, traits.mathIdGenerator ? [] : (c.rng as number[]), strips, symbol);
+          // 乾淨解：目標消除、掉落一次後補上的盤面不可再中獎（金框轉 WX 的組合本來就要在第二盤成形，不在此限）
+          if (cascade && !c.isInterfered && !usesGoldCascade(fx, c.wildCount) && cascade.combos > 1) {
+            push('R5 掉落後補上的盤面不再中獎', `連續消除 ${cascade.combos} 次`);
+          }
           if (Math.abs(formula.totalWin - expected.total) > 1e-6) {
             push('F1 測案贏分 = 規則重算', `${formula.formula} ／ 規則重算 ${expected.total} (${expected.steps.join(' → ')})`);
           }

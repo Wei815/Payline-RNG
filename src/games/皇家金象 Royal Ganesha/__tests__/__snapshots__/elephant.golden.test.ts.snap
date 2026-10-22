@@ -21,13 +21,13 @@ exports[`waygame_elephant 黃金樣本 > RNG 反向搜尋 1`] = `
 [
   {
     "case": "M1*3",
-    "grid": "K,Q,M1 | K,A,M1,M2 | Q,M1,M3,Q,G4 | M3,J,GJ,J,J | Q,J,M1,J | K,K,M2",
+    "grid": "M1,Q,M4 | Q,K,M3,M1 | J,GA,M1,J,M4 | K,M4,GK,G4,M4 | J,M4,Q,J | M2,J,A",
     "isInterfered": false,
-    "rng": "25,9,85,10,26,32,2",
+    "rng": "40,80,17,64,29,84,2",
     "stripId": 2,
     "wins": [
       "M1x3 ways=1 pay=10 total=10",
-      "Kx2 ways=1 pay=0 total=0",
+      "Qx2 ways=1 pay=0 total=0",
     ],
   },
   {
@@ -52,9 +52,9 @@ exports[`waygame_elephant 黃金樣本 > RNG 反向搜尋 1`] = `
   },
   {
     "case": "M2*3 FG",
-    "grid": "M2,K,M3 | Q,M2,Q,J | GA,K,M3,M2,K | M1,Q,M4,GK,Q | K,A,M2,M3 | M2,M3,A",
+    "grid": "M2,K,M3 | M4,M4,A,M2 | GA,K,M3,M2,K | G4,K,GJ,M4,K | M2,J,M3,Q | Q,K,M1",
     "isInterfered": false,
-    "rng": "39,93,37,47,41,9,1",
+    "rng": "39,48,37,6,36,69,1",
     "stripId": 1,
     "wins": [
       "M2x3 ways=1 pay=8 total=8",

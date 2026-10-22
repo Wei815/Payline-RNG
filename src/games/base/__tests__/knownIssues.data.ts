@@ -15,10 +15,12 @@ const F11 = 'F11 諸神 贏分線路一覽：MathID 填充符號造成其他線�
 const F13 = 'F13 驗證工具：羅馬未使用腳本第 2 行遞補，自行模擬掉落';
 const F15 = 'F15 線遊戲反向搜尋偶爾只回傳有干擾的解（Way 類已改為建構式搜尋修正）';
 const F16 = 'F16 皇家金象「×1 + WX」（2 連線含百搭）找不到';
+const F18 = 'F18 Scatter 目標沒有建構式搜尋：要求掉落後零中獎後，人魚 B1 × 5 在隨機預算內只找到有干擾的解';
 
 export const GENERATOR_KNOWN: KnownIssues = {
   'linegame | N0 找不到組合（無可行滾輪位置）': { count: 5, finding: F03 },
   'linegame | N1 只找到有干擾的組合': { count: 6, finding: F15 },
+  'waygame | N1 只找到有干擾的組合': { count: 1, finding: F18 },
   'linegame | R3 零干擾': { count: 1, finding: F04 },
   'linegame | R1 恰好一筆目標連線': { count: 4, finding: F06 },
   'linegame_roma | R1 恰好一筆目標連線': { count: 3, finding: F06 },
