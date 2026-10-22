@@ -2,7 +2,33 @@ import { useMemo } from 'react';
 import type { PaytableRule } from '../types';
 import { useGameStore } from '../store/useGameStore';
 import { findTraits } from '../games/registry';
-import { SpecialSymbols, SymbolGroupOrder, SymbolCategories } from '../constants/GameConstants';
+import { SpecialSymbols } from '../utils/evaluation/GameConstants';
+
+/** 符號選單的排序與分類（只供符號分組使用） */
+const SymbolGroupOrder = [
+  SpecialSymbols.WW,
+  SpecialSymbols.WX,
+  SpecialSymbols.B1,
+  SpecialSymbols.S1,
+  'M1',
+  'M2',
+  'M3',
+  'M4',
+  'M5',
+  'M6',
+  'A',
+  'K',
+  'Q',
+  'J',
+  SpecialSymbols.TE,
+  SpecialSymbols.NI,
+] as const;
+
+const SymbolCategories = {
+  OTHERS: 'others',
+  M_NUM: 'mnum',
+  M_LET: 'mlet'
+} as const;
 
 const SymbolGroupOrderMap = new Map<string, number>(
   SymbolGroupOrder.map((sym, idx) => [sym, idx])

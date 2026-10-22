@@ -1,3 +1,17 @@
+/** 常用特殊符號 ID */
+export const SpecialSymbols = {
+  S1: 'S1',
+  S2: 'S2',
+  B1: 'B1',
+  B2: 'B2',
+  WX: 'WX',
+  WW: 'WW',
+  WILD: 'WILD',
+  W: 'W',
+  TE: 'TE',
+  NI: 'NI',
+} as const;
+
 export const DEFAULT_WILD_SYMBOLS = ['WILD', 'W', 'WX', 'WY', 'WZ'];
 
 /**

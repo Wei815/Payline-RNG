@@ -1,12 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { formatAmount } from '../../utils/formatters';
 import { getWinColorClass } from '../../utils/svgPaths';
-import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
+import { MULTIPLIER_BALLS, LUCKY_BALLS, SpecialSymbols } from '../../utils/evaluation/GameConstants';
 import type { GameType, PaytableRule } from '../../types';
 import { useGameStore } from '../../store/useGameStore';
 import { getTraits } from '../../games/registry';
 import { symbolToneClass } from '../ui/symbolTone';
-import { SpecialSymbols } from '../../constants/GameConstants';
 import { evaluateTumble, gridSymbols, loadInitialGrid, tumbleOnce, type TumbleEnv, type TumbleState } from '../../flows/tumble';
 
 const ALL_SPECIAL_BALLS = [...MULTIPLIER_BALLS, ...LUCKY_BALLS];

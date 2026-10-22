@@ -140,7 +140,7 @@ c:\github\Payline-RNG\
 │   ├── utils/                           # 工具函式庫
 │   │   ├── evaluation.ts                # 盤面評估進入點 (evaluateGrid) + WinResult 定義 + 預設線路
 │   │   ├── evaluation/                  # 評估子模組
-│   │   │   ├── GameConstants.ts         #   符號常數、DEFAULT_WILD_SYMBOLS、金框/倍數球定義
+│   │   │   ├── GameConstants.ts         #   符號常數（SpecialSymbols、DEFAULT_WILD_SYMBOLS、B1=B2 衍生符號）、金框 / 倍數球定義
 │   │   │   ├── GameIntervals.ts         #   大獎倍數區間定義 (Big/Super/Mega/Ultra/Legend)
 │   │   │   ├── WinningPositions.ts      #   計算中獎格子座標 (getWinningPositions)；遊戲專屬座標走 postProcessWinningPositions
 │   │   │   └── strategies/              #   策略模式實作
@@ -154,9 +154,6 @@ c:\github\Payline-RNG\
 │   │   ├── rngSearch.ts                 # 搜尋函式封裝與轉發
 │   │   ├── formatters.ts               # 數值、貨幣與字串格式化工具
 │   │   └── __tests__/excelParser.test.ts  # 範本辨識測試
-│   │
-│   ├── constants/
-│   │   └── GameConstants.ts             # 特殊符號 + 符號群組排序（遊戲清單已移至 games/registry.ts）
 │   │
 │   ├── types/                           # 全域型別定義
 │   │   ├── core.ts                      # GameType 聯集 / GameConfig / SpecialSymbolConfig / MultiplierInterval
@@ -178,7 +175,7 @@ c:\github\Payline-RNG\
 │
 ├── scripts/
 │   ├── parse-templates.cjs              # 預先解析遊戲範本的 Node.js 腳本
-│   └── sandbox/                         # 早期解析實驗腳本（未被程式引用）
+│   └── sandbox/                         # 本機實驗腳本（.gitignore 排除，不在版本控制內）
 ├── docs/
 │   └── flow-test-report.md              # ★ 流程測試報告：規則測試結果、問題清單 F01~F17、搜尋最優性
 ├── templates/                           # Excel 遊戲範本檔案存放處（測試也讀這裡）
@@ -854,7 +851,6 @@ npx tsx <path-to-script>.ts
 | `SlotGeneratorTab.tsx` 仍約 2000 行 | 遊戲判斷已移除，但金框 / Jackpot / 幸運草編輯器仍在主檔，可再拆成 `SpecialSymbolPanel` 子元件 | 中 |
 | `ConfigPanel.tsx` 達 56KB | 建議拆分為 ReelStripViewer / PaytableEditor / BetConfig / SpecialSymbolPanel | 中 |
 | `megaway` 型別已定義但無對應遊戲實作 | 只保留型別與 traits，不出現在選單（`games/__tests__/registry.test.ts` 確保選單上的遊戲都有實作）；全域 `ErrorBoundary` 防止任何元件錯誤造成白畫面 | 低 |
-| `src/constants/GameConstants.ts` 與 `src/utils/evaluation/GameConstants.ts` 職責重疊 | 建議合併或明確劃分常數範圍 | 低 |
 | ESLint 既有問題約 210 個 | 多為 `any` / 未使用變數；遊戲隔離規則本身為 0 錯誤 | 低 |
 
 ---
