@@ -93,6 +93,8 @@ c:\github\Payline-RNG\
 │   │   ├── tumble.ts                    #   「消除掉落測試」載入 / 評估 / 掉落（TumbleViewerTab 使用）
 │   │   ├── rngValidator.ts              #   「RNG 腳本驗證」解析 QA JSON 並逐步模擬（RngValidator 使用）
 │   │   ├── rngFormat.ts                 #   isMathIdRng：判斷腳本 RNG 是 MathID 盤面還是滾輪停點
+│   │   ├── classIds.ts                  #   QA 腳本 ClassIDs 解碼（金框 / Jackpot 座標、諸神 WY），腳本載入與驗證工具共用
+│   │   ├── ballMultiplier.ts            #   盤面倍數球：F + L 加總乘全部贏分（traits.multiplierBalls）
 │   │   ├── lineViewer.ts                #   「贏分線路一覽」每條線找一組 RNG（⚠️ 元件尚未改呼叫此檔）
 │   │   └── __tests__/                   #   各流程規則測試 + 搜尋效能基準（第 12.3 章）
 │   │
@@ -715,6 +717,9 @@ Combo 4+             → 滾輪表 2/1 交替 (偶→2, 奇→1)
 - ⚠️ Worker 的掉落是**獨立的簡化實作**，與遊戲類別的 `calculateNextDropGrid` 不同（例如羅馬在 Worker 中不掉落），見第 13 章技術債
 
 ### 10.1 同一個規則在哪幾處實作（改規則時要一起改）
+
+> 已統一為共用函式的規則（改規則只改一處）：中獎格是否消除 `isEliminatedCell`（S1 的 999 只是高亮）、
+> ClassIDs 解碼 `flows/classIds.ts`、倍數球 `flows/ballMultiplier.ts`、贏分顯示 `displayWin`（B1/B2 已乘總投注，不可再乘 bet/coin）。
 
 | 規則 | 遊戲類別（產生器搜尋 / 測案 Win=） | RTP Worker | 消除掉落測試 / 驗證工具 |
 |------|------------------------------|-----------|----------------------|

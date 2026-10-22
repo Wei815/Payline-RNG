@@ -119,7 +119,13 @@
 
 | Finding | 修正內容 |
 |------|------|
+| A1 | 決戰賽特2 範本「12+」被解析成 `match12`（評估讀 `match5`），12 個以上贏分為 0；產生器個數範圍改用門檻 8 / 10 / 12 |
+| A2 | B1 / B2 / S1 / S2 贏分已乘總投注，手動分頁與自定義盤面又乘 bet/coin；新增 `betScaled` 與 `displayWin()` |
 | A3 / F14 | `getWinningPositions` 對所有 S1 加上 999（僅高亮）；`calculateNextDropGrid`（基底 / 秦皇 / 皇家金象）、消除掉落測試、驗證工具原本把它當中獎消除。新增 `isEliminatedCell` / `hasEliminatedCells` 統一判斷，與搜尋引擎、Worker、測案公式一致。秦皇驗證工具的不一致（F14）因此消失 |
+| A4 | 決戰賽特2、羅馬 `applyCascade` 同一軸消除多格時由下往上處理，第二格消錯符號；改為由上往下 |
+| A5 | 驗證工具 / 消除掉落測試的中獎座標未傳遊戲的線，退回預設 20 線（羅馬第 6 條線起標錯） |
+| A6 | 驗證工具把諸神的 WY (a,b,z) 當金框座標；ClassIDs 解碼抽成 `flows/classIds.ts` 與腳本載入共用 |
+| A7 | 倍數球規格確認為「F + L 加總，乘全部贏分（含 B1/B2）」；產生器、自定義盤面、測案 `Win=`、規則檢查器統一用 `flows/ballMultiplier.ts` |
 | F01 | 產生器：通用 Pay Anywhere 的目標改為賠率門檻個數（`match3/4/5` → 8 / 10 / 12 個，名稱「M1 * 8 個」），不再列出 +WX（百搭不參與計數）；`RngSearchEngine` 新增 `constructivePayAnywhereSearch`：每軸停點依視窗內目標個數分組，挑一組總和 = 目標個數的組合，盤面須恰好一筆目標中獎且無其他贏分（Scatter 同樣適用）。原因補充：測試借用的決戰賽特2 範本是 MathID 遊戲、**沒有滾輪表**，因此改用固定種子合成的 6×5 滾輪表（`harness.ts` 的 `syntheticPayAnywhereFixture`）驗證 —— 單一符號 29 組、大獎區間、COMBO 全部找到且零干擾 |
 | F17 | `src/flows/tumble.ts`：掉落時追蹤每格原本的 MathID（含幸運球升級後的倍數），不再把符號名稱當 MathID；`TumbleViewerTab` 改為呼叫此流程 |
 | F12 | 新增 `src/flows/rngFormat.ts`：以「MathID 驅動遊戲或長度超過軸數」判斷 MathID 盤面，不再以 ClassID 解讀方式判斷；RNG 驗證工具（改為呼叫 `src/flows/rngValidator.ts`）與測試腳本載入共用 |
