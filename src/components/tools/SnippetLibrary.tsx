@@ -278,7 +278,7 @@ ${format2DArray(qa.Selection)}
                     const parsed = JSON.parse(editingContentValue);
                     updateSnippet(editingContentId, { qaData: parsed });
                     setEditingContentId(null);
-                  } catch (e) {
+                  } catch (_e) {
                     setEditingContentError('JSON 格式錯誤，請檢查內容');
                   }
                 }}

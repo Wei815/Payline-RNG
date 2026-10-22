@@ -18,6 +18,12 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // 覆寫介面 / 基底方法時保留但未使用的參數以 _ 開頭標示（專案慣例）
+      '@typescript-eslint/no-unused-vars': ['error', {
+        argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_',
+      }],
+    },
   },
   // ★ 遊戲隔離防線：共用程式碼不得出現具體遊戲 ID，請改用 manifest 的 traits / 擴充點（見 ARCHITECTURE.md）
   {

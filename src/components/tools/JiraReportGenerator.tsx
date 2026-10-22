@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { FileSpreadsheet, X, Copy, Upload, ExternalLink, Download } from 'lucide-react';
 import { useMachineStore } from '../../store/useMachineStore';
 import type { JiraIssueDetail } from '../../store/useMachineStore';
-import Papa from 'papaparse';
 import { copyText } from '../../utils/clipboard';
 
 interface JiraReportGeneratorProps {

@@ -80,7 +80,6 @@ export class RngSearchEngine {
       return bestInterferred || { rng: null, isInterfered: false };
     }
 
-    const yieldIfNeeded = this.gameInstance.createTimeSlicer(16);
     const wildSymbolSet = new Set<string>();
     currentPaytable
       .filter((p) => p.isWild)
@@ -192,7 +191,6 @@ export class RngSearchEngine {
       }
 
       let skipDraw = false;
-      const maxCurrentMatchCount = 0;
       let lockThreshold = hcBestMatchCount;
       if (requireGoldCascade && lockThreshold > 0 && lockThreshold < 3) {
         lockThreshold = 3;

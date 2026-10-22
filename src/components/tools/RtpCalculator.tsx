@@ -3,7 +3,6 @@ import { X, Play, Square, Calculator, AlertCircle, Percent, Target, Coins, BarCh
 import { useGameStore } from '../../store/useGameStore';
 import { useMachineStore } from '../../store/useMachineStore';
 import { useSimulation } from '../../hooks/useSimulation';
-import { formatAmount } from '../../utils/formatters';
 import { getBaseSymbol } from '../../utils/evaluation/GameConstants';
 import type { GameConfig } from '../../types';
 
@@ -30,7 +29,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
     reelCount
   } = useGameStore();
 
-  const { gameType, bet, coin, loadTemplateTrigger, setLoadTemplateTrigger } = useMachineStore();
+  const { gameType, bet, coin, setLoadTemplateTrigger } = useMachineStore();
   const betMultiplier = coin > 0 ? bet / coin : 1;
 
   const { isRunning, progress, currentSpins, result, runSimulation } = useSimulation();

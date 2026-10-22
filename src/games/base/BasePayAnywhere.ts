@@ -1,4 +1,4 @@
-import type { GameConfig, PaytableRule, ReelStrips } from '../../types';
+import type { GameConfig, PaytableRule } from '../../types';
 import type { WinResult } from '../../utils/evaluation';
 import { PayAnywhereStrategy } from '../../utils/evaluation/strategies/PayAnywhereStrategy';
 import { AbstractGame } from './AbstractGame';

@@ -854,7 +854,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
             const wxCombinations = combinations.filter(c => c.wildCount > 0);
             const maxRows = Math.max(pureCombinations.length, wxCombinations.length);
 
-            const renderCombButton = (comb: typeof combinations[0], idx: number) => {
+            const renderCombButton = (comb: typeof combinations[0], _idx: number) => {
               const globalIdx = combinations.indexOf(comb);
               return (
                 <button

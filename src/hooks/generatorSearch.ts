@@ -13,7 +13,7 @@ export type { GeneratorCombination, GeneratorSearchParams };
 export async function runGeneratorSearch(params: GeneratorSearchParams): Promise<GeneratorCombination[]> {
   const {
     selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther,
-    specialSymbolConfig, customPaylines, isFreeGame, bet, multiplierIntervals, stripSets,
+    customPaylines, isFreeGame, bet, multiplierIntervals, stripSets,
   } = params;
   const newCombs: GeneratorCombination[] = [];
 

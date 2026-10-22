@@ -7,7 +7,7 @@ import { useTheme } from './hooks/useTheme';
 import { BarChart3, Menu, Moon, PanelLeftOpen, PanelLeftClose, SlidersHorizontal, Sun, X } from 'lucide-react';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { Sidebar } from './components/Sidebar';
-import type { GameConfig, GameType } from './types';
+import type { GameConfig } from './types';
 import { useMachineStore } from './store/useMachineStore';
 import { useGameStore } from './store/useGameStore';
 import { getManifest, getTraits, resolveMenuSelection } from './games/registry';

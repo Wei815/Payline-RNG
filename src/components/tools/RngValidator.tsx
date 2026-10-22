@@ -29,7 +29,7 @@ const StepCard = ({ step, idx, gameType }: { step: any, idx: number, gameType: s
   React.useEffect(() => {
     if (!isPlaying) return;
 
-    let t: NodeJS.Timeout;
+    let t: ReturnType<typeof setTimeout>;
 
     if (animationStage === 'idle') {
       if (activeDrop >= step.drops.length - 1) {
@@ -196,13 +196,12 @@ export const RngValidator: React.FC<RngValidatorProps> = ({ onClose }) => {
     rowCounts,
     reelCount,
     currentPaytable,
-    specialSymbolConfig,
     customPaylines,
     isProjectLoaded,
     isProjectLoading,
     projectName
   } = useGameStore();
-  const { bet, coin, gameType, loadTemplateTrigger, setLoadTemplateTrigger } = useMachineStore();
+  const { bet, coin, gameType, setLoadTemplateTrigger } = useMachineStore();
   const betMultiplier = coin > 0 ? bet / coin : 1;
 
   const snippets = useSnippetStore(state => state.snippets);

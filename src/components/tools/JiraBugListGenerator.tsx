@@ -53,7 +53,7 @@ export const JiraBugListGenerator: React.FC<JiraBugListGeneratorProps> = ({ onCl
           const worksheet = workbook.Sheets[firstSheetName];
           const csvText = xlsx.utils.sheet_to_csv(worksheet);
           handleConvert(csvText);
-        } catch (err) {
+        } catch (_err) {
           setErrorMsg('Excel 解析失敗，請確保檔案格式正確或改用 CSV。');
         }
       };
@@ -327,9 +327,8 @@ export const JiraBugListGenerator: React.FC<JiraBugListGeneratorProps> = ({ onCl
       cell.alignment = { horizontal: 'center' };
     });
 
-    jiraBugListData.forEach((rowData, index) => {
+    jiraBugListData.forEach((rowData) => {
       const row = worksheet.addRow(rowData);
-      const rowNum = index + 2; // +1 for header, +1 for 0-index
 
       // C: 測試日期 (Date type)
       // rowData[2] is "YYYY/MM/DD"

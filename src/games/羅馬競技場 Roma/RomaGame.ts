@@ -734,7 +734,7 @@ export class RomaGame extends BaseLineGame {
     customPaylines?: number[][],
     isFreeGame: boolean = false,
     stripSets?: Record<string, string[][]>,
-    requireGoldCascade: boolean = false
+    _requireGoldCascade: boolean = false
   ): Promise<{
     rng: number[] | null;
     isInterfered: boolean;
@@ -843,7 +843,7 @@ export class RomaGame extends BaseLineGame {
     gameType: GameType,
     topTrackerOther?: string[],
     customPaylines?: number[][],
-    isFreeGame: boolean = false,
+    _isFreeGame: boolean = false,
     stripSets?: Record<string, string[][]>
   ): Promise<(number[] | null)[]> {
     const { getWinningPositions } = await import('../../utils/evaluation');

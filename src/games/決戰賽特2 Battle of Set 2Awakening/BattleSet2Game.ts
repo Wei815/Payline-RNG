@@ -27,8 +27,8 @@ export class BattleSet2Game extends BasePayAnywhere {
     eliminatedRows: number[],
     strip: string[],
     drawIndices: number[],
-    isFreeGame: boolean,
-    gameType: GameType
+    _isFreeGame: boolean,
+    _gameType: GameType
   ): void {
     // 由上往下處理：消除第 r 列只會移動 r 以上的列，下方待消除的列位置不變
     // （由下往上處理時，第一次下移後下一個待消除的列已經換成別的符號）

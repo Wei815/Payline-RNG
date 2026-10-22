@@ -1,4 +1,4 @@
-import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+import type { GameConfig, PaytableRule, GameType } from '../../types';
 import type { WinResult } from '../../utils/evaluation';
 import { LineGameStrategy } from '../../utils/evaluation/strategies/LineGameStrategy';
 import { AbstractGame } from './AbstractGame';

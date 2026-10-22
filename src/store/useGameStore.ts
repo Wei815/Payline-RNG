@@ -310,12 +310,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       Object.assign(newWyConfigs, decodeWyClassIds(flatClassIds, newGrid));
     }
     
-    let newTopTracker: string[] = [];
-    if (flatIds.length > reelCount && !isMathId) {
-       // Optional: populate top tracker if they provided it in flatIds
-       newTopTracker = []; // simplified for now, as useGameStore might have more complex logic
-    }
-    
     // 依滾輪表產生盤面的遊戲沒有「自定義盤面」：改為帶入手動計算盤面的滾輪位置（多組滾輪表時第 reelCount+1 碼為 Strip ID）
     if (!findTraits(gameType)?.customGridTab && !isMathId) {
       const updates: Partial<GameState> = {

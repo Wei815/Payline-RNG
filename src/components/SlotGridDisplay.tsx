@@ -130,7 +130,6 @@ export const SlotGridDisplay: React.FC<SlotGridDisplayProps> = ({
             const oldRowIndex = rowIndex - dist;
             const oldSymbol = oldRowIndex >= 0 ? prevGridSymbols?.[colIndex]?.[oldRowIndex] : undefined;
             const isWild = symbol === 'WILD' || symbol.startsWith('W') || symbol === 'WX';
-            const isUnknown = symbol.startsWith('?');
             const isGSymbolOld = oldSymbol && (oldSymbol.startsWith('G') || oldSymbol.startsWith('g'));
             const isGSymbolCurrent = symbol.startsWith('G') || hasGoldFrame;
             const isFlipping = animationStage === 'dropping' && isWild && isGSymbolOld;

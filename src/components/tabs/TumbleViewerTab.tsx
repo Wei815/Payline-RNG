@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { formatAmount } from '../../utils/formatters';
 import { getWinColorClass } from '../../utils/svgPaths';
-import { MULTIPLIER_BALLS, LUCKY_BALLS, SpecialSymbols } from '../../utils/evaluation/GameConstants';
+import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
 import type { GameType, PaytableRule } from '../../types';
 import { useGameStore } from '../../store/useGameStore';
 import { getTraits } from '../../games/registry';
@@ -225,8 +225,6 @@ export const TumbleViewerTab: React.FC<TumbleViewerTabProps> = ({
                     const winIndices = winningCoords.get(`${cIdx}-${rIdx}`);
                     const isWin = !!winIndices;
                     const winColorClass = isWin ? getWinColorClass(winIndices) : '';
-                    const isWild = sym === 'WILD' || sym === 'W' || sym === 'WX';
-                    const isUnknown = sym.startsWith('?');
                     
                     let customBg = '';
                     let displaySymbol = sym;

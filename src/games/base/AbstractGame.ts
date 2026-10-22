@@ -43,12 +43,12 @@ export abstract class AbstractGame implements IGameEnvironment {
   // ==========================================
 
   /** 判斷該符號在盤面消除時是否保留 (例如秦皇傳說 S1 在免費遊戲中不消除) */
-  public isSymbolUnremovable(sym: string, isFreeGame: boolean): boolean {
+  public isSymbolUnremovable(_sym: string, _isFreeGame: boolean): boolean {
     return false;
   }
 
   /** 取得連續掉落時的倍數乘數 (例如 WayGame 預設的 1, 2, 4, 8 翻倍) */
-  public getTumbleMultiplier(cascadeCount: number, isFreeGame: boolean): number {
+  public getTumbleMultiplier(_cascadeCount: number, _isFreeGame: boolean): number {
     return 1;
   }
 
@@ -156,15 +156,15 @@ export abstract class AbstractGame implements IGameEnvironment {
   public getEvalGrid(
     grid: string[][],
     _gameType: GameType,
-    length: number,
-    topTrackerOther?: string[],
+    _length: number,
+    _topTrackerOther?: string[],
   ): string[][] {
     return grid;
   }
 
   public getEvalGridForCombos(
     grid: string[][],
-    topTrackerOther?: string[],
+    _topTrackerOther?: string[],
   ): string[][] {
     return grid;
   }
