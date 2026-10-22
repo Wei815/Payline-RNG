@@ -179,8 +179,8 @@ exports[`runGeneratorSearch 黃金樣本 > linegame_roma 1`] = `
   "WIN_MULTIPLIER default": [
     "{"name":"Big Win","length":0,"wildCount":0,"rng":[53,42,65,43,2],"isInterfered":false,"hasS1Drop":false}",
     "{"name":"Super Win","length":0,"wildCount":0,"rng":[30,42,65,33,37],"isInterfered":false,"hasS1Drop":false}",
-    "{"name":"Mega Win","length":0,"wildCount":0,"rng":[14,61,15,7,65],"isInterfered":false,"hasS1Drop":false}",
-    "{"name":"Ultra Win","length":0,"wildCount":0,"rng":[63,11,16,11,48],"isInterfered":false,"hasS1Drop":false}",
+    "{"name":"Mega Win","length":0,"wildCount":0,"rng":[7,66,19,70,67],"isInterfered":false,"hasS1Drop":false}",
+    "{"name":"Ultra Win","length":0,"wildCount":0,"rng":[61,61,72,10,37],"isInterfered":false,"hasS1Drop":false}",
     "{"name":"Legend Win","length":0,"wildCount":0,"rng":[57,0,55,62,38],"isInterfered":false,"hasS1Drop":false}",
   ],
 }
