@@ -8,7 +8,7 @@ import * as fs from 'fs';
 import type { GameType } from '../../types';
 import { buildFixture, loadTemplate, makeConfig, withSeed, type GameFixture } from '../../games/base/__tests__/harness';
 import {
-  asScript, cascadeToEnd, gridFromMathIds, gridFromScriptLine, parseScript, paying, scriptCtx, type Violation,
+  asScript, cascadeToEnd, gridFromMathIds, gridFromScriptLine, parseScript, paying, replayRomaChain, scriptCtx, type Violation,
 } from '../../games/base/__tests__/flowRules';
 import { runGeneratorSearch } from '../../hooks/generatorSearch';
 import { defaultSpecialSymbolConfig } from '../../store/useGameStore';
@@ -77,8 +77,12 @@ describe('腳本 → RNG 腳本驗證 → 贏分一致', () => {
           if (Math.abs(steps[0].totalWin - expected) > 1e-6) {
             push('V1 驗證工具贏分 = 規則重算', `驗證工具 ${steps[0].totalWin}（${steps[0].drops.length} 次盤面），規則 ${expected}`);
           }
-          if (gameType === 'linegame_roma' && lines.length >= 2 && steps[0].drops.length > 1) {
-            push('V2 羅馬遞補應使用腳本下一行', `驗證工具自行模擬掉落 ${steps[0].drops.length - 1} 次，未使用腳本第 2 行遞補 RNG`);
+          if (gameType === 'linegame_roma' && lines.length >= 2) {
+            // 整份腳本是同一局連鎖：每一盤都要等於依腳本逐行遞補的結果
+            const replay = replayRomaChain(fx, lines);
+            const same = steps.length === 1 && steps[0].drops.length === lines.length &&
+              steps[0].drops.every((d, i) => JSON.stringify(d.grid) === JSON.stringify(replay.grids[i]));
+            if (!same) push('V2 羅馬遞補應使用腳本下一行', `驗證工具 ${steps.length} 步 / ${steps[0].drops.length} 盤，與腳本逐行遞補不一致`);
           }
         }
       }

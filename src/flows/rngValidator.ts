@@ -65,6 +65,23 @@ export function parseQaSteps(p: RngValidatorParams): ValidatorStep[] {
   const classIdMode = findTraits(gameType)?.snippetClassIds ?? 'symbolMultiplier';
   const isCoordinateClassId = classIdMode !== 'symbolMultiplier';
 
+  // 遞補由腳本下一行決定的遊戲（羅馬）：整份腳本是同一局「初始 + 遞補」的連鎖，由遊戲重播（F13）
+  const chainGame = GameRegistry.tryGetGame(gameType);
+  if (chainGame?.replayRefillChain) {
+    const chain = chainGame.replayRefillChain(rngSteps, {
+      stripSets: isFreeGame && currentFreeStripSets.length > 0 ? currentFreeStripSets : currentStripSets,
+      fallbackStrips: currentStrips, rowCounts, paytable: currentPaytable,
+      paylines: customPaylines && customPaylines.length > 0 ? customPaylines : undefined,
+      config: { gameType, paylines: customPaylines || [], effectiveBet: bet },
+    });
+    const drops: ValidatorDrop[] = chain.map(({ grid, wins, winningCoords }, i) => {
+      const multiplier = chainGame.getTumbleMultiplier(i, isFreeGame);
+      const originalWin = wins.reduce((sum, w) => sum + w.totalWin * betMultiplier, 0);
+      return { grid, totalWin: originalWin * multiplier, originalWin, multiplier, winningCoords };
+    });
+    return [{ drops, totalWin: drops.reduce((sum, d) => sum + d.totalWin, 0) }];
+  }
+
   return rngSteps.map((rngArray, stepIndex) => {
     const isMathId = isMathIdRng(gameType, rngArray, reelCount);
 

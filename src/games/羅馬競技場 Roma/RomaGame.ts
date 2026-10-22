@@ -1,6 +1,6 @@
 import { BaseLineGame } from '../base/BaseLineGame';
 import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
-import { getWinningPositions, type WinResult } from '../../utils/evaluation';
+import { getWinningPositions, isEliminatedCell, type WinResult } from '../../utils/evaluation';
 import { RngSearchEngine } from '../base/RngSearchEngine';
 import { getBaseSymbol } from '../../utils/evaluation/GameConstants';
 import { isInterferingWin } from '../base/searchRules';
@@ -444,6 +444,27 @@ export class RomaGame extends BaseLineGame {
   }
 
   /** 遞補一律使用滾輪表 1（Combo 1），沒有時使用目前滾輪表 */
+  /** 重播「初始 + 遞補」連鎖：第 n 次遞補使用 getStripSetIndex(n) 的滾輪表，空缺由該行 RNG 覆蓋填補 */
+  public replayRefillChain(
+    rngLines: number[][],
+    opts: { stripSets: string[][][]; fallbackStrips: string[][]; rowCounts: number[]; paytable: PaytableRule[]; paylines?: number[][]; config: GameConfig },
+  ): { grid: string[][]; wins: WinResult[]; winningCoords: Map<string, number[]> }[] {
+    const { stripSets, fallbackStrips, rowCounts, paytable, paylines, config } = opts;
+    const reelCount = rowCounts.length;
+    const setFor = (combo: number) => stripSets[this.getStripSetIndex(combo)] ?? fallbackStrips;
+    const out: { grid: string[][]; wins: WinResult[]; winningCoords: Map<string, number[]> }[] = [];
+    let grid = this.buildGridFromRng(rngLines[0], stripSets[0] ?? fallbackStrips, rowCounts, reelCount);
+    for (let step = 0; step < rngLines.length; step++) {
+      const wins = this.evaluate(grid, paytable, config, paylines, false);
+      const winningCoords = getWinningPositions(grid, wins, paytable, this.id, undefined, paylines);
+      out.push({ grid, wins, winningCoords });
+      if (step === rngLines.length - 1) break;
+      const eliminated = new Set([...winningCoords.keys()].filter(k => isEliminatedCell(winningCoords, k)));
+      grid = this.cascadeStep(grid, eliminated, rngLines[step + 1], setFor(step + 1), rowCounts);
+    }
+    return out;
+  }
+
   public findRefillRng(
     grid: string[][],
     wins: WinResult[],

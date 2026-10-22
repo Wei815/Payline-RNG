@@ -384,6 +384,7 @@ classDiagram
 | `postProcessWinningPositions()` | 加入遊戲專屬的消除座標 | 羅馬：B1 少於 3 顆隨贏分消除 |
 | `generateTriggerSequence()` | 免遊觸發序列 | 羅馬 |
 | `findRefillRng()` | 「初始 + 遞補 0 贏分」連鎖腳本 | 羅馬 |
+| `replayRefillChain()` | 重播「初始 + 遞補」連鎖腳本（RNG 腳本驗證工具使用） | 羅馬 |
 
 ### 4.4 共用層 vs 遊戲層：改東西前先問自己
 

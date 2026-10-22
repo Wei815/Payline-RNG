@@ -41,6 +41,23 @@ export interface IGameEnvironment {
     }
   ): number[] | null;
 
+  /**
+   * 重播「初始 + 遞補」連鎖腳本（遞補由腳本下一行 RNG 決定的遊戲，例：羅馬）。
+   * rngLines[0] 為初始盤面，之後每一行為一次遞補；回傳每一盤的盤面、中獎與中獎格。
+   * RNG 腳本驗證工具遇到實作此方法的遊戲時，整份腳本視為同一局的連鎖。
+   */
+  replayRefillChain?(
+    rngLines: number[][],
+    opts: {
+      stripSets: string[][][];
+      fallbackStrips: string[][];
+      rowCounts: number[];
+      paytable: PaytableRule[];
+      paylines?: number[][];
+      config: GameConfig;
+    }
+  ): { grid: string[][]; wins: WinResult[]; winningCoords: Map<string, number[]> }[];
+
   /** 共用 getWinningPositions() 計算完後，供遊戲加入專屬的中獎/消除座標（直接修改 winningCoords） */
   postProcessWinningPositions?(grid: string[][], wins: WinResult[], winningCoords: Map<string, number[]>): void;
 

@@ -9,7 +9,6 @@ const F05 = 'F05 奢華 / 諸神 WX × 4、WX × 5 結構上無乾淨解：全�
 const F08 = 'F08 羅馬大獎區間：搜尋引擎用通用掉落模型找大獎，但羅馬實際遞補由下一筆 RNG 決定（測案 Win= 已改用遊戲規則）';
 const F09 = 'F09 決戰賽特2 大獎區間找不到';
 const F10 = 'F10 贏分線路一覽：30 線遊戲的滿線必然與共用格子的其他線同時中獎（結構性）；搜尋漏解已改為隨機取樣 + 窮舉';
-const F13 = 'F13 驗證工具：羅馬未使用腳本第 2 行遞補，自行模擬掉落';
 
 export const GENERATOR_KNOWN: KnownIssues = {
   'linegame | N1 只找到有干擾的組合': { count: 4, finding: F03 },
@@ -28,8 +27,6 @@ export const LINE_VIEWER_KNOWN: KnownIssues = {
 };
 
 export const VALIDATOR_KNOWN: KnownIssues = {
-  'linegame_roma | V1 驗證工具贏分 = 規則重算': { count: 6, finding: F13 },
-  'linegame_roma | V2 羅馬遞補應使用腳本下一行': { count: 18, finding: F13 },
 };
 
 export const SNIPPET_KNOWN: KnownIssues = {
