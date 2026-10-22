@@ -479,7 +479,9 @@ classDiagram
 - **Way 類補救搜尋 `constructiveWaySearch()`**：隨機搜尋找不到乾淨解時（家族 = way、目標非 Scatter、未走金框路徑），
   把每軸的視窗分成「含目標 / 含百搭 / 皆無 / 任意」四類，先分類取樣 3000 次，再以預算 20000 次窮舉。
   優先用不含 `blocksSearchDraw` 符號的視窗，某類在該軸完全沒有乾淨視窗時才退而使用（例：秦皇 A 有 81/120 個視窗含 B1/S1）。
-  接受條件：恰好一個目標中獎、`matchCount === length`、`ways === 1`、無其他贏分、百搭軸數 = 要求數
+  接受條件：恰好一個目標中獎、`matchCount === length`、`ways === 1`、無其他干擾中獎、百搭軸數 = 要求數
+- **所有搜尋路徑共同的「乾淨」定義**：目標以外沒有 `isInterferingWin`（有贏分，或 Scatter ≥ 3 會觸發特色）；
+  有掉落的遊戲另以 `refillIsClean` 模擬一次掉落，補上的盤面不可再中獎（羅馬由下一行 RNG 遞補、MathID 遊戲不適用）
 - **Pay Anywhere `constructivePayAnywhereSearch()`**：目標是「全盤恰好 N 個」（產生器依賠率門檻 `match3/4/5` → 8 / 10 / 12 個，百搭不參與計數、不產生 +WX）。
   每軸停點依視窗內目標個數分組，挑一組總和 = N 的組合；須恰好一筆目標中獎且無其他贏分（Scatter 同樣適用）。與軸數無關，不可再用「出現目標的軸數 < N」提早放棄
 - **金框路徑自動關閉**：`goldCascadeSearch` 的遊戲若滾輪表上完全沒有金框，`requireGoldCascade` 改為 false（直接用盤面 WX）
@@ -719,7 +721,7 @@ Combo 4+             → 滾輪表 2/1 交替 (偶→2, 奇→1)
 
 ### 10.1 同一個規則在哪幾處實作（改規則時要一起改）
 
-> 已統一為共用函式的規則（改規則只改一處）：目前盤面的滾輪表 `selectActiveStrips`（依免遊 / Strip ID）、複製到剪貼簿 `utils/clipboard.ts` 的 `copyText`、中獎格是否消除 `isEliminatedCell`（S1 的 999 只是高亮）、
+> 已統一為共用函式的規則（改規則只改一處）：搜尋干擾判定 `games/base/searchRules.ts` 的 `isInterferingWin`（有贏分或 Scatter ≥ 3）、B2 算作 B1 `DEFAULT_DERIVATIVE_SYMBOLS`、目前盤面的滾輪表 `selectActiveStrips`（依免遊 / Strip ID）、複製到剪貼簿 `utils/clipboard.ts` 的 `copyText`、中獎格是否消除 `isEliminatedCell`（S1 的 999 只是高亮）、
 > ClassIDs 解碼 `flows/classIds.ts`、倍數球 `flows/ballMultiplier.ts`、贏分顯示 `displayWin`（B1/B2 已乘總投注，不可再乘 bet/coin）。
 
 | 規則 | 遊戲類別（產生器搜尋 / 測案 Win=） | RTP Worker | 消除掉落測試 / 驗證工具 |
@@ -822,7 +824,7 @@ npx tsx <path-to-script>.ts
 | 產生器 / 腳本 / RTP 快照 | `hooks/__tests__`、`games/base/__tests__/scriptFormat.test.ts`、`workers/__tests__`、`utils/__tests__` | 產生器輸出、腳本字串、RTP 模擬數字、範本辨識 |
 | ★ 流程規則測試 | `games/base/__tests__/generator*.rules.test.ts`、`flows/__tests__/*.rules.test.ts` | 每個流程的輸出用**獨立重算**（`flowRules.ts`）比對規格：產生 RNG → 盤面 → 恰好目標連線、零干擾、Win= 公式、複製腳本 → 載入 / 驗證工具 / 消除掉落測試 |
 
-**規則代號**（詳細定義見 `docs/flow-test-report.md` 第 1 章）：R1~R3 目標連線與零干擾、S1 Scatter、M1 大獎區間、G1 金框、F1 Win= 公式、W1/W2 COMBO、C1 腳本、L1~L3 贏分線路一覽、V1/V2 驗證工具、T1~T4 消除掉落測試。
+**規則代號**（詳細定義見 `docs/flow-test-report.md` 第 1 章）：R1~R3 目標連線與零干擾、R4 不觸發特色（Scatter < 3）、R5 掉落後不再中獎、S1 Scatter、M1 大獎區間、G1 金框、F1 Win= 公式、W1/W2 COMBO、C1 腳本、L1~L3 贏分線路一覽、V1/V2 驗證工具、T1~T4 消除掉落測試。
 
 **已知問題白名單**（`knownIssues.data.ts`）：尚未修好的違規以「遊戲 + 規則 + 精確次數」登記，對應報告的 F 編號。
 新增違規、次數增加、**次數減少**都會讓測試失敗 —— 修好問題後必須同步降低計數，白名單才不會掩蓋新的退化。
