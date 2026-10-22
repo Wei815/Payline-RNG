@@ -221,7 +221,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
       !r.isWild && !r.isScatter && !r.symbolId.match(/^[F|L][1-4]/) && r.mathId !== undefined
     );
 
-    let uniqueWinCoordsCount = winningCoords.size;
+    const uniqueWinCoordsCount = winningCoords.size;
 
     for (let i = 0; i < uniqueWinCoordsCount; i++) {
       let safeRule;

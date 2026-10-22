@@ -176,8 +176,8 @@ export const JiraBugListGenerator: React.FC<JiraBugListGeneratorProps> = ({ onCl
         const parts = rawDate.split(/[\/\-\s]/);
         // 如果是 DD/MM/YY 格式 (中文替換後會變成 08/09/26)
         if (parts.length >= 3 && rawDate.includes('/')) {
-          let day = parseInt(parts[0], 10);
-          let month = parseInt(parts[1], 10);
+          const day = parseInt(parts[0], 10);
+          const month = parseInt(parts[1], 10);
           let year = parseInt(parts[2], 10);
           
           if (year < 100) year += 2000;

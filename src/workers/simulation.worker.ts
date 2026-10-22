@@ -77,7 +77,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
     displayGrid[c] = new Array(rows).fill('0');
   }
 
-  let effectivePaylines = gameConfig.paylines;
+  const effectivePaylines = gameConfig.paylines;
   let lastReportTime = performance.now();
   const drawIndices: number[] = new Array(maxCols);
 
@@ -209,7 +209,7 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
     // Keep track of the top-most draw index for each column (used for tumbling)
     
     
-    let bgResult = runSpin(strips, mode === 'free_only' || !!isFreeGame);
+    const bgResult = runSpin(strips, mode === 'free_only' || !!isFreeGame);
     let totalWinForRound = bgResult.spinWin;
     
     if (bgResult.spinWin > 0) {
@@ -236,13 +236,13 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
         freeSpinsRemaining--;
         totalFreeSpinsPlayed++;
         
-        let fgResult = runSpin(freeStrips, true);
+        const fgResult = runSpin(freeStrips, true);
         totalWinForRound += fgResult.spinWin;
         freeWinTotal += fgResult.spinWin;
         
         if (fgResult.scatterHits >= 3) {
            freeGameRetriggers++;
-           let additional = 10 + (fgResult.scatterHits - 3) * 2;
+           const additional = 10 + (fgResult.scatterHits - 3) * 2;
            freeSpinsRemaining += additional;
            if (totalFreeSpinsPlayed + freeSpinsRemaining > 200) {
               freeSpinsRemaining = 200 - totalFreeSpinsPlayed;

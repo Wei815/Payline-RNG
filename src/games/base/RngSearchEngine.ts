@@ -192,7 +192,7 @@ export class RngSearchEngine {
       }
 
       let skipDraw = false;
-      let maxCurrentMatchCount = 0;
+      const maxCurrentMatchCount = 0;
       let lockThreshold = hcBestMatchCount;
       if (requireGoldCascade && lockThreshold > 0 && lockThreshold < 3) {
         lockThreshold = 3;
@@ -228,8 +228,8 @@ export class RngSearchEngine {
 
       for (let c = 0; c < reelCount; c++) {
         let chosenIdx = 0;
-        let len = currentStrips[c]?.length || 1;
-        let rows = rowCounts[c] || 3;
+        const len = currentStrips[c]?.length || 1;
+        const rows = rowCounts[c] || 3;
 
         let isLocked = false;
         if (hcBestRng && hcAttempts < 500 && Math.random() < 0.92) {
@@ -440,8 +440,8 @@ export class RngSearchEngine {
 
         if (!hasGoldWin) continue;
 
-        let nextGrid = initialGrid.map((col) => [...col]);
-        let drawIndices = [...candidateRng].map((idx) => idx - 1);
+        const nextGrid = initialGrid.map((col) => [...col]);
+        const drawIndices = [...candidateRng].map((idx) => idx - 1);
 
         for (let c = 0; c < reelCount; c++) {
           const strip = currentStrips[c];
@@ -1057,7 +1057,7 @@ export class RngSearchEngine {
       
       if (attempt % 200 === 0) await yieldIfNeeded();
 
-      let currentGrid: string[][] = new Array(reelCount);
+      const currentGrid: string[][] = new Array(reelCount);
       for (let c = 0; c < reelCount; c++) {
         const len = currentStrips[c]?.length || 1;
         const rows = rowCounts[c] || 3;
@@ -1078,7 +1078,7 @@ export class RngSearchEngine {
         }
       }
 
-      let drawIndices = [...candidateRng].map((idx) => idx - 1);
+      const drawIndices = [...candidateRng].map((idx) => idx - 1);
       let cascadeCount = 0;
 
       while (cascadeCount < 20) {
@@ -1238,7 +1238,7 @@ export class RngSearchEngine {
         (attempt > 4000 && Math.random() < 0.6);
       const alignRow = Math.floor(Math.random() * 3);
 
-      let currentGrid: string[][] = new Array(reelCount);
+      const currentGrid: string[][] = new Array(reelCount);
       for (let c = 0; c < reelCount; c++) {
         const len = currentStrips[c]?.length || 1;
         const rows = rowCounts[c] || 3;
@@ -1285,7 +1285,7 @@ export class RngSearchEngine {
           totalPayout += simWins[i].totalWin || simWins[i].payout || 0;
         }
       } else {
-        let drawIndices = [...candidateRng].map((idx) => idx - 1);
+        const drawIndices = [...candidateRng].map((idx) => idx - 1);
         let cascadeCount = 0;
         let b1Count = 0;
 

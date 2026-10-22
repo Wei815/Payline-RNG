@@ -182,7 +182,7 @@ function combos(params: InstantGeneratorParams): GeneratorCombination[] {
             const cell = flatGrid.find(
               (cell) => cell.c === c && cell.r === r,
             )!;
-            let s = cell.val;
+            const s = cell.val;
             let mathId = mathIdMap[s] || s;
             if (s.includes("_") && s.match(/^[F|L][1-4]_/)) {
               if (s.startsWith("F")) mathId = "15";

@@ -424,7 +424,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
     if (getTraits(gameType).flatMathIdRng && (targetComb as any)?.fullMathIds && !isManualEdited && !hasClovers) {
       formattedRngArray = (targetComb as any).fullMathIds.slice(0, 30).map((id: number) => String(id));
     } else {
-      let isFlatMathIdWithClovers = getTraits(gameType).flatMathIdRng && (targetComb as any)?.fullMathIds && !isManualEdited && hasClovers;
+      const isFlatMathIdWithClovers = getTraits(gameType).flatMathIdRng && (targetComb as any)?.fullMathIds && !isManualEdited && hasClovers;
       if (isFlatMathIdWithClovers) {
         formattedRngArray = [...(targetComb as any).fullMathIds.slice(0, 30).map((id: number) => String(id))];
         Object.keys(clovers).forEach(key => {
