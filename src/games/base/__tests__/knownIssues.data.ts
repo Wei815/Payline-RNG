@@ -5,7 +5,7 @@
 import type { KnownIssues } from './knownIssues';
 
 const F03 = 'F03 WX 當目標：通用 Line / Way 無法產生（Scatter + WX 已不再列出）';
-const F05 = 'F05 奢華 / 諸神 MathID 產生器以 WX 為目標時盤面錯誤（變成 M1 連線、多出干擾）';
+const F05 = 'F05 奢華 / 諸神 WX × 4、WX × 5 結構上無乾淨解：全百搭 4 連依規則算成 M1 × 4；5 連時共用前兩格的其他線必與第 3 軸填充符號成 3 連（已如實標為有干擾）';
 const F08 = 'F08 羅馬大獎區間：搜尋引擎用通用掉落模型找大獎，但羅馬實際遞補由下一筆 RNG 決定（測案 Win= 已改用遊戲規則）';
 const F09 = 'F09 決戰賽特2 大獎區間找不到';
 const F10 = 'F10 贏分線路一覽：30 線遊戲滿線幾乎必然與其他線重疊（結構性）／DFS 漏解';
@@ -21,12 +21,8 @@ export const GENERATOR_KNOWN: KnownIssues = {
   'waygame | N1 只找到有干擾的組合': { count: 1, finding: F18 },
   'waygame | N0 找不到組合（無可行滾輪位置）': { count: 5, finding: F03 },
   'waygame_elephant | N0 找不到組合（無可行滾輪位置）': { count: 8, finding: F16 },
-  'linegame_set2 | R1 恰好一筆目標連線': { count: 2, finding: F05 },
-  'linegame_set2 | R2 百搭數量': { count: 2, finding: F05 },
-  'linegame_set2 | R3 零干擾': { count: 2, finding: F05 },
-  'linegame_gods | R1 恰好一筆目標連線': { count: 2, finding: F05 },
-  'linegame_gods | R2 百搭數量': { count: 2, finding: F05 },
-  'linegame_gods | R3 零干擾': { count: 2, finding: F05 },
+  'linegame_set2 | N1 只找到有干擾的組合': { count: 2, finding: F05 },
+  'linegame_gods | N1 只找到有干擾的組合': { count: 2, finding: F05 },
 };
 
 export const SPECIAL_KNOWN: KnownIssues = {

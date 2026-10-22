@@ -64,79 +64,114 @@ function combos(params: InstantGeneratorParams): GeneratorCombination[] {
          mathIdMap['WY'] = mathIdMap['W'];
       }
 
+    const isTargetWild = currentPaytable.some(p => p.symbolId === selectedSymbol && p.isWild) || ['WX', 'WY', 'WZ'].includes(selectedSymbol);
+    // 百搭當目標時連線後一軸放 Scatter 擋住延伸（百搭不代替 Scatter），否則 WX WX WX WX M1 會被算成 M1 × 5
+    const stopper = currentPaytable.find(p => p.isScatter && p.isEnabled !== false)?.symbolId;
+    const paylinesForCheck = customPaylines && customPaylines.length > 0 ? customPaylines : defaultPaylines;
+
     targetLengths.forEach((len) => {
-      const maxWild = Math.min(1, len - 1);
+      // 百搭當目標時「+ WX」沒有意義（曾列出「WX × 3 + WX」）
+      const maxWild = isTargetWild ? 0 : Math.min(1, len - 1);
       for (let W = 0; W <= maxWild; W++) {
         const line = linesToUse[0];
-
-        const grid: string[][] = Array.from({ length: reelCount }, (_, c) =>
-          Array(rowCounts[c] || 3).fill("-"),
-        );
-
-        // Place targets and wilds
         const wildSymbol = (wyReels && isFreeGame) ? "WY" : "WX";
         const isGodsScatter = wyReels && isSelScatter;
-        for (let c = 0; c < len; c++) {
-          const targetCol = isGodsScatter ? c * 2 : c;
-          if (targetCol >= reelCount) continue;
-          if (W === 1 && c === 1) {
-             grid[targetCol][line[targetCol]] = wildSymbol;
-          } else {
-             grid[targetCol][line[targetCol]] = selectedSymbol;
-          }
-        }
-
-        const flatGrid: { c: number; r: number; val: string }[] = [];
-        for (let c = 0; c < reelCount; c++) {
-          for (let r = 0; r < (rowCounts[c] || 3); r++) {
-            flatGrid.push({ c, r, val: grid[c][r] });
-          }
-        }
-
-        const specialSymbolsToPlace: string[] = [];
-        if (
-          specialSymbolConfig.s1Enabled &&
-          specialSymbolConfig.s1Count > 0
-        ) {
-          for (let i = 0; i < specialSymbolConfig.s1Count; i++)
-            specialSymbolsToPlace.push("S1");
-        }
-        if (
-          specialSymbolConfig.s2Enabled &&
-          specialSymbolConfig.s2Count > 0
-        ) {
-          for (let i = 0; i < specialSymbolConfig.s2Count; i++)
-            specialSymbolsToPlace.push("S2");
-        }
-        if (specialSymbolConfig.multipliersEnabled) {
-          Object.entries(specialSymbolConfig.multiplierCounts).forEach(
-            ([key, count]) => {
-              for (let i = 0; i < count; i++)
-                specialSymbolsToPlace.push(key);
-            },
-          );
-        }
-
         const safeNonScatters = nonScatters.filter((sym) => sym !== selectedSymbol);
 
-        // 1. Place special symbols randomly
-        let emptySpots = flatGrid.filter((cell) => cell.val === "-");
-        emptySpots.sort(() => Math.random() - 0.5);
-        for (let i = 0; i < specialSymbolsToPlace.length; i++) {
-           if (emptySpots.length > 0) {
-              emptySpots[0].val = specialSymbolsToPlace[i];
-              emptySpots.shift();
-           }
-        }
+        const buildFlatGrid = (attempt: number) => {
+          const grid: string[][] = Array.from({ length: reelCount }, (_, c) =>
+            Array(rowCounts[c] || 3).fill("-"),
+          );
 
-        // 2. Place dummy symbols column by column, using a fixed unique dummy symbol per column to prevent ANY wild bridging
-        for (let c = 0; c < reelCount; c++) {
-           // Use a stable, unique dummy symbol for each column based on its index
-           const dummySym = safeNonScatters[c % safeNonScatters.length];
-           const colEmptySpots = flatGrid.filter(cell => cell.c === c && cell.val === "-");
-           for (const spot of colEmptySpots) {
-              spot.val = dummySym;
-           }
+          // Place targets and wilds
+          for (let c = 0; c < len; c++) {
+            const targetCol = isGodsScatter ? c * 2 : c;
+            if (targetCol >= reelCount) continue;
+            if (W === 1 && c === 1) {
+               grid[targetCol][line[targetCol]] = wildSymbol;
+            } else {
+               grid[targetCol][line[targetCol]] = selectedSymbol;
+            }
+          }
+          if (isTargetWild && stopper && len < reelCount) {
+            grid[len][line[len]] = stopper;
+          }
+
+          const flatGrid: { c: number; r: number; val: string }[] = [];
+          for (let c = 0; c < reelCount; c++) {
+            for (let r = 0; r < (rowCounts[c] || 3); r++) {
+              flatGrid.push({ c, r, val: grid[c][r] });
+            }
+          }
+
+          const specialSymbolsToPlace: string[] = [];
+          if (
+            specialSymbolConfig.s1Enabled &&
+            specialSymbolConfig.s1Count > 0
+          ) {
+            for (let i = 0; i < specialSymbolConfig.s1Count; i++)
+              specialSymbolsToPlace.push("S1");
+          }
+          if (
+            specialSymbolConfig.s2Enabled &&
+            specialSymbolConfig.s2Count > 0
+          ) {
+            for (let i = 0; i < specialSymbolConfig.s2Count; i++)
+              specialSymbolsToPlace.push("S2");
+          }
+          if (specialSymbolConfig.multipliersEnabled) {
+            Object.entries(specialSymbolConfig.multiplierCounts).forEach(
+              ([key, count]) => {
+                for (let i = 0; i < count; i++)
+                  specialSymbolsToPlace.push(key);
+              },
+            );
+          }
+
+          // 1. Place special symbols randomly
+          const emptySpots = flatGrid.filter((cell) => cell.val === "-");
+          emptySpots.sort(() => Math.random() - 0.5);
+          for (let i = 0; i < specialSymbolsToPlace.length; i++) {
+             if (emptySpots.length > 0) {
+                emptySpots[0].val = specialSymbolsToPlace[i];
+                emptySpots.shift();
+             }
+          }
+
+          // 2. 每軸用同一個填充符號（第一次依軸序，之後隨機），各軸不重複以減少跨軸連線
+          const order = attempt === 0
+            ? safeNonScatters.map((_, i) => i)
+            : safeNonScatters.map((_, i) => i).sort(() => Math.random() - 0.5);
+          for (let c = 0; c < reelCount; c++) {
+             const dummySym = safeNonScatters[order[c % order.length]];
+             const colEmptySpots = flatGrid.filter(cell => cell.c === c && cell.val === "-");
+             for (const spot of colEmptySpots) {
+                spot.val = dummySym;
+             }
+          }
+          return flatGrid;
+        };
+
+        // 以遊戲評估驗證：只有目標本身中獎，沒有其他有贏分的連線（F05：曾未驗證，填充符號透過百搭另成 M2 × 3）
+        const isClean = (flatGrid: { c: number; r: number; val: string }[]) => {
+          if (isGodsScatter) return true;
+          const symGrid = Array.from({ length: reelCount }, (_, c) => flatGrid.filter(cell => cell.c === c).map(cell => cell.val.split('_')[0]));
+          const wins = evaluateGrid(symGrid, currentPaytable, { gameType, paylines: paylinesForCheck }, paylinesForCheck, true);
+          const target = wins.find(w => w.symbolId === selectedSymbol && w.matchCount === len);
+          if (!target) return false;
+          // 諸神免遊的 WY 會整軸展開為百搭，經過該軸的其他線也會形成同一個目標連線（遊戲機制，不算干擾）
+          const wyExpands = wyReels && isFreeGame && W === 1;
+          return !wins.some(w => w !== target && w.payout > 0 && !(wyExpands && w.symbolId === selectedSymbol));
+        };
+
+        let flatGrid = buildFlatGrid(0);
+        let interfered = !isClean(flatGrid);
+        for (let attempt = 1; interfered && attempt < 300; attempt++) {
+          const candidate = buildFlatGrid(attempt);
+          if (isClean(candidate)) {
+            flatGrid = candidate;
+            interfered = false;
+          }
         }
 
         const fullMathIds: string[] = [];
@@ -185,7 +220,7 @@ function combos(params: InstantGeneratorParams): GeneratorCombination[] {
           length: len,
           wildCount: W,
           rng: columnStrings,
-          isInterfered: false,
+          isInterfered: interfered,
           fullMathIds: fullMathIds,
           goldFrames: {},
           jackpots: {},
