@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import type { GameType, PaytableRule, GameConfig } from '../../types';
-import { formatAmount } from '../../utils/formatters';
 import { getWinColorClass, calculateSVGPaths } from '../../utils/svgPaths';
 import { getGameIntervals } from '../../utils/evaluation/GameIntervals';
 import { getWinningPositions } from '../../utils/evaluation';
@@ -11,12 +10,13 @@ import { useGameStore } from '../../store/useGameStore';
 import { GameRegistry } from '../../core/GameRegistry';
 import { getScriptFormatter, getTraits } from '../../games/registry';
 import { calculateCombinationWin as calcCombinationWin } from '../../flows/combinationWin';
-import { boardBallMultiplier } from '../../flows/ballMultiplier';
 import { getGameUi } from '../../games/ui-registry';
 import { useLinePaths } from '../../hooks/useLinePaths';
 import { symbolToneClass } from '../ui/symbolTone';
 import type { ScriptContext } from '../../games/base/ScriptFormat';
 import { copyText } from '../../utils/clipboard';
+import { GeneratorEvalPanel } from './generator/GeneratorEvalPanel';
+import { GeneratorIntervalsEditor } from './generator/GeneratorIntervalsEditor';
 
 export interface SlotGeneratorTabProps {
   reelCount: number;
@@ -95,42 +95,11 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
       regenerateTriggerSequence();
     }
   }, [game, isFreeGame, selectedTriggerCombo, regenerateTriggerSequence]);
-  const [multiplierIntervals, setMultiplierIntervals] = useState<import('../../types').MultiplierInterval[]>(() => getGameIntervals(gameType));
   const [activeSearchIntervals, setActiveSearchIntervals] = useState<import('../../types').MultiplierInterval[]>(() => getGameIntervals(gameType));
 
   useEffect(() => {
-    const initial = getGameIntervals(gameType);
-    setMultiplierIntervals(initial);
-    setActiveSearchIntervals(initial);
+    setActiveSearchIntervals(getGameIntervals(gameType));
   }, [gameType]);
-
-  const intervalErrors = useMemo(() => {
-    return multiplierIntervals.map(interval => {
-      const isMinNegative = interval.min < 0 || isNaN(interval.min);
-      const isMaxNegative = interval.max !== null && (interval.max < 0 || isNaN(interval.max));
-      const isMaxLessThanMin = interval.max !== null && !isNaN(interval.min) && !isNaN(interval.max) && interval.max < interval.min;
-      
-      let errorMsg = '';
-      if (isMinNegative || isMaxNegative) {
-        errorMsg = '數值不可為負數';
-      } else if (isMaxLessThanMin) {
-        errorMsg = `MAX (${interval.max}) 不能小於 MIN (${interval.min})`;
-      }
-      
-      return {
-        id: interval.id,
-        isMinNegative,
-        isMaxNegative,
-        isMaxLessThanMin,
-        hasError: Boolean(errorMsg),
-        errorMsg
-      };
-    });
-  }, [multiplierIntervals]);
-
-  const hasAnyIntervalError = useMemo(() => {
-    return intervalErrors.some(e => e.hasError);
-  }, [intervalErrors]);
 
   const { isSearching, combinations } = useRngSearch(
     selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther, specialSymbolConfig, customPaylines, isFreeGame, bet, activeSearchIntervals, stripSets
@@ -307,7 +276,6 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
     [displayGridOther, winsOther, currentPaytable, gameType, topTrackerOther, customPaylines, selectedSymbol],
   );
 
-  const [noWinCollapsed, setNoWinCollapsed] = useState(false);
   const [pulseToggle, setPulseToggle] = useState(false);
   const [selectedCombIndex, setSelectedCombIndex] = useState(0);
   const [isManualEdited, setIsManualEdited] = useState(false);
@@ -629,153 +597,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
         )}
       </div>
       <div className="gen-intervals min-w-0 empty:hidden">
-        {selectedSymbol === 'WIN_MULTIPLIER' && (
-          <div className="w-full flex flex-col bg-dashboard-card p-4 rounded-xl border border-dashboard-border">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-gray-700/50 pb-2 mb-3 gap-2">
-              <span className="text-sm text-dashboard-text-secondary font-bold pl-1">
-                大獎區間設定 (倍率 = 總贏分 / BET)
-              </span>
-              <button
-                onClick={() => {
-                  setMultiplierIntervals(prev => [
-                    ...prev,
-                    { id: Date.now().toString(), name: 'New Win', min: 0, max: null }
-                  ]);
-                  setActiveSearchIntervals([]);
-                }}
-                className="px-2 py-1 text-xs font-bold rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 hover:bg-purple-500/30 transition-colors"
-              >
-                + 新增區間
-              </button>
-            </div>
-            
-            <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1 mb-3">
-              {multiplierIntervals.map((interval, index) => {
-                const errorInfo = intervalErrors[index];
-                return (
-                  <div
-                    key={interval.id}
-                    className={`flex flex-col gap-1.5 p-2.5 rounded border transition-colors ${
-                      errorInfo?.hasError
-                        ? 'bg-red-950/30 border-red-500/80 shadow-[0_0_8px_rgba(239,68,68,0.2)]'
-                        : 'bg-dashboard-card border-gray-700/50 hover:border-gray-600'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={interval.name}
-                        onChange={(e) => {
-                          const newIntervals = [...multiplierIntervals];
-                          newIntervals[index].name = e.target.value;
-                          setMultiplierIntervals(newIntervals);
-                          setActiveSearchIntervals([]);
-                        }}
-                        placeholder="區間名稱"
-                        className="flex-1 bg-dashboard-bg border border-gray-600 text-dashboard-text-primary rounded px-2 py-1 outline-none focus:border-dashboard-accent text-sm"
-                      />
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-gray-400">Min:</span>
-                        <input
-                          type="number"
-                          min={0}
-                          value={isNaN(interval.min) ? '' : interval.min}
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            // 防呆：不可為負數，若輸入負數自動修正為 0
-                            const num = raw === '' ? 0 : Number(raw);
-                            const sanitized = Math.max(0, isNaN(num) ? 0 : num);
-                            const newIntervals = [...multiplierIntervals];
-                            newIntervals[index].min = sanitized;
-                            setMultiplierIntervals(newIntervals);
-                            setActiveSearchIntervals([]);
-                          }}
-                          className={`w-20 bg-dashboard-bg border ${
-                            errorInfo?.isMinNegative || errorInfo?.isMaxLessThanMin
-                              ? 'border-red-500 text-red-300 focus:border-red-400'
-                              : 'border-gray-600 text-dashboard-text-primary focus:border-dashboard-accent'
-                          } rounded px-2 py-1 outline-none text-sm`}
-                        />
-                      </div>
-                      <span className="text-xs text-gray-400">~</span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-gray-400">Max:</span>
-                        <input
-                          type="number"
-                          min={0}
-                          value={interval.max === null || isNaN(interval.max) ? '' : interval.max}
-                          onChange={(e) => {
-                            const raw = e.target.value;
-                            // 防呆：不可為負數，空值為無上限
-                            let sanitized: number | null = null;
-                            if (raw !== '') {
-                              const num = Number(raw);
-                              sanitized = Math.max(0, isNaN(num) ? 0 : num);
-                            }
-                            const newIntervals = [...multiplierIntervals];
-                            newIntervals[index].max = sanitized;
-                            setMultiplierIntervals(newIntervals);
-                            setActiveSearchIntervals([]);
-                          }}
-                          placeholder="∞"
-                          className={`w-20 bg-dashboard-bg border ${
-                            errorInfo?.isMaxNegative || errorInfo?.isMaxLessThanMin
-                              ? 'border-red-500 text-red-300 focus:border-red-400'
-                              : 'border-gray-600 text-dashboard-text-primary focus:border-dashboard-accent'
-                          } rounded px-2 py-1 outline-none text-sm`}
-                        />
-                      </div>
-                      <button
-                        onClick={() => {
-                          const newIntervals = [...multiplierIntervals];
-                          newIntervals.splice(index, 1);
-                          setMultiplierIntervals(newIntervals);
-                          setActiveSearchIntervals([]);
-                        }}
-                        className="ml-1 p-1 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                        title="刪除區間"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                      </button>
-                    </div>
-
-                    {errorInfo?.hasError && (
-                      <div className="flex items-center gap-1.5 text-xs text-red-400 font-bold px-1 animate-pulse">
-                        <svg className="w-3.5 h-3.5 text-red-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                        <span>{errorInfo.errorMsg}</span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <button
-              disabled={isSearching || multiplierIntervals.length === 0 || hasAnyIntervalError}
-              onClick={() => {
-                if (hasAnyIntervalError) return;
-                setActiveSearchIntervals([...multiplierIntervals]);
-              }}
-              className="w-full py-2 bg-dashboard-accent/20 text-dashboard-accent border border-dashboard-accent/50 rounded font-bold text-sm hover:bg-dashboard-accent/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-sm"
-            >
-              {isSearching ? (
-                <>
-                  <svg className="animate-spin h-4 w-4 text-dashboard-accent" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  搜尋大獎區間中...
-                </>
-              ) : hasAnyIntervalError ? (
-                '⚠️ 請修正無效區間 (MAX 需 ≥ MIN 且不可為負數)'
-              ) : (
-                '產生對應大獎 RNG'
-              )}
-            </button>
-          </div>
-        )}
+        <GeneratorIntervalsEditor gameType={gameType} visible={selectedSymbol === 'WIN_MULTIPLIER'} isSearching={isSearching} onApply={setActiveSearchIntervals} />
       </div>
       <div className="gen-list @container min-w-0 empty:hidden">
         <div className="w-full flex flex-col bg-dashboard-card p-4 rounded-xl border border-dashboard-border">
@@ -1346,118 +1168,10 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
         </div>
       </div>
       <div className="gen-eval min-w-0 empty:hidden">
-        {/* Evaluation Output */}
-        <div className="w-full flex flex-col bg-dashboard-card p-4 rounded-xl border border-dashboard-border">
-          <span className="text-sm text-dashboard-text-secondary font-bold border-b border-gray-700/50 pb-2 mb-3">連線結果</span>
-
-          {winsOther.length > 0 ? (() => {
-            const winHits   = winsOther.filter(w => w.totalWin > 0);
-            const noWinHits = winsOther.filter(w => w.totalWin === 0);
-            return (
-              <div className="flex gap-3 items-start">
-                {/* 左欄：有贏分 */}
-                <div className="flex-1 flex flex-col gap-2 min-w-0">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="w-2 h-2 rounded-full bg-dashboard-accent shrink-0" />
-                    <span className="text-xs font-bold text-dashboard-accent">有贏分 ({winHits.length})</span>
-                  </div>
-                  {winHits.length > 0 ? winHits.map((w, idx) => {
-                    const isInterference = (selectedSymbol === 'WIN_MULTIPLIER' || selectedSymbol === 'COMBO')
-                      ? false
-                      : selectedSymbol === 'B1/B2' 
-                      ? (w.symbolId !== 'B1' && w.symbolId !== 'B2')
-                      : w.symbolId !== selectedSymbol;
-                    return (
-                      <div
-                        key={idx}
-                        className={`flex flex-col px-3 py-2 rounded border transition-all ${
-                          isInterference
-                            ? `bg-red-950/20 border-red-500/40 ${pulseClass}`
-                            : 'bg-dashboard-card border-dashboard-accent/30'
-                        }`}
-                      >
-                        <span className={`text-xs font-mono font-bold truncate ${isInterference ? 'text-red-400' : 'text-yellow-400'}`}>
-                          {w.symbolId} {w.matchCount > 0 && (getTraits(gameType).family === 'payanywhere' ? `個數 ${w.matchCount}` : getTraits(gameType).family === 'line' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`)}
-                          {isInterference && <span className="ml-1 text-[10px] opacity-80"> (干擾)</span>}
-                        </span>
-                        <span className={`text-xs font-mono mt-0.5 ${isInterference ? 'text-red-300' : 'text-gray-300'}`}>
-                          {w.isJackpot ? `${w.ways} × ${w.payout} × ${bet}` : `${formatAmount(betMultiplier)} × ${w.payout}${w.ways > 1 ? ` × ${w.ways}` : ''}${w.multiplier ? ` × ${w.multiplier}` : ''}${baseMultiplier > 1 ? ` × ${baseMultiplier}` : ''}`} = <span className={`font-bold ${isInterference ? 'text-red-400' : 'text-dashboard-accent'}`}>{formatAmount(w.isJackpot ? w.totalWin : w.totalWin * betMultiplier * baseMultiplier)}</span>
-                        </span>
-                      </div>
-                    );
-                  }) : (
-                    <div className="py-3 text-center text-xs text-gray-600">—</div>
-                  )}
-                  {winHits.length > 0 && (() => {
-                    const finalMultiplier = boardBallMultiplier(gameType, displayGridOther);
-                    const globalMultiplier = finalMultiplier > 1 ? finalMultiplier : 0;
-                    const baseTotalWin = winHits.reduce((sum, w) => sum + (w.isJackpot ? w.totalWin : w.totalWin * betMultiplier * baseMultiplier), 0);
-                    const grandTotalWin = baseTotalWin * finalMultiplier;
-                    
-                    return (
-                      <div className="mt-1 pt-2 border-t border-dashboard-accent/20 flex flex-col gap-1 px-1">
-                        <div className="flex justify-between items-center">
-                          <span className="text-gray-400 font-bold text-xs">Base Win</span>
-                          <span className="text-gray-300 font-bold text-sm">{formatAmount(baseTotalWin)}</span>
-                        </div>
-                        {globalMultiplier > 0 && (
-                          <div className="flex justify-between items-center">
-                            <span className="text-dashboard-accent font-bold text-xs">Total Multiplier</span>
-                            <span className="text-dashboard-accent font-bold text-sm">x{globalMultiplier}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-center mt-1">
-                          <span className="text-dashboard-text-primary font-bold text-sm">Total Win</span>
-                          <span className="text-dashboard-accent font-bold text-lg">{formatAmount(grandTotalWin)}</span>
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-
-                {/* 分隔線 */}
-                <div className="w-px self-stretch bg-gray-700/50 shrink-0" />
-
-                {/* 右欄：無贏分（可摺疊）*/}
-                <div className="flex-1 flex flex-col gap-2 min-w-0">
-                  <button
-                    onClick={() => setNoWinCollapsed(v => !v)}
-                    className="flex items-center gap-1.5 mb-1 w-full text-left group cursor-pointer"
-                  >
-                    <span className="w-2 h-2 rounded-full bg-gray-500 shrink-0" />
-                    <span className="text-xs font-bold text-gray-400 group-hover:text-gray-300 transition-colors flex-1">
-                      無贏分 ({noWinHits.length})
-                    </span>
-                    <svg
-                      className={`w-3 h-3 text-gray-500 transition-transform duration-200 shrink-0 ${noWinCollapsed ? '-rotate-90' : 'rotate-0'}`}
-                      fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  {!noWinCollapsed && (
-                    noWinHits.length > 0 ? noWinHits.map((w, idx) => (
-                      <div key={idx} className="flex flex-col bg-dashboard-raised px-3 py-2 rounded border border-gray-700/30">
-                        <span className="text-xs font-mono font-bold truncate text-gray-400">
-                          {w.symbolId} {getTraits(gameType).family === 'payanywhere' ? `個數 ${w.matchCount}` : getTraits(gameType).family === 'line' ? `線 ${(w.lineIndex ?? 0) + 1} 連線 ${w.matchCount}` : `連線 ${w.matchCount}`}
-                        </span>
-                        <span className="text-xs text-gray-600 font-mono mt-0.5">
-                          payout = 0{w.ways > 1 ? ` × ${w.ways} ways` : ''}
-                        </span>
-                      </div>
-                    )) : (
-                      <div className="py-3 text-center text-xs text-gray-600">—</div>
-                    )
-                  )}
-                </div>
-              </div>
-            );
-          })() : (
-            <div className="py-4 text-center">
-              <span className="text-sm text-gray-400 font-bold">沒有連線</span>
-            </div>
-          )}
-        </div>
+        <GeneratorEvalPanel
+          wins={winsOther} selectedSymbol={selectedSymbol} gameType={gameType} bet={bet}
+          betMultiplier={betMultiplier} baseMultiplier={baseMultiplier} displayGrid={displayGridOther} pulseClass={pulseClass}
+        />
       </div>
       <div className="gen-special min-w-0 empty:hidden">
       {/* Right Column: Special Symbol & Multiplier Config */}
