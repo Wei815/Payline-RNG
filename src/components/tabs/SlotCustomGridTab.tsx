@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Trash2, RotateCcw } from 'lucide-react';
 import type { GameType, PaytableRule, GameConfig } from '../../types';
 import { useGameStore, extractSpecialConfigFromGrid } from '../../store/useGameStore';
-import { evaluateGrid } from '../../utils/evaluation';
+import { displayWin, evaluateGrid } from '../../utils/evaluation';
 import { formatAmount } from '../../utils/formatters';
 import { calculateSVGPaths } from '../../utils/svgPaths';
 import { getWinningPositions } from '../../utils/evaluation';
@@ -1054,7 +1054,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
                 {w.symbolId} {w.matchCount > 0 && `連線 ${w.matchCount}`}
               </span>
               <span className="text-[10px] font-mono text-gray-300 mt-0.5">
-                {w.isJackpot ? `${w.ways} × ${w.payout} × ${effectiveBet}` : `payout: ${w.payout}${w.multiplier ? ` × ${w.multiplier}` : ''}`} = <span className="font-bold text-dashboard-accent">{formatAmount(w.isJackpot ? w.totalWin : w.totalWin * betMultiplier)}</span>
+                {w.isJackpot ? `${w.ways} × ${w.payout} × ${effectiveBet}` : `payout: ${w.payout}${w.multiplier ? ` × ${w.multiplier}` : ''}`} = <span className="font-bold text-dashboard-accent">{formatAmount(displayWin(w, betMultiplier))}</span>
               </span>
             </div>
           )) : (
@@ -1072,7 +1072,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
               });
             });
             const finalMultiplier = globalMultiplier > 0 ? globalMultiplier : 1;
-            const baseTotalWin = wins.reduce((sum, w) => sum + (w.isJackpot ? w.totalWin : w.totalWin * betMultiplier), 0);
+            const baseTotalWin = wins.reduce((sum, w) => sum + displayWin(w, betMultiplier), 0);
             const grandTotalWin = baseTotalWin * finalMultiplier;
             
             return (

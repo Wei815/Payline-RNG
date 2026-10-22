@@ -52,10 +52,11 @@ export class ScatterStrategy implements EvaluationStrategy {
 
       if (payout > 0 || scatterCount >= autoWinCount || includeZeroPayout) {
         let totalWin = payout;
-        if (sym === 'S1' || sym === 'S2' || sym === 'B1' || sym === 'B2') {
+        const betScaled = sym === 'S1' || sym === 'S2' || sym === 'B1' || sym === 'B2';
+        if (betScaled) {
           totalWin = payout * (gameConfig.effectiveBet || 1);
         }
-        return [{ symbolId: sym, matchCount: scatterCount, ways: 1, payout, totalWin }];
+        return [{ symbolId: sym, matchCount: scatterCount, ways: 1, payout, totalWin, ...(betScaled ? { betScaled: true } : {}) }];
       }
     }
 

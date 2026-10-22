@@ -40,7 +40,8 @@ export class LineGameStrategy implements EvaluationStrategy {
         const payout = rule.payouts[`match${lookupMatch}` as keyof typeof rule.payouts] || 0;
         if (payout > 0 || includeZeroPayout) {
           let totalWin = payout;
-          if (sym === 'B1' || sym === 'B2') {
+          const betScaled = sym === 'B1' || sym === 'B2';
+          if (betScaled) {
             totalWin = payout * (gameConfig.effectiveBet || 1);
           }
 
@@ -73,7 +74,8 @@ export class LineGameStrategy implements EvaluationStrategy {
             payout,
             totalWin,
             lineIndex: lineIdx,
-            multiplier: goldFrameMultipliers > 0 ? goldFrameMultipliers : undefined
+            multiplier: goldFrameMultipliers > 0 ? goldFrameMultipliers : undefined,
+            ...(betScaled ? { betScaled: true } : {})
           });
         }
       }

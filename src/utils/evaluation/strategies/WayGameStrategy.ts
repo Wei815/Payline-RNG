@@ -41,7 +41,8 @@ export class WayGameStrategy implements EvaluationStrategy {
       const payout = rule.payouts[`match${lookupMatch}` as keyof typeof rule.payouts] || 0;
       if (payout > 0 || currentMatch >= 3 || includeZeroPayout) {
         let totalWin = payout * currentWays;
-        if (sym === 'B1' || sym === 'B2') {
+        const betScaled = sym === 'B1' || sym === 'B2';
+        if (betScaled) {
           totalWin = payout * currentWays * (gameConfig.effectiveBet || 1);
         }
         return [{
@@ -49,7 +50,8 @@ export class WayGameStrategy implements EvaluationStrategy {
           matchCount: currentMatch,
           ways: currentWays,
           payout,
-          totalWin
+          totalWin,
+          ...(betScaled ? { betScaled: true } : {})
         }];
       }
     }
