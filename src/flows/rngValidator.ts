@@ -5,7 +5,7 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { GameType, PaytableRule } from '../types';
-import { evaluateGrid, getWinningPositions } from '../utils/evaluation';
+import { evaluateGrid, getWinningPositions, hasEliminatedCells } from '../utils/evaluation';
 import { findTraits } from '../games/registry';
 import { GameRegistry } from '../core/GameRegistry';
 import { isMathIdRng } from './rngFormat';
@@ -161,7 +161,8 @@ export function parseQaSteps(p: RngValidatorParams): ValidatorStep[] {
       jackpots: gameConfig.jackpots
     }];
 
-    let hasWins = coords.size > 0;
+    // 只有 S1 高亮標記時不算中獎，不可觸發掉落
+    let hasWins = hasEliminatedCells(coords);
     let dropCount = 0;
     let lastGrid = currentGrid;
     let lastCoords = coords;
@@ -236,7 +237,7 @@ export function parseQaSteps(p: RngValidatorParams): ValidatorStep[] {
 
         lastGrid = nextGrid;
         lastCoords = coordsNext;
-        hasWins = coordsNext.size > 0;
+        hasWins = hasEliminatedCells(coordsNext);
       }
     }
 

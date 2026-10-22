@@ -1,5 +1,6 @@
 import { BaseWayGame } from '../base/BaseWayGame';
 import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
+import { isEliminatedCell } from '../../utils/evaluation';
 
 export class QinGame extends BaseWayGame {
   readonly id: GameType = 'waygame_qin';
@@ -66,7 +67,7 @@ export class QinGame extends BaseWayGame {
         const symId = currentGrid[c][r];
         const isUnremovable = this.isSymbolUnremovable(symId, isFreeGame);
 
-        if (!winningCoords.has(`${c}-${r}`) || isUnremovable) {
+        if (!isEliminatedCell(winningCoords, `${c}-${r}`) || isUnremovable) {
           keptSymbols.push(symId);
         } else if (this.isGoldSymbol(symId)) {
           // 在消除名單內，且是金框符號，轉為 WX 並保留

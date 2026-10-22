@@ -14,7 +14,6 @@ const F09 = 'F09 決戰賽特2 大獎區間找不到';
 const F10 = 'F10 贏分線路一覽：30 線遊戲滿線幾乎必然與其他線重疊（結構性）／DFS 漏解';
 const F11 = 'F11 諸神 贏分線路一覽：MathID 填充符號造成其他線中獎';
 const F13 = 'F13 驗證工具：羅馬未使用腳本第 2 行遞補，自行模擬掉落';
-const F14 = 'F14 驗證工具的掉落模型（往下掉）與產生器（原位替換）不同';
 const F15 = 'F15 線遊戲反向搜尋偶爾只回傳有干擾的解（Way 類已改為建構式搜尋修正）';
 const F16 = 'F16 皇家金象「×1 + WX」（2 連線含百搭）找不到';
 
@@ -48,7 +47,6 @@ export const LINE_VIEWER_KNOWN: KnownIssues = {
 export const VALIDATOR_KNOWN: KnownIssues = {
   'linegame_roma | V1 驗證工具贏分 = 規則重算': { count: 6, finding: F13 },
   'linegame_roma | V2 羅馬遞補應使用腳本下一行': { count: 18, finding: F13 },
-  'waygame_qin | V1 驗證工具贏分 = 規則重算': { count: 1, finding: F14 },
 };
 
 export const SNIPPET_KNOWN: KnownIssues = {

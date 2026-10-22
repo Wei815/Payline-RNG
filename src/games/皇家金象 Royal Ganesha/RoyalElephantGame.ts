@@ -1,6 +1,7 @@
 import { BaseWayGame } from '../base/BaseWayGame';
 import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
 import { getBaseSymbol } from '../../utils/evaluation/GameConstants';
+import { isEliminatedCell } from '../../utils/evaluation';
 
 export class RoyalElephantGame extends BaseWayGame {
   readonly id: GameType = 'waygame_elephant';
@@ -78,7 +79,7 @@ export class RoyalElephantGame extends BaseWayGame {
         const symId = currentGrid[c][r];
         const isUnremovable = this.isSymbolUnremovable(symId, isFreeGame);
 
-        if (!winningCoords.has(`${c}-${r}`) || isUnremovable) {
+        if (!isEliminatedCell(winningCoords, `${c}-${r}`) || isUnremovable) {
           keptSymbols.push(symId);
         } else if (this.isGoldSymbol(symId)) {
           // 滾輪表設定決定了哪一軸有金框，因此不需檢查 colIndex

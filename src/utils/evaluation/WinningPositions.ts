@@ -5,6 +5,20 @@ import { getBaseSymbol } from './GameConstants';
 import { GameRegistry } from '../../core/GameRegistry';
 import { getFamily } from '../../games/registry';
 
+/** S1 不論是否中獎都會以此索引標記（僅供高亮），不代表中獎 */
+export const HIGHLIGHT_ONLY_INDEX = 999;
+
+/** 該格是否因中獎而需消除（只有 HIGHLIGHT_ONLY_INDEX 的格子不算） */
+export function isEliminatedCell(winningCoords: Map<string, number[]>, key: string): boolean {
+  return !!winningCoords.get(key)?.some(idx => idx !== HIGHLIGHT_ONLY_INDEX);
+}
+
+/** 盤面上是否有任何需要消除的中獎格 */
+export function hasEliminatedCells(winningCoords: Map<string, number[]>): boolean {
+  for (const key of winningCoords.keys()) if (isEliminatedCell(winningCoords, key)) return true;
+  return false;
+}
+
 export function getWinningPositions(
   grid: string[][],
   wins: WinResult[],

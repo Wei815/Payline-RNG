@@ -5,7 +5,7 @@ import type {
   GameType,
   MultiplierInterval,
 } from "../../types";
-import type { WinResult } from "../../utils/evaluation";
+import { isEliminatedCell, type WinResult } from "../../utils/evaluation";
 import type { IGameEnvironment } from "./IGameEnvironment";
 import { RngSearchEngine } from "./RngSearchEngine";
 
@@ -133,7 +133,7 @@ export abstract class AbstractGame implements IGameEnvironment {
         const symId = currentGrid[c][r];
         const isUnremovable = this.isSymbolUnremovable(symId, isFreeGame);
 
-        if (!winningCoords.has(`${c}-${r}`) || isUnremovable) {
+        if (!isEliminatedCell(winningCoords, `${c}-${r}`) || isUnremovable) {
           keptSymbols.push(symId);
         }
       }

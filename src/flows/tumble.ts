@@ -5,7 +5,7 @@
  * 狀態改為參數與回傳值。TumbleViewerTab 直接呼叫此檔。
  */
 import type { GameType, PaytableRule } from '../types';
-import { evaluateGrid, getWinningPositions, type WinResult } from '../utils/evaluation';
+import { evaluateGrid, getWinningPositions, isEliminatedCell, type WinResult } from '../utils/evaluation';
 import { GameRegistry } from '../core/GameRegistry';
 
 /** 幸運球升級階梯（與 TumbleViewerTab 相同） */
@@ -158,7 +158,7 @@ export function tumbleOnce(env: TumbleEnv, state: TumbleState): TumbleState {
   const nextGrid = dropped.map((col, c) => {
     // 依原盤面順序取出留下的格子（與 calculateNextDropGrid 保留順序一致）
     const keptIds = state.currentGridIds[c].filter((_, r) =>
-      !winningCoords.has(`${c}-${r}`) || game.isSymbolUnremovable?.(upgradedGridSymbols[c][r], isFreeGame));
+      !isEliminatedCell(winningCoords, `${c}-${r}`) || game.isSymbolUnremovable?.(upgradedGridSymbols[c][r], isFreeGame));
     let k = 0;
     return col.map(cell => {
       if (cell.startsWith(NEW)) return cell.slice(NEW.length);
