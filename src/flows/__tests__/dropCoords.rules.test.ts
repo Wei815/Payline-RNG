@@ -79,3 +79,31 @@ describe('驗證工具使用遊戲自己的中獎線', () => {
     expect(got).toEqual(found!.expected);
   });
 });
+
+describe('驗證工具解讀 ClassIDs', () => {
+  test('諸神：ClassIDs 為 WY 的 (a,b,z)，不可當成金框座標', async () => {
+    const fx = buildFixture('linegame_gods', await loadTemplate('God of Wars'));
+    const idOf = (sym: string) => Number(String(fx.paytable.find(p => p.symbolId === sym)!.mathId).split(',')[0]);
+    const fillers = fx.paytable
+      .filter(p => !p.isWild && !p.isScatter && !p.symbolId.startsWith('W') && p.symbolId !== 'M1' && p.mathId !== undefined)
+      .map(p => p.symbolId);
+    // 第 0、2 軸全是 M1，第 1 軸全是 WY（展開為 WX），其餘軸放不重複的填充符號
+    let f = 0;
+    const grid = fx.rowCounts.map((rows, c) => Array.from({ length: rows }, () =>
+      c === 0 || c === 2 ? 'M1' : c === 1 ? 'WY' : fillers[f++ % fillers.length]));
+    const rng = grid.flat().map(idOf);
+    const validate = (classIds: number[]) => parseQaSteps({
+      jsonInput: JSON.stringify({ QA: [{ RNGs: [rng], ClassIDs: [classIds] }] }),
+      gameType: fx.gameType, reelCount: fx.reelCount, rowCounts: fx.rowCounts, currentStrips: fx.strips,
+      currentStripSets: [], currentFreeStripSets: [], currentPaytable: fx.paytable, customPaylines: fx.paylines,
+      isFreeGame: true, bet: 1, betMultiplier: 1,
+    })[0].totalWin;
+
+    const wy = { 1: { a: 3, b: 10, z: 0 as const } };
+    const expected = fx.game.evaluate(grid, fx.paytable, { ...makeConfig(fx), wyConfigs: wy }, fx.paylines, false)
+      .reduce((s, w) => s + w.totalWin, 0);
+    expect(expected).toBeGreaterThan(0);
+    expect(validate([3, 10, 0])).toBe(expected);
+    expect(validate([3, 10, 0])).toBe(validate([1, 10, 0]) * 3);
+  });
+});

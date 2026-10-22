@@ -3,6 +3,7 @@ import type { PaytableRule, ReelStrips, ReelStripsList, SpecialSymbolConfig } fr
 import { useMachineStore } from './useMachineStore';
 import type { Snippet } from './useSnippetStore';
 import { isMathIdRng } from '../flows/rngFormat';
+import { decodeCoordinateClassIds, decodeWyClassIds } from '../flows/classIds';
 import { findTraits } from '../games/registry';
 
 export interface GameState {
@@ -245,26 +246,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (classIdMode === 'wyConfig') {
       // classId 僅用於 WY 設定 (A, B, Z)，需在盤面產生後才解析
     } else if (classIdMode === 'coordinate' && flatClassIds.length > 0) {
-      const poolIndexToMultiplier: Record<number, number> = {
-        0: 2, 1: 3, 2: 4, 3: 5, 4: 6, 5: 7, 6: 8, 7: 9, 8: 10, 9: 25, 10: 50, 11: 100
-      };
-      const idToType: Record<number, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'> = {
-        12: 'MINI', 13: 'MAJOR', 14: 'MEGA', 15: 'MAXWIN'
-      };
-
-      for (let i = 0; i < flatClassIds.length; i += 3) {
-        const c = flatClassIds[i];
-        const r = flatClassIds[i+1];
-        const v = flatClassIds[i+2];
-        if (v !== undefined) {
-          const key = `${c}-${r}`;
-          if (v >= 0 && v <= 11) {
-            newGoldFrames[key] = poolIndexToMultiplier[v];
-          } else if (v >= 12 && v <= 15) {
-            newJackpots[key] = idToType[v];
-          }
-        }
-      }
+      const decoded = decodeCoordinateClassIds(flatClassIds);
+      Object.assign(newGoldFrames, decoded.goldFrames);
+      Object.assign(newJackpots, decoded.jackpots);
     }
     
     const reelCount = store.reelCount;
@@ -305,18 +289,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     
     // 解析 WY 設定 (A, B, Z)
     if (classIdMode === 'wyConfig' && flatClassIds.length > 0) {
-      let wyClassIdIndex = 0;
-      for (let c = 0; c < reelCount; c++) {
-        const hasWy = newGrid[c].includes('WY');
-        if (hasWy && wyClassIdIndex + 2 < flatClassIds.length) {
-           newWyConfigs[c] = {
-             a: Number(flatClassIds[wyClassIdIndex]) || 2,
-             b: Number(flatClassIds[wyClassIdIndex+1]) || 10,
-             z: Number(flatClassIds[wyClassIdIndex+2]) === 1 ? 1 : 0
-           };
-           wyClassIdIndex += 3;
-        }
-      }
+      Object.assign(newWyConfigs, decodeWyClassIds(flatClassIds, newGrid));
     }
     
     let newTopTracker: string[] = [];

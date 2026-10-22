@@ -9,6 +9,7 @@ import { evaluateGrid, getWinningPositions, hasEliminatedCells } from '../utils/
 import { findTraits } from '../games/registry';
 import { GameRegistry } from '../core/GameRegistry';
 import { isMathIdRng } from './rngFormat';
+import { decodeCoordinateClassIds, decodeWyClassIds } from './classIds';
 
 export interface RngValidatorParams {
   jsonInput: string;
@@ -61,7 +62,8 @@ export function parseQaSteps(p: RngValidatorParams): ValidatorStep[] {
     }
   });
 
-  const isCoordinateClassId = (findTraits(gameType)?.snippetClassIds ?? 'symbolMultiplier') !== 'symbolMultiplier';
+  const classIdMode = findTraits(gameType)?.snippetClassIds ?? 'symbolMultiplier';
+  const isCoordinateClassId = classIdMode !== 'symbolMultiplier';
 
   return rngSteps.map((rngArray, stepIndex) => {
     const isMathId = isMathIdRng(gameType, rngArray, reelCount);
@@ -116,30 +118,12 @@ export function parseQaSteps(p: RngValidatorParams): ValidatorStep[] {
       effectiveBet: bet,
     };
 
-    if (isCoordinateClassId && flatClassIds.length > 0) {
-      const newGoldFrames: Record<string, number> = {};
-      const newJackpots: Record<string, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'> = {};
-      const poolIndexToMultiplier: Record<number, number> = {
-        0: 2, 1: 3, 2: 4, 3: 5, 4: 6, 5: 7, 6: 8, 7: 9, 8: 10, 9: 25, 10: 50, 11: 100
-      };
-      const idToType: Record<number, 'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN'> = {
-        12: 'MINI', 13: 'MAJOR', 14: 'MEGA', 15: 'MAXWIN'
-      };
-      for (let i = 0; i < flatClassIds.length; i += 3) {
-        const c = flatClassIds[i];
-        const r = flatClassIds[i + 1];
-        const v = flatClassIds[i + 2];
-        if (v !== undefined) {
-          const key = `${c}-${r}`;
-          if (v >= 0 && v <= 11) {
-            newGoldFrames[key] = poolIndexToMultiplier[v];
-          } else if (v >= 12 && v <= 15) {
-            newJackpots[key] = idToType[v];
-          }
-        }
-      }
-      gameConfig.goldFrames = newGoldFrames;
-      gameConfig.jackpots = newJackpots;
+    if (classIdMode === 'coordinate' && flatClassIds.length > 0) {
+      const { goldFrames, jackpots } = decodeCoordinateClassIds(flatClassIds);
+      gameConfig.goldFrames = goldFrames;
+      gameConfig.jackpots = jackpots;
+    } else if (classIdMode === 'wyConfig' && flatClassIds.length > 0) {
+      gameConfig.wyConfigs = decodeWyClassIds(flatClassIds, currentGrid);
     }
 
     const evWins = evaluateGrid(currentGrid, currentPaytable, gameConfig, undefined, false);
