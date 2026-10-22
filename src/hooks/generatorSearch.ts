@@ -130,8 +130,8 @@ export async function runGeneratorSearch(params: GeneratorSearchParams): Promise
     // 先跑所有「純連線」（W=0，由少到多），再跑所有「+WX」（W=1，由少到多）
     // 這樣清單左欄是純連線（上到下），右欄是含WX（上到下）
     const isTargetWild = selectedSymbol.toUpperCase() === 'WX' || selectedSymbol.toUpperCase() === 'WILD' || selectedSymbol.toUpperCase() === 'WW';
-    // Pay Anywhere 的百搭不參與計數，不產生「+WX」組合
-    const maxW = isTargetWild || getTraits(gameType).family === 'payanywhere' ? 0 : 1;
+    // 百搭不代替 Scatter（ScatterStrategy 不計百搭）、Pay Anywhere 的百搭不參與計數：都不產生「+WX」組合
+    const maxW = isTargetWild || isSelScatter || getTraits(gameType).family === 'payanywhere' ? 0 : 1;
 
     // Pay Anywhere：中獎看全盤個數是否達門檻（match3/4/5 = 8/10/12 個），不是連線數；百搭不參與計數
     const payAnywhereTiers = isTargetWild ? null : payAnywhereTierCounts;

@@ -4,8 +4,7 @@
  */
 import type { KnownIssues } from './knownIssues';
 
-const F02 = 'F02 秦皇：Scatter 目標「S1 × 4 個」找不到（+WX 與一般連線已於建構式搜尋修正）';
-const F03 = 'F03 WX 當目標：通用 Line / Way 無法產生；「B1 + WX」不可能卻仍列出';
+const F03 = 'F03 WX 當目標：通用 Line / Way 無法產生（Scatter + WX 已不再列出）';
 const F04 = 'F04 搜尋引擎不把「百搭自成連線」算干擾';
 const F05 = 'F05 奢華 / 諸神 MathID 產生器以 WX 為目標時盤面錯誤（變成 M1 連線、多出干擾）';
 const F06 = 'F06 2 連線（0 賠率）同時出現在多組格子';
@@ -18,13 +17,12 @@ const F15 = 'F15 線遊戲反向搜尋偶爾只回傳有干擾的解（Way 類�
 const F16 = 'F16 皇家金象「×1 + WX」（2 連線含百搭）找不到';
 
 export const GENERATOR_KNOWN: KnownIssues = {
-  'waygame_qin | N0 找不到組合（無可行滾輪位置）': { count: 1, finding: F02 },
-  'linegame | N0 找不到組合（無可行滾輪位置）': { count: 6, finding: F03 },
+  'linegame | N0 找不到組合（無可行滾輪位置）': { count: 5, finding: F03 },
   'linegame | N1 只找到有干擾的組合': { count: 6, finding: F15 },
   'linegame | R3 零干擾': { count: 1, finding: F04 },
   'linegame | R1 恰好一筆目標連線': { count: 4, finding: F06 },
   'linegame_roma | R1 恰好一筆目標連線': { count: 3, finding: F06 },
-  'waygame | N0 找不到組合（無可行滾輪位置）': { count: 6, finding: F03 },
+  'waygame | N0 找不到組合（無可行滾輪位置）': { count: 5, finding: F03 },
   'waygame_elephant | N0 找不到組合（無可行滾輪位置）': { count: 8, finding: F16 },
   'linegame_set2 | R1 恰好一筆目標連線': { count: 2, finding: F05 },
   'linegame_set2 | R2 百搭數量': { count: 2, finding: F05 },

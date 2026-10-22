@@ -336,7 +336,7 @@ exports[`runGeneratorSearch 黃金樣本 > waygame 1`] = `
     "{"name":"4 Combo","length":4,"wildCount":0,"rng":[12,22,6,6,41],"isInterfered":false,"hasS1Drop":false,"allRngs":[[12,22,6,6,41]]}",
     "{"name":"5 Combo","length":5,"wildCount":0,"rng":[12,31,39,31,15],"isInterfered":false,"hasS1Drop":false,"allRngs":[[12,31,39,31,15]]}",
     "{"name":"6 Combo","length":6,"wildCount":0,"rng":[10,8,2,14,2],"isInterfered":false,"hasS1Drop":false,"allRngs":[[10,8,2,14,2]]}",
-    "{"name":"7 Combo","length":7,"wildCount":0,"rng":[35,32,41,29,25],"isInterfered":false,"hasS1Drop":false,"allRngs":[[35,32,41,29,25]]}",
+    "{"name":"7 Combo","length":7,"wildCount":0,"rng":[8,37,19,39,3],"isInterfered":false,"hasS1Drop":false,"allRngs":[[8,37,19,39,3]]}",
     "{"name":"8 Combo","length":8,"wildCount":0,"rng":[36,11,4,13,19],"isInterfered":false,"hasS1Drop":false,"allRngs":[[36,11,4,13,19]]}",
     "{"name":"9 Combo","length":9,"wildCount":0,"rng":[5,36,19,29,29],"isInterfered":false,"hasS1Drop":false,"allRngs":[[5,36,19,29,29]]}",
     "{"name":"10 Combo","length":10,"wildCount":0,"rng":[7,37,19,38,18],"isInterfered":false,"hasS1Drop":false,"allRngs":[[7,37,19,38,18]]}",

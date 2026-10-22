@@ -106,13 +106,15 @@ export function getWinningPositions(
     }
   }
 
+  // Scatter / 全盤消除只計算符號本身（ScatterStrategy、PayAnywhereStrategy 都不把百搭算進個數），
+  // 百搭不可標成中獎格（曾經盤面上所有 WX 都隨 Scatter 中獎一起被消除）
   if (scatterPayAnywhereWins.length > 0) {
     for (let col = 0; col < grid.length; col++) {
       for (let row = 0; row < grid[col].length; row++) {
         const cell = grid[col][row];
-        if (scatterPayAnywhereSet.has(cell) || wildSymbols.has(cell)) {
+        if (scatterPayAnywhereSet.has(cell)) {
           for (const sw of scatterPayAnywhereWins) {
-            if (getBaseSymbol(cell) === getBaseSymbol(sw.symbolId) || wildSymbols.has(cell) || (sw.symbolId === 'B1' && cell === 'B2')) {
+            if (getBaseSymbol(cell) === getBaseSymbol(sw.symbolId) || (sw.symbolId === 'B1' && cell === 'B2')) {
               addCoord(`${col}-${row}`, sw.w);
             }
           }
@@ -121,9 +123,9 @@ export function getWinningPositions(
     }
     if (family === 'megaway' && topTracker) {
       topTracker.forEach((cell, idx) => {
-        if (scatterPayAnywhereSet.has(cell) || wildSymbols.has(cell)) {
+        if (scatterPayAnywhereSet.has(cell)) {
           for (const sw of scatterPayAnywhereWins) {
-            if (getBaseSymbol(cell) === getBaseSymbol(sw.symbolId) || wildSymbols.has(cell) || (sw.symbolId === 'B1' && cell === 'B2')) {
+            if (getBaseSymbol(cell) === getBaseSymbol(sw.symbolId) || (sw.symbolId === 'B1' && cell === 'B2')) {
               addCoord(`top-${idx}`, sw.w);
             }
           }
