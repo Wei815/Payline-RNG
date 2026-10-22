@@ -118,59 +118,6 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
     [gridSymbols, wins, currentPaytable, gameType, customPaylines],
   );
 
-  const handleTumble = () => {
-    if (wins.length === 0) return;
-    setGridSymbols(prevGrid => {
-      const newGrid = prevGrid.map((col, c) => {
-        const keptSymbols: string[] = [];
-        for (let r = 0; r < col.length; r++) {
-          if (!winningCoords.has(`${c}-${r}`)) {
-            keptSymbols.push(col[r]);
-          }
-        }
-        // Pad top with '-'
-        const needed = col.length - keptSymbols.length;
-        const padded = Array(needed).fill('-');
-        return [...padded, ...keptSymbols];
-      });
-      return newGrid;
-    });
-    // Remove gold frames and jackpots for removed positions, and shift them down
-    setGoldFrames(prev => {
-      const next: Record<string, number> = {};
-      Object.keys(prev).forEach(key => {
-        const [cStr, rStr] = key.split('-');
-        const c = Number(cStr);
-        const r = Number(rStr);
-        if (!winningCoords.has(key)) {
-          // Calculate new row
-          let shiftCount = 0;
-          for (let row = r + 1; row < gridSymbols[c].length; row++) {
-            if (winningCoords.has(`${c}-${row}`)) shiftCount++;
-          }
-          next[`${c}-${r + shiftCount}`] = prev[key];
-        }
-      });
-      return next;
-    });
-    setJackpots(prev => {
-      const next: Record<string, 'MINI'|'MAJOR'|'MEGA'|'MAXWIN'> = {};
-      Object.keys(prev).forEach(key => {
-        const [cStr, rStr] = key.split('-');
-        const c = Number(cStr);
-        const r = Number(rStr);
-        if (!winningCoords.has(key)) {
-          let shiftCount = 0;
-          for (let row = r + 1; row < gridSymbols[c].length; row++) {
-            if (winningCoords.has(`${c}-${row}`)) shiftCount++;
-          }
-          next[`${c}-${r + shiftCount}`] = prev[key];
-        }
-      });
-      return next;
-    });
-  };
-
   const luckySelectsStr = useMemo(() => {
     if (!getTraits(gameType).wyReels) return '';
     const keys = Object.keys(goldFrames);
