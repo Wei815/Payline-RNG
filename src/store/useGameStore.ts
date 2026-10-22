@@ -337,19 +337,27 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ customGridData: newGrid, activeTab: 'customGrid', goldFrames: newGoldFrames, jackpots: newJackpots, customGridWyConfigs: newWyConfigs, specialSymbolConfig: newSpecialConfig });
   },
 
-  resetGameSpecifics: () => set({
+  resetGameSpecifics: () => set((state) => ({
     currentStripSets: [],
     currentFreeStripSets: [],
     activeStripId: 0,
     goldFrames: {},
     jackpots: {},
+    clovers: {},
     specialSymbolConfig: defaultSpecialSymbolConfig,
-    manualIndices: Array(5).fill(''),
-    manualIndicesOther: Array(5).fill(''),
+    // 依目前軸數重設（兩款 6 軸遊戲互切時軸數不變，固定 5 格會讓第 6 軸變成空白）
+    manualIndices: Array(state.reelCount || 5).fill(''),
+    manualIndicesOther: Array(state.reelCount || 5).fill(''),
     topTracker: Array(4).fill('WX'),
     topTrackerOther: Array(4).fill('WX'),
+    // 自定義盤面的擺盤與特殊設定也屬於上一款遊戲（例如奢華的金框不可帶到諸神）
+    customGridData: state.rowCounts.map(rows => Array(rows).fill('')),
+    customGridGoldFrames: {},
+    customGridJackpots: {},
+    customGridClovers: {},
+    customGridWyConfigs: {},
     isFreeGame: false
-  }),
+  })),
 
   clearProject: () => set({
     isProjectLoaded: false,

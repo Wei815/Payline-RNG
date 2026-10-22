@@ -21,6 +21,29 @@ describe('切換遊戲', () => {
     expect(s.activeStripId).toBe(0);
   });
 
+  test('幸運草、自定義盤面設定不殘留；停點欄位依目前軸數重設', () => {
+    const [from, to] = GAMES.map(g => g.id);
+    useMachineStore.getState().setGameType(from);
+    useGameStore.setState({
+      reelCount: 6, rowCounts: [5, 5, 5, 5, 5, 5],
+      clovers: { '0-0': true },
+      customGridData: [['M1']], customGridGoldFrames: { '0-0': 2 }, customGridJackpots: { '0-1': 'MINI' },
+      customGridClovers: { '1-1': true }, customGridWyConfigs: { 1: { a: 2, b: 10, z: 0 } },
+    } as never);
+
+    useMachineStore.getState().setGameType(to);
+
+    const s = useGameStore.getState();
+    expect(s.clovers).toEqual({});
+    expect(s.customGridGoldFrames).toEqual({});
+    expect(s.customGridJackpots).toEqual({});
+    expect(s.customGridClovers).toEqual({});
+    expect(s.customGridWyConfigs).toEqual({});
+    expect(s.customGridData).toEqual(Array(6).fill(Array(5).fill('')));
+    expect(s.manualIndices).toHaveLength(6);
+    expect(s.manualIndicesOther).toHaveLength(6);
+  });
+
   test('重新選同一款遊戲不清除', () => {
     const id = useMachineStore.getState().gameType;
     useGameStore.setState({ isFreeGame: true });

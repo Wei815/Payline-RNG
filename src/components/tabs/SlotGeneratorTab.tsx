@@ -194,11 +194,13 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
       return Array(rowsForThisCol).fill('-');
     });
 
+    // 幸運草（S1 收集）只屬於有 cloverCollection 的遊戲，其他遊戲即使有殘留設定也不放 S1
+    if (!getTraits(gameType).cloverCollection) return rawGrid;
     return rawGrid.map((col, colIndex) => col.map((sym, rowIndex) => {
       if (clovers[`${colIndex}-${rowIndex}`]) return 'S1';
       return sym;
     }));
-  }, [reelCount, rowCounts, currentStrips, manualIndicesOther, currentGrid, currentPaytable, clovers]);
+  }, [reelCount, rowCounts, currentStrips, manualIndicesOther, currentGrid, currentPaytable, clovers, gameType]);
 
   const winsOther = useMemo(() => {
     let finalGrid = displayGridOther;
