@@ -82,7 +82,6 @@ function App() {
       paylines: paylines || customPaylines,
       effectiveBet: bet,
       specialRules: {
-        derivativeSymbols: { 'B1': ['B2'] },
         unremovableSymbols: ['S1']
       }
     };
@@ -95,7 +94,6 @@ function App() {
       paylines: customPaylines,
       effectiveBet: bet,
       specialRules: {
-        derivativeSymbols: { 'B1': ['B2'] },
         unremovableSymbols: ['S1']
       }
     };

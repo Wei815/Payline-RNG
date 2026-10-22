@@ -219,8 +219,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
       paylines: customPaylines,
       effectiveBet: bet,
       goldFrames,
-      jackpots,
-      specialRules: { derivativeSymbols: { 'B1': ['B2'] } }
+      jackpots
     };
     const baseWins = evaluateGrid(finalGrid, currentPaytable, config, undefined, true);
 

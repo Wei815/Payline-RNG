@@ -1,3 +1,4 @@
+import { derivativesOf } from '../GameConstants';
 import type { PaytableRule } from '../../../types';
 import type { WinResult } from '../../evaluation';
 import type { EvaluationContext, EvaluationStrategy } from './EvaluationStrategy';
@@ -8,7 +9,7 @@ export class LineGameStrategy implements EvaluationStrategy {
     const sym = rule.symbolId;
     const paylines = gameConfig.paylines || [];
     const results: WinResult[] = [];
-    const derivatives = gameConfig.specialRules?.derivativeSymbols?.[sym];
+    const derivatives = derivativesOf(gameConfig.specialRules, sym);
 
     paylines.forEach((line, lineIdx) => {
       let matchCount = 0;

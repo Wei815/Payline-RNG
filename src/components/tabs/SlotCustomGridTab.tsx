@@ -106,8 +106,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
       effectiveBet: effectiveBetValue,
       goldFrames: getTraits(gameType).goldFramesAndJackpots ? goldFrames : {},
       jackpots: getTraits(gameType).goldFramesAndJackpots ? jackpots : {},
-      wyConfigs: getTraits(gameType).wyReels ? wyConfigs : undefined,
-      specialRules: { derivativeSymbols: { 'B1': ['B2'] } }
+      wyConfigs: getTraits(gameType).wyReels ? wyConfigs : undefined
     };
     const wins = evaluateGrid(gridSymbols, currentPaytable, config, undefined, true);
     const winningCoords = getWinningPositions(gridSymbols, wins, currentPaytable, gameType, undefined, customPaylines);

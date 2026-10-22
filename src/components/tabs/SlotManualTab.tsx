@@ -100,8 +100,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
     const config: GameConfig = {
       gameType,
       paylines: customPaylines,
-      effectiveBet: bet,
-      specialRules: { derivativeSymbols: { 'B1': ['B2'] } }
+      effectiveBet: bet
     };
     return evaluateGrid(finalGrid, currentPaytable, config);
   }, [displayGrid, currentPaytable, gameType, topTracker, customPaylines, bet]);

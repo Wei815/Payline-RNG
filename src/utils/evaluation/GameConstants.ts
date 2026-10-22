@@ -1,5 +1,15 @@
 export const DEFAULT_WILD_SYMBOLS = ['WILD', 'W', 'WX', 'WY', 'WZ'];
 
+/**
+ * 衍生符號：計算 key 的個數 / 連線時，value 內的符號也算（B2 算作 B1）
+ * 評估時未指定 specialRules.derivativeSymbols 就使用此預設，所有工具（搜尋、驗證、畫面、RTP）才會一致
+ */
+export const DEFAULT_DERIVATIVE_SYMBOLS: Record<string, string[]> = { B1: ['B2'] };
+
+export function derivativesOf(specialRules: { derivativeSymbols?: Record<string, string[]> } | undefined, sym: string): string[] | undefined {
+  return (specialRules?.derivativeSymbols ?? DEFAULT_DERIVATIVE_SYMBOLS)[sym];
+}
+
 export const DEFAULT_PAY_ANYWHERE_THRESHOLDS = {
   match3: 8,
   match4: 10,

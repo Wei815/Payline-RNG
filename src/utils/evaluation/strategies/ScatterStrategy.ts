@@ -1,3 +1,4 @@
+import { derivativesOf } from '../GameConstants';
 import type { PaytableRule } from '../../../types';
 import type { WinResult } from '../../evaluation';
 import type { EvaluationContext, EvaluationStrategy } from './EvaluationStrategy';
@@ -13,8 +14,8 @@ export class ScatterStrategy implements EvaluationStrategy {
         // In slot games, Wilds generally do NOT substitute for Scatters/Bonus symbols.
         let isMatch = cell === sym;
         
-        if (!isMatch && gameConfig.specialRules?.derivativeSymbols?.[sym]) {
-           const derivatives = gameConfig.specialRules.derivativeSymbols[sym];
+        const derivatives = derivativesOf(gameConfig.specialRules, sym);
+        if (!isMatch && derivatives) {
            if (derivatives.includes(cell)) {
              isMatch = true;
            }

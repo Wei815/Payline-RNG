@@ -118,7 +118,7 @@ export function calculateCombinationWin(ctx: CombinationWinContext, comb: any): 
       wyConfigs[c] = { a: 2, b: 10, z: 0 };
     }
   }
-  const config = { gameType, paylines: customPaylines, effectiveBet: bet, goldFrames, wyConfigs, specialRules: { derivativeSymbols: { 'B1': ['B2'] } } };
+  const config = { gameType, paylines: customPaylines, effectiveBet: bet, goldFrames, wyConfigs };
   const fmt = (w: { symbolId: string; matchCount: number; multiplier?: number }, total: number, mult: number) =>
     `${w.symbolId}*${w.matchCount}${w.multiplier ? `(x${w.multiplier})` : ''}${mult > 1 ? `(x${mult})` : ''}=${total}`;
 

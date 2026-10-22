@@ -1,7 +1,7 @@
 import type { PaytableRule } from '../../../types';
 import type { WinResult } from '../../evaluation';
 import type { EvaluationContext, EvaluationStrategy } from './EvaluationStrategy';
-import { DEFAULT_PAY_ANYWHERE_THRESHOLDS } from '../GameConstants';
+import { DEFAULT_PAY_ANYWHERE_THRESHOLDS, derivativesOf } from '../GameConstants';
 
 export class PayAnywhereStrategy implements EvaluationStrategy {
   evaluate(context: EvaluationContext, rule: PaytableRule): WinResult[] {
@@ -12,8 +12,8 @@ export class PayAnywhereStrategy implements EvaluationStrategy {
     for (const col of grid) {
       for (const cell of col) {
         let isMatch = cell === sym;
-        if (!isMatch && gameConfig.specialRules?.derivativeSymbols?.[sym]) {
-           const derivatives = gameConfig.specialRules.derivativeSymbols[sym];
+        const derivatives = derivativesOf(gameConfig.specialRules, sym);
+        if (!isMatch && derivatives) {
            if (derivatives.includes(cell)) {
              isMatch = true;
            }
