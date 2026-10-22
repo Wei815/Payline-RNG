@@ -3,6 +3,7 @@ import { Database, Table, Edit3, X, Upload, SlidersHorizontal } from 'lucide-rea
 import type { ReelStrips, PaytableRule, GameType } from '../types';
 import { defaultPaytable, defaultExcelStripsString } from '../mocks/defaultData';
 import { defaultPaylines } from '../utils/evaluation';
+import type { ExcelParsedData } from '../utils/excelParser';
 
 import { useMachineStore } from '../store/useMachineStore';
 import { useGameStore } from '../store/useGameStore';
@@ -266,6 +267,38 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
   const uploadedTemplateFile = useMachineStore(state => state.uploadedTemplateFile);
   const setUploadedTemplateFile = useMachineStore(state => state.setUploadedTemplateFile);
 
+  // 解析完的 Excel 範本寫入設定（內建範本、側邊欄上傳、面板上傳三個入口共用）
+  // 曾經三處各寫一份：面板上傳沒有載入免遊滾輪表、會寫到目前分頁的表格，側邊欄上傳沒有設定專案名稱
+  const applyParsedTemplate = (tmpl: ExcelParsedData, projectName: string) => {
+    if (tmpl.gameType) onGameTypeChange(tmpl.gameType);
+    if (tmpl.coin) onCoinChange(tmpl.coin);
+    if (tmpl.bet) onBetChange(tmpl.bet);
+    if (tmpl.reelCount) onReelCountChange(tmpl.reelCount);
+    if (tmpl.rowCounts && tmpl.rowCounts.length > 0) onRowCountsChange(tmpl.rowCounts);
+    if (tmpl.paylines) onPaylinesChange(tmpl.paylines);
+    if (tmpl.stripSets) useGameStore.getState().setCurrentStripSets(tmpl.stripSets);
+    if (tmpl.freeStripSets) useGameStore.getState().setCurrentFreeStripSets(tmpl.freeStripSets);
+
+    // 滾輪表編輯器以「列」為單位：strips[軸][列] → grid[列][軸]
+    const toRows = (strips?: string[][]) => {
+      if (!strips || strips.length === 0) return [];
+      const maxRows = Math.max(...strips.map(st => st.length));
+      return Array.from({ length: maxRows }, (_, r) => strips.map(st => st[r] || ''));
+    };
+    setBaseGridData(toRows(tmpl.strips));
+    setFreeGridData(toRows(tmpl.freeStrips));
+    setActiveStripTab('base');
+
+    if (tmpl.paytable) {
+      const init: Record<string, PaytableRule> = {};
+      tmpl.paytable.forEach(rule => init[rule.symbolId] = rule);
+      setPaytableMap(init);
+    }
+    setError(null);
+    setIsProjectLoaded(true);
+    useGameStore.getState().setProjectName(projectName);
+  };
+
   const handleLoadDefaults = async (overrideTemplate?: string | React.MouseEvent) => {
     useGameStore.getState().setIsProjectLoading(true);
     setIsProjectLoaded(false);
@@ -294,63 +327,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
         const { parseExcelData } = await import('../utils/excelParser');
         const tmpl = await parseExcelData(file);
 
-        if (tmpl.gameType) {
-          onGameTypeChange(tmpl.gameType);
-        }
-        if (tmpl.coin) onCoinChange(tmpl.coin);
-        if (tmpl.bet) onBetChange(tmpl.bet);
-        if (tmpl.reelCount) onReelCountChange(tmpl.reelCount);
-        if (tmpl.rowCounts && tmpl.rowCounts.length > 0) {
-          onRowCountsChange(tmpl.rowCounts);
-        }
-        if (tmpl.paylines) onPaylinesChange(tmpl.paylines);
-        
-        if (tmpl.stripSets) {
-          useGameStore.getState().setCurrentStripSets(tmpl.stripSets);
-        }
-        if (tmpl.freeStripSets) {
-          useGameStore.getState().setCurrentFreeStripSets(tmpl.freeStripSets);
-        }
-        
-        if (tmpl.strips && tmpl.strips.length > 0) {
-          const maxRows = Math.max(...tmpl.strips.map(s => s.length));
-          const newGrid: string[][] = [];
-          for (let r = 0; r < maxRows; r++) {
-            const rowData = [];
-            for (let c = 0; c < tmpl.strips.length; c++) {
-              rowData.push(tmpl.strips[c][r] || '');
-            }
-            newGrid.push(rowData);
-          }
-          setBaseGridData(newGrid);
-        } else {
-          setBaseGridData([]);
-        }
-        
-        if (tmpl.freeStrips && tmpl.freeStrips.length > 0) {
-          const maxRows = Math.max(...tmpl.freeStrips.map(s => s.length));
-          const newGrid: string[][] = [];
-          for (let r = 0; r < maxRows; r++) {
-            const rowData = [];
-            for (let c = 0; c < tmpl.freeStrips.length; c++) {
-              rowData.push(tmpl.freeStrips[c][r] || '');
-            }
-            newGrid.push(rowData);
-          }
-          setFreeGridData(newGrid);
-        } else {
-          setFreeGridData([]);
-        }
-        setActiveStripTab('base');
-        
-        if (tmpl.paytable) {
-          const init: Record<string, PaytableRule> = {};
-          tmpl.paytable.forEach(rule => init[rule.symbolId] = rule);
-          setPaytableMap(init);
-        }
-        setError(null);
-        setIsProjectLoaded(true);
-        useGameStore.getState().setProjectName(filename.replace('.xlsx', ''));
+        applyParsedTemplate(tmpl, filename.replace('.xlsx', ''));
       } catch (err) {
         setError('載入範本失敗: ' + (err as Error).message);
       }
@@ -384,59 +361,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
           const { parseExcelData } = await import('../utils/excelParser');
           const parsed = await parseExcelData(uploadedTemplateFile);
           
-          if (parsed.gameType) onGameTypeChange(parsed.gameType);
-          if (parsed.coin) onCoinChange(parsed.coin);
-          if (parsed.bet) onBetChange(parsed.bet);
-          if (parsed.reelCount) onReelCountChange(parsed.reelCount);
-          if (parsed.rowCounts) onRowCountsChange(parsed.rowCounts);
-          if (parsed.paylines) onPaylinesChange(parsed.paylines);
-          
-          if (parsed.stripSets) {
-            useGameStore.getState().setCurrentStripSets(parsed.stripSets);
-          }
-          if (parsed.freeStripSets) {
-            useGameStore.getState().setCurrentFreeStripSets(parsed.freeStripSets);
-          }
-          
-          if (parsed.strips && parsed.strips.length > 0) {
-            const maxRows = Math.max(...parsed.strips.map(s => s.length));
-            const newGrid: string[][] = [];
-            for (let r = 0; r < maxRows; r++) {
-              const rowData = [];
-              for (let c = 0; c < parsed.strips.length; c++) {
-                rowData.push(parsed.strips[c][r] || '');
-              }
-              newGrid.push(rowData);
-            }
-            setBaseGridData(newGrid);
-          } else {
-            setBaseGridData([]);
-          }
-          
-          if (parsed.freeStrips && parsed.freeStrips.length > 0) {
-            const maxRows = Math.max(...parsed.freeStrips.map(s => s.length));
-            const newGrid: string[][] = [];
-            for (let r = 0; r < maxRows; r++) {
-              const rowData = [];
-              for (let c = 0; c < parsed.freeStrips.length; c++) {
-                rowData.push(parsed.freeStrips[c][r] || '');
-              }
-              newGrid.push(rowData);
-            }
-            setFreeGridData(newGrid);
-          } else {
-            setFreeGridData([]);
-          }
-          setActiveStripTab('base');
-          
-          if (parsed.paytable) {
-            const init: Record<string, PaytableRule> = {};
-            parsed.paytable.forEach(rule => init[rule.symbolId] = rule);
-            setPaytableMap(init);
-          }
-          
-          setError(null);
-          setIsProjectLoaded(true);
+          applyParsedTemplate(parsed, uploadedTemplateFile.name.replace(/\.[^/.]+$/, ''));
         } catch (err) {
           setError('Failed to parse Excel file: ' + (err as Error).message);
         } finally {
@@ -765,42 +690,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
                   const { parseExcelData } = await import('../utils/excelParser');
                   const parsed = await parseExcelData(file);
                   
-                  if (parsed.gameType) onGameTypeChange(parsed.gameType);
-                  if (parsed.coin) onCoinChange(parsed.coin);
-                  if (parsed.bet) onBetChange(parsed.bet);
-                  if (parsed.reelCount) onReelCountChange(parsed.reelCount);
-                  if (parsed.rowCounts) onRowCountsChange(parsed.rowCounts);
-                  if (parsed.paylines) onPaylinesChange(parsed.paylines);
-                  
-                  if (parsed.stripSets) {
-                    useGameStore.getState().setCurrentStripSets(parsed.stripSets);
-                  }
-                  if (parsed.freeStripSets) {
-                    useGameStore.getState().setCurrentFreeStripSets(parsed.freeStripSets);
-                  }
-                  
-                  if (parsed.strips && parsed.strips.length > 0) {
-                    const maxRows = Math.max(...parsed.strips.map(s => s.length));
-                    const newGrid: string[][] = [];
-                    for (let r = 0; r < maxRows; r++) {
-                      const rowData = [];
-                      for (let c = 0; c < parsed.strips.length; c++) {
-                        rowData.push(parsed.strips[c][r] || '');
-                      }
-                      newGrid.push(rowData);
-                    }
-                    setGridData(newGrid);
-                  }
-                  
-                  if (parsed.paytable) {
-                    const init: Record<string, PaytableRule> = {};
-                    parsed.paytable.forEach(rule => init[rule.symbolId] = rule);
-                    setPaytableMap(init);
-                  }
-                  
-                  setError(null);
-                  setIsProjectLoaded(true);
-                  useGameStore.getState().setProjectName(file.name.replace(/\.[^/.]+$/, ""));
+                  applyParsedTemplate(parsed, file.name.replace(/\.[^/.]+$/, ''));
                 } catch (err) {
                   setError('Failed to parse Excel file: ' + (err as Error).message);
                 }
