@@ -555,6 +555,7 @@ export class RngSearchEngine {
         let currentMatchCount = 0;
         let wildReelsValid = false;
         let positionValid = true;
+        let duplicateTargetGroups = 0;
 
         if (isLineGame) {
           const payingTargetWins = initialWins.filter((w) => w.symbolId === targetSymbol && w.payout > 0);
@@ -568,10 +569,14 @@ export class RngSearchEngine {
             const targetMatches = initialWinsWithZero.filter((w) => w.symbolId === targetSymbol);
             const maxMatch = Math.max(0, ...targetMatches.map((w) => w.matchCount));
             if (maxMatch === length) {
-              const matched = targetMatches.find(w => w.matchCount === length);
-              if (matched) {
-                targetWin = matched;
+              const fullMatches = targetMatches.filter(w => w.matchCount === length);
+              if (fullMatches.length > 0) {
+                targetWin = fullMatches[0];
                 currentMatchCount = length;
+                // 0 賠率的目標（如 2 連線）：同一組格子落在多條線只算一組，不同格子各成一組則算多出的目標（F06）
+                const cellGroups = new Set(fullMatches.map(w =>
+                  [...getWinningPositions(initialEvalGrid, [w], currentPaytable, gameType, undefined, customPaylines).keys()].sort().join('|')));
+                duplicateTargetGroups = cellGroups.size - 1;
               }
             }
           }
@@ -618,7 +623,7 @@ export class RngSearchEngine {
           (w) =>
             w.symbolId !== targetSymbol &&
             isInterferingWin(w, currentPaytable),
-        ).length + extraTargetWinsCount;
+        ).length + extraTargetWinsCount + duplicateTargetGroups;
 
         // 有掉落的遊戲：目標消除後補上的盤面不可再有中獎，否則測案會多出選定目標以外的贏分
         if (otherWinsCount === 0 && wildReelsValid && positionValid && currentMatchCount === length &&

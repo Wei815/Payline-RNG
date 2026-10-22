@@ -6,7 +6,6 @@ import type { KnownIssues } from './knownIssues';
 
 const F03 = 'F03 WX 當目標：通用 Line / Way 無法產生（Scatter + WX 已不再列出）';
 const F05 = 'F05 奢華 / 諸神 MathID 產生器以 WX 為目標時盤面錯誤（變成 M1 連線、多出干擾）';
-const F06 = 'F06 2 連線（0 賠率）同時出現在多組格子';
 const F08 = 'F08 羅馬大獎區間：搜尋引擎用通用掉落模型找大獎，但羅馬實際遞補由下一筆 RNG 決定（測案 Win= 已改用遊戲規則）';
 const F09 = 'F09 決戰賽特2 大獎區間找不到';
 const F10 = 'F10 贏分線路一覽：30 線遊戲滿線幾乎必然與其他線重疊（結構性）／DFS 漏解';
@@ -18,10 +17,8 @@ const F18 = 'F18 Scatter 目標沒有建構式搜尋：要求掉落後零中獎�
 
 export const GENERATOR_KNOWN: KnownIssues = {
   'linegame | N0 找不到組合（無可行滾輪位置）': { count: 5, finding: F03 },
-  'linegame | N1 只找到有干擾的組合': { count: 6, finding: F15 },
+  'linegame | N1 只找到有干擾的組合': { count: 5, finding: F15 },
   'waygame | N1 只找到有干擾的組合': { count: 1, finding: F18 },
-  'linegame | R1 恰好一筆目標連線': { count: 4, finding: F06 },
-  'linegame_roma | R1 恰好一筆目標連線': { count: 3, finding: F06 },
   'waygame | N0 找不到組合（無可行滾輪位置）': { count: 5, finding: F03 },
   'waygame_elephant | N0 找不到組合（無可行滾輪位置）': { count: 8, finding: F16 },
   'linegame_set2 | R1 恰好一筆目標連線': { count: 2, finding: F05 },
