@@ -117,6 +117,11 @@ export function checkSingleCombination(
   if (others.length > 0) {
     out.push({ rule: 'R3 零干擾', detail: others.map(w => `${w.symbolId}x${w.matchCount}${w.lineIndex !== undefined ? `@L${w.lineIndex}` : ''}=${w.totalWin}`).join(' ') });
   }
+  // 目標以外的 Scatter 達 3 顆：即使 0 賠率也會觸發免遊 / 特色
+  const triggers = wins.filter(w => w.symbolId !== target && w.payout === 0 && w.matchCount >= 3 && isScatterSym(fx, w.symbolId));
+  if (triggers.length > 0) {
+    out.push({ rule: 'R4 不觸發特色', detail: triggers.map(w => `${w.symbolId}x${w.matchCount}`).join(' ') });
+  }
   return out;
 }
 

@@ -3,6 +3,7 @@ import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types
 import { getWinningPositions, type WinResult } from '../../utils/evaluation';
 import { RngSearchEngine } from '../base/RngSearchEngine';
 import { getBaseSymbol } from '../../utils/evaluation/GameConstants';
+import { isInterferingWin } from '../base/searchRules';
 
 export class RomaGame extends BaseLineGame {
   readonly id: GameType = 'linegame_roma';
@@ -576,7 +577,8 @@ export class RomaGame extends BaseLineGame {
 
       const grid = this.buildGridFromRng(cand, strips0, rowCounts, reelCount);
       const wins = this.evaluate(grid, currentPaytable, { gameType: this.id, paylines: paylinesToUse }, paylinesToUse, false);
-      const payingWins = wins.filter(w => w.payout > 0);
+      // 有贏分、或 B1 / S1 達 3 顆（0 賠率也會觸發特色）都算干擾
+      const payingWins = wins.filter(w => isInterferingWin(w, currentPaytable));
 
       // 鐵律一：單筆消除只能有選定目標，絕無干擾！
       if (payingWins.length !== 1) continue;

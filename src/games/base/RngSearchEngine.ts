@@ -6,6 +6,7 @@ import type {
 import { getWinningPositions } from "../../utils/evaluation";
 import type { AbstractGame } from "./AbstractGame";
 import { getFamily, getTraits } from "../registry";
+import { isInterferingWin } from "./searchRules";
 
 export class RngSearchEngine {
   private gameInstance: AbstractGame;
@@ -506,7 +507,7 @@ export class RngSearchEngine {
           (w) =>
             w.symbolId !== targetSymbol &&
             !wildSymbolSet.has(w.symbolId) &&
-            w.payout > 0,
+            isInterferingWin(w, currentPaytable),
         ).length;
 
         const totalInterference = nonGoldWinCount + nextOtherWinsCount;
@@ -616,7 +617,7 @@ export class RngSearchEngine {
           (w) =>
             w.symbolId !== targetSymbol &&
             !wildSymbolSet.has(w.symbolId) &&
-            w.payout > 0,
+            isInterferingWin(w, currentPaytable),
         ).length + extraTargetWinsCount;
 
         if (otherWinsCount === 0 && wildReelsValid && positionValid && currentMatchCount === length) {
@@ -753,7 +754,7 @@ export class RngSearchEngine {
       const wins = this.gameInstance.evaluate(evalGrid, currentPaytable, { gameType, paylines: customPaylines }, customPaylines, true);
       const targetWins = wins.filter(w => w.symbolId === targetSymbol);
       if (targetWins.length !== 1 || targetWins[0].matchCount !== length || targetWins[0].ways !== 1) return false;
-      if (wins.some(w => w !== targetWins[0] && w.payout > 0)) return false;
+      if (wins.some(w => w !== targetWins[0] && isInterferingWin(w, currentPaytable))) return false;
       const coords = getWinningPositions(evalGrid, [targetWins[0]], currentPaytable, gameType, undefined, customPaylines);
       const wildReels = new Set<number>();
       for (const key of coords.keys()) {
@@ -866,7 +867,7 @@ export class RngSearchEngine {
       const wins = this.gameInstance.evaluate(evalGrid, currentPaytable, { gameType, paylines: customPaylines }, customPaylines, true);
       const targetWins = wins.filter(w => w.symbolId === targetSymbol);
       if (targetWins.length !== 1 || targetWins[0].matchCount !== count) continue;
-      if (wins.some(w => w !== targetWins[0] && w.payout > 0)) continue;
+      if (wins.some(w => w !== targetWins[0] && isInterferingWin(w, currentPaytable))) continue;
       return rng;
     }
     return null;
