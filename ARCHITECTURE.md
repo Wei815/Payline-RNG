@@ -95,6 +95,7 @@ c:\github\Payline-RNG\
 │   │   ├── rngFormat.ts                 #   isMathIdRng：判斷腳本 RNG 是 MathID 盤面還是滾輪停點
 │   │   ├── classIds.ts                  #   QA 腳本 ClassIDs 解碼（金框 / Jackpot 座標、諸神 WY），腳本載入與驗證工具共用
 │   │   ├── ballMultiplier.ts            #   盤面倍數球：F + L 加總乘全部贏分（traits.multiplierBalls）
+│   │   ├── customGridSnippet.ts         #   自定義盤面存成測試腳本的 QA 內容
 │   │   ├── lineViewer.ts                #   「贏分線路一覽」每條線找一組 RNG（⚠️ 元件尚未改呼叫此檔）
 │   │   └── __tests__/                   #   各流程規則測試 + 搜尋效能基準（第 12.3 章）
 │   │
@@ -718,7 +719,7 @@ Combo 4+             → 滾輪表 2/1 交替 (偶→2, 奇→1)
 
 ### 10.1 同一個規則在哪幾處實作（改規則時要一起改）
 
-> 已統一為共用函式的規則（改規則只改一處）：中獎格是否消除 `isEliminatedCell`（S1 的 999 只是高亮）、
+> 已統一為共用函式的規則（改規則只改一處）：目前盤面的滾輪表 `selectActiveStrips`（依免遊 / Strip ID）、複製到剪貼簿 `utils/clipboard.ts` 的 `copyText`、中獎格是否消除 `isEliminatedCell`（S1 的 999 只是高亮）、
 > ClassIDs 解碼 `flows/classIds.ts`、倍數球 `flows/ballMultiplier.ts`、贏分顯示 `displayWin`（B1/B2 已乘總投注，不可再乘 bet/coin）。
 
 | 規則 | 遊戲類別（產生器搜尋 / 測案 Win=） | RTP Worker | 消除掉落測試 / 驗證工具 |
@@ -848,7 +849,7 @@ npx tsx <path-to-script>.ts
 | `LineViewerTab` 尚未改呼叫 `flows/lineViewer.ts` | 元件仍用內嵌版本，兩份程式需同步；改線路一覽邏輯時兩邊都要改，或先完成接線 | 低 |
 | `SlotGeneratorTab.tsx` 仍約 2000 行 | 遊戲判斷已移除，但金框 / Jackpot / 幸運草編輯器仍在主檔，可再拆成 `SpecialSymbolPanel` 子元件 | 中 |
 | `ConfigPanel.tsx` 達 56KB | 建議拆分為 ReelStripViewer / PaytableEditor / BetConfig / SpecialSymbolPanel | 中 |
-| `megaway` 型別已定義但無對應遊戲實作 | 只保留選單項目（registry 的 MEGAWAY 佔位） | 低 |
+| `megaway` 型別已定義但無對應遊戲實作 | 只保留型別與 traits，不出現在選單（`games/__tests__/registry.test.ts` 確保選單上的遊戲都有實作）；全域 `ErrorBoundary` 防止任何元件錯誤造成白畫面 | 低 |
 | `src/constants/GameConstants.ts` 與 `src/utils/evaluation/GameConstants.ts` 職責重疊 | 建議合併或明確劃分常數範圍 | 低 |
 | ESLint 既有問題約 210 個 | 多為 `any` / 未使用變數；遊戲隔離規則本身為 0 錯誤 | 低 |
 
