@@ -1,6 +1,9 @@
 import type { GameConfig, PaytableRule, ReelStrips, GameType } from '../../types';
 import type { WinResult } from '../../utils/evaluation';
 
+/** 附帶「初始 + 遞補」連鎖的 RNG（例：羅馬的大獎、免遊觸發序列） */
+export type RngWithChain = number[] & { allRngs?: number[][] };
+
 export interface IGameEnvironment {
   readonly id: GameType;
   readonly name: string;

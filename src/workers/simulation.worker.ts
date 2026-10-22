@@ -1,4 +1,4 @@
-import type { PaytableRule, ReelStrips, SymbolMetric, GameConfig } from '../types';
+import type { PaytableRule, ReelStrips, SymbolMetric, GameConfig, SimulationResult } from '../types';
 import { evaluateGrid, getWinningPositions, isEliminatedCell } from '../utils/evaluation';
 import { getTraits } from '../games/registry';
 import { GameRegistry } from '../core/GameRegistry';
@@ -27,7 +27,7 @@ export type WorkerResponse = {
   currentGrid?: string[][];
 } | {
   type: 'DONE';
-  result: any;
+  result: SimulationResult;
 };
 const REPORT_INTERVAL_MS = 100;
 /** 單次旋轉最多掉落次數（安全上限，避免盤面循環時卡死 Worker） */
@@ -287,7 +287,8 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
 
   const usedPaylines = effectivePaylines ? effectivePaylines.length : (traits.family === 'line' ? 20 : 0);
 
-  self.postMessage({
+  // 曾回傳 usedPaylines 而缺少 paylineCount / effectiveBet / gameType，RTP 計算機與儀表板顯示 undefined
+  const done: WorkerResponse = {
     type: 'DONE',
     result: {
       overallWin,
@@ -296,12 +297,15 @@ self.onmessage = (e: MessageEvent<WorkerMessageData>) => {
       hitFrequency,
       symbolMetrics,
       winningSpins,
-      usedPaylines,
+      paylineCount: usedPaylines,
+      effectiveBet,
+      gameType: gameConfig.gameType,
       baseWin: baseWinTotal,
       freeWin: freeWinTotal,
       freeGameTriggers,
       freeGameRetriggers,
       freeSpinsPlayed: freeSpinsPlayedTotal
     }
-  } as WorkerResponse);
+  };
+  self.postMessage(done);
 };

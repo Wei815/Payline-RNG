@@ -173,7 +173,7 @@ export const JiraBugListGenerator: React.FC<JiraBugListGeneratorProps> = ({ onCl
         });
 
         // 嘗試解析 DD/MM/YY 或其他格式
-        const parts = rawDate.split(/[\/\-\s]/);
+        const parts = rawDate.split(/[/\-\s]/);
         // 如果是 DD/MM/YY 格式 (中文替換後會變成 08/09/26)
         if (parts.length >= 3 && rawDate.includes('/')) {
           const day = parseInt(parts[0], 10);

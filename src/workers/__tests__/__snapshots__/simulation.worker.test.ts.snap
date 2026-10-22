@@ -4,13 +4,16 @@ exports[`simulation.worker 黃金樣本 > linegame 1`] = `
 {
   "base_only": {
     "baseWin": 37724,
+    "effectiveBet": 1,
     "freeGameRetriggers": 0,
     "freeGameTriggers": 0,
     "freeSpinsPlayed": 0,
     "freeWin": 0,
+    "gameType": "linegame",
     "hitFrequency": 34.85,
     "overallRTP": 1886.2,
     "overallWin": 37724,
+    "paylineCount": 30,
     "symbolMetrics": {
       "10": {
         "contributionRTP": 0,
@@ -194,18 +197,20 @@ exports[`simulation.worker 黃金樣本 > linegame 1`] = `
       },
     },
     "totalSpins": 2000,
-    "usedPaylines": 30,
     "winningSpins": 697,
   },
   "full_game": {
     "baseWin": 38229,
+    "effectiveBet": 1,
     "freeGameRetriggers": 12,
     "freeGameTriggers": 37,
     "freeSpinsPlayed": 502,
     "freeWin": 9037,
+    "gameType": "linegame",
     "hitFrequency": 35.2,
     "overallRTP": 2363.3,
     "overallWin": 47266,
+    "paylineCount": 30,
     "symbolMetrics": {
       "10": {
         "contributionRTP": 0,
@@ -389,7 +394,6 @@ exports[`simulation.worker 黃金樣本 > linegame 1`] = `
       },
     },
     "totalSpins": 2000,
-    "usedPaylines": 30,
     "winningSpins": 704,
   },
 }
@@ -399,13 +403,16 @@ exports[`simulation.worker 黃金樣本 > linegame_gods 1`] = `
 {
   "base_only": {
     "baseWin": 12000000,
+    "effectiveBet": 1,
     "freeGameRetriggers": 0,
     "freeGameTriggers": 0,
     "freeSpinsPlayed": 0,
     "freeWin": 0,
+    "gameType": "linegame_gods",
     "hitFrequency": 100,
     "overallRTP": 600000,
     "overallWin": 12000000,
+    "paylineCount": 15,
     "symbolMetrics": {
       "10": {
         "contributionRTP": 0,
@@ -569,18 +576,20 @@ exports[`simulation.worker 黃金樣本 > linegame_gods 1`] = `
       },
     },
     "totalSpins": 2000,
-    "usedPaylines": 15,
     "winningSpins": 2000,
   },
   "full_game": {
     "baseWin": 12000000,
+    "effectiveBet": 1,
     "freeGameRetriggers": 0,
     "freeGameTriggers": 0,
     "freeSpinsPlayed": 0,
     "freeWin": 0,
+    "gameType": "linegame_gods",
     "hitFrequency": 100,
     "overallRTP": 600000,
     "overallWin": 12000000,
+    "paylineCount": 15,
     "symbolMetrics": {
       "10": {
         "contributionRTP": 0,
@@ -744,7 +753,6 @@ exports[`simulation.worker 黃金樣本 > linegame_gods 1`] = `
       },
     },
     "totalSpins": 2000,
-    "usedPaylines": 15,
     "winningSpins": 2000,
   },
 }
@@ -754,13 +762,16 @@ exports[`simulation.worker 黃金樣本 > linegame_roma 1`] = `
 {
   "base_only": {
     "baseWin": 20790,
+    "effectiveBet": 1,
     "freeGameRetriggers": 0,
     "freeGameTriggers": 0,
     "freeSpinsPlayed": 0,
     "freeWin": 0,
+    "gameType": "linegame_roma",
     "hitFrequency": 48.6,
     "overallRTP": 1039.5,
     "overallWin": 20790,
+    "paylineCount": 15,
     "symbolMetrics": {
       "10": {
         "contributionRTP": 0,
@@ -934,18 +945,20 @@ exports[`simulation.worker 黃金樣本 > linegame_roma 1`] = `
       },
     },
     "totalSpins": 2000,
-    "usedPaylines": 15,
     "winningSpins": 972,
   },
   "full_game": {
     "baseWin": 20355,
+    "effectiveBet": 1,
     "freeGameRetriggers": 0,
     "freeGameTriggers": 16,
     "freeSpinsPlayed": 86,
     "freeWin": 1390,
+    "gameType": "linegame_roma",
     "hitFrequency": 48.1,
     "overallRTP": 1087.25,
     "overallWin": 21745,
+    "paylineCount": 15,
     "symbolMetrics": {
       "10": {
         "contributionRTP": 0,
@@ -1119,7 +1132,6 @@ exports[`simulation.worker 黃金樣本 > linegame_roma 1`] = `
       },
     },
     "totalSpins": 2000,
-    "usedPaylines": 15,
     "winningSpins": 962,
   },
 }
@@ -1129,13 +1141,16 @@ exports[`simulation.worker 黃金樣本 > linegame_set2 1`] = `
 {
   "base_only": {
     "baseWin": 112000000,
+    "effectiveBet": 1,
     "freeGameRetriggers": 0,
     "freeGameTriggers": 0,
     "freeSpinsPlayed": 0,
     "freeWin": 0,
+    "gameType": "linegame_set2",
     "hitFrequency": 100,
     "overallRTP": 5600000,
     "overallWin": 112000000,
+    "paylineCount": 14,
     "symbolMetrics": {
       "A": {
         "contributionRTP": 0,
@@ -1289,18 +1304,20 @@ exports[`simulation.worker 黃金樣本 > linegame_set2 1`] = `
       },
     },
     "totalSpins": 2000,
-    "usedPaylines": 14,
     "winningSpins": 2000,
   },
   "full_game": {
     "baseWin": 112000000,
+    "effectiveBet": 1,
     "freeGameRetriggers": 0,
     "freeGameTriggers": 0,
     "freeSpinsPlayed": 0,
     "freeWin": 0,
+    "gameType": "linegame_set2",
     "hitFrequency": 100,
     "overallRTP": 5600000,
     "overallWin": 112000000,
+    "paylineCount": 14,
     "symbolMetrics": {
       "A": {
         "contributionRTP": 0,
@@ -1454,7 +1471,6 @@ exports[`simulation.worker 黃金樣本 > linegame_set2 1`] = `
       },
     },
     "totalSpins": 2000,
-    "usedPaylines": 14,
     "winningSpins": 2000,
   },
 }
@@ -1464,13 +1480,16 @@ exports[`simulation.worker 黃金樣本 > payanywhere 1`] = `
 {
   "base_only": {
     "baseWin": 0,
+    "effectiveBet": 1,
     "freeGameRetriggers": 0,
     "freeGameTriggers": 0,
     "freeSpinsPlayed": 0,
     "freeWin": 0,
+    "gameType": "payanywhere",
     "hitFrequency": 0,
     "overallRTP": 0,
     "overallWin": 0,
+    "paylineCount": 20,
     "symbolMetrics": {
       "10": {
         "contributionRTP": 0,
@@ -1674,18 +1693,20 @@ exports[`simulation.worker 黃金樣本 > payanywhere 1`] = `
       },
     },
     "totalSpins": 2000,
-    "usedPaylines": 20,
     "winningSpins": 0,
   },
   "full_game": {
     "baseWin": 0,
+    "effectiveBet": 1,
     "freeGameRetriggers": 0,
     "freeGameTriggers": 0,
     "freeSpinsPlayed": 0,
     "freeWin": 0,
+    "gameType": "payanywhere",
     "hitFrequency": 0,
     "overallRTP": 0,
     "overallWin": 0,
+    "paylineCount": 20,
     "symbolMetrics": {
       "10": {
         "contributionRTP": 0,
@@ -1889,7 +1910,6 @@ exports[`simulation.worker 黃金樣本 > payanywhere 1`] = `
       },
     },
     "totalSpins": 2000,
-    "usedPaylines": 20,
     "winningSpins": 0,
   },
 }
@@ -1899,13 +1919,16 @@ exports[`simulation.worker 黃金樣本 > payanywhere_set2 1`] = `
 {
   "base_only": {
     "baseWin": 0,
+    "effectiveBet": 1,
     "freeGameRetriggers": 0,
     "freeGameTriggers": 0,
     "freeSpinsPlayed": 0,
     "freeWin": 0,
+    "gameType": "payanywhere_set2",
     "hitFrequency": 0,
     "overallRTP": 0,
     "overallWin": 0,
+    "paylineCount": 20,
     "symbolMetrics": {
       "10": {
         "contributionRTP": 0,
@@ -2109,18 +2132,20 @@ exports[`simulation.worker 黃金樣本 > payanywhere_set2 1`] = `
       },
     },
     "totalSpins": 2000,
-    "usedPaylines": 20,
     "winningSpins": 0,
   },
   "full_game": {
     "baseWin": 0,
+    "effectiveBet": 1,
     "freeGameRetriggers": 0,
     "freeGameTriggers": 0,
     "freeSpinsPlayed": 0,
     "freeWin": 0,
+    "gameType": "payanywhere_set2",
     "hitFrequency": 0,
     "overallRTP": 0,
     "overallWin": 0,
+    "paylineCount": 20,
     "symbolMetrics": {
       "10": {
         "contributionRTP": 0,
@@ -2324,7 +2349,6 @@ exports[`simulation.worker 黃金樣本 > payanywhere_set2 1`] = `
       },
     },
     "totalSpins": 2000,
-    "usedPaylines": 20,
     "winningSpins": 0,
   },
 }
@@ -2334,13 +2358,16 @@ exports[`simulation.worker 黃金樣本 > waygame 1`] = `
 {
   "base_only": {
     "baseWin": 299955,
+    "effectiveBet": 1,
     "freeGameRetriggers": 0,
     "freeGameTriggers": 0,
     "freeSpinsPlayed": 0,
     "freeWin": 0,
+    "gameType": "waygame",
     "hitFrequency": 43.5,
     "overallRTP": 14997.75,
     "overallWin": 299955,
+    "paylineCount": 30,
     "symbolMetrics": {
       "10": {
         "contributionRTP": 0,
@@ -2524,18 +2551,20 @@ exports[`simulation.worker 黃金樣本 > waygame 1`] = `
       },
     },
     "totalSpins": 2000,
-    "usedPaylines": 30,
     "winningSpins": 870,
   },
   "full_game": {
     "baseWin": 299955,
+    "effectiveBet": 1,
     "freeGameRetriggers": 0,
     "freeGameTriggers": 0,
     "freeSpinsPlayed": 0,
     "freeWin": 0,
+    "gameType": "waygame",
     "hitFrequency": 43.5,
     "overallRTP": 14997.75,
     "overallWin": 299955,
+    "paylineCount": 30,
     "symbolMetrics": {
       "10": {
         "contributionRTP": 0,
@@ -2719,7 +2748,6 @@ exports[`simulation.worker 黃金樣本 > waygame 1`] = `
       },
     },
     "totalSpins": 2000,
-    "usedPaylines": 30,
     "winningSpins": 870,
   },
 }
@@ -2729,13 +2757,16 @@ exports[`simulation.worker 黃金樣本 > waygame_elephant 1`] = `
 {
   "base_only": {
     "baseWin": 31777,
+    "effectiveBet": 1,
     "freeGameRetriggers": 0,
     "freeGameTriggers": 0,
     "freeSpinsPlayed": 0,
     "freeWin": 0,
+    "gameType": "waygame_elephant",
     "hitFrequency": 37.5,
     "overallRTP": 1588.85,
     "overallWin": 31777,
+    "paylineCount": 20,
     "symbolMetrics": {
       "A": {
         "contributionRTP": 0,
@@ -2839,18 +2870,20 @@ exports[`simulation.worker 黃金樣本 > waygame_elephant 1`] = `
       },
     },
     "totalSpins": 2000,
-    "usedPaylines": 20,
     "winningSpins": 750,
   },
   "full_game": {
     "baseWin": 31955,
+    "effectiveBet": 1,
     "freeGameRetriggers": 3,
     "freeGameTriggers": 25,
     "freeSpinsPlayed": 282,
     "freeWin": 26784,
+    "gameType": "waygame_elephant",
     "hitFrequency": 36.4,
     "overallRTP": 2936.95,
     "overallWin": 58739,
+    "paylineCount": 20,
     "symbolMetrics": {
       "A": {
         "contributionRTP": 0,
@@ -2954,7 +2987,6 @@ exports[`simulation.worker 黃金樣本 > waygame_elephant 1`] = `
       },
     },
     "totalSpins": 2000,
-    "usedPaylines": 20,
     "winningSpins": 728,
   },
 }
@@ -2964,13 +2996,16 @@ exports[`simulation.worker 黃金樣本 > waygame_qin 1`] = `
 {
   "base_only": {
     "baseWin": 578534,
+    "effectiveBet": 1,
     "freeGameRetriggers": 0,
     "freeGameTriggers": 0,
     "freeSpinsPlayed": 0,
     "freeWin": 0,
+    "gameType": "waygame_qin",
     "hitFrequency": 62.15,
     "overallRTP": 28926.7,
     "overallWin": 578534,
+    "paylineCount": 20,
     "symbolMetrics": {
       "10": {
         "contributionRTP": 0,
@@ -3124,18 +3159,20 @@ exports[`simulation.worker 黃金樣本 > waygame_qin 1`] = `
       },
     },
     "totalSpins": 2000,
-    "usedPaylines": 20,
     "winningSpins": 1243,
   },
   "full_game": {
     "baseWin": 302657,
+    "effectiveBet": 1,
     "freeGameRetriggers": 473,
     "freeGameTriggers": 941,
     "freeSpinsPlayed": 15488,
     "freeWin": 107913168,
+    "gameType": "waygame_qin",
     "hitFrequency": 62.2,
     "overallRTP": 5410791.25,
     "overallWin": 108215825,
+    "paylineCount": 20,
     "symbolMetrics": {
       "10": {
         "contributionRTP": 0,
@@ -3289,7 +3326,6 @@ exports[`simulation.worker 黃金樣本 > waygame_qin 1`] = `
       },
     },
     "totalSpins": 2000,
-    "usedPaylines": 20,
     "winningSpins": 1244,
   },
 }

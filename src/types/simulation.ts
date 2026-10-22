@@ -18,6 +18,7 @@ export interface SimulationResult {
   effectiveBet: number;   // 有效每 spin 投注額 (BET)
   gameType: string;
   overallWin?: number;
+  winningSpins?: number;
   baseWin?: number;
   freeWin?: number;
   freeGameTriggers?: number;

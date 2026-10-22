@@ -11,6 +11,7 @@ export interface WinResult {
   multiplier?: number; // 記錄倍數（如金框加成的倍數）
   isJackpot?: boolean; // 標記是否為大獎，以區分計算邏輯
   betScaled?: boolean; // totalWin 已乘上總投注（B1/B2/S1/S2 以總投注計），顯示時不可再乘 bet/coin
+  winCoords?: string[]; // 遊戲自訂的中獎格（例：羅馬 WX 特殊派彩、B1 連線），格式 "col-row"
 }
 
 /** 畫面顯示的贏分：一般中獎以 coin 計，需乘 bet/coin；已乘總投注的中獎（B1/B2、Jackpot）直接使用 */

@@ -15,7 +15,7 @@ export async function findRngForCombination(
   isFreeGame: boolean = false,
   stripSets?: Record<string, string[][]>,
   requireGoldCascade: boolean = false
-): Promise<{ rng: number[] | null; isInterfered: boolean; hasS1Drop?: boolean; stripId?: number }> {
+): Promise<{ rng: number[] | null; isInterfered: boolean; hasS1Drop?: boolean; stripId?: number; allRngs?: number[][] }> {
   const game = GameRegistry.getGame(gameType);
   return game.findRngForCombination(
     targetSymbol, length, wildCount, currentStrips, rowCounts, currentPaytable,

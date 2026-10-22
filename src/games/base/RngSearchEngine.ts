@@ -3,9 +3,9 @@ import type {
   GameType,
   MultiplierInterval,
 } from "../../types";
-import { getWinningPositions, isEliminatedCell } from "../../utils/evaluation";
+import { getWinningPositions, isEliminatedCell, type WinResult } from "../../utils/evaluation";
 import type { AbstractGame } from "./AbstractGame";
-import type { IGameEnvironment } from "./IGameEnvironment";
+import type { IGameEnvironment, RngWithChain } from "./IGameEnvironment";
 import { getFamily, getTraits } from "../registry";
 import { isInterferingWin } from "./searchRules";
 
@@ -552,7 +552,7 @@ export class RngSearchEngine {
           true,
         );
 
-        let targetWin: any = null;
+        let targetWin: WinResult | null = null;
         let currentMatchCount = 0;
         let wildReelsValid = false;
         let positionValid = true;
@@ -1372,7 +1372,7 @@ export class RngSearchEngine {
                 stripSets, fallbackStrips: currentStrips, rowCounts, paylines: customPaylines, maxAttempts: 1500,
               });
               if (!refill) continue;
-              (rng as number[] & { allRngs?: number[][] }).allRngs = [rng.slice(), refill];
+              (rng as RngWithChain).allRngs = [rng.slice(), refill];
             }
             results[interval.id] = rng;
             targets.delete(interval.id);

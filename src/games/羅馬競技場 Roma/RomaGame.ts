@@ -4,6 +4,7 @@ import { getWinningPositions, isEliminatedCell, type WinResult } from '../../uti
 import { RngSearchEngine } from '../base/RngSearchEngine';
 import { getBaseSymbol } from '../../utils/evaluation/GameConstants';
 import { isInterferingWin } from '../base/searchRules';
+import type { RngWithChain } from '../base/IGameEnvironment';
 
 export class RomaGame extends BaseLineGame {
   readonly id: GameType = 'linegame_roma';
@@ -690,7 +691,7 @@ export class RomaGame extends BaseLineGame {
 
         // 檢查掉落殘留自連
         const winCoords = new Set<string>();
-        for (const w of payingWins) for (const c of (w as any).winCoords || []) winCoords.add(c);
+        for (const w of payingWins) for (const c of w.winCoords ?? []) winCoords.add(c);
         
         const keptGrid: string[][] = [];
         for (let c = 0; c < reelCount; c++) {
@@ -950,7 +951,7 @@ export class RomaGame extends BaseLineGame {
       if (foundSequence) {
         // 第一個 RNG 作為主要 rng，並附帶完整 allRngs 數組
         const mainRng = [...foundSequence[0]];
-        (mainRng as any).allRngs = foundSequence;
+        (mainRng as RngWithChain).allRngs = foundSequence;
         results[targetCombo - 1] = mainRng;
       }
     }
@@ -1140,7 +1141,7 @@ export class RomaGame extends BaseLineGame {
             totalWin: 0,
             lineIndex: lineIdx,
             winCoords: coords
-          } as any);
+          });
         }
         return; // B1 該線不再判定其他普通符號
       }
@@ -1167,7 +1168,7 @@ export class RomaGame extends BaseLineGame {
           lineIndex: lineIdx,
           multiplier: mult > 0 ? mult : undefined,
           winCoords: coords
-        } as any);
+        });
         return;
       }
 
@@ -1221,7 +1222,7 @@ export class RomaGame extends BaseLineGame {
             lineIndex: lineIdx,
             multiplier: mult > 0 ? mult : undefined,
             winCoords: coords
-          } as any);
+          });
         }
       }
     });

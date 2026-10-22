@@ -7,6 +7,7 @@ import { getManifest, getTraits } from "../games/registry";
 import { DEFAULT_PAY_ANYWHERE_THRESHOLDS } from "../utils/evaluation/GameConstants";
 import { GameRegistry } from "../core/GameRegistry";
 import type { AbstractGame } from "../games/base/AbstractGame";
+import type { RngWithChain } from "../games/base/IGameEnvironment";
 
 export type { GeneratorCombination, GeneratorSearchParams };
 
@@ -39,8 +40,8 @@ export async function runGeneratorSearch(params: GeneratorSearchParams): Promise
           rng: results[i],
           isInterfered: false,
           hasS1Drop: false,
-          allRngs: (results[i] as any)?.allRngs || (results[i] ? [results[i]] : undefined)
-        } as any);
+          allRngs: (results[i] as RngWithChain | null)?.allRngs || (results[i] ? [results[i]!] : undefined)
+        });
       }
     }
     return newCombs;
@@ -83,8 +84,8 @@ export async function runGeneratorSearch(params: GeneratorSearchParams): Promise
           isInterfered: false,
           hasS1Drop: false,
           // 羅馬：初始 + 遞補 0 贏分的連鎖
-          allRngs: (results[interval.id] as any).allRngs,
-        } as any);
+          allRngs: (results[interval.id] as RngWithChain).allRngs,
+        });
       }
     }
     return newCombs;
@@ -130,7 +131,7 @@ export async function runGeneratorSearch(params: GeneratorSearchParams): Promise
       name: string;
       length: number;
       wildCount: number;
-      promise: Promise<{ rng: number[] | null; isInterfered: boolean; hasS1Drop?: boolean }>;
+      promise: Promise<{ rng: number[] | null; isInterfered: boolean; hasS1Drop?: boolean; stripId?: number; allRngs?: number[][] }>;
     }[] = [];
 
     // 先跑所有「純連線」（W=0，由少到多），再跑所有「+WX」（W=1，由少到多）
@@ -216,8 +217,8 @@ export async function runGeneratorSearch(params: GeneratorSearchParams): Promise
         rng: res.rng,
         isInterfered: res.isInterfered,
         hasS1Drop: res.hasS1Drop,
-        stripId: (res as any).stripId,
-        allRngs: (res as any)?.allRngs,
+        stripId: res.stripId,
+        allRngs: res.allRngs,
       });
     }
 
