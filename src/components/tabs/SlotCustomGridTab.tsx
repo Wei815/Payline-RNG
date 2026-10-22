@@ -9,6 +9,7 @@ import { getWinningPositions } from '../../utils/evaluation';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
 import { SlotGridDisplay } from '../SlotGridDisplay';
 import { getTraits } from '../../games/registry';
+import { boardBallMultiplier } from '../../flows/ballMultiplier';
 import { useLinePaths } from '../../hooks/useLinePaths';
 import { useSnippetStore } from '../../store/useSnippetStore';
 
@@ -1061,17 +1062,8 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
             <div className="text-center text-xs text-gray-500 py-4">無贏分連線</div>
           )}
           {wins.length > 0 && (() => {
-            let globalMultiplier = 0;
-            gridSymbols.forEach(col => {
-              col.forEach(sym => {
-                if (sym.includes('_') && sym.match(/^[F|L][1-4]_/)) {
-                  const valStr = sym.split('_')[1];
-                  const num = parseInt(valStr.replace('X', ''), 10);
-                  if (!isNaN(num)) globalMultiplier += num;
-                }
-              });
-            });
-            const finalMultiplier = globalMultiplier > 0 ? globalMultiplier : 1;
+            const finalMultiplier = boardBallMultiplier(gameType, gridSymbols);
+            const globalMultiplier = finalMultiplier > 1 ? finalMultiplier : 0;
             const baseTotalWin = wins.reduce((sum, w) => sum + displayWin(w, betMultiplier), 0);
             const grandTotalWin = baseTotalWin * finalMultiplier;
             

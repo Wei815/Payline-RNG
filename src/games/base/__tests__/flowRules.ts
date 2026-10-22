@@ -170,7 +170,12 @@ export function independentTotal(fx: GameFixture, grid: string[][], rng: number[
   const fam = getTraits(fx.gameType).family;
   if (fam !== 'way' && fam !== 'megaway') {
     const w = paying(fx.game.evaluate(grid, fx.paytable, config, fx.paylines, false));
-    return { total: w.reduce((s, x) => s + x.totalWin, 0), steps: [w.map(x => `${x.symbolId}*${x.matchCount}=${x.totalWin}`).join('+')] };
+    // 倍數球規格（multiplierBalls）：盤面所有 F、L 球的值加總，乘在全部贏分上
+    const balls = getTraits(fx.gameType).multiplierBalls
+      ? grid.flat().filter(s => /^[FL][1-4]_\d+X$/.test(s)).reduce((s, b) => s + parseInt(b.split('_')[1], 10), 0)
+      : 0;
+    const base = w.reduce((s, x) => s + x.totalWin, 0);
+    return { total: base * Math.max(1, balls), steps: [w.map(x => `${x.symbolId}*${x.matchCount}=${x.totalWin}`).join('+') + (balls > 1 ? `*${balls}` : '')] };
   }
   const game = fx.game as unknown as {
     applyCascade: (g: string[][], c: number, rows: number[], strip: string[], d: number[], f: boolean, t: GameType) => void;

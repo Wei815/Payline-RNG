@@ -11,6 +11,7 @@ import { useGameStore } from '../../store/useGameStore';
 import { GameRegistry } from '../../core/GameRegistry';
 import { getScriptFormatter, getTraits } from '../../games/registry';
 import { calculateCombinationWin as calcCombinationWin } from '../../flows/combinationWin';
+import { boardBallMultiplier } from '../../flows/ballMultiplier';
 import { getGameUi } from '../../games/ui-registry';
 import { useLinePaths } from '../../hooks/useLinePaths';
 import { symbolToneClass } from '../ui/symbolTone';
@@ -1378,17 +1379,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                     <div className="py-3 text-center text-xs text-gray-600">—</div>
                   )}
                   {winHits.length > 0 && (() => {
-                    let globalMultiplier = 0;
-                    displayGridOther.forEach(col => {
-                      col.forEach(sym => {
-                        if (sym.includes('_') && sym.match(/^F[1-4]_/)) {
-                          const valStr = sym.split('_')[1];
-                          const num = parseInt(valStr.replace('X', ''), 10);
-                          if (!isNaN(num)) globalMultiplier += num;
-                        }
-                      });
-                    });
-                    const finalMultiplier = globalMultiplier > 0 ? globalMultiplier : 1;
+                    const finalMultiplier = boardBallMultiplier(gameType, displayGridOther);
+                    const globalMultiplier = finalMultiplier > 1 ? finalMultiplier : 0;
                     const baseTotalWin = winHits.reduce((sum, w) => sum + (w.isJackpot ? w.totalWin : w.totalWin * betMultiplier * baseMultiplier), 0);
                     const grandTotalWin = baseTotalWin * finalMultiplier;
                     

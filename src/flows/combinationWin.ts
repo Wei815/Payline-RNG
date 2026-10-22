@@ -12,6 +12,7 @@
 import type { GameType, PaytableRule } from '../types';
 import { evaluateGrid, getWinningPositions } from '../utils/evaluation';
 import { getTraits } from '../games/registry';
+import { boardBallMultiplier } from './ballMultiplier';
 import { GameRegistry } from '../core/GameRegistry';
 import type { AbstractGame } from '../games/base/AbstractGame';
 import type { IGameEnvironment } from '../games/base/IGameEnvironment';
@@ -127,8 +128,8 @@ export function calculateCombinationWin(ctx: CombinationWinContext, comb: any): 
   if (!cascades) {
     const grid = traits.mathIdGenerator ? generateGridFromMathIds(ctx, rng) : generateGridForComb(ctx, rng, comb.stripId);
     const wins = evaluateGrid(grid, currentPaytable, config, undefined, false).filter(w => w.totalWin > 0);
-    const totalWin = wins.reduce((s, w) => s + w.totalWin, 0);
-    return { formula: totalWin > 0 ? `Win=${wins.map(w => fmt(w, w.totalWin, 1)).join('+')}=${totalWin}` : 'Win=0', totalWin };
+    const baseWin = wins.reduce((s, w) => s + w.totalWin, 0);
+    return withBallMultiplier(wins.map(w => fmt(w, w.totalWin, 1)).join('+'), baseWin, boardBallMultiplier(gameType, grid));
   }
 
   const strips = comb.stripId !== undefined && stripSets?.[comb.stripId] ? stripSets[comb.stripId] : currentStrips;
@@ -162,5 +163,14 @@ export function calculateCombinationWin(ctx: CombinationWinContext, comb: any): 
     if (!eliminated) break;
   }
 
-  return { formula: totalWin > 0 ? `Win=${parts.join('+')}=${totalWin}` : 'Win=0', totalWin };
+  // 倍數球留在盤面上不會被消除，以掉落結束後的盤面計算
+  return withBallMultiplier(parts.join('+'), totalWin, boardBallMultiplier(gameType, grid));
+}
+
+/** 套用盤面倍數球：Win=(各項)*倍數=總贏分；沒有倍數球時維持 Win=各項=總贏分 */
+function withBallMultiplier(parts: string, baseWin: number, ballMult: number): { formula: string; totalWin: number } {
+  if (baseWin <= 0) return { formula: 'Win=0', totalWin: 0 };
+  if (ballMult <= 1) return { formula: `Win=${parts}=${baseWin}`, totalWin: baseWin };
+  const totalWin = baseWin * ballMult;
+  return { formula: `Win=(${parts})*${ballMult}=${totalWin}`, totalWin };
 }
