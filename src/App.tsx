@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState, type ComponentType, type LazyExoticComponent } from 'react';
 import { ConfigPanel } from './components/ConfigPanel';
 import { SlotConsole } from './components/SlotConsole';
 import { MetricsDashboard } from './components/MetricsDashboard';
@@ -7,18 +7,24 @@ import { useTheme } from './hooks/useTheme';
 import { BarChart3, Menu, Moon, PanelLeftOpen, PanelLeftClose, SlidersHorizontal, Sun, X } from 'lucide-react';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { Sidebar } from './components/Sidebar';
-import { JiraLinkGenerator } from './components/tools/JiraLinkGenerator';
-import { SnippetLibrary } from './components/tools/SnippetLibrary';
-import { JiraReportGenerator } from './components/tools/JiraReportGenerator';
-import { JiraReportGeneratorWeb } from './components/tools/JiraReportGeneratorWeb';
-import { JiraBugListGenerator } from './components/tools/JiraBugListGenerator';
-import { RngValidator } from './components/tools/RngValidator';
-import { RtpCalculator } from './components/tools/RtpCalculator';
 import type { GameConfig, GameType } from './types';
 import { useMachineStore } from './store/useMachineStore';
 import { useGameStore } from './store/useGameStore';
 import { getManifest, getTraits, resolveMenuSelection } from './games/registry';
 
+
+type ToolModal = ComponentType<{ onClose: () => void }>;
+const lazyTool = (load: () => Promise<Record<string, ToolModal>>, name: string) =>
+  lazy(() => load().then(m => ({ default: m[name] })));
+const TOOL_MODALS: Record<string, LazyExoticComponent<ToolModal>> = {
+  jira: lazyTool(() => import('./components/tools/JiraLinkGenerator'), 'JiraLinkGenerator'),
+  snippet: lazyTool(() => import('./components/tools/SnippetLibrary'), 'SnippetLibrary'),
+  jiraReport: lazyTool(() => import('./components/tools/JiraReportGenerator'), 'JiraReportGenerator'),
+  jiraReportWeb: lazyTool(() => import('./components/tools/JiraReportGeneratorWeb'), 'JiraReportGeneratorWeb'),
+  jiraBugList: lazyTool(() => import('./components/tools/JiraBugListGenerator'), 'JiraBugListGenerator'),
+  rngValidator: lazyTool(() => import('./components/tools/RngValidator'), 'RngValidator'),
+  rtpCalculator: lazyTool(() => import('./components/tools/RtpCalculator'), 'RtpCalculator'),
+};
 function App() {
   const { isRunning, progress, currentSpins, currentGrid, result, runSimulation } = useSimulation();
   
@@ -240,28 +246,15 @@ function App() {
         </div>
       )}
 
-      {/* Tools Modals */}
-      {activeModalTool === 'jira' && (
-        <JiraLinkGenerator onClose={() => setActiveModalTool(null)} />
-      )}
-      {activeModalTool === 'snippet' && (
-        <SnippetLibrary onClose={() => setActiveModalTool(null)} />
-      )}
-      {activeModalTool === 'jiraReport' && (
-        <JiraReportGenerator onClose={() => setActiveModalTool(null)} />
-      )}
-      {activeModalTool === 'jiraReportWeb' && (
-        <JiraReportGeneratorWeb onClose={() => setActiveModalTool(null)} />
-      )}
-      {activeModalTool === 'jiraBugList' && (
-        <JiraBugListGenerator onClose={() => setActiveModalTool(null)} />
-      )}
-      {activeModalTool === 'rngValidator' && (
-        <RngValidator onClose={() => setActiveModalTool(null)} />
-      )}
-      {activeModalTool === 'rtpCalculator' && (
-        <RtpCalculator onClose={() => setActiveModalTool(null)} />
-      )}
+      {/* Tools Modals（打開時才載入；JIRA 匯出工具含 exceljs，不放進首頁 bundle） */}
+      {activeModalTool && TOOL_MODALS[activeModalTool] && (() => {
+        const Tool = TOOL_MODALS[activeModalTool];
+        return (
+          <Suspense fallback={null}>
+            <Tool onClose={() => setActiveModalTool(null)} />
+          </Suspense>
+        );
+      })()}
     </div>
   );
 }
