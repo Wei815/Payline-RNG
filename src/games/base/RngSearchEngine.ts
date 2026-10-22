@@ -503,10 +503,10 @@ export class RngSearchEngine {
             if (!hasGoldInTargetWin && wildReels.size === wildCount) wildReelsValid = true;
         }
 
+        // 百搭自己成線且有贏分也是干擾（F04：曾排除百搭，通用 Line「M4 × 2 + WX」盤面另有 WX × 2 在 4 條線各贏 10）
         const nextOtherWinsCount = nextWins.filter(
           (w) =>
             w.symbolId !== targetSymbol &&
-            !wildSymbolSet.has(w.symbolId) &&
             isInterferingWin(w, currentPaytable),
         ).length;
 
@@ -613,10 +613,10 @@ export class RngSearchEngine {
 
         const payingTargetWinsCount = isLineGame ? initialWins.filter(w => w.symbolId === targetSymbol && w.payout > 0).length : 0;
         const extraTargetWinsCount = Math.max(0, payingTargetWinsCount - 1);
+        // 百搭自己成線且有贏分也是干擾（F04）
         let otherWinsCount = initialWins.filter(
           (w) =>
             w.symbolId !== targetSymbol &&
-            !wildSymbolSet.has(w.symbolId) &&
             isInterferingWin(w, currentPaytable),
         ).length + extraTargetWinsCount;
 
