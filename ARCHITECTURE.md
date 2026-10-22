@@ -96,7 +96,7 @@ c:\github\Payline-RNG\
 │   │   ├── classIds.ts                  #   QA 腳本 ClassIDs 解碼（金框 / Jackpot 座標、諸神 WY），腳本載入與驗證工具共用
 │   │   ├── ballMultiplier.ts            #   盤面倍數球：F + L 加總乘全部贏分（traits.multiplierBalls）
 │   │   ├── customGridSnippet.ts         #   自定義盤面存成測試腳本的 QA 內容
-│   │   ├── lineViewer.ts                #   「贏分線路一覽」每條線找一組 RNG（⚠️ 元件尚未改呼叫此檔）
+│   │   ├── lineViewer.ts                #   「贏分線路一覽」每條線找一組 RNG（LineViewerTab 使用）
 │   │   └── __tests__/                   #   各流程規則測試 + 搜尋效能基準（第 12.3 章）
 │   │
 │   ├── components/                      # UI 元件目錄
@@ -848,7 +848,6 @@ npx tsx <path-to-script>.ts
 |------|------|-------|
 | RTP Worker 與遊戲類別是兩套掉落實作 | Worker 不呼叫 `calculateNextDropGrid`；例如羅馬在 Worker 中不掉落、秦皇金框不轉 WX、皇家金象金框不分軸都轉 WX（見第 10.1 章）。改成呼叫遊戲類別會改變 RTP 數字，需另案確認 | 中 |
 | 流程測試報告的未修項目 | F03~F06 干擾判定、F09 決戰賽特2 大獎、F10 贏分線路一覽漏解、F13/F14 驗證工具不支援羅馬遞補、F16 皇家金象；白名單 `knownIssues.data.ts` 有精確計數 | 中 |
-| `LineViewerTab` 尚未改呼叫 `flows/lineViewer.ts` | 元件仍用內嵌版本，兩份程式需同步；改線路一覽邏輯時兩邊都要改，或先完成接線 | 低 |
 | `SlotGeneratorTab.tsx` 仍約 2000 行 | 遊戲判斷已移除，但金框 / Jackpot / 幸運草編輯器仍在主檔，可再拆成 `SpecialSymbolPanel` 子元件 | 中 |
 | `ConfigPanel.tsx` 達 56KB | 建議拆分為 ReelStripViewer / PaytableEditor / BetConfig / SpecialSymbolPanel | 中 |
 | `megaway` 型別已定義但無對應遊戲實作 | 只保留型別與 traits，不出現在選單（`games/__tests__/registry.test.ts` 確保選單上的遊戲都有實作）；全域 `ErrorBoundary` 防止任何元件錯誤造成白畫面 | 低 |

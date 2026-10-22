@@ -1,7 +1,7 @@
 /**
  * 「贏分線路一覽」：為每一條線找出一組只在該線中獎的 RNG
  *
- * 逐字搬自 LineViewerTab.computedLines，改為純函式以便測試。元件目前仍使用內嵌版本（待 UI 重構完成後改為呼叫此檔）。
+ * 搬自 LineViewerTab.computedLines，改為純函式以便測試。LineViewerTab 直接呼叫此檔。
  */
 import type { GameType, PaytableRule } from '../types';
 import { evaluateGrid } from '../utils/evaluation';
@@ -55,15 +55,19 @@ export function computeLineViewerLines(p: LineViewerParams): LineViewerResult[] 
         const excludeSymbols = [activeLineViewerSymbol, 'WX', 'WY', 'WZ', 'NI', 'F1', 'F2', 'F3', 'F4', 'L1', 'L2'];
         const nonScatters = currentPaytable.filter(p => p.isEnabled !== false && !p.isScatter && !excludeSymbols.includes(p.symbolId)).map(p => p.symbolId);
 
-        let nsIdx = 0;
-        for (let c = 0; c < reelCount; c++) {
-          for (let r = 0; r < grid[c].length; r++) {
-            if (grid[c][r] === '-') {
-              grid[c][r] = nonScatters.length > 0 ? nonScatters[nsIdx % nonScatters.length] : 'NI';
-              nsIdx++;
-            }
-          }
-        }
+        // 填充：每軸一種符號（第一次依軸序，之後隨機），並驗證其他線沒有贏分（F11：曾逐格輪替填充，造成其他線中獎）
+        const fill = (attempt: number) => {
+          const order = nonScatters.map((_, i) => i);
+          if (attempt > 0) order.sort(() => Math.random() - 0.5);
+          return grid.map((col, c) => col.map(cell => cell !== '-' ? cell
+            : (nonScatters.length > 0 ? nonScatters[order[c % order.length]] : 'NI')));
+        };
+        const otherLinesClean = (g: string[][]) =>
+          !evaluateGrid(g, currentPaytable, { gameType, paylines: linesToRender }, linesToRender, false)
+            .some(w => w.payout > 0 && w.lineIndex !== lineIdx);
+        let filled = fill(0);
+        for (let attempt = 1; attempt < 200 && !otherLinesClean(filled); attempt++) filled = fill(attempt);
+        for (let c = 0; c < reelCount; c++) grid[c] = filled[c];
 
         const mathIdMap: Record<string, string> = {};
         currentPaytable.forEach(p => {
@@ -110,54 +114,59 @@ export function computeLineViewerLines(p: LineViewerParams): LineViewerResult[] 
       let searchCount = 0;
       const MAX_SEARCH = 2500;
 
+      // 依候選停點組出盤面並評估；找到零干擾（羅馬另需零消除遞補）時設定 foundPerfect
+      const tryCandidate = (currentRng: number[]) => {
+        searchCount++;
+        const testGrid = currentRng.map((start, cIdx) => {
+          const r = rowCounts[cIdx] || 3;
+          const s = currentStrips[cIdx];
+          return Array.from({ length: r }).map((_, ri) => s[(start + ri) % s.length]);
+        });
+
+        const evWins = evaluateGrid(testGrid, currentPaytable, gameType, customPaylines, false);
+        const payingWins = evWins.filter(w => w.payout > 0);
+        const targetWin = payingWins.find(w => w.lineIndex === lineIdx);
+
+        if (!targetWin) return;
+        const interferenceWins = payingWins.filter(w => w.lineIndex !== lineIdx);
+        const interference = interferenceWins.length;
+
+        let currentSafeRng1: number[] | null = null;
+        if (refillGame?.findRefillRng) {
+          if (interference === 0) {
+            currentSafeRng1 = refillGame.findRefillRng(testGrid, payingWins, currentPaytable, {
+              stripSets, fallbackStrips: currentStrips, rowCounts, paylines: linesToRender, maxAttempts: 300,
+            });
+            if (currentSafeRng1) {
+              foundPerfect = true;
+              bestRng = [...currentRng];
+              bestTotalWin = targetWin.totalWin;
+              bestSafeRng1 = currentSafeRng1;
+              return;
+            }
+          }
+        } else {
+          if (interference === 0) {
+            foundPerfect = true;
+            bestRng = [...currentRng];
+            bestTotalWin = targetWin.totalWin;
+            return;
+          }
+        }
+
+        if (!foundPerfect && interference < minInterference) {
+          minInterference = interference;
+          bestRng = [...currentRng];
+          bestTotalWin = targetWin.totalWin;
+          bestSafeRng1 = currentSafeRng1;
+        }
+      };
+
       const search = (colIdx: number, currentRng: number[]) => {
         if (foundPerfect || searchCount >= MAX_SEARCH) return;
 
         if (colIdx === reelCount) {
-          searchCount++;
-          const testGrid = currentRng.map((start, cIdx) => {
-            const r = rowCounts[cIdx] || 3;
-            const s = currentStrips[cIdx];
-            return Array.from({ length: r }).map((_, ri) => s[(start + ri) % s.length]);
-          });
-
-          const evWins = evaluateGrid(testGrid, currentPaytable, gameType, customPaylines, false);
-          const payingWins = evWins.filter(w => w.payout > 0);
-          const targetWin = payingWins.find(w => w.lineIndex === lineIdx);
-
-          if (!targetWin) return;
-          const interferenceWins = payingWins.filter(w => w.lineIndex !== lineIdx);
-          const interference = interferenceWins.length;
-
-          let currentSafeRng1: number[] | null = null;
-          if (refillGame?.findRefillRng) {
-            if (interference === 0) {
-              currentSafeRng1 = refillGame.findRefillRng(testGrid, payingWins, currentPaytable, {
-                stripSets, fallbackStrips: currentStrips, rowCounts, paylines: linesToRender, maxAttempts: 300,
-              });
-              if (currentSafeRng1) {
-                foundPerfect = true;
-                bestRng = [...currentRng];
-                bestTotalWin = targetWin.totalWin;
-                bestSafeRng1 = currentSafeRng1;
-                return;
-              }
-            }
-          } else {
-            if (interference === 0) {
-              foundPerfect = true;
-              bestRng = [...currentRng];
-              bestTotalWin = targetWin.totalWin;
-              return;
-            }
-          }
-
-          if (!foundPerfect && interference < minInterference) {
-            minInterference = interference;
-            bestRng = [...currentRng];
-            bestTotalWin = targetWin.totalWin;
-            bestSafeRng1 = currentSafeRng1;
-          }
+          tryCandidate(currentRng);
           return;
         }
 
@@ -170,6 +179,12 @@ export function computeLineViewerLines(p: LineViewerParams): LineViewerResult[] 
         }
       };
 
+      // F10：依序窮舉只會變動最後幾軸（羅馬曾漏解 81%），先在各軸候選停點中隨機取樣，再以窮舉補足
+      const SAMPLE_BUDGET = 2500;
+      for (let t = 0; t < SAMPLE_BUDGET && !foundPerfect; t++) {
+        tryCandidate(candidatesPerReel.map(c => c[Math.floor(Math.random() * c.length)]));
+      }
+      searchCount = 0;
       search(0, []);
 
       let finalRng: number[] | null = bestRng ? (bestRng as number[]).slice(0, reelCount) : null;
