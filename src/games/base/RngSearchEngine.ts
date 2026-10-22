@@ -5,6 +5,7 @@ import type {
 } from "../../types";
 import { getWinningPositions, isEliminatedCell } from "../../utils/evaluation";
 import type { AbstractGame } from "./AbstractGame";
+import type { IGameEnvironment } from "./IGameEnvironment";
 import { getFamily, getTraits } from "../registry";
 import { isInterferingWin } from "./searchRules";
 
@@ -1173,11 +1174,14 @@ export class RngSearchEngine {
     topTrackerOther?: string[],
     customPaylines?: number[][],
     isFreeGame: boolean = false,
-    _stripSets?: Record<string, string[][]>,
+    stripSets?: Record<string, string[][]>,
   ): Promise<Record<string, number[]>> {
     const results: Record<string, number[]> = {};
     const targets = new Set(intervals.map((i) => i.id));
-    const hasCascade = this.gameInstance.hasCascadeFeature();
+    // 遞補由腳本下一行決定的遊戲（羅馬）：大獎只計初始盤，另找一筆讓遞補後 0 贏分的 RNG 結束連鎖（F08）
+    // 曾用「從滾輪表抽」的通用掉落累加贏分，與羅馬實際遞補方式不同，測案 Win= 落不到區間內
+    const refillGame = this.gameInstance as AbstractGame & IGameEnvironment;
+    const hasCascade = this.gameInstance.hasCascadeFeature() && !refillGame.findRefillRng;
     const ATTEMPTS = 35000;
     const yieldIfNeeded = this.gameInstance.createTimeSlicer(16);
 
@@ -1266,6 +1270,7 @@ export class RngSearchEngine {
       }
 
       let totalPayout = 0;
+      let firstWins: ReturnType<AbstractGame['evaluate']> = [];
 
       if (!hasCascade) {
         const simWins = this.gameInstance.evaluate(
@@ -1275,6 +1280,7 @@ export class RngSearchEngine {
           customPaylines,
           false,
         );
+        firstWins = simWins;
         for (let i = 0; i < simWins.length; i++) {
           totalPayout += simWins[i].totalWin || simWins[i].payout || 0;
         }
@@ -1362,7 +1368,15 @@ export class RngSearchEngine {
         if (targets.has(interval.id)) {
           const maxVal = interval.max ?? Infinity;
           if (multiplier >= interval.min && multiplier < maxVal) {
-            results[interval.id] = [...candidateRng];
+            const rng = [...candidateRng];
+            if (refillGame.findRefillRng && totalPayout > 0) {
+              const refill = refillGame.findRefillRng(currentGrid, firstWins.filter(w => w.payout > 0), currentPaytable, {
+                stripSets, fallbackStrips: currentStrips, rowCounts, paylines: customPaylines, maxAttempts: 1500,
+              });
+              if (!refill) continue;
+              (rng as number[] & { allRngs?: number[][] }).allRngs = [rng.slice(), refill];
+            }
+            results[interval.id] = rng;
             targets.delete(interval.id);
           }
         }

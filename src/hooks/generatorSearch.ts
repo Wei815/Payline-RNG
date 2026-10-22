@@ -69,7 +69,8 @@ export async function runGeneratorSearch(params: GeneratorSearchParams): Promise
       gameType,
       topTrackerOther,
       customPaylines,
-      isFreeGame
+      isFreeGame,
+      stripSets
     );
     
     for (const interval of multiplierIntervals) {
@@ -80,7 +81,9 @@ export async function runGeneratorSearch(params: GeneratorSearchParams): Promise
           wildCount: 0,
           rng: results[interval.id],
           isInterfered: false,
-          hasS1Drop: false
+          hasS1Drop: false,
+          // 羅馬：初始 + 遞補 0 贏分的連鎖
+          allRngs: (results[interval.id] as any).allRngs,
         } as any);
       }
     }

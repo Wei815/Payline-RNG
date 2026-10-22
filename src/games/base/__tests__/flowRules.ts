@@ -242,23 +242,25 @@ export function cascadeToEnd(fx: GameFixture, grid: string[][], rng: number[], s
 }
 
 /** 羅馬：依腳本連鎖序列（初始 + 各次遞補，滾輪表依 Combo 輪替）重播，回傳每一步的贏分筆數 */
-export function replayRomaChain(fx: GameFixture, chain: number[][]): { winsPerStep: number[]; grids: string[][][] } {
+export function replayRomaChain(fx: GameFixture, chain: number[][]): { winsPerStep: number[]; grids: string[][][]; total: number } {
   const roma = fx.game as unknown as RomaGame;
   const config = makeConfig(fx);
   const sets = fx.stripSets ?? {};
   let grid = roma.buildGridFromRng(chain[0], sets[0] ?? fx.strips, fx.rowCounts, fx.reelCount);
   const winsPerStep: number[] = [];
   const grids: string[][][] = [];
+  let total = 0;
   for (let step = 0; step < chain.length; step++) {
     const wins = paying(fx.game.evaluate(grid, fx.paytable, config, fx.paylines, false));
     winsPerStep.push(wins.length);
     grids.push(grid);
+    total += wins.reduce((s, w) => s + w.totalWin, 0);
     if (step === chain.length - 1) break;
     const coords = new Set(getWinningPositions(grid, wins, fx.paytable, fx.gameType, undefined, fx.paylines).keys());
     const setIdx = roma.getStripSetIndex(step + 1);
     grid = roma.cascadeStep(grid, coords, chain[step + 1], sets[setIdx] ?? fx.strips, fx.rowCounts);
   }
-  return { winsPerStep, grids };
+  return { winsPerStep, grids, total };
 }
 
 /** 產生器分頁計算測案贏分時的環境（bet = 1、無手動金框） */

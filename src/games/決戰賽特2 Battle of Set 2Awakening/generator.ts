@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { GeneratorCombination, InstantGenerator, InstantGeneratorParams } from '../base/InstantGenerator';
+import type { GeneratorCombination, GeneratorSearchParams, InstantGenerator, InstantGeneratorParams } from '../base/InstantGenerator';
+import type { MultiplierInterval } from '../../types';
+import { evaluateGrid } from '../../utils/evaluation';
 
 /**
  * 決戰賽特2 MathID 即時產生器：
@@ -315,4 +317,70 @@ function combos(params: InstantGeneratorParams): GeneratorCombination[] {
   return newCombs;
 }
 
-export const set2Generator: InstantGenerator = { combos };
+/**
+ * 大獎區間（F09：原本走滾輪表搜尋，決戰賽特2 沒有滾輪表所以一定找不到）
+ * 直接組 30 碼盤面：1～3 種有賠率的符號各放 8～13 顆，其餘每種不超過 7 顆（不中獎），打亂位置後以遊戲評估算倍率
+ */
+function multiplierIntervals(params: GeneratorSearchParams, validIntervals: MultiplierInterval[]): GeneratorCombination[] {
+  const { reelCount, rowCounts, currentPaytable, gameType, bet } = params;
+  const MAX_ATTEMPTS = 4000;
+  const totalCells = rowCounts.slice(0, reelCount).reduce((s, r) => s + (r || 3), 0);
+  const excluded = new Set(['WX', 'WY', 'WZ', 'NI', 'F1', 'F2', 'F3', 'F4', 'L1', 'L2']);
+  const regular = currentPaytable.filter(p => p.isEnabled !== false && !p.isScatter && !p.isWild && !excluded.has(p.symbolId));
+  const paying = regular.filter(p => ['match3', 'match4', 'match5'].some(k => (p.payouts[k] ?? 0) > 0));
+  const mathIdOf = (sym: string) => String(currentPaytable.find(p => p.symbolId === sym)?.mathId ?? sym).split(',')[0].trim();
+  const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
+  const newCombs: GeneratorCombination[] = [];
+  if (paying.length === 0) return newCombs;
+
+  for (const interval of validIntervals) {
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      // 1. 中獎符號與個數
+      const cells: string[] = [];
+      const winners = [...paying].sort(() => Math.random() - 0.5).slice(0, 1 + Math.floor(Math.random() * 3));
+      for (const w of winners) {
+        const n = 8 + Math.floor(Math.random() * 6);
+        if (cells.length + n > totalCells) break;
+        for (let i = 0; i < n; i++) cells.push(w.symbolId);
+      }
+      // 2. 其餘格子：其他符號每種最多 7 顆
+      const fillers = regular.map(p => p.symbolId).filter(sym => !winners.some(w => w.symbolId === sym));
+      const used: Record<string, number> = {};
+      while (cells.length < totalCells) {
+        const options = fillers.filter(sym => (used[sym] ?? 0) < 7);
+        if (options.length === 0) break;
+        const sym = pick(options);
+        used[sym] = (used[sym] ?? 0) + 1;
+        cells.push(sym);
+      }
+      if (cells.length < totalCells) continue;
+      cells.sort(() => Math.random() - 0.5);
+
+      // 3. 以遊戲評估計算倍率（與測案 Win= 相同）
+      const grid: string[][] = [];
+      let k = 0;
+      for (let c = 0; c < reelCount; c++) grid.push(cells.slice(k, k += rowCounts[c] || 3));
+      const total = evaluateGrid(grid, currentPaytable, { gameType, paylines: [], effectiveBet: bet }, undefined, false)
+        .reduce((s, w) => s + w.totalWin, 0);
+      const multiplier = total / (bet || 1);
+      if (multiplier < interval.min || (interval.max !== null && multiplier >= interval.max)) continue;
+
+      const fullMathIds = cells.map(mathIdOf);
+      const columnStrings = grid.map(col => col.map(mathIdOf).join(','));
+      const dropMathIds = Array.from({ length: 50 }, () => mathIdOf(pick(fillers.length > 0 ? fillers : regular.map(p => p.symbolId))));
+      newCombs.push({
+        name: interval.name,
+        length: 0,
+        wildCount: 0,
+        rng: columnStrings as any,
+        isInterfered: false,
+        fullMathIds,
+        dropMathIds,
+      } as any);
+      break;
+    }
+  }
+  return newCombs;
+}
+
+export const set2Generator: InstantGenerator = { combos, multiplierIntervals };

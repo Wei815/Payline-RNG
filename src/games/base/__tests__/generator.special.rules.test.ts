@@ -62,7 +62,17 @@ describe('COMBO / 大獎區間 → 規則重播', () => {
           if (b.stripId !== undefined && fx.stripSets?.[b.stripId]) strips = fx.stripSets[b.stripId];
         }
         const config = makeConfig(fx, { goldFrames: sc.goldFrames ?? {}, jackpots: sc.jackpots ?? {} });
-        const engineModel = cascadeToEnd(fx, grid, traits.mathIdGenerator ? [] : (c.rng as number[]), strips, config).total;
+        // 羅馬：依腳本「初始 + 遞補」逐行重播（遞補由下一行 RNG 決定），最後一盤須 0 贏分
+        let engineModel: number;
+        if (gameType === 'linegame_roma') {
+          const chain = replayRomaChain(fx, parseScript(fmt.copyAllLine(sc, ctx)));
+          engineModel = chain.total;
+          if (chain.winsPerStep.length < 2 || chain.winsPerStep[chain.winsPerStep.length - 1] !== 0) {
+            push(iv.name, 'W3 羅馬大獎附遞補且遞補後 0 贏分', `每步贏分筆數 ${chain.winsPerStep.join(',')}`);
+          }
+        } else {
+          engineModel = cascadeToEnd(fx, grid, traits.mathIdGenerator ? [] : (c.rng as number[]), strips, config).total;
+        }
         const inRange = (v: number) => v >= iv.min && (iv.max === null || v < iv.max);
         if (!inRange(engineModel)) push(iv.name, 'W1 大獎倍率落在區間（遊戲掉落規則）', `${engineModel} 不在 [${iv.min}, ${iv.max ?? '∞'})`);
         const qa = calculateCombinationWin({ ...winCtx(fx, 'WIN_MULTIPLIER'), goldFrames: sc.goldFrames ?? {} }, c).totalWin;
