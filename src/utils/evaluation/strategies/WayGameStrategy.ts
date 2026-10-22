@@ -39,7 +39,8 @@ export class WayGameStrategy implements EvaluationStrategy {
     if (currentMatch >= 2) {
       const lookupMatch = Math.min(currentMatch, grid.length);
       const payout = rule.payouts[`match${lookupMatch}` as keyof typeof rule.payouts] || 0;
-      if (payout > 0 || currentMatch >= 3 || includeZeroPayout) {
+      // 0 賠率只在要求時回傳（例如秦皇 / 皇家金象 WX 自成 3 連為 0 分，不可當成中獎被消除或計入命中）
+      if (payout > 0 || includeZeroPayout) {
         let totalWin = payout * currentWays;
         const betScaled = sym === 'B1' || sym === 'B2';
         if (betScaled) {
