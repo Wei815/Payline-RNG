@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Trash2, RotateCcw } from 'lucide-react';
 import type { GameType, PaytableRule, GameConfig } from '../../types';
-import { useGameStore, extractSpecialConfigFromGrid } from '../../store/useGameStore';
+import { useGameStore, extractSpecialConfigFromGrid, selectActiveStrips } from '../../store/useGameStore';
 import { displayWin, evaluateGrid } from '../../utils/evaluation';
 import { formatAmount } from '../../utils/formatters';
 import { calculateSVGPaths } from '../../utils/svgPaths';
@@ -46,7 +46,6 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   const setActiveStripId = useGameStore(state => state.setActiveStripId);
   const currentStripSets = useGameStore(state => state.currentStripSets);
   const currentFreeStripSets = useGameStore(state => state.currentFreeStripSets);
-  const currentStrips = useGameStore(state => state.currentStrips);
   const isFreeGame = useGameStore(state => state.isFreeGame);
 
   const [hiddenPaletteSymbols, setHiddenPaletteSymbols] = useState<Set<string>>(new Set());
@@ -528,7 +527,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
          }
       }
       
-      const stripsToUse = activeStrips && activeStrips.length > 1 ? activeStrips[targetStripId] : (isFreeGame && currentFreeStripSets && currentFreeStripSets.length > 0 ? currentFreeStripSets[0] : currentStrips);
+      const stripsToUse = activeStrips && activeStrips.length > 1 ? activeStrips[targetStripId] : selectActiveStrips(useGameStore.getState());
       
       const stripGrid = Array.from({ length: reelCount }, (_, c) => {
         const rows = rowCounts[c] || 3;

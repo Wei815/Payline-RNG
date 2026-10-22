@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { defaultPaylines } from '../utils/evaluation';
 import { useMachineStore } from '../store/useMachineStore';
-import { useGameStore } from '../store/useGameStore';
+import { selectActiveStrips, useGameStore } from '../store/useGameStore';
 
 export interface SlotConsoleProps {
   currentGrid: string[][];
@@ -27,9 +27,10 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
     gameType: state.gameType
   })));
 
+  const activeStrips = useGameStore(selectActiveStrips);
+
   const {
-    reelCount, rowCounts, setRowCounts,
-    currentStrips, currentStripSets, currentFreeStripSets, setActiveStripId,
+    reelCount, rowCounts, setRowCounts, currentStripSets, currentFreeStripSets, setActiveStripId,
     currentPaytable, customPaylines,
     specialSymbolConfig, setSpecialSymbolConfig,
     goldFrames, setGoldFrames,
@@ -45,7 +46,6 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
     reelCount: state.reelCount,
     rowCounts: state.rowCounts,
     setRowCounts: state.setRowCounts,
-    currentStrips: state.currentStrips,
     currentStripSets: state.currentStripSets,
     isFreeGame: state.isFreeGame,
     currentFreeStripSets: state.currentFreeStripSets,
@@ -112,7 +112,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
   }, [gameType, activeTab]);
 
   // 分組與排序邏輯 (同 Paytable Editor 三個區塊，並按指定順序排序)
-  const groupedSymbols = useSymbolGrouping(currentStrips, currentPaytable, gameType);
+  const groupedSymbols = useSymbolGrouping(activeStrips, currentPaytable, gameType);
 
   const symbols = useMemo(() => {
     const list: string[] = [];
@@ -224,7 +224,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
             gameType={gameType} betMultiplier={betMultiplier}
             parsePasteRng={parsePasteRng}
             isRunning={isRunning} selectedSymbol={selectedSymbol}
-            currentStrips={currentStrips} currentGrid={currentGrid} currentPaytable={currentPaytable} customPaylines={customPaylines} bet={bet}
+            currentStrips={activeStrips} currentGrid={currentGrid} currentPaytable={currentPaytable} customPaylines={customPaylines} bet={bet}
           />
         )}
         {activeTab === 'other' && (
@@ -255,7 +255,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
               setJackpots={setJackpots}
               clovers={clovers}
               setClovers={setClovers}
-              currentStrips={isFreeGame && currentFreeStripSets && currentFreeStripSets.length > 0 ? currentFreeStripSets[0] : currentStrips}
+              currentStrips={activeStrips}
               currentGrid={currentGrid}
               currentPaytable={currentPaytable}
               customPaylines={customPaylines}
@@ -267,7 +267,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
         {getTraits(gameType).family === 'line' && activeTab === 'lines' && (
           <div className="w-full flex-1 flex flex-col">
             <LineViewerTab 
-              reelCount={reelCount} rowCounts={rowCounts} currentStrips={currentStrips}
+              reelCount={reelCount} rowCounts={rowCounts} currentStrips={activeStrips}
               stripSets={formattedStripSets}
               activeLineViewerSymbol={activeLineViewerSymbol} setLineViewerSymbolState={setLineViewerSymbolState}
               symbols={symbols} useWxInLines={useWxInLines} setUseWxInLines={setUseWxInLines}
@@ -284,7 +284,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
             <TumbleViewerTab
               reelCount={reelCount}
               rowCounts={rowCounts}
-              currentStrips={currentStrips}
+              currentStrips={activeStrips}
               currentPaytable={currentPaytable}
               gameType={gameType}
               manualIndices={manualIndices}

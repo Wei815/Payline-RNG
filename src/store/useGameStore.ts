@@ -80,6 +80,23 @@ export const defaultSpecialSymbolConfig: SpecialSymbolConfig = {
   wyEnabled: false
 };
 
+/**
+ * 目前盤面使用的滾輪表（各分頁共用，盤面、贏分、複製的 Strip ID 才會一致）
+ * - 免遊且有免遊滾輪表組：免遊組的第 activeStripId 組
+ * - 主遊戲有多組滾輪表：主遊戲組的第 activeStripId 組
+ * - 否則：設定面板編輯中的滾輪表 currentStrips
+ * 曾經免遊固定用第 0 組、改賠率後 currentStrips 被設定面板改回第 0 組，但 Strip ID 沒變
+ */
+export const selectActiveStrips = (state: Pick<GameState, 'isFreeGame' | 'currentFreeStripSets' | 'currentStripSets' | 'activeStripId' | 'currentStrips'>): ReelStrips => {
+  if (state.isFreeGame && state.currentFreeStripSets.length > 0) {
+    return state.currentFreeStripSets[state.activeStripId] ?? state.currentFreeStripSets[0];
+  }
+  if (state.currentStripSets.length > 1) {
+    return state.currentStripSets[state.activeStripId] ?? state.currentStripSets[0];
+  }
+  return state.currentStrips;
+};
+
 export const extractSpecialConfigFromGrid = (grid: string[][], baseConfig: SpecialSymbolConfig, gameType: string): SpecialSymbolConfig => {
   if (findTraits(gameType)?.specialConfigFromGrid === false) {
     return baseConfig;
@@ -207,7 +224,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   setTopTracker: (tracker) => set({ topTracker: tracker }),
   setTopTrackerOther: (tracker) => set({ topTrackerOther: tracker }),
   setActiveTab: (tab) => set({ activeTab: tab }),
-  setIsFreeGame: (isFree) => set({ isFreeGame: isFree }),
+  // 主遊戲 / 免遊的滾輪表組數不同，切換時回到第 0 組，避免沿用不存在的 Strip ID
+  setIsFreeGame: (isFree) => set((state) => (state.isFreeGame === isFree ? {} : { isFreeGame: isFree, activeStripId: 0 })),
   setIsProjectLoaded: (loaded) => set({ isProjectLoaded: loaded }),
   setIsProjectLoading: (loading) => set({ isProjectLoading: loading }),
   setProjectName: (name) => set({ projectName: name }),
