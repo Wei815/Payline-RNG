@@ -68,10 +68,8 @@ export interface GameTraits {
   snippetClassIds?: 'coordinate' | 'wyConfig' | 'symbolMultiplier';
   /** 套用腳本 / 自訂盤面時是否從盤面推導 S1/S2/倍數球設定（預設 true） */
   specialConfigFromGrid?: boolean;
-  /** RTP 模擬 Worker 中獎後進行消除掉落（Worker 的掉落為獨立的簡化實作） */
+  /** RTP 模擬 Worker 中獎後進行消除掉落（依遊戲類別的 applyCascade / simulateRefill，與測案 Win= 同一套） */
   simulationCascade?: boolean;
-  /** 中獎的金框符號轉為 WX 留在盤面（RTP 模擬 / 產生器試算） */
-  goldToWild?: boolean;
 }
 
 export interface GameManifest {

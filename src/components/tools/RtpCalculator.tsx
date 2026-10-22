@@ -76,7 +76,7 @@ export const RtpCalculator: React.FC<RtpCalculatorProps> = ({ onClose }) => {
 
     const targetStrips = mode === 'free_only' ? freeStrips : strips;
 
-    runSimulation(targetStrips, currentPaytable, selectedSpins, rowCounts, gameConfig, coin, bet, isFreeGame, mode, mode === 'full_game' ? freeStrips : undefined);
+    runSimulation(targetStrips, currentPaytable, selectedSpins, rowCounts, gameConfig, coin, bet, isFreeGame, mode, mode === 'full_game' ? freeStrips : undefined, currentStripSets, currentFreeStripSets);
   };
 
   const templatesList = Object.keys(templateFiles).map(path => ({

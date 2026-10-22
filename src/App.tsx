@@ -85,7 +85,8 @@ function App() {
         unremovableSymbols: ['S1']
       }
     };
-    runSimulation(strips, paytable, spins, rows, config, coin, bet, isFreeGame);
+    const { currentStripSets, currentFreeStripSets } = useGameStore.getState();
+    runSimulation(strips, paytable, spins, rows, config, coin, bet, isFreeGame, undefined, undefined, currentStripSets, currentFreeStripSets);
   }, [runSimulation, gameType, customPaylines, coin, bet]);
 
   const handleDashboardRunSimulation = useCallback(() => {
@@ -98,7 +99,8 @@ function App() {
       }
     };
     // We don't have activeStripTab here, so we assume Base Game if run from Dashboard directly
-    runSimulation(currentStrips, currentPaytable, 100000, rowCounts, config, coin, bet, false);
+    const { currentStripSets, currentFreeStripSets } = useGameStore.getState();
+    runSimulation(currentStrips, currentPaytable, 100000, rowCounts, config, coin, bet, false, undefined, undefined, currentStripSets, currentFreeStripSets);
   }, [runSimulation, gameType, customPaylines, bet, currentStrips, currentPaytable, rowCounts, coin]);
 
   return (

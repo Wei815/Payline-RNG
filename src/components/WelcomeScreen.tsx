@@ -25,7 +25,7 @@ function featureTags(id: GameType): string[] {
   if (GameRegistry.tryGetGame(id)?.hasCascadeFeature?.()) tags.push('消除掉落');
   if (t.goldFramesAndJackpots) tags.push('金框 / Jackpot');
   if (t.wyReels) tags.push('WY 整軸');
-  if (t.goldToWild || t.goldCascadeSearch) tags.push('金框轉 WX');
+  if (t.goldCascadeSearch) tags.push('金框轉 WX');
   if (t.doublingTumbleMultiplier) tags.push('倍數翻倍');
   if (t.multiplierBalls) tags.push('倍數球');
   return tags.slice(0, 3);

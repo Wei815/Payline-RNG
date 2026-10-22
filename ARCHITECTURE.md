@@ -365,8 +365,7 @@ classDiagram
 | 機制 | `multiplierBalls` | F1~F4 倍數球設定（Pay Anywhere 類） |
 | 機制 | `wyReels` | WY 整軸百搭 + (a,b,z) 倍數；產生器免遊用 WY（諸神） |
 | 掉落 | `doublingTumbleMultiplier` | 連續掉落倍數 1,2,4,8…，免遊由 8 起跳、上限 1024（人魚、秦皇、皇家金象）；Worker / 產生器基礎倍數 / 消除掉落測試共用 |
-| 掉落 | `simulationCascade` | RTP 模擬 Worker 中獎後掉落（人魚、秦皇、皇家金象、決戰賽特2） |
-| 掉落 | `goldToWild` | RTP 模擬 Worker 中獎金框→WX（皇家金象；秦皇的金框轉換只在遊戲類別 applyCascade，見第 13 章） |
+| 掉落 | `simulationCascade` | RTP 模擬 Worker 中獎後掉落（人魚、秦皇、皇家金象、決戰賽特2、羅馬）；掉落方式由遊戲類別決定 |
 | UI | `tumbleViewerTab` / `showPaylineTable` / `metricsPaylineCount` | 分頁與顯示差異 |
 | UI | `customGridTab` | 提供「自定義盤面」分頁（可指定每格符號的 MathID 遊戲：奢華、諸神、決戰賽特2）；依滾輪表產生盤面的遊戲不提供，載入腳本時改帶入手動計算盤面 |
 | 腳本 | `snippetClassIds` / `specialConfigFromGrid` | 測試腳本 ClassID 的解讀方式 |
@@ -385,6 +384,7 @@ classDiagram
 | `generateTriggerSequence()` | 免遊觸發序列 | 羅馬 |
 | `findRefillRng()` | 「初始 + 遞補 0 贏分」連鎖腳本 | 羅馬 |
 | `replayRefillChain()` | 重播「初始 + 遞補」連鎖腳本（RNG 腳本驗證工具使用） | 羅馬 |
+| `simulateRefill()` / `getFreeSpinsByCombo()` | RTP 模擬的遞補方式、依連續消除次數給免遊 | 羅馬 |
 
 ### 4.4 共用層 vs 遊戲層：改東西前先問自己
 
@@ -716,9 +716,10 @@ Combo 4+             → 滾輪表 2/1 交替 (偶→2, 奇→1)
 - 定期發送 `PROGRESS` 訊息（含 `spinsDone` 和 `currentGrid`）
 - 完成後發送 `DONE` 訊息（含完整 `SimulationResult`）
 - 由 `useSimulation.ts` hook 管理 Worker 生命週期
-- 遊戲差異只讀 traits：`simulationCascade`（是否掉落）、`doublingTumbleMultiplier`（掉落倍數）、`goldToWild`（金框→WX）
+- 是否掉落讀 `traits.simulationCascade`；掉落方式呼叫遊戲類別：`applyCascade`（金框→WX、平移掉落）、`isSymbolUnremovable`、`getTumbleMultiplier`；
+  遞補方式特殊的遊戲實作 `simulateRefill`（羅馬依 Combo 輪替滾輪表、覆蓋式遞補），依連續消除給免遊的遊戲實作 `getFreeSpinsByCombo`（羅馬，無 Retrigger）
+- Worker 需要所有滾輪表組：`useSimulation` 傳入 `stripSets` / `freeStripSets`（App 與 RTP 計算機都會帶入）
 - 掉落終止條件：無贏分、或本次中獎格全都不可消除（盤面未改變，例如秦皇免遊中只有 S1 中獎），另有 `MAX_CASCADES = 100` 安全上限
-- ⚠️ Worker 的掉落是**獨立的簡化實作**，與遊戲類別的 `calculateNextDropGrid` 不同（例如羅馬在 Worker 中不掉落），見第 13 章技術債
 
 ### 10.1 同一個規則在哪幾處實作（改規則時要一起改）
 
@@ -727,12 +728,13 @@ Combo 4+             → 滾輪表 2/1 交替 (偶→2, 奇→1)
 
 | 規則 | 遊戲類別（產生器搜尋 / 測案 Win=） | RTP Worker | 消除掉落測試 / 驗證工具 |
 |------|------------------------------|-----------|----------------------|
-| 掉落 / 遞補 | `applyCascade` | Worker 內建簡化版（中獎格原地換成滾輪表上一格，不往下掉） | `calculateNextDropGrid`（flows/tumble.ts）/ rngValidator 自有模型 |
-| 連續掉落倍數 | `getTumbleMultiplier` | `traits.doublingTumbleMultiplier` | `getTumbleMultiplier` |
-| 金框→WX | `applyCascade` 覆寫（皇家金象只限第 3、4 軸） | `traits.goldToWild`（不分軸） | `applyCascade` |
-| 不可消除符號 | `isSymbolUnremovable` | `config.specialRules.unremovableSymbols`（只在免遊） | `isSymbolUnremovable` |
+| 掉落 / 遞補 | `applyCascade`（羅馬：腳本下一行） | `applyCascade` / `simulateRefill` | `calculateNextDropGrid`（flows/tumble.ts）/ 驗證工具：羅馬用 `replayRefillChain` |
+| 連續掉落倍數 | `getTumbleMultiplier` | `getTumbleMultiplier`（`doublingTumbleMultiplier` 的遊戲） | `getTumbleMultiplier` |
+| 金框→WX | `applyCascade` 覆寫（皇家金象只限第 3、4 軸） | `applyCascade` | `applyCascade` / `calculateNextDropGrid` 覆寫 |
+| 不可消除符號 | `isSymbolUnremovable` | `isSymbolUnremovable` ＋ 免遊時 `specialRules.unremovableSymbols`（S1） | `isSymbolUnremovable` |
 
-> 秦皇的倍數規格曾在四處不一致（測案有倍數、Worker 沒有），改成同一個 trait 後才一致。新增掉落相關規則時，請對照這張表逐處檢查，或更好地讓該處改呼叫遊戲類別。
+> 曾經 Worker 自寫一套掉落（原地替換、金框不分軸轉 WX、不可消除只看 S1、羅馬不掉落），2026-10-22 改為呼叫遊戲類別。
+> 新增掉落相關規則時，請在遊戲類別實作，四處自動一致；不要在 Worker 或 flows 內另寫一份。
 
 ---
 
@@ -847,7 +849,7 @@ npx tsx <path-to-script>.ts
 
 | 項目 | 說明 | 嚴重度 |
 |------|------|-------|
-| RTP Worker 與遊戲類別是兩套掉落實作 | Worker 不呼叫 `calculateNextDropGrid`；例如羅馬在 Worker 中不掉落、秦皇金框不轉 WX、皇家金象金框不分軸都轉 WX（見第 10.1 章）。改成呼叫遊戲類別會改變 RTP 數字，需另案確認 | 中 |
+| 羅馬 RTP 模擬未包含獅子特色（B1 ≥ 3） | 免遊與連續消除已依規則模擬，B1 觸發的獅子戰鬥特色贏分尚未模擬 | 低 |
 | 流程測試報告的未修項目 | F03~F06 干擾判定、F09 決戰賽特2 大獎、F10 贏分線路一覽漏解、F13/F14 驗證工具不支援羅馬遞補、F16 皇家金象；白名單 `knownIssues.data.ts` 有精確計數 | 中 |
 | `SlotGeneratorTab.tsx` 仍約 2000 行 | 遊戲判斷已移除，但金框 / Jackpot / 幸運草編輯器仍在主檔，可再拆成 `SpecialSymbolPanel` 子元件 | 中 |
 | `ConfigPanel.tsx` 達 56KB | 建議拆分為 ReelStripViewer / PaytableEditor / BetConfig / SpecialSymbolPanel | 中 |

@@ -13,7 +13,6 @@ export default defineGame({
     doublingTumbleMultiplier: true,
     goldCascadeSearch: true,
     simulationCascade: true,
-    goldToWild: true,
   },
   create: () => new RoyalElephantGame(),
 });

@@ -444,6 +444,19 @@ export class RomaGame extends BaseLineGame {
   }
 
   /** 遞補一律使用滾輪表 1（Combo 1），沒有時使用目前滾輪表 */
+  /** RTP 模擬遞補：第 combo 次消除使用 getStripSetIndex(combo) 的滾輪表，隨機停點覆蓋空缺 */
+  public simulateRefill(
+    grid: string[][],
+    winningCoords: Map<string, number[]>,
+    combo: number,
+    opts: { stripSets?: string[][][]; fallbackStrips: string[][]; rowCounts: number[] },
+  ): string[][] {
+    const strips = opts.stripSets?.[this.getStripSetIndex(combo)] ?? opts.fallbackStrips;
+    const rng = strips.map(s => Math.floor(Math.random() * (s.length || 1)));
+    const eliminated = new Set([...winningCoords.keys()].filter(k => isEliminatedCell(winningCoords, k)));
+    return this.cascadeStep(grid, eliminated, rng, strips, opts.rowCounts);
+  }
+
   /** 重播「初始 + 遞補」連鎖：第 n 次遞補使用 getStripSetIndex(n) 的滾輪表，空缺由該行 RNG 覆蓋填補 */
   public replayRefillChain(
     rngLines: number[][],

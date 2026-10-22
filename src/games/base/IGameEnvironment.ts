@@ -58,6 +58,20 @@ export interface IGameEnvironment {
     }
   ): { grid: string[][]; wins: WinResult[]; winningCoords: Map<string, number[]> }[];
 
+  /**
+   * RTP 模擬時的遞補（遞補方式與一般「從滾輪表往下抽」不同的遊戲，例：羅馬依 Combo 輪替滾輪表並以新停點覆蓋）。
+   * combo 為第幾次消除（從 1 開始）；回傳遞補後的新盤面。未實作時 Worker 使用 applyCascade。
+   */
+  simulateRefill?(
+    grid: string[][],
+    winningCoords: Map<string, number[]>,
+    combo: number,
+    opts: { stripSets?: string[][][]; fallbackStrips: string[][]; rowCounts: number[] }
+  ): string[][];
+
+  /** 依主遊戲連續消除次數給予的免遊場數（例：羅馬 4/5/6/7+ 次 → 4/5/10/20 場）；未實作時 Worker 以 Scatter 個數觸發 */
+  getFreeSpinsByCombo?(combo: number): number;
+
   /** 共用 getWinningPositions() 計算完後，供遊戲加入專屬的中獎/消除座標（直接修改 winningCoords） */
   postProcessWinningPositions?(grid: string[][], wins: WinResult[], winningCoords: Map<string, number[]>): void;
 

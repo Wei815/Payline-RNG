@@ -136,6 +136,8 @@
 | C4 | B1 = B2 改為評估層預設（`DEFAULT_DERIVATIVE_SYMBOLS`），所有工具一致 |
 | C5 | Way 遊戲 0 賠率連線不再當成中獎（秦皇「10」6 連 0 分曾被消除；RTP 命中次數不再計入 0 賠率符號） |
 | C6 | 5 軸 Way 遊戲多組滾輪表時腳本重複附加 Strip ID（潛在問題） |
+| D1～D8 | F04、F06、F05、F03、F15 / F16 / F18、F10 / F11、F13、F08 / F09（各項見問題清單） |
+| D9 | RTP 模擬 Worker 改呼叫遊戲類別的掉落規則；羅馬改為依規則模擬（Combo 輪替滾輪表、覆蓋遞補、連續消除給免遊）。**RTP 數字改變（已確認採用）**：皇家金象完整遊戲 2560.75 → 2936.95（B1/B2 主遊戲也不可消除、金框只限第 3、4 軸）；羅馬主遊戲 737 → 1039.5、完整遊戲 837.75 → 1087.25（測試樣本 2000 轉） |
 | F01 | 產生器：通用 Pay Anywhere 的目標改為賠率門檻個數（`match3/4/5` → 8 / 10 / 12 個，名稱「M1 * 8 個」），不再列出 +WX（百搭不參與計數）；`RngSearchEngine` 新增 `constructivePayAnywhereSearch`：每軸停點依視窗內目標個數分組，挑一組總和 = 目標個數的組合，盤面須恰好一筆目標中獎且無其他贏分（Scatter 同樣適用）。原因補充：測試借用的決戰賽特2 範本是 MathID 遊戲、**沒有滾輪表**，因此改用固定種子合成的 6×5 滾輪表（`harness.ts` 的 `syntheticPayAnywhereFixture`）驗證 —— 單一符號 29 組、大獎區間、COMBO 全部找到且零干擾 |
 | F17 | `src/flows/tumble.ts`：掉落時追蹤每格原本的 MathID（含幸運球升級後的倍數），不再把符號名稱當 MathID；`TumbleViewerTab` 改為呼叫此流程 |
 | F12 | 新增 `src/flows/rngFormat.ts`：以「MathID 驅動遊戲或長度超過軸數」判斷 MathID 盤面，不再以 ClassID 解讀方式判斷；RNG 驗證工具（改為呼叫 `src/flows/rngValidator.ts`）與測試腳本載入共用 |

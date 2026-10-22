@@ -43,6 +43,8 @@ describe('simulation.worker 黃金樣本', () => {
         mode: 'full_game',
         strips: fx.strips,
         freeStrips: fx.freeStrips,
+        stripSets: fx.stripSets ? Object.keys(fx.stripSets).sort((a, b) => +a - +b).map(k => fx.stripSets![k]) : undefined,
+        freeStripSets: fx.freeStripSets ? Object.keys(fx.freeStripSets).sort((a, b) => +a - +b).map(k => fx.freeStripSets![k]) : undefined,
         paytable: fx.paytable,
         totalSpins: 2000,
         rowCounts: fx.rowCounts,
