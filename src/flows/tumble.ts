@@ -26,6 +26,8 @@ export interface TumbleEnv {
   rowCounts: number[];
   currentPaytable: PaytableRule[];
   isFreeGame: boolean;
+  /** 線遊戲的中獎線；未提供時使用預設線（評估與中獎座標一致） */
+  customPaylines?: number[][];
 }
 
 const parseNums = (s: string) => s.replace(/[^0-9, \t\n]/g, ',').split(/[,\s]+/).map(x => parseInt(x.trim())).filter(n => !isNaN(n));
@@ -100,8 +102,9 @@ export function evaluateTumble(env: TumbleEnv, state: TumbleState): { wins: WinR
   const { gameType, currentPaytable, isFreeGame } = env;
   const symbols = gridSymbols(env, state.currentGridIds);
   if (symbols.length === 0) return { wins: [], winningCoords: new Map(), totalWin: 0, currentMultiplier: 1 };
-  const evWins = evaluateGrid(symbols, currentPaytable, gameType, undefined, false);
-  const coords = getWinningPositions(symbols, evWins, currentPaytable, gameType);
+  const paylines = env.customPaylines && env.customPaylines.length > 0 ? env.customPaylines : undefined;
+  const evWins = evaluateGrid(symbols, currentPaytable, gameType, paylines, false);
+  const coords = getWinningPositions(symbols, evWins, currentPaytable, gameType, undefined, paylines);
   const mult = GameRegistry.getGame(gameType).getTumbleMultiplier(state.tumbleCount, isFreeGame);
   const winSum = evWins.reduce((sum, w) => sum + (w.totalWin * mult), 0);
   return { wins: evWins, winningCoords: coords, totalWin: winSum, currentMultiplier: mult };

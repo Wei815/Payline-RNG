@@ -143,7 +143,9 @@ export function parseQaSteps(p: RngValidatorParams): ValidatorStep[] {
     }
 
     const evWins = evaluateGrid(currentGrid, currentPaytable, gameConfig, undefined, false);
-    const coords = getWinningPositions(currentGrid, evWins, currentPaytable, gameType);
+    // 中獎座標必須用與評估相同的線（未傳時會退回預設 20 線，羅馬第 6 條線起會標錯格子）
+    const paylinesForCoords = customPaylines && customPaylines.length > 0 ? customPaylines : undefined;
+    const coords = getWinningPositions(currentGrid, evWins, currentPaytable, gameType, undefined, paylinesForCoords);
 
     const gameInstance = GameRegistry.getGame(gameType);
     const initialTumbleMultiplier = gameInstance.getTumbleMultiplier(0, isFreeGame);
@@ -218,7 +220,7 @@ export function parseQaSteps(p: RngValidatorParams): ValidatorStep[] {
         }
 
         const evWinsNext = evaluateGrid(nextGrid, currentPaytable, gameConfig, undefined, false);
-        const coordsNext = getWinningPositions(nextGrid, evWinsNext, currentPaytable, gameType);
+        const coordsNext = getWinningPositions(nextGrid, evWinsNext, currentPaytable, gameType, undefined, paylinesForCoords);
 
         const tumbleMultiplier = gameInstance.getTumbleMultiplier(dropCount, isFreeGame);
 
