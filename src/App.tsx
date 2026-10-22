@@ -7,10 +7,15 @@ import { useTheme } from './hooks/useTheme';
 import { BarChart3, Menu, Moon, PanelLeftOpen, PanelLeftClose, SlidersHorizontal, Sun, X } from 'lucide-react';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { Sidebar } from './components/Sidebar';
+import { WorkspaceTabBar } from './components/workspace/WorkspaceTabBar';
+import { WebTab } from './components/workspace/WebTab';
+import { QuickLoginDialog } from './components/workspace/QuickLoginDialog';
+import { useWorkspaceStore } from './store/useWorkspaceStore';
+import { desktop } from './desktop';
 import type { GameConfig } from './types';
 import { useMachineStore } from './store/useMachineStore';
 import { useGameStore } from './store/useGameStore';
-import { getManifest, getTraits, resolveMenuSelection } from './games/registry';
+import { getManifest, getTraits } from './games/registry';
 
 
 type ToolModal = ComponentType<{ onClose: () => void }>;
@@ -38,8 +43,6 @@ function App() {
   const rowCounts = useGameStore(state => state.rowCounts);
   const isProjectLoaded = useGameStore(state => state.isProjectLoaded);
   
-  const setLoadTemplateTrigger = useMachineStore(state => state.setLoadTemplateTrigger);
-  const setGameType = useMachineStore(state => state.setGameType);
   const activeModalTool = useMachineStore(state => state.activeModalTool);
   const setActiveModalTool = useMachineStore(state => state.setActiveModalTool);
   
@@ -76,11 +79,18 @@ function App() {
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
-  const handleSelectTemplate = useCallback((templateName: string) => {
-    const [targetGameType, trigger] = resolveMenuSelection(templateName);
-    if (targetGameType) setGameType(targetGameType);
-    setLoadTemplateTrigger(trigger);
-  }, [setGameType, setLoadTemplateTrigger]);
+  // 主畫面分頁：首頁、遊戲（共用一份全域遊戲狀態，切換時換入快照）、遊戲入口
+  const tabs = useWorkspaceStore(state => state.tabs);
+  const activeTabId = useWorkspaceStore(state => state.activeTabId);
+  const liveGameTabId = useWorkspaceStore(state => state.liveGameTabId);
+  const openGame = useWorkspaceStore(state => state.openGame);
+  const activeKind = tabs.find(t => t.id === activeTabId)?.kind ?? 'home';
+  const isProjectLoading = useGameStore(state => state.isProjectLoading);
+  const [webLoading, setWebLoading] = useState<Record<string, boolean>>({});
+
+  // 桌面版：入口分頁裡開新視窗（例如大廳點遊戲）→ 在工具內開一個新分頁
+  useEffect(() => desktop?.onOpenWebTab(url => useWorkspaceStore.getState().openUrl(url)), []);
+  const tabLoading = liveGameTabId && isProjectLoading ? { ...webLoading, [liveGameTabId]: true } : webLoading;
 
   const handleTestSpin = useCallback((strips: any[], paytable: any[], spins?: number, rows?: number[], paylines?: number[][], isFreeGame?: boolean) => {
     const config: GameConfig = {
@@ -132,7 +142,7 @@ function App() {
           <h1 className="text-[17px] font-semibold tracking-[0.12em] text-dashboard-text-primary flex items-center gap-1.5 shrink-0">
             <span className="text-dashboard-accent">RNG</span>PAY
           </h1>
-          {isProjectLoaded && (
+          {activeKind === 'game' && isProjectLoaded && (
             <div className="hidden sm:flex items-center gap-2 min-w-0 text-[13px]">
               <span className="text-dashboard-border">/</span>
               <span className="text-dashboard-text-secondary truncate">{getManifest(gameType)?.label ?? gameType}</span>
@@ -167,53 +177,73 @@ function App() {
         */}
         </header>
 
-        {/* Main Grid Layout：寬螢幕左右並排，窄螢幕上下堆疊並整頁捲動 */}
-        <main className="flex-1 w-full flex flex-col lg:flex-row min-h-0 overflow-y-auto lg:overflow-hidden custom-scrollbar">
-          {/* Left: ConfigPanel（桌面可收合為窄欄） */}
-        <div 
-          className={`
-            ${!isProjectLoaded ? 'hidden' : 'block'}
-            relative w-full shrink-0 h-[80dvh] lg:h-full transition-[width] duration-200
-            ${configCollapsed ? 'lg:w-11' : getTraits(gameType).mathIdGenerator ? 'lg:w-[340px]' : 'lg:w-[clamp(340px,32%,460px)]'}
-          `}
-        >
-          <div className={`h-full ${configCollapsed ? 'lg:hidden' : ''}`}>
-            <ConfigPanel 
-              onTestSpin={handleTestSpin}
-            />
-          </div>
-          {configCollapsed ? (
-            <button
-              onClick={toggleConfig}
-              title="展開遊戲設定"
-              className="hidden lg:flex h-full w-full flex-col items-center gap-3 pt-3 bg-dashboard-card border-r border-dashboard-border text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-dashboard-hover"
-            >
-              <PanelLeftOpen size={17} />
-              <SlidersHorizontal size={15} />
-              <span className="[writing-mode:vertical-rl] text-xs font-medium tracking-widest">遊戲設定</span>
-            </button>
-          ) : (
-            <button
-              onClick={toggleConfig}
-              title="收合遊戲設定"
-              className="hidden lg:inline-flex absolute top-3 right-3 z-10 p-1.5 rounded-md text-dashboard-text-muted hover:text-dashboard-text-primary hover:bg-dashboard-hover"
-            >
-              <PanelLeftClose size={16} />
-            </button>
-          )}
-        </div>
+        <WorkspaceTabBar loading={tabLoading} />
 
-        {/* Center: SlotConsole or WelcomeScreen */}
-        <div className={`w-full flex-1 min-w-0 lg:h-full ${isProjectLoaded ? 'min-h-[85dvh] lg:min-h-0' : 'h-full'}`}>
-          {!isProjectLoaded ? (
-            <WelcomeScreen onSelectTemplate={handleSelectTemplate} />
-          ) : (
-            <SlotConsole 
-              currentGrid={currentGrid}
-            />
+        <div className="flex-1 min-h-0 relative">
+          {/* 首頁 */}
+          {activeKind === 'home' && <WelcomeScreen onSelectTemplate={openGame} />}
+
+          {/* 遊戲：同一時間只掛載現役的遊戲分頁，切到首頁 / 入口時只隱藏不卸載 */}
+          {liveGameTabId && (
+            <div className={`absolute inset-0 flex flex-col ${activeKind === 'game' ? '' : 'hidden'}`}>
+            {/* Main Grid Layout：寬螢幕左右並排，窄螢幕上下堆疊並整頁捲動 */}
+            <main key={liveGameTabId} className="flex-1 w-full flex flex-col lg:flex-row min-h-0 overflow-y-auto lg:overflow-hidden custom-scrollbar">
+              {/* Left: ConfigPanel（桌面可收合為窄欄） */}
+            <div 
+              className={`
+                relative w-full shrink-0 h-[80dvh] lg:h-full transition-[width] duration-200
+                ${configCollapsed ? 'lg:w-11' : getTraits(gameType).mathIdGenerator ? 'lg:w-[340px]' : 'lg:w-[clamp(340px,32%,460px)]'}
+              `}
+            >
+              <div className={`h-full ${configCollapsed ? 'lg:hidden' : ''}`}>
+                <ConfigPanel 
+                  onTestSpin={handleTestSpin}
+                />
+              </div>
+              {configCollapsed ? (
+                <button
+                  onClick={toggleConfig}
+                  title="展開遊戲設定"
+                  className="hidden lg:flex h-full w-full flex-col items-center gap-3 pt-3 bg-dashboard-card border-r border-dashboard-border text-dashboard-text-secondary hover:text-dashboard-text-primary hover:bg-dashboard-hover"
+                >
+                  <PanelLeftOpen size={17} />
+                  <SlidersHorizontal size={15} />
+                  <span className="[writing-mode:vertical-rl] text-xs font-medium tracking-widest">遊戲設定</span>
+                </button>
+              ) : (
+                <button
+                  onClick={toggleConfig}
+                  title="收合遊戲設定"
+                  className="hidden lg:inline-flex absolute top-3 right-3 z-10 p-1.5 rounded-md text-dashboard-text-muted hover:text-dashboard-text-primary hover:bg-dashboard-hover"
+                >
+                  <PanelLeftClose size={16} />
+                </button>
+              )}
+            </div>
+
+            {/* Center: SlotConsole or WelcomeScreen */}
+            <div className={`w-full flex-1 min-w-0 lg:h-full ${isProjectLoaded ? 'min-h-[85dvh] lg:min-h-0' : 'h-full'}`}>
+              {!isProjectLoaded ? (
+                <div className="h-full flex items-center justify-center gap-2 text-sm text-dashboard-text-muted">
+                  {isProjectLoading ? '範本載入中…' : '尚未載入範本'}
+                </div>
+              ) : (
+                <SlotConsole 
+                  currentGrid={currentGrid}
+                />
+              )}
+            </div>
+          </main>
+            </div>
           )}
+
+          {/* 遊戲入口：每個分頁保持掛載，切換時保留登入狀態 */}
+          {tabs.map(t => t.kind === 'web' && (
+            <div key={t.id} className={`absolute inset-0 ${t.id === activeTabId ? '' : 'invisible'}`}>
+              <WebTab tab={t} onLoadingChange={loading => setWebLoading(prev => ({ ...prev, [t.id]: loading }))} />
+            </div>
+          ))}
         </div>
-      </main>
       </div>
 
       {/* Metrics Modal */}
@@ -245,6 +275,9 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* QA 快速登入（側欄「遊戲入口」或入口分頁工具列開啟） */}
+      <QuickLoginDialog />
 
       {/* Tools Modals（打開時才載入；JIRA 匯出工具含 exceljs，不放進首頁 bundle） */}
       {activeModalTool && TOOL_MODALS[activeModalTool] && (() => {

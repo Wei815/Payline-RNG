@@ -1,9 +1,9 @@
 import React from 'react';
-import { Home, Play, FileBox, Calculator, FileCheck2, Link as LinkIcon, FileSpreadsheet, Upload, PanelLeftClose, PanelLeftOpen, X, ExternalLink } from 'lucide-react';
-import { useGameStore } from '../store/useGameStore';
+import { Home, Play, FileBox, Calculator, FileCheck2, Link as LinkIcon, FileSpreadsheet, Upload, PanelLeftClose, PanelLeftOpen, X, Globe, LogIn } from 'lucide-react';
 import { useMachineStore } from '../store/useMachineStore';
-import { ENGINE_MENU, TEMPLATE_MENU, resolveMenuSelection } from '../games/registry';
+import { ENGINE_MENU, TEMPLATE_MENU } from '../games/registry';
 import { GAME_ENTRIES } from '../config/gameEntries';
+import { useWorkspaceStore } from '../store/useWorkspaceStore';
 
 export interface SidebarProps {
   /** 桌面版：只顯示圖示的窄欄 */
@@ -22,22 +22,14 @@ interface MenuItem {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapsed, mobileOpen, onCloseMobile }) => {
-  const clearProject = useGameStore(state => state.clearProject);
-  const isProjectLoaded = useGameStore(state => state.isProjectLoaded);
-  const projectName = useGameStore(state => state.projectName);
-  const gameType = useMachineStore(state => state.gameType);
-  const setLoadTemplateTrigger = useMachineStore(state => state.setLoadTemplateTrigger);
-  const setGameType = useMachineStore(state => state.setGameType);
+  const { openGame, openUpload, openWeb, selectTab, openQuickLogin } = useWorkspaceStore.getState();
+  // 目前顯示中的分頁：側欄對應的項目標示為選取
+  const activeTab = useWorkspaceStore(state => state.tabs.find(t => t.id === state.activeTabId));
+  const isActiveGame = (menuName: string) => activeTab?.kind === 'game' && activeTab.menuName === menuName;
 
   const run = (fn: () => void) => () => {
     fn();
     onCloseMobile();
-  };
-
-  const handleSelectTemplate = (templateName: string) => {
-    const [targetGameType, trigger] = resolveMenuSelection(templateName);
-    if (targetGameType) setGameType(targetGameType);
-    setLoadTemplateTrigger(trigger);
   };
 
   const openTool = (tool: Parameters<ReturnType<typeof useMachineStore.getState>['setActiveModalTool']>[0]) =>
@@ -49,8 +41,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapsed, 
       items: ENGINE_MENU.map(e => ({
         name: e.name,
         icon: <Play size={16} />,
-        action: run(() => handleSelectTemplate(e.name)),
-        active: isProjectLoaded && projectName === '預設泛用' && gameType === e.id,
+        action: run(() => openGame(e.name)),
+        active: isActiveGame(e.name),
       })),
     },
     {
@@ -60,8 +52,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapsed, 
         ...TEMPLATE_MENU.map(t => ({
           name: t.name,
           icon: <FileBox size={16} />,
-          action: run(() => handleSelectTemplate(t.name)),
-          active: isProjectLoaded && !!projectName && projectName.includes(t.name) && gameType === t.id,
+          action: run(() => openGame(t.name)),
+          active: isActiveGame(t.name),
         })),
       ],
     },
@@ -78,11 +70,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapsed, 
     },
     {
       title: '遊戲入口',
-      items: GAME_ENTRIES.map(e => ({
+      items: [
+        {
+          name: 'QA 快速登入',
+          icon: <LogIn size={16} />,
+          action: run(() => openQuickLogin(activeTab?.kind === 'web' ? activeTab.id : null)),
+        },
+        ...GAME_ENTRIES.map(e => ({
         name: e.name,
-        icon: <ExternalLink size={16} />,
-        action: run(() => window.open(e.url, '_blank', 'noopener,noreferrer')),
-      })),
+        icon: <Globe size={16} />,
+        action: run(() => openWeb(e.key)),
+        active: activeTab?.kind === 'web' && activeTab.entryKey === e.key,
+        })),
+      ],
     },
   ];
 
@@ -92,13 +92,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapsed, 
   const nav = (
     <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2 custom-scrollbar">
       <button
-        onClick={run(() => clearProject())}
-        title="新專案 / 首頁"
+        onClick={run(() => selectTab('home'))}
+        title="首頁"
         className={`flex items-center gap-3 h-10 mb-4 rounded-lg border border-dashboard-border bg-dashboard-card text-dashboard-text-primary hover:border-dashboard-accent/60 hover:text-dashboard-accent transition-colors w-full text-sm font-semibold
           ${showLabels ? 'px-3' : 'justify-center'}`}
       >
         <Home size={17} className="text-dashboard-accent shrink-0" />
-        {showLabels && <span className="truncate">新專案 / 首頁</span>}
+        {showLabels && <span className="truncate">首頁</span>}
       </button>
 
       {sections.map(section => (
@@ -138,7 +138,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapsed, 
         onChange={(e) => {
           const file = e.target.files?.[0];
           if (file) {
-            useMachineStore.getState().setUploadedTemplateFile(file);
+            openUpload(file);
             e.target.value = ''; // Reset
           }
         }}

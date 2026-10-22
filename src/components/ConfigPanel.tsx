@@ -7,6 +7,8 @@ import type { ExcelParsedData } from '../utils/excelParser';
 
 import { useMachineStore } from '../store/useMachineStore';
 import { useGameStore } from '../store/useGameStore';
+import { useWorkspaceStore } from '../store/useWorkspaceStore';
+import { configPanelCache } from '../store/configPanelCache';
 import { GAME_SELECT_GROUPS, getTraits } from '../games/registry';
 
 const rawTemplateFiles = import.meta.glob('/templates/*.{xlsx,xls}', { query: '?url', eager: true, import: 'default' }) as Record<string, string>;
@@ -53,11 +55,14 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
   const onPaylinesChange = setCustomPaylines;
   
   const templateKeys = Object.keys(templateFiles);
-  const [selectedTemplate, setSelectedTemplate] = useState<string>(templateKeys.length > 0 ? templateKeys[0] : '預設泛用');
+  // 主畫面分頁切回來時面板會重新掛載，從快取取回該分頁的編輯內容
+  const [tabId] = useState(() => useWorkspaceStore.getState().liveGameTabId);
+  const [cached] = useState(() => (tabId ? configPanelCache.get(tabId) : undefined));
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(cached?.selectedTemplate ?? (templateKeys.length > 0 ? templateKeys[0] : '預設泛用'));
   
-  const [baseGridData, setBaseGridData] = useState<string[][]>(Array(20).fill(Array(5).fill('')));
-  const [freeGridData, setFreeGridData] = useState<string[][]>(Array(20).fill(Array(5).fill('')));
-  const [activeStripTab, setActiveStripTab] = useState<'base' | 'free'>('base');
+  const [baseGridData, setBaseGridData] = useState<string[][]>(cached?.baseGridData ?? Array(20).fill(Array(5).fill('')));
+  const [freeGridData, setFreeGridData] = useState<string[][]>(cached?.freeGridData ?? Array(20).fill(Array(5).fill('')));
+  const [activeStripTab, setActiveStripTab] = useState<'base' | 'free'>(cached?.activeStripTab ?? 'base');
   
   useEffect(() => {
     setIsFreeGame(activeStripTab === 'free');
@@ -92,10 +97,15 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
   const [highlightSymbol, setHighlightSymbol] = useState<string>('');
 
   const [paytableMap, setPaytableMap] = useState<Record<string, PaytableRule>>(() => {
+    if (cached) return cached.paytableMap;
     const init: Record<string, PaytableRule> = {};
     defaultPaytable.forEach(rule => init[rule.symbolId] = rule);
     return init;
   });
+
+  useEffect(() => {
+    if (tabId) configPanelCache.set(tabId, { selectedTemplate, baseGridData, freeGridData, activeStripTab, paytableMap });
+  }, [tabId, selectedTemplate, baseGridData, freeGridData, activeStripTab, paytableMap]);
 
   const [error, setError] = useState<string | null>(null);
 

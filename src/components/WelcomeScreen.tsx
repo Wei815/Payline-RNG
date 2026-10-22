@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowRight, Calculator, FileCheck2, FileSpreadsheet, Link as LinkIcon, Library, Play, Upload, Gem } from 'lucide-react';
 import { useMachineStore } from '../store/useMachineStore';
+import { useWorkspaceStore } from '../store/useWorkspaceStore';
 import { ENGINE_MENU, TEMPLATE_MENU, getTraits } from '../games/registry';
 import { GameRegistry } from '../core/GameRegistry';
 import type { GameFamily } from '../games/base/GameManifest';
@@ -77,7 +78,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectTemplate }
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) {
-                useMachineStore.getState().setUploadedTemplateFile(file);
+                useWorkspaceStore.getState().openUpload(file);
                 e.target.value = ''; // Reset
               }
             }}
