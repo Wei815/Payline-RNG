@@ -34,11 +34,12 @@ export const GAMES: readonly GameManifest[] = [
 /** App 開啟時預設選取的遊戲 */
 export const DEFAULT_GAME_ID: GameType = luxe.id;
 
-/** Megaway 尚無遊戲實作，只保留在選單中 */
-const MEGAWAY: { id: GameType; label: string; engineName: string; traits: GameTraits } = {
+/**
+ * Megaway 尚無遊戲實作：只保留型別與 traits（讀取舊腳本 / 舊資料時容錯），不出現在任何選單。
+ * 曾經可以從選單選取，選了之後評估時找不到遊戲環境而整個畫面變白。
+ */
+const MEGAWAY: { id: GameType; traits: GameTraits } = {
   id: 'megaway',
-  label: 'Megaway (測試中)',
-  engineName: 'Megaway',
   traits: { family: 'megaway', searchPositionDependent: false, mathIdGenerator: false, specialConfigFromGrid: false },
 };
 
@@ -64,10 +65,8 @@ export function getTraits(id: GameType): GameTraits {
 export const getFamily = (id: GameType): GameFamily => getTraits(id).family;
 
 /** 側邊欄 / 歡迎頁「遊戲基底」 */
-export const ENGINE_MENU: { name: string; id: GameType }[] = [
-  ...GAMES.filter(g => g.engineName).map(g => ({ name: g.engineName!, id: g.id })),
-  { name: MEGAWAY.engineName, id: MEGAWAY.id },
-];
+export const ENGINE_MENU: { name: string; id: GameType }[] =
+  GAMES.filter(g => g.engineName).map(g => ({ name: g.engineName!, id: g.id }));
 
 /** 側邊欄 / 歡迎頁「遊戲範本」 */
 export const TEMPLATE_MENU: { name: string; id: GameType }[] =
@@ -84,8 +83,8 @@ const FAMILY_GROUPS: { family: GameFamily; label: string }[] = [
 export const GAME_SELECT_GROUPS: { label: string; options: { id: GameType; label: string }[] }[] =
   FAMILY_GROUPS.map(({ family, label }) => ({
     label,
-    options: [...GAMES, MEGAWAY].filter(g => g.traits.family === family).map(g => ({ id: g.id, label: g.label })),
-  }));
+    options: GAMES.filter(g => g.traits.family === family).map(g => ({ id: g.id, label: g.label })),
+  })).filter(group => group.options.length > 0);
 
 /**
  * 側邊欄 / 歡迎頁點擊名稱 → 切換遊戲並觸發範本載入
