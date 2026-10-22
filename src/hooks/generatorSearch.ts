@@ -109,7 +109,8 @@ export async function runGeneratorSearch(params: GeneratorSearchParams): Promise
       maxWinCount = Math.max(...matchKeys);
     }
   }
-  const startLen = Math.max(1, minWinCount - 1);
+  // 連線至少 2 格（WX 從 2 連就有賠率時，曾產生「WX × 1 連線」）；Pay Anywhere 的個數門檻不受影響
+  const startLen = Math.max(2, minWinCount - 1);
 
   // MathID 即時產生器（決戰賽特2 / 奢華 / 諸神）：直接組出盤面，不需反向搜尋滾輪表
   const instantGenerator = getManifest(gameType)?.instantGenerator;

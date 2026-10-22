@@ -111,6 +111,8 @@ export class RngSearchEngine {
     let hcAttempts = 0;
     const hcLockedReels = new Set<number>();
     const isTargetScatter = currentPaytable.some(p => p.symbolId === targetSymbol && p.isScatter);
+    // 目標本身是百搭（WX × N）：連線上每一格都是百搭，不檢查百搭軸數（F03：曾因此一律找不到）
+    const isTargetWild = wildSymbolSet.has(targetSymbol);
     const isPositionDependent = getTraits(gameType).searchPositionDependent;
 
     const targetIndicesForReel: number[][] = [];
@@ -500,7 +502,7 @@ export class RngSearchEngine {
                 hasGoldInTargetWin = true;
               }
             }
-            if (!hasGoldInTargetWin && wildReels.size === wildCount) wildReelsValid = true;
+            if (!hasGoldInTargetWin && (isTargetWild || wildReels.size === wildCount)) wildReelsValid = true;
         }
 
         // 百搭自己成線且有贏分也是干擾（F04：曾排除百搭，通用 Line「M4 × 2 + WX」盤面另有 WX × 2 在 4 條線各贏 10）
@@ -613,7 +615,7 @@ export class RngSearchEngine {
                 hasGoldInWin = true;
               }
             }
-            if (!hasGoldInWin && wildReels.size === wildCount) wildReelsValid = true;
+            if (!hasGoldInWin && (isTargetWild || wildReels.size === wildCount)) wildReelsValid = true;
         }
 
         const payingTargetWinsCount = isLineGame ? initialWins.filter(w => w.symbolId === targetSymbol && w.payout > 0).length : 0;
@@ -772,7 +774,7 @@ export class RngSearchEngine {
         const [c, r] = key.split('-').map(Number);
         if (isW(evalGrid[c]?.[r])) wildReels.add(c);
       }
-      return wildReels.size === wildCount &&
+      return (wildSymbolSet.has(targetSymbol) || wildReels.size === wildCount) &&
         this.refillIsClean(rng, currentStrips, rowCounts, reelCount, currentPaytable, gameType, customPaylines, false, topTrackerOther);
     };
 
