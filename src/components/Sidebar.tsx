@@ -1,8 +1,9 @@
 import React from 'react';
-import { Home, Play, FileBox, Calculator, FileCheck2, Link as LinkIcon, FileSpreadsheet, Upload, PanelLeftClose, PanelLeftOpen, X } from 'lucide-react';
+import { Home, Play, FileBox, Calculator, FileCheck2, Link as LinkIcon, FileSpreadsheet, Upload, PanelLeftClose, PanelLeftOpen, X, ExternalLink } from 'lucide-react';
 import { useGameStore } from '../store/useGameStore';
 import { useMachineStore } from '../store/useMachineStore';
 import { ENGINE_MENU, TEMPLATE_MENU, resolveMenuSelection } from '../games/registry';
+import { GAME_ENTRIES } from '../config/gameEntries';
 
 export interface SidebarProps {
   /** 桌面版：只顯示圖示的窄欄 */
@@ -74,6 +75,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapsed, 
         { name: 'RTP 模擬計算機', icon: <Calculator size={16} />, action: run(() => openTool('rtpCalculator')) },
         { name: 'RNG 腳本驗證', icon: <FileCheck2 size={16} />, action: run(() => openTool('rngValidator')) },
       ],
+    },
+    {
+      title: '遊戲入口',
+      items: GAME_ENTRIES.map(e => ({
+        name: e.name,
+        icon: <ExternalLink size={16} />,
+        action: run(() => window.open(e.url, '_blank', 'noopener,noreferrer')),
+      })),
     },
   ];
 
