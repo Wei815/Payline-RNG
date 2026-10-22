@@ -136,10 +136,10 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
     selectedSymbol, reelCount, rowCounts, currentStrips, currentPaytable, gameType, topTrackerOther, specialSymbolConfig, customPaylines, isFreeGame, bet, activeSearchIntervals, stripSets
   );
 
-  let baseMultiplier = 1;
-  if (getTraits(gameType).doublingTumbleMultiplier) {
-    baseMultiplier = isFreeGame ? 8 : 1;
-  }
+  // 第一盤的連續掉落倍數由遊戲決定（免遊 8 起跳等規則在遊戲類別，不在畫面寫死）
+  const baseMultiplier = getTraits(gameType).doublingTumbleMultiplier
+    ? (GameRegistry.tryGetGame(gameType)?.getTumbleMultiplier(0, isFreeGame) ?? 1)
+    : 1;
 
   const displayGridOther = useMemo(() => {
     const rawGrid = Array.from({ length: reelCount }, (_, colIndex) => {
@@ -203,6 +203,22 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
     }));
   }, [reelCount, rowCounts, currentStrips, manualIndicesOther, currentGrid, currentPaytable, clovers, gameType]);
 
+  // 倍數球在 MathID 盤面上的編號：F 球用 F1、L 球用 L1 的 MathID（賠率表沒有時沿用 15 / 19）
+  const ballMathId = useCallback((kind: 'F' | 'L') => {
+    const id = String(currentPaytable.find(p => p.symbolId === `${kind}1`)?.mathId ?? '').split(',')[0].trim();
+    return id || (kind === 'F' ? '15' : '19');
+  }, [currentPaytable]);
+
+  // 「啟用金框 / Jackpot」關閉時不參與試算、ClassID 與測案公式（曾經只是在畫面上隱藏，贏分仍被加乘）
+  const [showGoldFrameEditor, setShowGoldFrameEditor] = useState(false);
+  const [showJackpotEditor, setShowJackpotEditor] = useState(false);
+  const activeGoldFrames = useMemo(
+    () => (getTraits(gameType).goldFramesAndJackpots && showGoldFrameEditor ? goldFrames : {}),
+    [gameType, showGoldFrameEditor, goldFrames]);
+  const activeJackpots = useMemo(
+    () => (getTraits(gameType).goldFramesAndJackpots && showJackpotEditor ? jackpots : {}),
+    [gameType, showJackpotEditor, jackpots]);
+
   const winsOther = useMemo(() => {
     let finalGrid = displayGridOther;
     if (getTraits(gameType).family === 'megaway') {
@@ -218,8 +234,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
       gameType,
       paylines: customPaylines,
       effectiveBet: bet,
-      goldFrames,
-      jackpots
+      goldFrames: activeGoldFrames,
+      jackpots: activeJackpots
     };
     const baseWins = evaluateGrid(finalGrid, currentPaytable, config, undefined, true);
 
@@ -227,19 +243,13 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
       const hasTargetWin = baseWins.some(w => w.symbolId === selectedSymbol);
 
       if (!hasTargetWin) {
-        let wildSymbol = "WILD";
-        for (const strip of currentStrips) {
-          if (!strip) continue;
-          for (const sym of strip) {
-            if (sym === "WILD" || sym === "W" || sym === "WX") {
-              wildSymbol = sym;
-              break;
-            }
-          }
-        }
+        // 百搭依賠率表 isWild 判斷（曾只認 WILD / W / WX，且只取最後一軸找到的那一種）
+        const wildSet = new Set(currentPaytable.filter(p => p.isWild).map(p => p.symbolId));
+        if (wildSet.size === 0) ['WILD', 'W', 'WX'].forEach(w => wildSet.add(w));
+        const isTargetOrWild = (s: string) => s === selectedSymbol || wildSet.has(s);
 
         if (getTraits(gameType).family === 'payanywhere') {
-          const count = finalGrid.flat().filter(s => s === selectedSymbol || s === wildSymbol).length;
+          const count = finalGrid.flat().filter(isTargetOrWild).length;
           if (count > 0) {
             baseWins.push({
               symbolId: selectedSymbol,
@@ -251,7 +261,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
           }
         } else {
           const matchCountsByCol = finalGrid.map(col =>
-            col.filter(s => s === selectedSymbol || s === wildSymbol).length
+            col.filter(isTargetOrWild).length
           );
 
           let matchLength = 0;
@@ -282,7 +292,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
     }
 
     return baseWins;
-  }, [displayGridOther, currentPaytable, selectedSymbol, currentStrips, reelCount, gameType, topTrackerOther, customPaylines, bet, goldFrames, jackpots]);
+  }, [displayGridOther, currentPaytable, selectedSymbol, reelCount, gameType, topTrackerOther, customPaylines, bet, activeGoldFrames, activeJackpots]);
 
   const winningCoordsOther = useMemo(() => {
     return getWinningPositions(displayGridOther, winsOther, currentPaytable, gameType, getTraits(gameType).family === 'megaway' ? topTrackerOther : undefined, customPaylines);
@@ -303,12 +313,10 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
   const [isManualEdited, setIsManualEdited] = useState(false);
 
   // Gold Frame states
-  const [showGoldFrameEditor, setShowGoldFrameEditor] = useState(false);
   const [isGoldFrameMode, setIsGoldFrameMode] = useState(false);
   const [selectedGoldMultiplier, setSelectedGoldMultiplier] = useState<number>(2);
 
   // Jackpot states
-  const [showJackpotEditor, setShowJackpotEditor] = useState(false);
   const [isJackpotMode, setIsJackpotMode] = useState(false);
   const [selectedJackpot, setSelectedJackpot] = useState<'MINI' | 'MAJOR' | 'MEGA' | 'MAXWIN' | 'ERASER'>('MINI');
 
@@ -330,7 +338,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
     const typeToId = { 'MINI': 12, 'MAJOR': 13, 'MEGA': 14, 'MAXWIN': 15 };
 
     // Combine all keys
-    const allKeys = Array.from(new Set([...Object.keys(goldFrames), ...Object.keys(jackpots)]));
+    const allKeys = Array.from(new Set([...Object.keys(activeGoldFrames), ...Object.keys(activeJackpots)]));
     
     allKeys.sort((a, b) => {
       const [ca, ra] = a.split('-').map(Number);
@@ -343,25 +351,25 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
       
       // If a position has both, Jackpot takes precedence (or we could output both, but usually it's one or the other)
       // Actually let's output both if they exist, but normally they shouldn't overlap in UI due to user behavior
-      if (goldFrames[key] !== undefined && jackpots[key] !== undefined) {
+      if (activeGoldFrames[key] !== undefined && activeJackpots[key] !== undefined) {
          // output jackpot then goldFrame? No, just output what exists. Since they share keys, wait.
          // In UI, they are separate states, so they CAN overlap. Let's output GoldFrame first then Jackpot, or just Jackpot if we assume one per cell.
          // Let's output both if they both exist (unlikely in realistic QA script but possible in UI).
       }
 
-      if (goldFrames[key] !== undefined) {
-        const val = goldFrames[key];
+      if (activeGoldFrames[key] !== undefined) {
+        const val = activeGoldFrames[key];
         const poolIndex = multiplierToPoolIndex[val] !== undefined ? multiplierToPoolIndex[val] : 0;
         arr.push(col, row, poolIndex);
       }
       
-      if (jackpots[key] !== undefined) {
-        arr.push(col, row, typeToId[jackpots[key]]);
+      if (activeJackpots[key] !== undefined) {
+        arr.push(col, row, typeToId[activeJackpots[key]]);
       }
     }
     
     return arr.length > 0 ? `[${arr.join(', ')}]` : '';
-  }, [goldFrames, jackpots]);
+  }, [activeGoldFrames, activeJackpots]);
 
   const coordsString = useMemo(() => Array.from(winningCoordsOther.keys()).sort().join(','), [winningCoordsOther]);
   useEffect(() => {
@@ -433,8 +441,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
             const i = cell.trim();
             if (i === '') return '0';
             if (i.includes('_') && i.match(/^[F|L][1-4]_/)) {
-              if (i.startsWith('F')) return '15';
-              if (i.startsWith('L')) return '19';
+              if (i.startsWith('F')) return ballMathId('F');
+              if (i.startsWith('L')) return ballMathId('L');
               return i.split('_')[0];
             }
             return i;
@@ -443,7 +451,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
       }
     }
     return formattedRngArray;
-  }, [gameType, combinations, selectedCombIndex, isManualEdited, manualIndicesOther, clovers, currentPaytable, rowCounts]);
+  }, [gameType, combinations, selectedCombIndex, isManualEdited, manualIndicesOther, clovers, currentPaytable, rowCounts, reelCount, ballMathId]);
 
   // 手動編輯盤面後的安全遞補 RNG（遊戲實作 findRefillRng 時啟用，例如羅馬）
   const manualRefillRng = useMemo(() => {
@@ -477,7 +485,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
 
   // 「複製全部測案」的贏分公式在 src/flows/combinationWin.ts（依遊戲類別的掉落 / 倍數規則，有流程規則測試）
   const calculateCombinationWin = (comb: any) => calcCombinationWin({
-    gameType, reelCount, rowCounts, currentStrips, stripSets, currentPaytable, customPaylines, bet, goldFrames,
+    gameType, reelCount, rowCounts, currentStrips, stripSets, currentPaytable, customPaylines, bet, goldFrames: activeGoldFrames,
     selectedSymbol, isFreeGame, topTrackerOther,
   }, comb);
 
@@ -1302,8 +1310,8 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                             const rawId = manualIndicesOther[colIndex].split(',')[rowIndex] || '-';
                             let displayId = rawId;
                             if (rawId.includes('_') && rawId.match(/^[F|L][1-4]_/)) {
-                              if (rawId.startsWith('F')) displayId = '15';
-                              else if (rawId.startsWith('L')) displayId = '19';
+                              if (rawId.startsWith('F')) displayId = ballMathId('F');
+                              else if (rawId.startsWith('L')) displayId = ballMathId('L');
                               else displayId = rawId.split('_')[0];
                             }
                             return (

@@ -5,6 +5,7 @@ import { formatAmount } from '../../utils/formatters';
 import { getWinColorClass, calculateSVGPaths } from '../../utils/svgPaths';
 import { displayWin, evaluateGrid, getWinningPositions } from '../../utils/evaluation';
 import { getTraits } from '../../games/registry';
+import { GameRegistry } from '../../core/GameRegistry';
 import { useLinePaths } from '../../hooks/useLinePaths';
 import { symbolToneClass } from '../ui/symbolTone';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
@@ -45,10 +46,10 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
   const currentFreeStripSets = useGameStore(state => state.currentFreeStripSets);
   const isFreeGame = useGameStore(state => state.isFreeGame);
   const stripSets = isFreeGame ? currentFreeStripSets : currentStripSets;
-  let baseMultiplier = 1;
-  if (getTraits(gameType).doublingTumbleMultiplier) {
-    baseMultiplier = isFreeGame ? 8 : 1;
-  }
+  // 第一盤的連續掉落倍數由遊戲決定（免遊 8 起跳等規則在遊戲類別，不在畫面寫死）
+  const baseMultiplier = getTraits(gameType).doublingTumbleMultiplier
+    ? (GameRegistry.tryGetGame(gameType)?.getTumbleMultiplier(0, isFreeGame) ?? 1)
+    : 1;
 
   const displayGrid = useMemo(() => Array.from({ length: reelCount }, (_, colIndex) => {
     const rowsForThisCol = rowCounts[colIndex] || 3;
