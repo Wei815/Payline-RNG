@@ -3,7 +3,7 @@
  * L1 該線有目標符號滿線贏分 / L2 其他線零干擾 / L3 羅馬附帶遞補 RNG 且遞補後 0 贏分 / L4 MathID 遊戲盤面同樣規則
  * 另以隨機取樣 oracle 檢查「顯示有干擾 / 找不到」的線是否其實存在零干擾解（搜尋是否最優）
  */
-import { describe, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import * as fs from 'fs';
 import type { GameType } from '../../types';
 import { buildFixture, loadTemplate, mulberry32, withSeed, makeConfig, type GameFixture } from '../../games/base/__tests__/harness';
@@ -94,5 +94,24 @@ describe('贏分線路一覽 → 規則檢查', () => {
 
   test('輸出報告', () => {
     if (REPORT) fs.writeFileSync(REPORT, JSON.stringify({ stats, violations }, null, 1));
+  });
+});
+
+describe('贏分線路一覽：6 軸線遊戲', () => {
+  test('RNG 長度 = 軸數（曾一律截成 5 碼）', async () => {
+    const symbols = ['M1', 'A', 'K', 'Q', 'J', '10'];
+    const strips = Array.from({ length: 6 }, (_, c) => Array.from({ length: 30 }, (_, i) => symbols[(i * 7 + c * 3) % symbols.length]));
+    const paytable = symbols.map(s => ({
+      symbolId: s, name: s, isWild: false, isScatter: false,
+      payouts: { match3: 5, match4: 10, match5: 20, match6: 50 },
+    }));
+    const lines = [[1, 1, 1, 1, 1, 1], [0, 0, 0, 0, 0, 0], [2, 2, 2, 2, 2, 2]];
+    const results = await withSeed(9, () => computeLineViewerLines({
+      gameType: 'linegame', reelCount: 6, rowCounts: Array(6).fill(3), currentStrips: strips, currentPaytable: paytable,
+      customPaylines: lines, linesToRender: lines, activeLineViewerSymbol: 'M1', useWxInLines: false, lineViewerPayout: 50,
+    }));
+    const found = results.filter(r => r.rng);
+    expect(found.length).toBeGreaterThan(0);
+    for (const r of found) expect(r.rng).toHaveLength(6);
   });
 });

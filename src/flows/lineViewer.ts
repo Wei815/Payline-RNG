@@ -172,7 +172,7 @@ export function computeLineViewerLines(p: LineViewerParams): LineViewerResult[] 
 
       search(0, []);
 
-      let finalRng: number[] | null = bestRng ? (bestRng as number[]).slice(0, 5) : null;
+      let finalRng: number[] | null = bestRng ? (bestRng as number[]).slice(0, reelCount) : null;
       let finalTotalWin = bestTotalWin;
 
       if (!finalRng) {
@@ -183,14 +183,14 @@ export function computeLineViewerLines(p: LineViewerParams): LineViewerResult[] 
           return Array.from({ length: r }).map((_, ri) => s[(start + ri) % s.length]);
         });
         const evWins = evaluateGrid(testGrid, currentPaytable, gameType, customPaylines, false);
-        finalRng = fallbackRng.slice(0, 5);
+        finalRng = fallbackRng.slice(0, reelCount);
         finalTotalWin = evWins.reduce((sum, w) => sum + w.totalWin, 0);
       }
 
       let allRngs: number[][] | undefined = undefined;
       if (refillGame?.findRefillRng && finalRng && finalTotalWin > 0) {
         if (bestSafeRng1) {
-          allRngs = [finalRng, (bestSafeRng1 as number[]).slice(0, 5)];
+          allRngs = [finalRng, (bestSafeRng1 as number[]).slice(0, reelCount)];
         } else {
           try {
             const testGrid = finalRng.map((start, cIdx) => {
@@ -203,7 +203,7 @@ export function computeLineViewerLines(p: LineViewerParams): LineViewerResult[] 
               stripSets, fallbackStrips: currentStrips, rowCounts, paylines: linesToRender, maxAttempts: 1500,
             });
             if (safeRng1) {
-              allRngs = [finalRng, (safeRng1 as number[]).slice(0, 5)];
+              allRngs = [finalRng, (safeRng1 as number[]).slice(0, reelCount)];
             }
           } catch {
             // ignore

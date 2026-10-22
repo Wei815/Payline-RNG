@@ -186,7 +186,7 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
 
               search(0, []);
 
-              let finalRng: number[] | null = bestRng ? (bestRng as number[]).slice(0, 5) : null;
+              let finalRng: number[] | null = bestRng ? (bestRng as number[]).slice(0, reelCount) : null;
               let finalTotalWin = bestTotalWin;
 
               if (!finalRng) {
@@ -197,14 +197,14 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                   return Array.from({ length: r }).map((_, ri) => s[(start + ri) % s.length]);
                 });
                 const evWins = evaluateGrid(testGrid, currentPaytable, gameType, customPaylines, false);
-                finalRng = fallbackRng.slice(0, 5);
+                finalRng = fallbackRng.slice(0, reelCount);
                 finalTotalWin = evWins.reduce((sum, w) => sum + w.totalWin, 0);
               }
 
               let allRngs: number[][] | undefined = undefined;
               if (refillGame?.findRefillRng && finalRng && finalTotalWin > 0) {
                 if (bestSafeRng1) {
-                  allRngs = [finalRng, (bestSafeRng1 as number[]).slice(0, 5)];
+                  allRngs = [finalRng, (bestSafeRng1 as number[]).slice(0, reelCount)];
                 } else {
                   try {
                     const testGrid = finalRng.map((start, cIdx) => {
@@ -218,7 +218,7 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                         stripSets, fallbackStrips: currentStrips, rowCounts, paylines: linesToRender, maxAttempts: 1500,
                       });
                       if (safeRng1) {
-                        allRngs = [finalRng, (safeRng1 as number[]).slice(0, 5)];
+                        allRngs = [finalRng, (safeRng1 as number[]).slice(0, reelCount)];
                       }
                     }
                   } catch {
@@ -287,9 +287,9 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                 const textToCopy = computedLines.map(c => {
                   if (c.mathIdRng) return `[${c.mathIdRng.join(',')}]`;
                   if (c.allRngs && c.allRngs.length > 1) {
-                    return c.allRngs.map(r => `[${r.slice(0, 5).join(',')}]`).join(',\n');
+                    return c.allRngs.map(r => `[${r.slice(0, reelCount).join(',')}]`).join(',\n');
                   }
-                  if (c.rng) return `[${c.rng.slice(0, 5).join(',')}]`;
+                  if (c.rng) return `[${c.rng.slice(0, reelCount).join(',')}]`;
                   return '';
                 }).filter(Boolean).map(c => c.endsWith(',') ? c : c + ',').join('\n');
                 navigator.clipboard.writeText(textToCopy);
@@ -373,15 +373,15 @@ return (
                           setManualIndicesOther(mathIdRng);
                           text = `[${mathIdRng.join(',')}],`;
                         } else if (allRngs && allRngs.length > 1) {
-                          const strRng = rng!.slice(0, 5).map(String);
+                          const strRng = rng!.slice(0, reelCount).map(String);
                           setManualIndices(strRng);
                           setManualIndicesOther(strRng);
-                          text = allRngs.map(r => `[${r.slice(0, 5).join(',')}]`).join(',\n') + ',';
+                          text = allRngs.map(r => `[${r.slice(0, reelCount).join(',')}]`).join(',\n') + ',';
                         } else if (rng) {
-                          const strRng = rng.slice(0, 5).map(String);
+                          const strRng = rng.slice(0, reelCount).map(String);
                           setManualIndices(strRng);
                           setManualIndicesOther(strRng);
-                          text = `[${rng.slice(0, 5).join(',')}],`;
+                          text = `[${rng.slice(0, reelCount).join(',')}],`;
                         }
                         
                         navigator.clipboard.writeText(text);
@@ -401,10 +401,10 @@ return (
                       ) : allRngs && allRngs.length > 1 ? (
                         <div className="flex flex-col items-center justify-center gap-0.5 w-full text-[10.5px]">
                           <span className="text-yellow-400 font-mono truncate max-w-full">
-                            初始: [{rng?.slice(0, 5).join(',')}],
+                            初始: [{rng?.slice(0, reelCount).join(',')}],
                           </span>
                           <span className="text-dashboard-accent font-mono truncate max-w-full">
-                            遞補: [{allRngs[1]?.slice(0, 5).join(',')}], <span className="text-[9px] text-green-400 font-bold">(0消除)</span>
+                            遞補: [{allRngs[1]?.slice(0, reelCount).join(',')}], <span className="text-[9px] text-green-400 font-bold">(0消除)</span>
                           </span>
                         </div>
                       ) : (

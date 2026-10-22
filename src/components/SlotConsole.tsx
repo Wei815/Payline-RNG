@@ -123,7 +123,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
   }, [groupedSymbols]);
 
   const lineViewerSymbol = useMemo(() => {
-    const matchKey = `match${Math.min(5, reelCount)}`;
+    const matchKey = `match${reelCount}`; // 滿線 = 軸數（6 軸遊戲為 match6）
     const candidate = currentPaytable.find(p => 
       !p.isWild && 
       !p.isScatter && 
@@ -141,7 +141,7 @@ export const SlotConsole: React.FC<SlotConsoleProps> = ({ currentGrid }) => {
   }, [symbols, lineViewerSymbolState]);
 
   const lineViewerPayout = useMemo(() => {
-    const matchKey = `match${Math.min(5, reelCount)}`;
+    const matchKey = `match${reelCount}`; // 滿線 = 軸數（6 軸遊戲為 match6）
     const rule = currentPaytable.find(p => p.symbolId === activeLineViewerSymbol);
     return rule ? (rule.payouts[matchKey] || 0) : 0;
   }, [currentPaytable, reelCount, activeLineViewerSymbol]);
