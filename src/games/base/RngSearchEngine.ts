@@ -709,6 +709,25 @@ export class RngSearchEngine {
       if (constructed) return { rng: constructed, isInterfered: false };
     }
 
+    // Scatter 目標（全盤恰好 length 顆，與位置無關）：沿用 Pay Anywhere 的依個數分組建構式搜尋（F18）
+    if ((!bestCandidateRng || minInterferenceCount > 0) && isTargetScatter && wildCount === 0 && !requireGoldCascade &&
+        !(this.gameInstance as { findRefillRng?: unknown }).findRefillRng) {
+      const constructed = this.constructivePayAnywhereSearch(
+        targetSymbol, length, currentStrips, rowCounts, currentPaytable, reelCount, gameType, customPaylines, topTrackerOther,
+      );
+      if (constructed) return { rng: constructed, isInterfered: false };
+    }
+
+    // 線遊戲隨機搜尋找不到乾淨解時：鎖定一條線逐軸挑停點的建構式搜尋（F15 / F03）
+    // 羅馬等遞補由下一行 RNG 決定的遊戲有自己的連鎖驗證，不適用
+    if ((!bestCandidateRng || minInterferenceCount > 0) && getFamily(gameType) === 'line' && !isTargetScatter && !requireGoldCascade &&
+        customPaylines && customPaylines.length > 0 && !(this.gameInstance as { findRefillRng?: unknown }).findRefillRng) {
+      const constructed = this.constructiveLineSearch(
+        targetSymbol, length, wildCount, currentStrips, rowCounts, currentPaytable, reelCount, gameType, wildSymbolSet, customPaylines,
+      );
+      if (constructed) return { rng: constructed, isInterfered: false };
+    }
+
     if (bestCandidateRng) {
       return { rng: bestCandidateRng, isInterfered: (minInterferenceCount > 0), allRngs: bestAllRngs };
     }
@@ -826,6 +845,94 @@ export class RngSearchEngine {
   }
 
   /**
+   * 線遊戲單一連線的建構式搜尋：
+   * - 隨機選一條線；連線軸只挑「該線位置為目標（或指定的百搭軸為百搭）」的停點，
+   *   下一軸挑「該線位置不是目標也不是百搭」的停點（避免連線延長），其餘軸任意
+   * - 接受條件：目標 × length 只有一組格子、百搭軸數正確（目標本身是百搭時不檢查）、沒有其他干擾中獎
+   */
+  private constructiveLineSearch(
+    targetSymbol: string,
+    length: number,
+    wildCount: number,
+    currentStrips: string[][],
+    rowCounts: number[],
+    currentPaytable: PaytableRule[],
+    reelCount: number,
+    gameType: GameType,
+    wildSymbolSet: Set<string>,
+    paylines: number[][],
+  ): number[] | null {
+    const SAMPLE_BUDGET = 6000;
+    if (length > reelCount || wildCount > length) return null;
+    const isTargetWild = wildSymbolSet.has(targetSymbol);
+    const isT = (s: string) => s === targetSymbol;
+    const isW = (s: string) => wildSymbolSet.has(s);
+    const cellAt = (c: number, stop: number, row: number) => {
+      const strip = currentStrips[c] || [];
+      return strip[(stop + row) % strip.length];
+    };
+    const stopsWhere = (c: number, pred: (s: string) => boolean, row: number) => {
+      const strip = currentStrips[c] || [];
+      const all: number[] = [];
+      const clean: number[] = [];
+      for (let i = 0; i < strip.length; i++) {
+        if (!pred(cellAt(c, i, row))) continue;
+        all.push(i);
+        const win = Array.from({ length: rowCounts[c] || 3 }, (_, r) => cellAt(c, i, r));
+        if (!win.some(s => this.gameInstance.blocksSearchDraw(s, targetSymbol))) clean.push(i);
+      }
+      return clean.length > 0 ? clean : all;
+    };
+    const cellKey = (grid: string[][], w: { symbolId: string }) =>
+      [...getWinningPositions(grid, [w as never], currentPaytable, gameType, undefined, paylines).keys()].sort().join('|');
+    const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
+
+    for (let t = 0; t < SAMPLE_BUDGET; t++) {
+      const line = pick(paylines);
+      const wildReels = new Set<number>();
+      if (!isTargetWild) {
+        const avail = Array.from({ length }, (_, i) => i);
+        for (let k = 0; k < wildCount; k++) wildReels.add(avail.splice(Math.floor(Math.random() * avail.length), 1)[0]);
+      }
+      const rng: number[] = [];
+      let ok = true;
+      for (let c = 0; c < reelCount && ok; c++) {
+        const strip = currentStrips[c] || [];
+        let cands: number[];
+        if (c < length) cands = stopsWhere(c, wildReels.has(c) ? isW : (isTargetWild ? isW : isT), line[c]);
+        else if (c === length) cands = stopsWhere(c, s => !isT(s) && !isW(s), line[c]);
+        else cands = strip.map((_, i) => i);
+        if (cands.length === 0) ok = false;
+        else rng.push(pick(cands));
+      }
+      if (!ok) continue;
+
+      const grid = this.gameInstance.getGridFromRng(rng, currentStrips, rowCounts, reelCount);
+      const wins = this.gameInstance.evaluate(grid, currentPaytable, { gameType, paylines }, paylines, true);
+      const targetWins = wins.filter(w => w.symbolId === targetSymbol && w.matchCount === length);
+      if (targetWins.length === 0) continue;
+      // 同一組格子落在多條線只算一組；有贏分的目標則每條線各算一筆
+      const paying = targetWins.filter(w => w.payout > 0);
+      if (paying.length > 1) continue;
+      if (new Set(targetWins.map(w => cellKey(grid, w))).size !== 1) continue;
+      const tw = paying[0] ?? targetWins[0];
+      if (wins.some(w => w.symbolId !== targetSymbol && isInterferingWin(w, currentPaytable))) continue;
+      if (wins.some(w => w.symbolId === targetSymbol && w.matchCount !== length && w.payout > 0)) continue;
+      if (!isTargetWild) {
+        const coords = getWinningPositions(grid, [tw], currentPaytable, gameType, undefined, paylines);
+        const wr = new Set<number>();
+        for (const key of coords.keys()) {
+          const [c, r] = key.split('-').map(Number);
+          if (isW(grid[c]?.[r])) wr.add(c);
+        }
+        if (wr.size !== wildCount) continue;
+      }
+      return rng;
+    }
+    return null;
+  }
+
+  /**
    * 有掉落的遊戲：消除第一盤所有中獎、依遊戲規則掉落一次後，補上的盤面是否沒有任何干擾中獎
    * 掉落模型與測案 Win= 相同（遊戲類別的 applyCascade、isSymbolUnremovable，停點往回抽）。
    * 遞補由腳本下一行決定的遊戲（羅馬，實作 findRefillRng）與 MathID 遊戲不在此檢查。
@@ -861,7 +968,7 @@ export class RngSearchEngine {
   }
 
   /**
-   * Pay Anywhere 單一符號的建構式搜尋：
+   * 依「全盤個數」的建構式搜尋（Pay Anywhere 單一符號、各遊戲的 Scatter 目標共用）：
    * - 每軸停點依「視窗內目標個數」分組
    * - 隨機挑一組各軸個數（總和 = count），再從對應分組各挑一個停點
    * 接受條件：恰好一筆目標中獎且個數 = count、沒有任何其他有贏分的中獎

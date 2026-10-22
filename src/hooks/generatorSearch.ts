@@ -5,6 +5,8 @@ import type { GeneratorCombination, GeneratorSearchParams } from "../games/base/
 import { findRngForCombination, findRngForCombos, findRngForMultiplierIntervals } from "../utils/rngSearch";
 import { getManifest, getTraits } from "../games/registry";
 import { DEFAULT_PAY_ANYWHERE_THRESHOLDS } from "../utils/evaluation/GameConstants";
+import { GameRegistry } from "../core/GameRegistry";
+import type { AbstractGame } from "../games/base/AbstractGame";
 
 export type { GeneratorCombination, GeneratorSearchParams };
 
@@ -148,9 +150,18 @@ export async function runGeneratorSearch(params: GeneratorSearchParams): Promise
       });
     }
 
+    // 每一軸是否可能出現百搭：滾輪表上有百搭，或有金框且遊戲會把中獎金框轉成 WX（任一組滾輪表）
+    const game = GameRegistry.tryGetGame(gameType) as AbstractGame | undefined;
+    const allStrips = stripSets && Object.keys(stripSets).length > 0 ? Object.values(stripSets) : [currentStrips];
+    const wildRules = new Set(currentPaytable.filter(p => p.isWild).map(p => p.symbolId).concat(['WX', 'WILD', 'W']));
+    const reelCanHaveWild = (c: number) => allStrips.some(st => (st[c] || []).some(sym =>
+      wildRules.has(sym) || (!!getTraits(gameType).goldCascadeSearch && !!game?.isGoldSymbol(sym))));
+
     for (let W = 0; !payAnywhereTiers && W <= maxW; W++) {
       for (let L = startLen; L <= reelCount; L++) {
         if (W === 1 && L < 2) continue; // WX 至少需要 L>=2（1個symbol+1個WX）
+        // 連線範圍內沒有任何一軸能出現百搭時不列出「+ WX」（F16：皇家金象只有第 3、4 軸金框會轉 WX，「× 1 + WX」不可能）
+        if (W === 1 && !Array.from({ length: L }, (_, c) => c).some(reelCanHaveWild)) continue;
         const maxWild = Math.min(1, L - 1);
         if (W > maxWild) continue;
 
