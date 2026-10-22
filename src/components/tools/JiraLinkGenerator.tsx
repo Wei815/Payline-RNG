@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { X, Copy, Check, Link as LinkIcon } from 'lucide-react';
+import { copyText } from '../../utils/clipboard';
 
 interface JiraLinkGeneratorProps {
   onClose: () => void;
@@ -27,7 +28,7 @@ export const JiraLinkGenerator: React.FC<JiraLinkGeneratorProps> = ({ onClose })
 
   const handleCopy = async () => {
     if (generatedLines.length === 0) return;
-    await navigator.clipboard.writeText(generatedLines.join('\n'));
+    await copyText(generatedLines.join('\n'));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

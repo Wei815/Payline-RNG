@@ -3,6 +3,7 @@ import { FileSpreadsheet, X, Copy, Upload, ExternalLink, Download } from 'lucide
 import { useMachineStore } from '../../store/useMachineStore';
 import type { JiraIssueDetail } from '../../store/useMachineStore';
 import Papa from 'papaparse';
+import { copyText } from '../../utils/clipboard';
 
 interface JiraReportGeneratorProps {
   onClose: () => void;
@@ -400,7 +401,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
       console.error('Copy failed, using fallback', err);
-      navigator.clipboard.writeText(tsv);
+      copyText(tsv);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     }
@@ -427,7 +428,7 @@ export const JiraReportGenerator: React.FC<JiraReportGeneratorProps> = ({ onClos
   };
 
   const handleMrCopy = () => {
-    navigator.clipboard.writeText(generateMrText());
+    copyText(generateMrText());
     setMrCopySuccess(true);
     setTimeout(() => setMrCopySuccess(false), 2000);
   };

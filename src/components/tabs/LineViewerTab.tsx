@@ -5,6 +5,7 @@ import type { GameType, PaytableRule } from '../../types';
 import { GameRegistry } from '../../core/GameRegistry';
 import { symbolToneClass } from '../ui/symbolTone';
 import { getTraits } from '../../games/registry';
+import { copyText } from '../../utils/clipboard';
 
 export interface LineViewerTabProps {
   reelCount: number;
@@ -292,7 +293,7 @@ export const LineViewerTab: React.FC<LineViewerTabProps> = ({
                   if (c.rng) return `[${c.rng.slice(0, reelCount).join(',')}]`;
                   return '';
                 }).filter(Boolean).map(c => c.endsWith(',') ? c : c + ',').join('\n');
-                navigator.clipboard.writeText(textToCopy);
+                copyText(textToCopy);
                 setIsCopiedAll(true);
                 setTimeout(() => setIsCopiedAll(false), 2000);
               }}
@@ -384,7 +385,7 @@ return (
                           text = `[${rng.slice(0, reelCount).join(',')}],`;
                         }
                         
-                        navigator.clipboard.writeText(text);
+                        copyText(text);
 
                         setCopiedIndex(lineIdx);
                         setTimeout(() => setCopiedIndex(null), 1000);

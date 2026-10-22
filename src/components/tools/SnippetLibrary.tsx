@@ -3,6 +3,7 @@ import { X, Copy, Trash2, Check } from 'lucide-react';
 import { useSnippetStore } from '../../store/useSnippetStore';
 import { useGameStore } from '../../store/useGameStore';
 import { useMachineStore } from '../../store/useMachineStore';
+import { copyText } from '../../utils/clipboard';
 
 interface SnippetLibraryProps {
   onClose: () => void;
@@ -53,7 +54,7 @@ ${format2DArray(qa.Selection)}
 
   const handleCopy = (id: string, qaData: any) => {
     const jsonStr = stringifyQA(qaData);
-    navigator.clipboard.writeText(jsonStr).then(() => {
+    copyText(jsonStr).then(() => {
       setCopiedId(id);
       setTimeout(() => setCopiedId(null), 2000);
     });

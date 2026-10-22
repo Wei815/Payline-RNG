@@ -3,6 +3,7 @@ import { FileSpreadsheet, X, Upload, Copy, Download } from 'lucide-react';
 import { useMachineStore } from '../../store/useMachineStore';
 import * as ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import { copyText } from '../../utils/clipboard';
 
 interface JiraBugListGeneratorProps {
   onClose: () => void;
@@ -287,7 +288,7 @@ export const JiraBugListGenerator: React.FC<JiraBugListGeneratorProps> = ({ onCl
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
       console.error('Copy failed, using fallback', err);
-      navigator.clipboard.writeText(tsv);
+      copyText(tsv);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     }

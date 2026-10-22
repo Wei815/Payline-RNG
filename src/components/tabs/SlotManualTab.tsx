@@ -8,6 +8,7 @@ import { getTraits } from '../../games/registry';
 import { useLinePaths } from '../../hooks/useLinePaths';
 import { symbolToneClass } from '../ui/symbolTone';
 import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConstants';
+import { copyText } from '../../utils/clipboard';
 
 export interface SlotManualTabProps {
   reelCount: number;
@@ -169,7 +170,7 @@ export const SlotManualTab: React.FC<SlotManualTabProps> = ({
               <button
                 onClick={() => {
                   const text = `[${[...manualIndices.map(i => i === '' ? '0' : i), ...(stripSets && stripSets.length > 1 ? [activeStripId] : [])].join(',')}],`;
-                  navigator.clipboard.writeText(text);
+                  copyText(text);
                 }}
                 className="text-xs font-bold bg-dashboard-bg text-dashboard-accent border border-dashboard-accent/50 px-2 py-0.5 rounded hover:bg-dashboard-accent hover:text-dashboard-bg transition-colors ml-1 cursor-pointer"
               >

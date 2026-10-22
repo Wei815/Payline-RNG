@@ -13,6 +13,7 @@ import { boardBallMultiplier } from '../../flows/ballMultiplier';
 import { buildCustomGridQaEntry } from '../../flows/customGridSnippet';
 import { useLinePaths } from '../../hooks/useLinePaths';
 import { useSnippetStore } from '../../store/useSnippetStore';
+import { copyText } from '../../utils/clipboard';
 
 export interface SlotCustomGridTabProps {
   reelCount: number;
@@ -333,27 +334,27 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   };
 
   const togglePaletteSymbol = (sym: string) => {
+    // 其他狀態的更新不可放在 setState 的 updater 裡（React 會警告，嚴格模式下 updater 也可能執行兩次）
+    const isHiding = !hiddenPaletteSymbols.has(sym);
     setHiddenPaletteSymbols(prev => {
       const next = new Set(prev);
-      const isHiding = !next.has(sym);
-      if (isHiding) {
-        next.add(sym);
-        setGridSymbols(prevGrid => 
-          prevGrid.map(col => 
-            col.map(cell => {
-              const baseSym = cell.split('_')[0];
-              return baseSym === sym ? '-' : cell;
-            })
-          )
-        );
-        if (selectedPaletteSymbol === sym) {
-          setSelectedPaletteSymbol(null);
-        }
-      } else {
-        next.delete(sym);
-      }
+      if (isHiding) next.add(sym);
+      else next.delete(sym);
       return next;
     });
+    if (isHiding) {
+      setGridSymbols(prevGrid =>
+        prevGrid.map(col =>
+          col.map(cell => {
+            const baseSym = cell.split('_')[0];
+            return baseSym === sym ? '-' : cell;
+          })
+        )
+      );
+      if (selectedPaletteSymbol === sym) {
+        setSelectedPaletteSymbol(null);
+      }
+    }
   };
 
   const handleCellClick = (colIndex: number, rowIndex: number) => {
@@ -948,7 +949,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
             onClick={() => {
               let text = `${baseRngStr}`;
               if (winningCoords.size > 0 && dropRng) text += `${dropRng}`;
-              navigator.clipboard.writeText(text);
+              copyText(text);
             }}
             className="w-full flex flex-col items-center justify-center gap-0.5 bg-dashboard-card border border-gray-700/50 hover:border-dashboard-accent hover:bg-dashboard-card/80 rounded p-2.5 cursor-pointer transition-all"
             title="點擊自動複製 RNG 腳本"
@@ -970,7 +971,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
                   let text = '';
                   if (multiplierClassIdStr) text += `${multiplierClassIdStr}`;
                   if (combinedClassIdStr) text += `${combinedClassIdStr}`;
-                  navigator.clipboard.writeText(text);
+                  copyText(text);
                 }}
                 className="w-full flex flex-col items-center justify-center gap-0.5 bg-dashboard-card border border-gray-700/50 hover:border-yellow-400 hover:bg-dashboard-card/80 rounded p-2.5 cursor-pointer transition-all mt-1"
                 title="點擊自動複製 ClassID"
@@ -992,7 +993,7 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
             {luckySelectsStr && (
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(luckySelectsStr);
+                  copyText(luckySelectsStr);
                 }}
                 className="w-full flex flex-col items-center justify-center gap-0.5 bg-dashboard-card border border-gray-700/50 hover:border-orange-400 hover:bg-dashboard-card/80 rounded p-2.5 cursor-pointer transition-all mt-1"
                 title="點擊自動複製 LuckySelects"

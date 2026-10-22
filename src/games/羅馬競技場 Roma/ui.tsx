@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { CurrentRngPreviewProps, ExtraCopyButtonsProps, FreeGameToggleProps, GameUi, TriggerPanelProps } from '../base/GameUi';
 import type { ScriptCombination } from '../base/ScriptFormat';
+import { copyText } from '../../utils/clipboard';
 
 const FreeGameToggle: React.FC<FreeGameToggleProps> = ({ isFreeGame, setIsFreeGame }) => (
   <div className="flex items-center gap-1.5 bg-dashboard-card p-1 rounded-lg border border-purple-500/40 shadow-sm">
@@ -46,7 +47,7 @@ const TriggerPanel: React.FC<TriggerPanelProps> = ({ selectedTriggerCombo, setSe
             onClick={() => {
               if (triggerRngSequence) {
                 const text = triggerRngSequence.map(r => `[${r.join(',')}],`).join('\n');
-                navigator.clipboard.writeText(text);
+                copyText(text);
                 setIsCopiedTrigger(true);
                 setTimeout(() => setIsCopiedTrigger(false), 2000);
               }
@@ -155,7 +156,7 @@ const ExtraCopyButtons: React.FC<ExtraCopyButtonsProps> = ({ combinations, isSea
         // 移除最後一行的逗號以符合標準格式
         text = text.replace(/,$/, '');
 
-        navigator.clipboard.writeText(text);
+        copyText(text);
         setIsCopiedRomaChain(true);
         setTimeout(() => setIsCopiedRomaChain(false), 2000);
       }}

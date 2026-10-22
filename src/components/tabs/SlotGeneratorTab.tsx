@@ -16,6 +16,7 @@ import { getGameUi } from '../../games/ui-registry';
 import { useLinePaths } from '../../hooks/useLinePaths';
 import { symbolToneClass } from '../ui/symbolTone';
 import type { ScriptContext } from '../../games/base/ScriptFormat';
+import { copyText } from '../../utils/clipboard';
 
 export interface SlotGeneratorTabProps {
   reelCount: number;
@@ -787,7 +788,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                     .filter(c => c.rng && !c.isInterfered)
                     .map(c => scriptFormatter.copyAllLine(c, scriptCtx))
                     .join('\n');
-                  navigator.clipboard.writeText(textToCopy);
+                  copyText(textToCopy);
                   setIsCopiedAll(true);
                   setTimeout(() => setIsCopiedAll(false), 2000);
                 }}
@@ -818,7 +819,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                     
                   if (items.length > 0) {
                     const textToCopy = items.join('\n');
-                    navigator.clipboard.writeText(textToCopy);
+                    copyText(textToCopy);
                   }
                   setIsCopiedAllTestCases(true);
                   setTimeout(() => setIsCopiedAllTestCases(false), 2000);
@@ -877,7 +878,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                         setActiveStripId(Number((comb as any).stripId));
                       }
 
-                      navigator.clipboard.writeText(
+                      copyText(
                         isManualEdited && selectedCombIndex === globalIdx
                           ? currentRngString
                           : scriptFormatter.clickCopy(comb, scriptCtx),
@@ -1049,7 +1050,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                           })()}
                         </code>
                         <button
-                          onClick={() => navigator.clipboard.writeText(currentRngString)}
+                          onClick={() => copyText(currentRngString)}
                           className="text-[10px] font-bold bg-dashboard-bg text-dashboard-accent border border-dashboard-accent/50 px-1.5 py-0.5 rounded hover:bg-dashboard-accent hover:text-dashboard-bg transition-colors shrink-0 cursor-pointer"
                         >
                           COPY
@@ -1062,7 +1063,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                             {dropString}
                           </code>
                           <button
-                            onClick={() => navigator.clipboard.writeText(dropString)}
+                            onClick={() => copyText(dropString)}
                             className="text-[10px] font-bold bg-dashboard-bg text-dashboard-accent border border-dashboard-accent/50 px-1.5 py-0.5 rounded hover:bg-dashboard-accent hover:text-dashboard-bg transition-colors shrink-0 cursor-pointer"
                           >
                             COPY
@@ -1097,7 +1098,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                         {classIdsString}
                       </code>
                       <button
-                        onClick={() => navigator.clipboard.writeText(classIdsString)}
+                        onClick={() => copyText(classIdsString)}
                         className="text-[10px] font-bold bg-dashboard-bg text-purple-400 border border-purple-400/50 px-1.5 py-0.5 rounded hover:bg-purple-400 hover:text-dashboard-bg transition-colors shrink-0 cursor-pointer"
                       >
                         COPY
@@ -1586,7 +1587,7 @@ export const SlotGeneratorTab: React.FC<SlotGeneratorTabProps> = ({ stripSets, s
                       {combinedClassIdStr}
                     </code>
                     <button
-                      onClick={() => navigator.clipboard.writeText(combinedClassIdStr)}
+                      onClick={() => copyText(combinedClassIdStr)}
                       className="text-[10px] font-bold bg-dashboard-bg text-yellow-400 border border-yellow-400/50 px-1.5 py-0.5 rounded hover:bg-yellow-400 hover:text-dashboard-bg transition-colors shrink-0 cursor-pointer"
                     >
                       COPY
