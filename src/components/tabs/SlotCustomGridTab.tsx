@@ -10,6 +10,7 @@ import { MULTIPLIER_BALLS, LUCKY_BALLS } from '../../utils/evaluation/GameConsta
 import { SlotGridDisplay } from '../SlotGridDisplay';
 import { getTraits } from '../../games/registry';
 import { boardBallMultiplier } from '../../flows/ballMultiplier';
+import { buildCustomGridQaEntry } from '../../flows/customGridSnippet';
 import { useLinePaths } from '../../hooks/useLinePaths';
 import { useSnippetStore } from '../../store/useSnippetStore';
 
@@ -546,6 +547,27 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
   }, [groupedSymbols]);
 
   // 依「分頁本身」寬度排版（container query）：夠寬才三欄並排，否則盤面優先、兩側面板往下堆疊
+
+  /** 存成測試腳本（按 Enter 與按「確定」共用） */
+  const saveSnippet = () => {
+    if (promptTitle.trim() === '') return;
+    setShowPrompt(false);
+    useSnippetStore.getState().addSnippet({
+      id: Date.now().toString(),
+      title: promptTitle.trim(),
+      gameType,
+      projectName: useGameStore.getState().projectName,
+      qaData: {
+        QA: [buildCustomGridQaEntry({
+          rngStr: baseRngStr,
+          classIdStr: multiplierClassIdStr || combinedClassIdStr,
+          luckySelectsStr,
+        })]
+      },
+      createdAt: Date.now()
+    });
+  };
+
   return (
     <div className="@container w-full h-full">
     <div className="w-full grid grid-cols-1 @2xl:grid-cols-2 @6xl:grid-cols-[18rem_minmax(0,1fr)_18rem] gap-4 items-start">
@@ -1046,113 +1068,14 @@ export const SlotCustomGridTab: React.FC<SlotCustomGridTabProps> = ({
               value={promptTitle}
               onChange={e => setPromptTitle(e.target.value)}
               onKeyDown={e => {
-                if (e.key === 'Enter') {
-                  if (promptTitle.trim() === '') return;
-                  setShowPrompt(false);
-                  
-                  let rngData: number[][] = [];
-                  let classIdData: number[][] = [];
-                  let luckySelectData: number[][] = [];
-                  let selectionData: number[][] = [];
-    
-                  try {
-                    if (baseRngStr) {
-                      let r = baseRngStr.replace(/,$/, '');
-                      rngData = [JSON.parse(r)];
-                    }
-                  } catch (e) {
-                    console.error("Failed to parse RNG", e);
-                  }
-    
-                  try {
-                    const classStr = multiplierClassIdStr || combinedClassIdStr;
-                    if (classStr) {
-                      let c = classStr.replace(/,$/, '');
-                      classIdData = [JSON.parse(c)];
-                    }
-                  } catch (e) {
-                    console.error("Failed to parse ClassID", e);
-                  }
-                  
-                  try {
-                    if (luckySelectsStr) {
-                      let c = luckySelectsStr.replace(/,$/, '');
-                      luckySelectData = [JSON.parse(c)];
-                    }
-                  } catch (e) {
-                    console.error("Failed to parse LuckySelects", e);
-                  }
-    
-                  useSnippetStore.getState().addSnippet({
-                    id: Date.now().toString(),
-                    title: promptTitle.trim(),
-                    gameType,
-                    projectName: useGameStore.getState().projectName,
-                    qaData: {
-                      QA: [
-                        {
-                          RNGs: rngData,
-                          ClassIDs: classIdData,
-                          LuckySelects: luckySelectData,
-                          Selection: selectionData
-                        }
-                      ]
-                    },
-                    createdAt: Date.now()
-                  });
-                }
+                if (e.key === 'Enter') saveSnippet();
               }}
               className="w-full bg-dashboard-card border border-gray-600 rounded px-3 py-2 text-dashboard-text-primary outline-none focus:border-dashboard-accent mb-4"
             />
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowPrompt(false)} className="px-3 py-1.5 rounded text-sm text-gray-400 hover:text-dashboard-text-primary hover:bg-gray-800 transition-colors">取消</button>
               <button 
-                onClick={() => {
-                  if (promptTitle.trim() === '') return;
-                  setShowPrompt(false);
-                  
-                  let rngData: number[][] = [];
-                  let classIdData: number[][] = [];
-                  let luckySelectData: number[][] = [];
-                  let selectionData: number[][] = [];
-    
-                  try {
-                    if (baseRngStr) {
-                      let r = baseRngStr.replace(/,$/, '');
-                      rngData = [JSON.parse(r)];
-                    }
-                  } catch (e) {
-                    console.error("Failed to parse RNG", e);
-                  }
-    
-                  try {
-                    const classStr = multiplierClassIdStr || combinedClassIdStr;
-                    if (classStr) {
-                      let c = classStr.replace(/,$/, '');
-                      classIdData = [JSON.parse(c)];
-                    }
-                  } catch (e) {
-                    console.error("Failed to parse ClassID", e);
-                  }
-    
-                  useSnippetStore.getState().addSnippet({
-                    id: Date.now().toString(),
-                    title: promptTitle.trim(),
-                    gameType,
-                    projectName: useGameStore.getState().projectName,
-                    qaData: {
-                      QA: [
-                        {
-                          RNGs: rngData,
-                          ClassIDs: classIdData,
-                          LuckySelects: luckySelectData,
-                          Selection: selectionData
-                        }
-                      ]
-                    },
-                    createdAt: Date.now()
-                  });
-                }} 
+                onClick={saveSnippet}
                 disabled={!promptTitle.trim()}
                 className="px-3 py-1.5 rounded text-sm bg-dashboard-accent text-dashboard-bg font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
               >
