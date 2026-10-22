@@ -495,13 +495,10 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
                     if (matchCountStr) {
                       let matchKey: keyof PaytableRule['payouts'] | null = null;
                       
-                      // 1. Direct numbers and >= patterns (2, 3... 20, >=10)
-                      let matchCount = parseInt(matchCountStr.replace(/[^0-9]/g, ''));
-                      if (!isNaN(matchCount) && matchCount >= 2 && matchCount <= 30 && !matchCountStr.includes('-')) {
-                        matchKey = `match${matchCount}` as keyof PaytableRule['payouts'];
-                      }
-                      // 2. Ranges for payanywhere_set2
-                      else if (matchCountStr.includes('8-9') || matchCountStr.includes('8 - 9')) {
+                      // 1. Pay Anywhere 個數區間（8-9 / 10-11 / 12+ → match3 / match4 / match5，與 PayAnywhereStrategy 門檻一致）
+                      //    必須先判斷：「12+」若先走數字分支會被存成 match12，評估讀不到，12 個以上賠率變成 0
+                      const matchCount = parseInt(matchCountStr.replace(/[^0-9]/g, ''));
+                      if (matchCountStr.includes('8-9') || matchCountStr.includes('8 - 9')) {
                         matchKey = 'match3';
                       }
                       else if (matchCountStr.includes('10-11') || matchCountStr.includes('10 - 11')) {
@@ -509,6 +506,10 @@ export async function parseExcelData(file: File): Promise<ExcelParsedData> {
                       }
                       else if (matchCountStr.includes('12+') || matchCountStr.includes('12 +')) {
                         matchKey = 'match5';
+                      }
+                      // 2. Direct numbers and >= patterns (2, 3... 20, >=10)
+                      else if (!isNaN(matchCount) && matchCount >= 2 && matchCount <= 30 && !matchCountStr.includes('-')) {
+                        matchKey = `match${matchCount}` as keyof PaytableRule['payouts'];
                       }
 
                       let payout = overviewData[i+r][c];

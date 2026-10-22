@@ -88,7 +88,18 @@ export async function runGeneratorSearch(params: GeneratorSearchParams): Promise
   let minWinCount = getTraits(gameType).family === 'payanywhere' ? 8 : 3;
   let maxWinCount = getTraits(gameType).family === 'payanywhere' ? 12 : reelCount;
   const targetRule = currentPaytable.find(p => p.symbolId === selectedSymbol);
-  if (targetRule && targetRule.payouts) {
+  // Pay Anywhere（非 Scatter）：match3/4/5 代表個數門檻 8/10/12，不是個數本身
+  const payAnywhereTierCounts = getTraits(gameType).family === 'payanywhere' && targetRule && !targetRule.isScatter
+    ? (['match3', 'match4', 'match5'] as const)
+        .filter(k => (targetRule.payouts?.[k] ?? 0) > 0)
+        .map(k => DEFAULT_PAY_ANYWHERE_THRESHOLDS[k])
+    : null;
+  if (payAnywhereTierCounts) {
+    if (payAnywhereTierCounts.length > 0) {
+      minWinCount = Math.min(...payAnywhereTierCounts);
+      maxWinCount = Math.max(...payAnywhereTierCounts);
+    }
+  } else if (targetRule && targetRule.payouts) {
     const matchKeys = Object.keys(targetRule.payouts)
       .filter(k => k.startsWith('match') && targetRule.payouts[k] > 0)
       .map(k => parseInt(k.replace('match', ''), 10))
@@ -123,11 +134,7 @@ export async function runGeneratorSearch(params: GeneratorSearchParams): Promise
     const maxW = isTargetWild || getTraits(gameType).family === 'payanywhere' ? 0 : 1;
 
     // Pay Anywhere：中獎看全盤個數是否達門檻（match3/4/5 = 8/10/12 個），不是連線數；百搭不參與計數
-    const payAnywhereTiers = getTraits(gameType).family === 'payanywhere' && !isSelScatter && !isTargetWild
-      ? (['match3', 'match4', 'match5'] as const)
-          .filter(k => (targetRule?.payouts?.[k] ?? 0) > 0)
-          .map(k => DEFAULT_PAY_ANYWHERE_THRESHOLDS[k])
-      : null;
+    const payAnywhereTiers = isTargetWild ? null : payAnywhereTierCounts;
     for (const count of payAnywhereTiers ?? []) {
       searchTasks.push({
         name: `${selectedSymbol} * ${count} 個`,

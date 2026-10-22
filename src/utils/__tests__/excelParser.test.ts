@@ -21,6 +21,16 @@ describe('excelParser 範本辨識', () => {
     expect({ reelCount: parsed.reelCount, rowCounts: parsed.rowCounts }).toMatchSnapshot();
   });
 
+  test('決戰賽特2 個數區間 8-9 / 10-11 / 12+ → match3 / match4 / match5', async () => {
+    const parsed = await loadTemplate('Battle of Set');
+    const m1 = parsed.paytable!.find(p => p.symbolId === 'M1')!;
+    expect(m1.payouts.match3).toBe(200);
+    expect(m1.payouts.match4).toBe(500);
+    // 12+ 曾被存成 match12，PayAnywhereStrategy 讀 match5，導致 12 個以上贏分為 0
+    expect(m1.payouts.match5).toBe(1000);
+    expect(m1.payouts.match12).toBeUndefined();
+  });
+
   test('只靠檔名辨識（無 Line Table / Way 資訊）', async () => {
     // 以秦皇範本的 Base 頁為內容，換不同檔名驗證檔名關鍵字規則
     const fileName = fs.readdirSync(TEMPLATES_DIR).find(f => f.includes('Chin Shi'))!;
