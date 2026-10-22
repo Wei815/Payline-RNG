@@ -77,7 +77,11 @@ export class DefaultScriptFormatter implements ScriptFormatter {
   /** Way 遊戲：前 6 軸 RNG + Strip ID；其他遊戲：原始 RNG */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   protected rngForOutput(c: ScriptCombination, ctx: ScriptContext): any[] | null {
-    return isWayLike(ctx) ? [...(c.rng?.slice(0, 6) || []), this.stripIdOf(c, ctx)] : c.rng;
+    if (!isWayLike(ctx)) return c.rng;
+    // 搜尋引擎在多組滾輪表時已把 Strip ID 附在停點後（rng 最後一碼），先去掉再附加，
+    // 否則 5 軸遊戲取前 6 碼會連 Strip ID 一起取到，輸出 [停點×5, ID, ID]
+    const stops = c.stripId !== undefined ? (c.rng || []).slice(0, -1) : (c.rng || []);
+    return [...stops.slice(0, 6), this.stripIdOf(c, ctx)];
   }
 
   /** 腳本行尾附加的 ClassID（例如 `\t[2,10,0],`），預設無 */

@@ -40,3 +40,21 @@ describe('ScriptFormatter 黃金樣本', () => {
     });
   }
 });
+
+describe('Way 遊戲腳本的 Strip ID', () => {
+  const ctx: ScriptContext = {
+    family: 'way', isFreeGame: false, triggerRngSequence: null, selectedTriggerCombo: 0, combinedClassIdStr: '', defaultStripId: 0,
+  };
+  const fmt = getScriptFormatter('waygame');
+  const comb = (rng: number[], stripId?: number) => ({ name: 'x', length: 3, wildCount: 0, rng, isInterfered: false, stripId }) as ScriptCombination;
+
+  test('5 軸、多組滾輪表：Strip ID 只出現一次（曾輸出 [停點×5, ID, ID]）', () => {
+    expect(fmt.copyAllLine(comb([1, 2, 3, 4, 5, 2], 2), ctx)).toBe('[1,2,3,4,5,2],');
+  });
+  test('6 軸、多組滾輪表', () => {
+    expect(fmt.copyAllLine(comb([1, 2, 3, 4, 5, 6, 3], 3), ctx)).toBe('[1,2,3,4,5,6,3],');
+  });
+  test('單組滾輪表：附加目前的 Strip ID', () => {
+    expect(fmt.copyAllLine(comb([1, 2, 3, 4, 5]), { ...ctx, defaultStripId: 0 })).toBe('[1,2,3,4,5,0],');
+  });
+});
