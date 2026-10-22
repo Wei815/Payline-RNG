@@ -67,7 +67,7 @@ c:\github\Payline-RNG\
 │   │   │   ├── BaseLineGame.ts / BaseWayGame.ts / BasePayAnywhere.ts
 │   │   │   ├── RngSearchEngine.ts       #     ★ 通用 RNG 反向搜尋引擎 (只讀 traits，不判斷遊戲)
 │   │   │   └── __tests__/               #     共用測試（詳見第 12.3 章）
-│   │   │       ├── harness.ts           #       黃金樣本測試共用工具（載入範本、固定種子 withSeed）
+│   │   │       ├── harness.ts           #       黃金樣本測試共用工具（載入範本、固定種子 withSeed、合成的通用 Pay Anywhere 滾輪表）
 │   │   │       ├── flowRules.ts         #       ★ 獨立規則檢查器（不呼叫被測程式，自行依規格重算）
 │   │   │       ├── knownIssues.ts / knownIssues.data.ts  # 已知問題白名單（精確計數）
 │   │   │       ├── generator.rules.test.ts / generator.special.rules.test.ts  # 產生器 / COMBO / 大獎區間規則測試
@@ -122,7 +122,8 @@ c:\github\Payline-RNG\
 │   ├── store/                           # 全域狀態管理 (Zustand)
 │   │   ├── useMachineStore.ts           # 機台基礎狀態：gameType / bet / coin / JIRA 全域暫存
 │   │   ├── useGameStore.ts              # 遊戲運算狀態：滾輪表 / 賠率表 / 盤面 / 金框 / Snippet
-│   │   └── useSnippetStore.ts           # 測試腳本庫持久化狀態 (zustand/persist → localStorage)
+│   │   ├── useSnippetStore.ts           # 測試腳本庫持久化狀態 (zustand/persist → localStorage)
+│   │   └── __tests__/gameSwitch.test.ts # 切換遊戲重設測試
 │   │
 │   ├── hooks/                           # React Custom Hooks
 │   │   ├── useRngSearch.ts              # 連線測試產生器的 React 包裝（防抖、狀態）
@@ -441,8 +442,8 @@ classDiagram
 ### 5.3 資料流轉規則
 
 1. **切換遊戲標準程序**：
-   * 在 `Sidebar.tsx` 切換遊戲時，先呼叫 `useMachineStore.setGameType(newType)`
-   * **必須立刻呼叫** `useGameStore.resetGameSpecifics()` — 清空：`currentStripSets`, `currentFreeStripSets`, `activeStripId`, `goldFrames`, `jackpots`, `specialSymbolConfig`, `manualIndices`, `manualIndicesOther`, `topTracker`, `topTrackerOther`
+   * 任何入口（側邊欄、歡迎頁、遊戲種類下拉、載入範本）都先呼叫 `useMachineStore.setGameType(newType)`
+   * `useGameStore` 訂閱 gameType 變更，**自動**呼叫 `resetGameSpecifics()` — 清空：`currentStripSets`, `currentFreeStripSets`, `activeStripId`, `goldFrames`, `jackpots`, `specialSymbolConfig`, `manualIndices`, `manualIndicesOther`, `topTracker`, `topTrackerOther`, `isFreeGame`
    * 隨後從 `GameRegistry.getGame(newType)` 讀取 `getDefaultConfig()`, `getDefaultReelStrips()`, `getDefaultPaytable()` 並寫入 `useGameStore`
 
 2. **Tab 惰性運算 (Lazy Calculation)**：
@@ -476,6 +477,8 @@ classDiagram
   把每軸的視窗分成「含目標 / 含百搭 / 皆無 / 任意」四類，先分類取樣 3000 次，再以預算 20000 次窮舉。
   優先用不含 `blocksSearchDraw` 符號的視窗，某類在該軸完全沒有乾淨視窗時才退而使用（例：秦皇 A 有 81/120 個視窗含 B1/S1）。
   接受條件：恰好一個目標中獎、`matchCount === length`、`ways === 1`、無其他贏分、百搭軸數 = 要求數
+- **Pay Anywhere `constructivePayAnywhereSearch()`**：目標是「全盤恰好 N 個」（產生器依賠率門檻 `match3/4/5` → 8 / 10 / 12 個，百搭不參與計數、不產生 +WX）。
+  每軸停點依視窗內目標個數分組，挑一組總和 = N 的組合；須恰好一筆目標中獎且無其他贏分（Scatter 同樣適用）。與軸數無關，不可再用「出現目標的軸數 < N」提早放棄
 - **金框路徑自動關閉**：`goldCascadeSearch` 的遊戲若滾輪表上完全沒有金框，`requireGoldCascade` 改為 false（直接用盤面 WX）
 - 搜尋是否找到最優解、各遊戲成功率與耗時：見 `docs/flow-test-report.md` 第 4 章（`FLOW_BENCH=1` 重跑基準）
 
@@ -656,8 +659,8 @@ Combo 4+             → 滾輪表 2/1 交替 (偶→2, 奇→1)
 | 項目 | 內容 |
 |------|------|
 | **現象** | 奢華的金框/Jackpot 殘留到羅馬競技場，導致連線乘數錯亂 |
-| **防線位置** | `Sidebar.tsx` 或任何切換 gameType 的地方 |
-| **防線程式** | 切換後務必調用 `useGameStore.getState().resetGameSpecifics()` |
+| **防線位置** | `useGameStore.ts` 檔尾：訂閱 `useMachineStore` 的 `gameType`，變更時自動呼叫 `resetGameSpecifics()`（含 `isFreeGame`）；`ConfigPanel` 滾輪表分頁同步回到 Base Game |
+| **注意** | 所有切換入口必須「先 `setGameType` 再寫入滾輪表 / 賠率表」，否則新寫入的資料會被重設清掉。測試：`store/__tests__/gameSwitch.test.ts` |
 
 ### 🚫 禁忌 5：Excel 匯入的容錯與符號大小寫相容
 
@@ -798,7 +801,7 @@ npx tsx <path-to-script>.ts
 | **連線算不出來** | 檢查 `src/games/<GameName>/<GameName>.ts` 的 `evaluate()`；確認 `includeZeroPayout` 是否為 true 且有 `matchCount >= 2` 通道 |
 | **搜尋逾時 / 無可行滾輪位置** | 檢查滾輪表各軸是否存在目標符號或 Wild；若 length=5 檢查第 4 軸；檢查 `RngSearchEngine.ts` 的 `skipDraw` 條件 |
 | **SVG 線路畫不出或錯位** | 檢查 `svgPaths.ts` 的 `cellWidth`/`cellHeight`/`gap` 是否與 `SlotGridDisplay.tsx` CSS 一致；檢查 `gridContainerRef` DOM 綁定 |
-| **切換遊戲後殘留金框** | 確認 `resetGameSpecifics()` 是否被呼叫 |
+| **切換遊戲後殘留金框 / 免遊模式** | 確認該入口是先 `setGameType` 再寫入資料；`useGameStore` 檔尾的訂閱是否還在 |
 | **Excel 匯入白畫面** | 檢查 `excelParser.ts` 的 Sheet 名稱容錯與符號清理邏輯 |
 | **Roma 搜尋出的 RNG 產生連鎖消除** | 檢查 `findSafeReplacementRng()` 的雙重防線是否完整 |
 | **規則測試失敗「新增 / 增加 / 減少」違規** | 看是哪個 scope、哪款遊戲、哪條規則；減少代表修好了，更新 `knownIssues.data.ts` 的計數（`FLOW_PRINT_KNOWN=1` 印出目前計數） |
@@ -836,11 +839,10 @@ npx tsx <path-to-script>.ts
 | 項目 | 說明 | 嚴重度 |
 |------|------|-------|
 | RTP Worker 與遊戲類別是兩套掉落實作 | Worker 不呼叫 `calculateNextDropGrid`；例如羅馬在 Worker 中不掉落、秦皇金框不轉 WX、皇家金象金框不分軸都轉 WX（見第 10.1 章）。改成呼叫遊戲類別會改變 RTP 數字，需另案確認 | 中 |
-| 流程測試報告的未修項目 | F01 Pay Anywhere 產生器、F03~F06 干擾判定、F09 決戰賽特2 大獎、F10 贏分線路一覽漏解、F13/F14 驗證工具不支援羅馬遞補、F16 皇家金象；白名單 `knownIssues.data.ts` 有精確計數 | 中 |
+| 流程測試報告的未修項目 | F03~F06 干擾判定、F09 決戰賽特2 大獎、F10 贏分線路一覽漏解、F13/F14 驗證工具不支援羅馬遞補、F16 皇家金象；白名單 `knownIssues.data.ts` 有精確計數 | 中 |
 | `LineViewerTab` 尚未改呼叫 `flows/lineViewer.ts` | 元件仍用內嵌版本，兩份程式需同步；改線路一覽邏輯時兩邊都要改，或先完成接線 | 低 |
 | `SlotGeneratorTab.tsx` 仍約 2000 行 | 遊戲判斷已移除，但金框 / Jackpot / 幸運草編輯器仍在主檔，可再拆成 `SpecialSymbolPanel` 子元件 | 中 |
 | `ConfigPanel.tsx` 達 56KB | 建議拆分為 ReelStripViewer / PaytableEditor / BetConfig / SpecialSymbolPanel | 中 |
-| `isFreeGame` 切換遊戲時不重設 | 在羅馬切到免遊後換到諸神，諸神也會是 FG 模式（`resetGameSpecifics` 未包含 isFreeGame） | 低 |
 | `megaway` 型別已定義但無對應遊戲實作 | 只保留選單項目（registry 的 MEGAWAY 佔位） | 低 |
 | `src/constants/GameConstants.ts` 與 `src/utils/evaluation/GameConstants.ts` 職責重疊 | 建議合併或明確劃分常數範圍 | 低 |
 | ESLint 既有問題約 210 個 | 多為 `any` / 未使用變數；遊戲隔離規則本身為 0 錯誤 | 低 |

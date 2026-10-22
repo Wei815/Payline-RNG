@@ -4,7 +4,7 @@
 import { describe, test } from 'vitest';
 import * as fs from 'fs';
 import type { GameType } from '../../../types';
-import { buildFixture, loadTemplate, withSeed, type GameFixture } from './harness';
+import { loadFixture, SYNTHETIC_PAY_ANYWHERE, withSeed, type GameFixture } from './harness';
 import { runGeneratorSearch } from '../../../hooks/generatorSearch';
 import { calculateCombinationWin } from '../../../flows/combinationWin';
 import { defaultSpecialSymbolConfig } from '../../../store/useGameStore';
@@ -23,7 +23,7 @@ const CASES: [GameType, string][] = [
   ['linegame_roma', 'Roma'],
   ['linegame_set2', 'The Luxe'],
   ['linegame_gods', 'God of Wars'],
-  ['payanywhere', 'Battle of Set'],
+  ['payanywhere', SYNTHETIC_PAY_ANYWHERE],
   ['payanywhere_set2', 'Battle of Set'],
 ];
 
@@ -51,7 +51,7 @@ describe('產生器 → 複製腳本 → 規則檢查', () => {
 
   for (const [gameType, template] of CASES) {
     test(gameType, async () => {
-      const fx = buildFixture(gameType, await loadTemplate(template));
+      const fx = await loadFixture(gameType, template);
       const fmt = getScriptFormatter(gameType);
       const ctx = scriptCtx(fx);
       const traits = getTraits(gameType);

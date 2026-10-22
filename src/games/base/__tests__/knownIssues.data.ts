@@ -4,7 +4,6 @@
  */
 import type { KnownIssues } from './knownIssues';
 
-const F01 = 'F01 通用 Pay Anywhere 反向搜尋完全找不到（個數取自賠率表 match3 → 3 個，但評估要 8 個以上才中獎；引擎又以「軸數 < 個數」直接放棄）';
 const F02 = 'F02 秦皇：Scatter 目標「S1 × 4 個」找不到（+WX 與一般連線已於建構式搜尋修正）';
 const F03 = 'F03 WX 當目標：通用 Line / Way 無法產生；「B1 + WX」不可能卻仍列出';
 const F04 = 'F04 搜尋引擎不把「百搭自成連線」算干擾';
@@ -20,7 +19,6 @@ const F15 = 'F15 線遊戲反向搜尋偶爾只回傳有干擾的解（Way 類�
 const F16 = 'F16 皇家金象「×1 + WX」（2 連線含百搭）找不到';
 
 export const GENERATOR_KNOWN: KnownIssues = {
-  'payanywhere | N0 找不到組合（無可行滾輪位置）': { count: 116, finding: F01 },
   'waygame_qin | N0 找不到組合（無可行滾輪位置）': { count: 1, finding: F02 },
   'linegame | N0 找不到組合（無可行滾輪位置）': { count: 6, finding: F03 },
   'linegame | N1 只找到有干擾的組合': { count: 6, finding: F15 },
@@ -38,8 +36,6 @@ export const GENERATOR_KNOWN: KnownIssues = {
 };
 
 export const SPECIAL_KNOWN: KnownIssues = {
-  'payanywhere | W0 找不到大獎區間組合': { count: 5, finding: F01 },
-  'payanywhere | C0 找不到任何連續消除組合': { count: 1, finding: F01 },
   'payanywhere_set2 | W0 找不到大獎區間組合': { count: 5, finding: F09 },
   'linegame_roma | W2 測案 Win= 落在區間': { count: 3, finding: F08 },
 };

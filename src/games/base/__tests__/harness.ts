@@ -81,6 +81,42 @@ function toRecord(sets?: string[][][]): Record<string, string[][]> | undefined {
   return rec;
 }
 
+/** 通用 Pay Anywhere 沒有自己的範本（決戰賽特2 範本是 MathID 遊戲、沒有滾輪表），以固定種子合成一份 */
+export const SYNTHETIC_PAY_ANYWHERE = '__synthetic_pay_anywhere__';
+
+export function syntheticPayAnywhereFixture(): GameFixture {
+  const rand = mulberry32(2024);
+  // 權重越高越常見：低分符號多、高分符號少，Scatter 偶爾出現
+  const weights: [string, number][] = [
+    ['M1', 6], ['M2', 6], ['M3', 7], ['M4', 7], ['A', 8], ['K', 8], ['Q', 9], ['J', 9], ['S1', 2],
+  ];
+  const bag = weights.flatMap(([s, w]) => Array(w).fill(s) as string[]);
+  const strips = Array.from({ length: 6 }, () => Array.from({ length: 60 }, () => bag[Math.floor(rand() * bag.length)]));
+  const line = (symbolId: string, m3: number, m4: number, m5: number): PaytableRule => ({
+    symbolId, name: symbolId, payouts: { match3: m3, match4: m4, match5: m5 }, isWild: false, isScatter: false,
+  });
+  const game = GameRegistry.getGame('payanywhere') as AbstractGame;
+  return {
+    gameType: 'payanywhere',
+    game,
+    paytable: [
+      line('M1', 200, 500, 1000), line('M2', 50, 200, 500), line('M3', 40, 100, 300), line('M4', 30, 40, 240),
+      line('A', 20, 30, 200), line('K', 16, 24, 160), line('Q', 10, 20, 100), line('J', 8, 18, 80),
+      { symbolId: 'S1', name: 'S1', payouts: { match3: 2, match4: 5, match5: 20 }, isWild: false, isScatter: true },
+    ],
+    strips,
+    rowCounts: Array(6).fill(5),
+    reelCount: 6,
+    paylines: defaultPaylines,
+  };
+}
+
+/** 依測試案例建立環境：一般為範本檔名片段；SYNTHETIC_PAY_ANYWHERE 為合成的通用 Pay Anywhere */
+export async function loadFixture(gameType: GameType, template: string): Promise<GameFixture> {
+  if (template === SYNTHETIC_PAY_ANYWHERE) return syntheticPayAnywhereFixture();
+  return buildFixture(gameType, await loadTemplate(template));
+}
+
 /** 由範本 (或遊戲預設資料) 建立測試環境 */
 export function buildFixture(gameType: GameType, parsed?: ExcelParsedData): GameFixture {
   const game = GameRegistry.getGame(gameType) as AbstractGame;

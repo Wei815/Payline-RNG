@@ -9,7 +9,7 @@
 import { describe, expect, test } from 'vitest';
 import * as fs from 'fs';
 import type { GameType } from '../../types';
-import { buildFixture, loadTemplate, mulberry32, withSeed, type GameFixture } from '../../games/base/__tests__/harness';
+import { loadFixture, SYNTHETIC_PAY_ANYWHERE, mulberry32, withSeed, type GameFixture } from '../../games/base/__tests__/harness';
 import { cascadeOnce, checkSingleCombination, usesGoldCascade, WILDS } from '../../games/base/__tests__/flowRules';
 import { getTraits } from '../../games/registry';
 
@@ -19,7 +19,7 @@ const ORACLE_BUDGET = Number(process.env.FLOW_ORACLE_BUDGET ?? 60000);
 const ONLY = process.env.FLOW_BENCH_GAMES?.split(',');
 const GAMES_ALL: [GameType, string][] = [
   ['linegame', 'Mermaid'], ['waygame', 'Mermaid'], ['waygame_qin', 'Chin Shi'], ['waygame_elephant', 'Royal Ganesha'],
-  ['linegame_roma', 'Roma'], ['payanywhere', 'Battle of Set'],
+  ['linegame_roma', 'Roma'], ['payanywhere', SYNTHETIC_PAY_ANYWHERE],
 ];
 const GAMES = GAMES_ALL.filter(([g]) => !ONLY || ONLY.includes(g));
 
@@ -93,11 +93,11 @@ describe.skipIf(!RUN)('反向搜尋效能與漏解評估', () => {
   const rows: Row[] = [];
   for (const [gameType, template] of GAMES) {
     test(gameType, async () => {
-      const fx = buildFixture(gameType, await loadTemplate(template));
+      const fx = await loadFixture(gameType, template);
       const traits = getTraits(gameType);
       const symbols = fx.paytable.filter(p => !p.isScatter && !p.isWild && p.isEnabled !== false && Object.values(p.payouts).some(v => v > 0)).map(p => p.symbolId);
-      // Pay Anywhere：產生器依賠率表推算個數（此範本 match3~5 → 3~6 個），與 UI 實際送出的長度一致
-      const lengths = traits.family === 'payanywhere' ? [3, 4, 5, 6] : Array.from({ length: fx.reelCount - 2 }, (_, i) => i + 3);
+      // Pay Anywhere：產生器依賠率門檻送出個數（match3/4/5 → 8/10/12 個）
+      const lengths = traits.family === 'payanywhere' ? [8, 10, 12] : Array.from({ length: fx.reelCount - 2 }, (_, i) => i + 3);
       for (const symbol of symbols) {
         for (const length of lengths) {
           for (const wild of traits.family === 'payanywhere' ? [0] : [0, 1]) {

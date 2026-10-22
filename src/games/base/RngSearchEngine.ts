@@ -155,6 +155,14 @@ export class RngSearchEngine {
       requireGoldCascade = false;
     }
 
+    // Pay Anywhere（含 Scatter）：目標是「全盤恰好 length 個」，與軸數無關，改用依個數分類的建構式搜尋
+    if (getFamily(gameType) === 'payanywhere') {
+      const rng = wildCount === 0
+        ? this.constructivePayAnywhereSearch(targetSymbol, length, currentStrips, rowCounts, currentPaytable, reelCount, gameType, customPaylines, topTrackerOther)
+        : null;
+      return { rng, isInterfered: false };
+    }
+
     const possibleReelsCount = targetIndicesForReel.filter(v => v.length > 0).length;
     if (possibleReelsCount < length) {
       return { rng: null, isInterfered: false };
@@ -798,6 +806,68 @@ export class RngSearchEngine {
         }
         if (c < 0) break;
       }
+    }
+    return null;
+  }
+
+  /**
+   * Pay Anywhere 單一符號的建構式搜尋：
+   * - 每軸停點依「視窗內目標個數」分組
+   * - 隨機挑一組各軸個數（總和 = count），再從對應分組各挑一個停點
+   * 接受條件：恰好一筆目標中獎且個數 = count、沒有任何其他有贏分的中獎
+   */
+  private constructivePayAnywhereSearch(
+    targetSymbol: string,
+    count: number,
+    currentStrips: string[][],
+    rowCounts: number[],
+    currentPaytable: PaytableRule[],
+    reelCount: number,
+    gameType: GameType,
+    customPaylines?: number[][],
+    topTrackerOther?: string[],
+  ): number[] | null {
+    const SAMPLE_BUDGET = 5000;
+    const byCount = Array.from({ length: reelCount }, (_, c) => {
+      const strip = currentStrips[c] || [];
+      const rows = rowCounts[c] || 3;
+      const groups = new Map<number, number[]>();
+      for (let i = 0; i < strip.length; i++) {
+        let k = 0;
+        for (let r = 0; r < rows; r++) if (strip[(i + r) % strip.length] === targetSymbol) k++;
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k)!.push(i);
+      }
+      return groups;
+    });
+    const counts = byCount.map(g => [...g.keys()]);
+    const minRest = counts.map((_, c) => counts.slice(c).reduce((s, ks) => s + (ks.length ? Math.min(...ks) : Infinity), 0));
+    const maxRest = counts.map((_, c) => counts.slice(c).reduce((s, ks) => s + (ks.length ? Math.max(...ks) : -Infinity), 0));
+    if (!(minRest[0] <= count && count <= maxRest[0])) return null;
+
+    const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
+    for (let t = 0; t < SAMPLE_BUDGET; t++) {
+      // 逐軸挑個數，保證剩下的軸仍湊得到總和
+      const rng: number[] = [];
+      let remaining = count;
+      for (let c = 0; c < reelCount; c++) {
+        const restMin = c + 1 < reelCount ? minRest[c + 1] : 0;
+        const restMax = c + 1 < reelCount ? maxRest[c + 1] : 0;
+        const options = counts[c].filter(k => remaining - k >= restMin && remaining - k <= restMax);
+        if (options.length === 0) break;
+        const k = pick(options);
+        rng.push(pick(byCount[c].get(k)!));
+        remaining -= k;
+      }
+      if (rng.length !== reelCount) continue;
+
+      const grid = this.gameInstance.getGridFromRng(rng, currentStrips, rowCounts, reelCount);
+      const evalGrid = this.gameInstance.getEvalGrid(grid, gameType, count, topTrackerOther);
+      const wins = this.gameInstance.evaluate(evalGrid, currentPaytable, { gameType, paylines: customPaylines }, customPaylines, true);
+      const targetWins = wins.filter(w => w.symbolId === targetSymbol);
+      if (targetWins.length !== 1 || targetWins[0].matchCount !== count) continue;
+      if (wins.some(w => w !== targetWins[0] && w.payout > 0)) continue;
+      return rng;
     }
     return null;
   }

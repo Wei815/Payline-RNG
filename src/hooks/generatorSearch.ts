@@ -4,6 +4,7 @@
 import type { GeneratorCombination, GeneratorSearchParams } from "../games/base/InstantGenerator";
 import { findRngForCombination, findRngForCombos, findRngForMultiplierIntervals } from "../utils/rngSearch";
 import { getManifest, getTraits } from "../games/registry";
+import { DEFAULT_PAY_ANYWHERE_THRESHOLDS } from "../utils/evaluation/GameConstants";
 
 export type { GeneratorCombination, GeneratorSearchParams };
 
@@ -118,9 +119,28 @@ export async function runGeneratorSearch(params: GeneratorSearchParams): Promise
     // 先跑所有「純連線」（W=0，由少到多），再跑所有「+WX」（W=1，由少到多）
     // 這樣清單左欄是純連線（上到下），右欄是含WX（上到下）
     const isTargetWild = selectedSymbol.toUpperCase() === 'WX' || selectedSymbol.toUpperCase() === 'WILD' || selectedSymbol.toUpperCase() === 'WW';
-    const maxW = isTargetWild ? 0 : 1;
+    // Pay Anywhere 的百搭不參與計數，不產生「+WX」組合
+    const maxW = isTargetWild || getTraits(gameType).family === 'payanywhere' ? 0 : 1;
 
-    for (let W = 0; W <= maxW; W++) {
+    // Pay Anywhere：中獎看全盤個數是否達門檻（match3/4/5 = 8/10/12 個），不是連線數；百搭不參與計數
+    const payAnywhereTiers = getTraits(gameType).family === 'payanywhere' && !isSelScatter && !isTargetWild
+      ? (['match3', 'match4', 'match5'] as const)
+          .filter(k => (targetRule?.payouts?.[k] ?? 0) > 0)
+          .map(k => DEFAULT_PAY_ANYWHERE_THRESHOLDS[k])
+      : null;
+    for (const count of payAnywhereTiers ?? []) {
+      searchTasks.push({
+        name: `${selectedSymbol} * ${count} 個`,
+        length: count,
+        wildCount: 0,
+        promise: findRngForCombination(
+          selectedSymbol, count, 0, currentStrips, rowCounts, currentPaytable, reelCount, gameType,
+          topTrackerOther, customPaylines, isFreeGame, stripSets, false,
+        ),
+      });
+    }
+
+    for (let W = 0; !payAnywhereTiers && W <= maxW; W++) {
       for (let L = startLen; L <= reelCount; L++) {
         if (W === 1 && L < 2) continue; // WX 至少需要 L>=2（1個symbol+1個WX）
         const maxWild = Math.min(1, L - 1);

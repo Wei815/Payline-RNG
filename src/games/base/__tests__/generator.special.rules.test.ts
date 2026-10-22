@@ -4,7 +4,7 @@
 import { describe, test } from 'vitest';
 import * as fs from 'fs';
 import type { GameType } from '../../../types';
-import { buildFixture, loadTemplate, makeConfig, withSeed, type GameFixture } from './harness';
+import { loadFixture, SYNTHETIC_PAY_ANYWHERE, makeConfig, withSeed, type GameFixture } from './harness';
 import { runGeneratorSearch } from '../../../hooks/generatorSearch';
 import { defaultSpecialSymbolConfig } from '../../../store/useGameStore';
 import { getGameIntervals } from '../../../utils/evaluation/GameIntervals';
@@ -30,7 +30,7 @@ async function run(fx: GameFixture, symbol: string, seed: number) {
 const ALL: [GameType, string][] = [
   ['linegame', 'Mermaid'], ['waygame', 'Mermaid'], ['waygame_qin', 'Chin Shi'], ['waygame_elephant', 'Royal Ganesha'],
   ['linegame_roma', 'Roma'], ['linegame_set2', 'The Luxe'], ['linegame_gods', 'God of Wars'],
-  ['payanywhere', 'Battle of Set'], ['payanywhere_set2', 'Battle of Set'],
+  ['payanywhere', SYNTHETIC_PAY_ANYWHERE], ['payanywhere_set2', 'Battle of Set'],
 ];
 
 describe('COMBO / 大獎區間 → 規則重播', () => {
@@ -39,7 +39,7 @@ describe('COMBO / 大獎區間 → 規則重播', () => {
 
   for (const [gameType, template] of ALL) {
     test(gameType, async () => {
-      const fx = buildFixture(gameType, await loadTemplate(template));
+      const fx = await loadFixture(gameType, template);
       const fmt = getScriptFormatter(gameType);
       const ctx = scriptCtx(fx);
       const traits = getTraits(gameType);

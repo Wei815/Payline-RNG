@@ -62,6 +62,13 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = () => {
     setIsFreeGame(activeStripTab === 'free');
   }, [activeStripTab, setIsFreeGame]);
 
+  // 切換遊戲後回到主遊戲滾輪表（store 的 isFreeGame 已在切換時重設，分頁也要一致）
+  const [stripTabGameType, setStripTabGameType] = useState(gameType);
+  if (stripTabGameType !== gameType) {
+    setStripTabGameType(gameType);
+    setActiveStripTab('base');
+  }
+
   const gridData = activeStripTab === 'base' ? baseGridData : freeGridData;
   const setGridData = activeStripTab === 'base' ? setBaseGridData : setFreeGridData;
   

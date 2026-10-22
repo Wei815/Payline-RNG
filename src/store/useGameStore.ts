@@ -356,7 +356,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     manualIndices: Array(5).fill(''),
     manualIndicesOther: Array(5).fill(''),
     topTracker: Array(4).fill('WX'),
-    topTrackerOther: Array(4).fill('WX')
+    topTrackerOther: Array(4).fill('WX'),
+    isFreeGame: false
   }),
 
   clearProject: () => set({
@@ -369,3 +370,9 @@ export const useGameStore = create<GameState>((set, get) => ({
     currentGrid: []
   })
 }));
+
+// 切換遊戲時清掉上一款遊戲的專屬狀態（金框 / Jackpot / 免遊模式…），避免殘留到新遊戲。
+// 所有切換入口（側邊欄、歡迎頁、遊戲種類下拉、載入範本）都先切遊戲再寫入滾輪表，所以在這裡統一處理即可。
+useMachineStore.subscribe((state, prev) => {
+  if (state.gameType !== prev.gameType) useGameStore.getState().resetGameSpecifics();
+});
